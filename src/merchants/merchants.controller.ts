@@ -8,33 +8,54 @@ import {
   Put,
   Delete,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
+  ApiBearerAuth,
   ApiOperation,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiNotFoundResponse,
+  ApiConflictResponse,
   ApiResponse,
   ApiParam,
   ApiBody,
   ApiExtraModels,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
 import { CreateMerchantDto } from './dtos/create-merchant.dto';
 import { UpdateMerchantDto } from './dtos/update-merchant.dto';
 import { Merchant } from './entities/merchant.entity';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Scopes } from '../auth/decorators/scopes.decorator';
+import { UserRole } from '../users/constants/role.enum';
+import { Scope } from '../users/constants/scope.enum';
 import { ErrorResponse } from '../common/dtos/error-response.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @ApiTags('Merchants')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('merchants')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class MerchantsController {
   constructor(private readonly merchantsService: MerchantsService) {}
 
   @Post()
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Create a new Merchant' })
-  @ApiResponse({
-    status: 201,
+  @ApiCreatedResponse({
     description: 'Merchant created successfully',
     type: Merchant,
   })
@@ -50,18 +71,20 @@ export class MerchantsController {
       },
     },
   })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiConflictResponse({ description: 'Email already exists' })
   @ApiBody({ type: CreateMerchantDto })
   create(@Body() dto: CreateMerchantDto) {
     return this.merchantsService.create(dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all companies' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of companies',
-    type: [Merchant],
-  })
+  @Roles(UserRole.PORTAL_ADMIN)
+  @Scopes(Scope.ADMIN_PORTAL)
+  @ApiOperation({ summary: 'Get all merchants' })
+  @ApiOkResponse({ description: 'List of all merchants', type: [Merchant] })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'No merchants found' })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -79,9 +102,19 @@ export class MerchantsController {
   }
 
   @Get(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Get a Merchant by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'Merchant ID' })
-  @ApiResponse({ status: 200, description: 'Merchant found', type: Merchant })
+  @ApiOkResponse({ description: 'Merchant found', type: Merchant })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Merchant not found' })
   @ApiResponse({
     status: 404,
     description: 'Merchant not found',
@@ -111,10 +144,24 @@ export class MerchantsController {
   }
 
   @Put(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Update a Merchant' })
   @ApiParam({ name: 'id', type: Number, description: 'Merchant ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiBody({ type: UpdateMerchantDto })
-  @ApiResponse({ status: 200, description: 'Merchant updated', type: Merchant })
+  @ApiOkResponse({
+    description: 'Merchant updated successfully',
+    type: Merchant,
+  })
   @ApiResponse({
     status: 404,
     description: 'Merchant not found',
@@ -147,9 +194,20 @@ export class MerchantsController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Delete a Merchant' })
   @ApiParam({ name: 'id', type: Number, description: 'Merchant ID' })
-  @ApiResponse({ status: 200, description: 'Merchant deleted' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Merchant not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiOkResponse({ description: 'Merchant deleted' })
   @ApiResponse({
     status: 404,
     description: 'Merchant not found',

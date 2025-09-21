@@ -22,15 +22,17 @@ import { UserRole } from './constants/role.enum';
 import { Scope } from './constants/scope.enum';
 import { Request } from 'express';
 import {
+  ApiTags,
   ApiBearerAuth,
   ApiOperation,
-  ApiTags,
-  ApiCreatedResponse,
   ApiOkResponse,
+  ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
   ApiConflictResponse,
+  ApiBody,
+  ApiParam,
 } from '@nestjs/swagger';
 import { User } from './entities/user.entity';
 
@@ -57,6 +59,7 @@ export class UsersController {
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiConflictResponse({ description: 'Email already exists' })
+  @ApiBody({ type: CreateUserDto })
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
@@ -66,6 +69,8 @@ export class UsersController {
   @Scopes(Scope.ADMIN_PORTAL)
   @ApiOperation({ summary: 'Get all users' })
   @ApiOkResponse({ description: 'List of all users', type: [User] })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'No users found' })
   findAll() {
     return this.usersService.findAll();
   }
@@ -82,7 +87,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get users by Merchant ID' })
   @ApiOkResponse({ description: 'Users filtered by merchant ID', type: [User] })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Merchant or users not found' })
+  @ApiNotFoundResponse({ description: 'User not found' })
   findById(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
   }
@@ -120,7 +125,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get users by Email' })
   @ApiOkResponse({ description: 'Users filtered by email', type: [User] })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Merchant or users not found' })
+  @ApiNotFoundResponse({ description: 'User not found' })
   findByEmail(
     @Param('email') email: string,
     // @Req() req: Request & { user: AuthenticatedUser },
@@ -131,6 +136,11 @@ export class UsersController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a user by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiBody({ type: UpdateUserDto })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,

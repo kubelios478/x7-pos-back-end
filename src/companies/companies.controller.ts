@@ -8,6 +8,7 @@ import {
   Put,
   Delete,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,16 +23,31 @@ import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dtos/create-company.dto';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
 import { Company } from './entities/company.entity';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Scopes } from '../auth/decorators/scopes.decorator';
+import { UserRole } from '../users/constants/role.enum';
+import { Scope } from '../users/constants/scope.enum';
 import { ErrorResponse } from '../common/dtos/error-response.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 @ApiTags('Companies')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('companies')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
   @Post()
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Create a new company' })
   @ApiResponse({
     status: 201,
@@ -56,6 +72,8 @@ export class CompaniesController {
   }
 
   @Get()
+  @Roles(UserRole.PORTAL_ADMIN)
+  @Scopes(Scope.ADMIN_PORTAL)
   @ApiOperation({ summary: 'Get all companies' })
   @ApiResponse({
     status: 200,
@@ -79,6 +97,14 @@ export class CompaniesController {
   }
 
   @Get(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Get a company by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'Company ID' })
   @ApiResponse({ status: 200, description: 'Company found', type: Company })
@@ -111,6 +137,14 @@ export class CompaniesController {
   }
 
   @Put(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Update a company' })
   @ApiParam({ name: 'id', type: Number, description: 'Company ID' })
   @ApiBody({ type: UpdateCompanyDto })
@@ -144,6 +178,14 @@ export class CompaniesController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Delete a company' })
   @ApiParam({ name: 'id', type: Number, description: 'Company ID' })
   @ApiResponse({ status: 200, description: 'Company deleted' })
