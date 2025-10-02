@@ -10,7 +10,11 @@ import {
   Patch,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
   ApiExtraModels,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -30,6 +34,7 @@ import { Category } from './entities/category.entity';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { UpdateMerchantDto } from 'src/merchants/dtos/update-merchant.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
@@ -39,6 +44,34 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Create a new Category' })
+  @ApiCreatedResponse({
+    description: 'Category created successfully',
+    type: Category,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: ['category must be longer than or equal to 2 characters'],
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiConflictResponse({ description: 'Category already exists' })
   create(@Body() createCategoryDto: CreateCategoryDto) {
     return this.categoryService.create(createCategoryDto);
   }
@@ -109,15 +142,95 @@ export class CategoryController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Update a Category' })
+  @ApiParam({ name: 'id', type: Number, description: 'Category ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiBody({ type: UpdateMerchantDto })
+  @ApiOkResponse({
+    description: 'Category updated successfully',
+    type: Category,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Category not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Category not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'name must be longer than or equal to 2 characters',
+        error: 'Bad Request',
+      },
+    },
+  })
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
-    return this.categoryService.update(+id, updateCategoryDto);
+    return this.categoryService.update(id, updateCategoryDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.categoryService.remove(+id);
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Delete a Category' })
+  @ApiParam({ name: 'id', type: Number, description: 'Category ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiOkResponse({ description: 'Category deleted' })
+  @ApiResponse({
+    status: 404,
+    description: 'Category not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Category not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid ID',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Validation failed (numeric string is expected)',
+        error: 'Bad Request',
+      },
+    },
+  })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.categoryService.remove(id);
   }
 }
