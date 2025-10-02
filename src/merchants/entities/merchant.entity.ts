@@ -12,6 +12,7 @@ import { Customer } from '../../customers/entities/customer.entity';
 import { CustomerSummaryDto } from '../../customers/dtos/customer-summary.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserSummaryDto } from 'src/users/dtos/user-summary.dto';
+import { Category } from 'src/products-inventory/category/entities/category.entity';
 
 @Entity()
 export class Merchant {
@@ -107,4 +108,13 @@ export class Merchant {
   })
   @OneToMany(() => Customer, (customer) => customer.merchant)
   customers: CustomerSummaryDto[];
+
+  @ApiProperty({
+    type: () => Category,
+    isArray: true,
+    required: false,
+    description: 'List of categories associated with the merchant',
+  })
+  @OneToMany(() => Category, (category) => category.merchant)
+  categories: Category[];
 }
