@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Merchant } from '../../../merchants/entities/merchant.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { Product } from 'src/products-inventory/products/entities/product.entity';
 
 @Entity({ name: 'category' })
 export class Category {
@@ -52,4 +53,13 @@ export class Category {
 
   @OneToMany(() => Category, (category) => category.parent)
   children: Category[];
+
+  @ApiProperty({
+    type: () => Product,
+    isArray: true,
+    required: false,
+    description: 'List of categories associated with the merchant',
+  })
+  @ManyToOne(() => Product, (Product) => Product.merchant)
+  products: Product[];
 }

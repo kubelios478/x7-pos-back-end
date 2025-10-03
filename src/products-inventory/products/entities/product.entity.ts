@@ -1,1 +1,75 @@
-export class Product {}
+import { ApiProperty } from '@nestjs/swagger';
+import { Merchant } from 'src/merchants/entities/merchant.entity';
+import { Category } from 'src/products-inventory/category/entities/category.entity';
+import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+
+@Entity({ name: 'product' })
+export class Product {
+  @ApiProperty({ example: 1, description: 'Product ID' })
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ApiProperty({ example: 'Coca-Cola', description: 'Product name' })
+  @Column({ unique: true, type: 'varchar', length: 255 })
+  name: string;
+
+  @ApiProperty({ example: '123456', description: 'Product SKU' })
+  @Column({ unique: true, type: 'varchar', length: 255 })
+  sku: string;
+
+  @ApiProperty({ example: 10.99, description: 'Product base price' })
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  basePrice: number;
+
+  @ApiProperty({
+    example: 123,
+    description: 'Merchant ID associated with the product',
+  })
+  @Column({ type: 'int' })
+  merchantId: number;
+
+  @ManyToOne(() => Merchant, (merchant) => merchant.products, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'merchantId' })
+  merchant: Merchant;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Category ID associated with the product',
+  })
+  @Column({ type: 'int' })
+  categoryId: number;
+
+  @OneToMany(() => Category, (category) => category.products, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'categoryId' })
+  category?: Category | null;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Supplier ID associated with the product',
+  })
+  @Column({ type: 'int' })
+  supplierId: number;
+
+  @OneToMany(() => Supplier, (supplier) => supplier.products, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'supplierId' })
+  supplier?: Supplier | null;
+}
