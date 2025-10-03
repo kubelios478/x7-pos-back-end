@@ -13,6 +13,7 @@ import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
+import { SubPlanModule } from './sub-plan/sub-plan.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
@@ -22,6 +23,7 @@ import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
 
+import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 
 @Module({
   imports: [
@@ -36,8 +38,7 @@ import { Table } from './tables/entities/table.entity';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        entities: [User, Company, Merchant, Customer, Category],
-        entities: [User, Company, Merchant, Customer, Table],
+        entities: [User, Company, Merchant, Customer, Table, SubPlan, Category],
         synchronize: true,
       }),
     }),
@@ -50,6 +51,7 @@ import { Table } from './tables/entities/table.entity';
     MailModule,
     ProductsInventoryModule,
 
+    SubPlanModule,
   ],
 })
 export class AppModule { }
