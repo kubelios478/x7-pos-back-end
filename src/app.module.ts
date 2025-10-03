@@ -11,6 +11,8 @@ import { MerchantsModule } from './merchants/merchants.module';
 import { CustomersModule } from './customers/customers.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
+import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
+import { TablesModule } from './tables/tables.module';
 import { SubPlanModule } from './sub-plan/sub-plan.module';
 
 // Entities;
@@ -18,7 +20,6 @@ import { User } from './users/entities/user.entity';
 import { Company } from './companies/entities/company.entity';
 import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
-import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 
 @Module({
   imports: [
@@ -33,7 +34,7 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        entities: [User, Company, Merchant, Customer, SubPlan],
+        entities: [User, Company, Merchant, Customer],
         synchronize: true,
       }),
     }),
@@ -42,8 +43,8 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
     MerchantsModule,
     UsersModule,
     CustomersModule,
+    TablesModule,
     MailModule,
-    SubPlanModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

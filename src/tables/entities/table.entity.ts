@@ -1,0 +1,63 @@
+import {
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    ManyToOne,
+    Index,
+} from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import { Merchant } from '../../merchants/entities/merchant.entity';
+import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
+
+@Entity("table")
+@Index(["merchant_id", "number"], { unique: true })
+export class Table {
+    @ApiProperty({ example: 1, description: 'Unique identifier of the Table' })
+    @PrimaryGeneratedColumn()
+    id: number;
+
+    @ApiProperty({ example: 1, description: 'Identifier of the Merchant owning the Table' })
+    @ManyToOne(() => Merchant, (merchant) => merchant.id, { onDelete: 'CASCADE' })
+    merchant_id: number;
+
+    @ApiProperty({ example: 'A1', description: 'Table number or identifier' })
+    @Column({ type: 'varchar', length: 50 })
+    number: string;
+
+    @ApiProperty({ example: 4, description: 'Seating capacity of the Table' })
+    @Column()
+    capacity: number;
+
+    @ApiProperty({ example: 'available', description: 'Current status of the Table' })
+    @Column({ type: 'varchar', length: 50 })
+    status: string;
+
+    @ApiProperty({ example: 'Near window', description: 'Location description of the Table' })
+    @Column({ type: 'varchar', length: 100 })
+    location: string;
+
+    @ApiProperty({ example: '2023-10-01T12:00:00Z', description: 'Creation timestamp of the Table record' })
+    @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
+    created_at: Date;
+
+    @ApiProperty({ example: '2023-10-01T12:00:00Z', description: 'Last update timestamp of the Table record' })
+    @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
+    updated_at: Date;
+
+}
+
+/*
+Table Table {
+  id BIGSERIAL[pk]
+  merchant_id BIGINT[ref: > Merchant.id]
+  number VARCHAR(50)
+  capacity INT
+  status VARCHAR(50)
+  location VARCHAR(100)
+  created_at TIMESTAMP
+  updated_at TIMESTAMP
+  Indexes {
+        (merchant_id, number)[unique]
+    }
+}
+*/
