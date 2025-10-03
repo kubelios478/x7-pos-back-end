@@ -11,6 +11,7 @@ import { MerchantsModule } from './merchants/merchants.module';
 import { CustomersModule } from './customers/customers.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
+import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
 
 // Entities;
@@ -18,6 +19,7 @@ import { User } from './users/entities/user.entity';
 import { Company } from './companies/entities/company.entity';
 import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
+import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
 
 
@@ -34,6 +36,7 @@ import { Table } from './tables/entities/table.entity';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
+        entities: [User, Company, Merchant, Customer, Category],
         entities: [User, Company, Merchant, Customer, Table],
         synchronize: true,
       }),
@@ -45,6 +48,7 @@ import { Table } from './tables/entities/table.entity';
     CustomersModule,
     TablesModule,
     MailModule,
+    ProductsInventoryModule,
 
   ],
 })
