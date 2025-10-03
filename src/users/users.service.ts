@@ -95,7 +95,7 @@ export class UsersService {
       where: { id },
       relations: ['merchant'],
     });
-    if (!user) return null;
+    if (!user) throw new NotFoundException('User not found');
     return {
       id: user.id,
       username: user.username,

@@ -54,4 +54,4 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
     SubPlanModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}
