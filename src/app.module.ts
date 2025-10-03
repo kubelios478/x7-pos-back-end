@@ -22,7 +22,6 @@ import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
-
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 
 @Module({
@@ -42,6 +41,7 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
         synchronize: true,
       }),
     }),
+    // Modules
     AuthModule,
     CompaniesModule,
     MerchantsModule,
@@ -54,4 +54,4 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
     SubPlanModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}
