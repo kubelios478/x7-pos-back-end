@@ -11,12 +11,15 @@ import { MerchantsModule } from './merchants/merchants.module';
 import { CustomersModule } from './customers/customers.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
+import { TablesModule } from './tables/tables.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
 import { Company } from './companies/entities/company.entity';
 import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
+import { Table } from './tables/entities/table.entity';
+
 
 @Module({
   imports: [
@@ -31,7 +34,7 @@ import { Customer } from './customers/entities/customer.entity';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        entities: [User, Company, Merchant, Customer],
+        entities: [User, Company, Merchant, Customer, Table],
         synchronize: true,
       }),
     }),
@@ -40,7 +43,9 @@ import { Customer } from './customers/entities/customer.entity';
     MerchantsModule,
     UsersModule,
     CustomersModule,
+    TablesModule,
     MailModule,
+
   ],
 })
-export class AppModule {}
+export class AppModule { }
