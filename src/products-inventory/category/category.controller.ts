@@ -34,6 +34,8 @@ import { Category } from './entities/category.entity';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
@@ -43,7 +45,7 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -71,13 +73,22 @@ export class CategoryController {
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiConflictResponse({ description: 'Category already exists' })
-  create(@Body() createCategoryDto: CreateCategoryDto) {
-    return this.categoryService.create(createCategoryDto);
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createCategoryDto: CreateCategoryDto,
+  ) {
+    return this.categoryService.create(user, createCategoryDto);
   }
 
   @Get()
-  @Roles(UserRole.PORTAL_ADMIN)
-  @Scopes(Scope.ADMIN_PORTAL)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   @ApiOperation({ summary: 'Get all categories' })
   @ApiOkResponse({ description: 'List of all categories', type: [Category] })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
@@ -94,12 +105,13 @@ export class CategoryController {
       },
     },
   })
-  findAll() {
-    return this.categoryService.findAll();
+  findAll(@CurrentUser() user: AuthenticatedUser) {
+    const id = user.merchant.id;
+    return this.categoryService.findAll(id);
   }
 
   @Get(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -136,12 +148,16 @@ export class CategoryController {
       },
     },
   })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.categoryService.findOne(+id);
+  findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const merchantId = user.merchant.id;
+    return this.categoryService.findOne(merchantId, id);
   }
 
   @Patch(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -184,14 +200,15 @@ export class CategoryController {
     },
   })
   update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
-    return this.categoryService.update(id, updateCategoryDto);
+    return this.categoryService.update(user, id, updateCategoryDto);
   }
 
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -229,7 +246,10 @@ export class CategoryController {
       },
     },
   })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.categoryService.remove(id);
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.categoryService.remove(user, id);
   }
 }

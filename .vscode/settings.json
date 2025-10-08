@@ -3,5 +3,6 @@
         "johndoe"
     ],
     "material-icon-theme.activeIconPack": "nest",
-    "remote.autoForwardPortsFallback": 0
+    "remote.autoForwardPortsFallback": 0,
+    "CodeGPT.apiKey": "OpenRouter"
 }
