@@ -7,7 +7,6 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -50,26 +49,26 @@ export class Product {
   @Column({ type: 'int' })
   categoryId: number;
 
-  @OneToMany(() => Category, (category) => category.products, {
+  @ManyToOne(() => Category, (category) => category.products, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
     nullable: true,
   })
   @JoinColumn({ name: 'categoryId' })
-  category?: Category | null;
+  category: Category;
 
   @ApiProperty({
     example: 10,
     description: 'Supplier ID associated with the product',
   })
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   supplierId: number;
 
-  @OneToMany(() => Supplier, (supplier) => supplier.products, {
+  @ManyToOne(() => Supplier, (supplier) => supplier.products, {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
     nullable: true,
   })
   @JoinColumn({ name: 'supplierId' })
-  supplier?: Supplier | null;
+  supplier: Supplier;
 }

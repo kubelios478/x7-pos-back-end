@@ -11,6 +11,7 @@ import { Category } from './entities/category.entity';
 import { Repository } from 'typeorm';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { CategoryResponseDto } from './dto/category-response.dto';
+import { ProductsInventoryService } from '../products-inventory.service';
 
 @Injectable()
 export class CategoryService {
@@ -19,6 +20,7 @@ export class CategoryService {
     private readonly categoryRepo: Repository<Category>,
     @InjectRepository(Merchant)
     private readonly merchantRepo: Repository<Merchant>,
+    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
   async create(
@@ -69,31 +71,35 @@ export class CategoryService {
 
   async findAll(): Promise<CategoryResponseDto[]> {
     const categories = await this.categoryRepo.find({
-      relations: ['merchant', 'parent'],
+      relations: ['merchant'],
     });
-    return categories.map((category) => {
-      const result: CategoryResponseDto = {
-        id: category.id,
-        name: category.name,
-        merchant: category.merchant
-          ? {
-              name: category.merchant.name,
-              email: category.merchant.email,
-            }
-          : null,
-      };
-      if (category.parentId) {
-        result.parentId = category.parentId;
-        result.parentName = category.parent?.name;
-      }
-      return result;
-    });
+    return Promise.all(
+      categories.map(async (category) => {
+        const result: CategoryResponseDto = {
+          id: category.id,
+          name: category.name,
+          merchant: category.merchant
+            ? {
+                name: category.merchant.name,
+                email: category.merchant.email,
+              }
+            : null,
+        };
+        if (category.parentId) {
+          result.parents =
+            await this.productsInventoryService.findParentCategories(
+              category.id,
+            );
+        }
+        return result;
+      }),
+    );
   }
 
   async findOne(id: number): Promise<CategoryResponseDto> {
     const category = await this.categoryRepo.findOne({
       where: { id },
-      relations: ['merchant', 'parent'],
+      relations: ['merchant'],
     });
     if (!category) throw new NotFoundException('Category not found');
 
@@ -107,10 +113,9 @@ export class CategoryService {
           }
         : null,
     };
-
     if (category.parentId) {
-      result.parentId = category.parentId;
-      result.parentName = category.parent?.name;
+      result.parents =
+        await this.productsInventoryService.findParentCategories(id);
     }
 
     return result;

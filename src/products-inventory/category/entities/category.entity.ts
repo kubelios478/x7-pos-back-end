@@ -54,12 +54,6 @@ export class Category {
   @OneToMany(() => Category, (category) => category.parent)
   children: Category[];
 
-  @ApiProperty({
-    type: () => Product,
-    isArray: true,
-    required: false,
-    description: 'List of categories associated with the merchant',
-  })
-  @ManyToOne(() => Product, (Product) => Product.merchant)
+  @OneToMany(() => Product, (product) => product.category)
   products: Product[];
 }
