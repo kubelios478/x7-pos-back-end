@@ -34,7 +34,6 @@ import { Category } from './entities/category.entity';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { UpdateMerchantDto } from 'src/merchants/dtos/update-merchant.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
@@ -155,7 +154,7 @@ export class CategoryController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'Category not found' })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiBody({ type: UpdateMerchantDto })
+  @ApiBody({ type: UpdateCategoryDto })
   @ApiOkResponse({
     description: 'Category updated successfully',
     type: Category,

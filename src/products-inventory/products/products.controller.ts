@@ -15,7 +15,11 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
   ApiExtraModels,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -39,6 +43,34 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Create a new Product' })
+  @ApiCreatedResponse({
+    description: 'Product created successfully',
+    type: Product,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: ['Product must be longer than or equal to 2 characters'],
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiConflictResponse({ description: 'Product already exists' })
   create(@Body() createProductDto: CreateProductDto) {
     return this.productsService.create(createProductDto);
   }
@@ -109,12 +141,95 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
-    return this.productsService.update(+id, updateProductDto);
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Update a Product' })
+  @ApiParam({ name: 'id', type: Number, description: 'Product ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Product not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiBody({ type: UpdateProductDto })
+  @ApiOkResponse({
+    description: 'Product updated successfully',
+    type: Product,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Product not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Product not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'name must be longer than or equal to 2 characters',
+        error: 'Bad Request',
+      },
+    },
+  })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProductDto: UpdateProductDto,
+  ) {
+    return this.productsService.update(id, updateProductDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.productsService.remove(+id);
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Delete a Product' })
+  @ApiParam({ name: 'id', type: Number, description: 'Product ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Product not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiOkResponse({ description: 'Product deleted' })
+  @ApiResponse({
+    status: 404,
+    description: 'Product not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Product not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid ID',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Validation failed (numeric string is expected)',
+        error: 'Bad Request',
+      },
+    },
+  })
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.productsService.remove(id);
   }
 }
