@@ -74,7 +74,7 @@ export class CategoryService {
 
     const savedCategory = await this.categoryRepo.save(newCategory);
 
-    return this.findOne(savedCategory.merchantId, savedCategory.id);
+    return this.findOne(savedCategory.id);
   }
 
   async findAll(merchantId: number): Promise<CategoryResponseDto[]> {
@@ -105,7 +105,7 @@ export class CategoryService {
     );
   }
 
-  async findOne(merchantId: number, id: number): Promise<CategoryResponseDto> {
+  async findOne(id: number, merchantId?: number): Promise<CategoryResponseDto> {
     const category = await this.categoryRepo.findOne({
       where: { id, merchantId, isActive: true }, // Filtrar por isActive
       relations: ['merchant'],
@@ -183,7 +183,7 @@ export class CategoryService {
     Object.assign(category, updateData);
     await this.categoryRepo.save(category);
 
-    return this.findOne(category.merchantId, id);
+    return this.findOne(id);
   }
 
   async remove(

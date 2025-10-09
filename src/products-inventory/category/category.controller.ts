@@ -106,8 +106,8 @@ export class CategoryController {
     },
   })
   findAll(@CurrentUser() user: AuthenticatedUser) {
-    const id = user.merchant.id;
-    return this.categoryService.findAll(id);
+    const merchantId = user.merchant.id;
+    return this.categoryService.findAll(merchantId);
   }
 
   @Get(':id')
@@ -153,7 +153,7 @@ export class CategoryController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     const merchantId = user.merchant.id;
-    return this.categoryService.findOne(merchantId, id);
+    return this.categoryService.findOne(id, merchantId);
   }
 
   @Patch(':id')

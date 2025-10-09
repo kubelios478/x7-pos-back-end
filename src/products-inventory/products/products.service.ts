@@ -73,8 +73,9 @@ export class ProductsService {
     return this.findOne(savedProduct.id);
   }
 
-  async findAll(): Promise<ProductResponseDto[]> {
+  async findAll(merchantId: number): Promise<ProductResponseDto[]> {
     const products = await this.productRepository.find({
+      where: { merchantId },
       relations: ['merchant', 'category', 'category.merchant', 'supplier'],
     });
 
