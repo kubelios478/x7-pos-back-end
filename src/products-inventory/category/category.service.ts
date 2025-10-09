@@ -89,8 +89,8 @@ export class CategoryService {
           name: category.name,
           merchant: category.merchant
             ? {
+                id: category.merchant.id,
                 name: category.merchant.name,
-                email: category.merchant.email,
               }
             : null,
         };
@@ -106,8 +106,17 @@ export class CategoryService {
   }
 
   async findOne(id: number, merchantId?: number): Promise<CategoryResponseDto> {
+    const whereCondition: { id: number; merchantId?: number; isActive: true } =
+      {
+        id,
+        isActive: true, // Filtrar por isActive
+      };
+    if (merchantId !== undefined) {
+      whereCondition.merchantId = merchantId;
+    }
+
     const category = await this.categoryRepo.findOne({
-      where: { id, merchantId, isActive: true }, // Filtrar por isActive
+      where: whereCondition,
       relations: ['merchant'],
     });
     if (!category) throw new NotFoundException('Category not found');
@@ -117,8 +126,8 @@ export class CategoryService {
       name: category.name,
       merchant: category.merchant
         ? {
+            id: category.merchant.id,
             name: category.merchant.name,
-            email: category.merchant.email,
           }
         : null,
     };

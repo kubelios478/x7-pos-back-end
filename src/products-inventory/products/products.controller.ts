@@ -45,7 +45,7 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -73,8 +73,11 @@ export class ProductsController {
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiConflictResponse({ description: 'Product already exists' })
-  create(@Body() createProductDto: CreateProductDto) {
-    return this.productsService.create(createProductDto);
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createProductDto: CreateProductDto,
+  ) {
+    return this.productsService.create(user, createProductDto);
   }
 
   @Get()
@@ -145,8 +148,12 @@ export class ProductsController {
       },
     },
   })
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.findOne(id);
+  findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const merchantId = user.merchant.id;
+    return this.productsService.findOne(id, merchantId);
   }
 
   @Patch(':id')
@@ -193,10 +200,11 @@ export class ProductsController {
     },
   })
   update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProductDto: UpdateProductDto,
   ) {
-    return this.productsService.update(id, updateProductDto);
+    return this.productsService.update(user, id, updateProductDto);
   }
 
   @Delete(':id')

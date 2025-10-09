@@ -13,6 +13,8 @@ import { Repository } from 'typeorm';
 import { Category } from '../category/entities/category.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { CategoryLittleResponseDto } from '../category/dto/category-little-response.dto';
 
 @Injectable()
 export class ProductsService {
@@ -27,10 +29,17 @@ export class ProductsService {
     private readonly supplierRepository: Repository<Supplier>,
   ) {}
   async create(
+    user: AuthenticatedUser,
     createProductDto: CreateProductDto,
   ): Promise<ProductResponseDto> {
     const { name, sku, basePrice, categoryId, merchantId, supplierId } =
       createProductDto;
+
+    if (merchantId !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to create products for this merchant',
+      );
+    }
 
     const [merchant, category, supplier] = await Promise.all([
       this.merchantRepository.findOneBy({ id: merchantId }),
@@ -58,6 +67,19 @@ export class ProductsService {
       });
     }
 
+    const existingProduct = await this.productRepository.findOne({
+      where: [
+        { sku, merchantId },
+        { sku, categoryId },
+      ],
+    });
+
+    if (existingProduct) {
+      throw new ConflictException(
+        `Product with SKU "${sku}" already exists for this category.`,
+      );
+    }
+
     const newProduct = this.productRepository.create({
       name,
       sku,
@@ -76,7 +98,7 @@ export class ProductsService {
   async findAll(merchantId: number): Promise<ProductResponseDto[]> {
     const products = await this.productRepository.find({
       where: { merchantId },
-      relations: ['merchant', 'category', 'category.merchant', 'supplier'],
+      relations: ['merchant', 'category', 'category.parent', 'supplier'],
     });
 
     return products.map((product) => {
@@ -87,14 +109,20 @@ export class ProductsService {
         basePrice: product.basePrice,
         merchant: product.merchant
           ? {
+              id: product.merchant.id,
               name: product.merchant.name,
-              email: product.merchant.email,
             }
           : null,
         category: product.category
           ? {
               id: product.category.id,
               name: product.category.name,
+              parent: product.category.parent
+                ? ({
+                    id: product.category.parent.id,
+                    name: product.category.parent.name,
+                  } as CategoryLittleResponseDto)
+                : null,
             }
           : null,
         supplier: product.supplier
@@ -110,10 +138,15 @@ export class ProductsService {
     });
   }
 
-  async findOne(id: number): Promise<ProductResponseDto> {
+  async findOne(id: number, merchantId?: number): Promise<ProductResponseDto> {
+    const whereCondition: { id: number; merchantId?: number } = { id };
+    if (merchantId !== undefined) {
+      whereCondition.merchantId = merchantId;
+    }
+
     const product = await this.productRepository.findOne({
-      where: { id },
-      relations: ['merchant', 'category', 'category.merchant', 'supplier'],
+      where: whereCondition,
+      relations: ['merchant', 'category', 'category.parent', 'supplier'],
     });
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
@@ -126,14 +159,20 @@ export class ProductsService {
       basePrice: product.basePrice,
       merchant: product.merchant
         ? {
+            id: product.merchant.id,
             name: product.merchant.name,
-            email: product.merchant.email,
           }
         : null,
       category: product.category
         ? {
             id: product.category.id,
             name: product.category.name,
+            parent: product.category.parent
+              ? ({
+                  id: product.category.parent.id,
+                  name: product.category.parent.name,
+                } as CategoryLittleResponseDto)
+              : null,
           }
         : null,
       supplier: product.supplier
@@ -149,13 +188,12 @@ export class ProductsService {
   }
 
   async update(
+    user: AuthenticatedUser,
     id: number,
     updateProductDto: UpdateProductDto,
-  ): Promise<UpdateProductDto> {
-    const { merchantId, categoryId, supplierId, ...updateData } =
+  ): Promise<ProductResponseDto> {
+    const { merchantId, categoryId, supplierId, sku, ...updateData } =
       updateProductDto;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { name, sku, basePrice } = updateData;
 
     const product = await this.productRepository.findOneBy({ id });
 
@@ -163,41 +201,57 @@ export class ProductsService {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
 
-    const forbidden = [];
-    if (merchantId) {
-      forbidden.push('Merchant ID cannot be changed' as never);
-    }
-    if (categoryId) {
-      forbidden.push('Category ID cannot be changed' as never);
-    }
-    if (supplierId) {
-      forbidden.push('Supplier ID cannot be changed' as never);
+    if (product.merchantId !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to modify products for other merchants',
+      );
     }
 
-    if (forbidden.length > 0) {
-      throw new ForbiddenException({
-        message: forbidden,
-        error: 'Forbidden',
-        status: 403,
+    if (merchantId && merchantId !== product.merchantId) {
+      throw new ForbiddenException('Merchant ID cannot be changed');
+    }
+
+    const notFound = [];
+    if (categoryId && categoryId !== product.categoryId) {
+      const category = await this.categoryRepository.findOneBy({
+        id: categoryId,
+      });
+      if (!category) {
+        notFound.push(`Category with ID ${categoryId} not found` as never);
+      }
+    }
+    if (supplierId && supplierId !== product.supplierId) {
+      const supplier = await this.supplierRepository.findOneBy({
+        id: supplierId,
+      });
+      if (!supplier) {
+        notFound.push(`Supplier with ID ${supplierId} not found` as never);
+      }
+    }
+
+    if (notFound.length > 0) {
+      throw new NotFoundException({
+        message: notFound,
+        error: 'Not Found',
+        status: 404,
       });
     }
 
-    if (name && name !== product.name) {
+    if (sku && sku !== product.sku) {
       const existingProduct = await this.productRepository.findOne({
-        where: {
-          name,
-          merchantId: product.merchantId,
-          supplierId: product.supplierId,
-        },
+        where: [
+          { sku, merchantId: product.merchantId },
+          { sku, categoryId: product.categoryId },
+        ],
       });
-      if (existingProduct) {
+      if (existingProduct && existingProduct.id !== id) {
         throw new ConflictException(
-          `Product with name "${name}" already exists`,
+          `Product with SKU "${sku}" already exists for this merchant or category.`,
         );
       }
     }
 
-    Object.assign(product, updateData);
+    Object.assign(product, { ...updateData, categoryId, supplierId, sku });
     await this.productRepository.save(product);
 
     return this.findOne(id);
