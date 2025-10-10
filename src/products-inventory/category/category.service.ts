@@ -232,7 +232,7 @@ export class CategoryService {
     await this.categoryRepo.save(category);
 
     return {
-      message: `Category with ID ${id} and all its subcategories were successfully hidden`,
+      message: `Category with ID ${id} and all its subcategories were successfully delete`,
     };
   }
 }

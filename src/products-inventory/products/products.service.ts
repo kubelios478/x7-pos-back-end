@@ -97,7 +97,7 @@ export class ProductsService {
 
   async findAll(merchantId: number): Promise<ProductResponseDto[]> {
     const products = await this.productRepository.find({
-      where: { merchantId },
+      where: { merchantId, isActive: true },
       relations: ['merchant', 'category', 'category.parent', 'supplier'],
     });
 
@@ -139,7 +139,11 @@ export class ProductsService {
   }
 
   async findOne(id: number, merchantId?: number): Promise<ProductResponseDto> {
-    const whereCondition: { id: number; merchantId?: number } = { id };
+    const whereCondition: { id: number; merchantId?: number; isActive: true } =
+      {
+        id,
+        isActive: true,
+      };
     if (merchantId !== undefined) {
       whereCondition.merchantId = merchantId;
     }
@@ -195,7 +199,10 @@ export class ProductsService {
     const { merchantId, categoryId, supplierId, sku, ...updateData } =
       updateProductDto;
 
-    const product = await this.productRepository.findOneBy({ id });
+    const product = await this.productRepository.findOneBy({
+      id,
+      isActive: true,
+    });
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
@@ -261,7 +268,10 @@ export class ProductsService {
     user: AuthenticatedUser,
     id: number,
   ): Promise<{ message: string }> {
-    const product = await this.productRepository.findOneBy({ id });
+    const product = await this.productRepository.findOneBy({
+      id,
+      isActive: true,
+    });
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
@@ -277,7 +287,7 @@ export class ProductsService {
     await this.productRepository.save(product);
 
     return {
-      message: `Product with ID ${id} was successfully deleted (deactivated)`,
+      message: `Product with ID ${id} was successfully deleted`,
     };
   }
 }
