@@ -3,6 +3,7 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -29,6 +30,12 @@ export class SubPlanService {
       );
     }
 
+    if (dto.price <= 0) {
+      throw new BadRequestException(
+        'The plan price must be greater than zero.',
+      );
+    }
+
     const plan = this.subPlanRepo.create({
       ...dto,
       status: dto.status || 'active', // default status
@@ -37,9 +44,29 @@ export class SubPlanService {
     return await this.subPlanRepo.save(plan);
   }
 
-  async findAll(): Promise<SubPlanResponseDto[]> {
-    const plans = await this.subPlanRepo.find();
-    return plans.map((plan) => ({
+  async findAll(filters: {
+    page: number;
+    limit: number;
+    status?: string;
+  }): Promise<{
+    data: SubPlanResponseDto[];
+    page: number;
+    limit: number;
+    total: number;
+  }> {
+    const { page, limit, status } = filters;
+
+    const query = this.subPlanRepo.createQueryBuilder('plan');
+
+    if (status) {
+      query.where('plan.status = :status', { status });
+    }
+
+    query.skip((page - 1) * limit).take(limit);
+
+    const [plans, total] = await query.getManyAndCount();
+
+    const data = plans.map((plan) => ({
       id: plan.id,
       name: plan.name,
       description: plan.description,
@@ -49,35 +76,70 @@ export class SubPlanService {
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt,
     }));
+
+    return { data, page, limit, total };
   }
-  async findOne(id: number): Promise<SubPlan> {
+  async findOne(id: number): Promise<SubPlanResponseDto> {
     const plan = await this.subPlanRepo.findOne({ where: { id } });
 
     if (!plan) {
       throw new NotFoundException(`Subscription plan with id ${id} not found`);
     }
 
-    return plan;
+    return {
+      id: plan.id,
+      name: plan.name,
+      description: plan.description,
+      price: Number(plan.price),
+      billingCycle: plan.billingCycle,
+      status: plan.status,
+      createdAt: plan.createdAt,
+      updatedAt: plan.updatedAt,
+    };
   }
 
   async update(
     id: number,
     updateSubPlanDto: UpdateSubPlanDto,
-  ): Promise<SubPlanResponseDto> {
+  ): Promise<{ message: string }> {
+    if (!id || isNaN(Number(id))) {
+      throw new BadRequestException('Invalid ID parameter.');
+    }
     const plan = await this.subPlanRepo.findOne({ where: { id } });
-
     if (!plan) {
       throw new NotFoundException(`Subscription plan with id ${id} not found`);
     }
+    if (updateSubPlanDto.name) {
+      const existing = await this.subPlanRepo.findOne({
+        where: { name: updateSubPlanDto.name },
+      });
+
+      if (existing && existing.id !== id) {
+        throw new ConflictException(
+          'A subscription plan with this name already exists.',
+        );
+      }
+    }
+
+    // 4️⃣ Actualizar los datos
     const updatedPlan = this.subPlanRepo.merge(plan, updateSubPlanDto);
-    const savedPlan = await this.subPlanRepo.save(updatedPlan);
-    return savedPlan;
+    await this.subPlanRepo.save(updatedPlan);
+
+    // 5️⃣ Devolver respuesta sin exponer timestamps
+    return {
+      message: `Subscription plan with ID ${id} was successfully updated.`,
+    };
   }
 
   async remove(id: number): Promise<void> {
+    if (id <= 0) {
+      throw new BadRequestException('ID must be a positive integer');
+    }
+
     const subPlan = await this.subPlanRepo.findOne({ where: { id } });
+
     if (!subPlan) {
-      throw new NotFoundException('Subscription plan not found');
+      throw new NotFoundException(`Subscription plan with id ${id} not found`);
     }
 
     await this.subPlanRepo.remove(subPlan);

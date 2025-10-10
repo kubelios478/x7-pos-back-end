@@ -14,7 +14,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { UserSummaryDto } from 'src/users/dtos/user-summary.dto';
 import { Category } from 'src/products-inventory/category/entities/category.entity';
 import { Table } from 'src/tables/entities/table.entity';
-
 @Entity()
 export class Merchant {
   @ApiProperty({ example: 1, description: 'Unique identifier of the Merchant' })

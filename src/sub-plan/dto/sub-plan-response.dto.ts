@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { SubPlan } from '../entity/sub-plan.entity';
 
 export class SubPlanResponseDto {
   @ApiProperty({ example: 1 })
@@ -25,15 +24,4 @@ export class SubPlanResponseDto {
 
   @ApiProperty({ example: '2025-10-01T20:15:00.000Z' })
   updatedAt: Date;
-
-  constructor(entity: SubPlan) {
-    this.id = entity.id;
-    this.name = entity.name;
-    this.description = entity.description;
-    this.price = Number(entity.price);
-    this.billingCycle = entity.billingCycle;
-    this.status = entity.status;
-    this.createdAt = entity.createdAt;
-    this.updatedAt = entity.updatedAt;
-  }
 }

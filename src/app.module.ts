@@ -24,6 +24,8 @@ import { Category } from './products-inventory/category/entities/category.entity
 import { Table } from './tables/entities/table.entity';
 
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
+import { MerchSubModule } from './merch-sub/merch-sub.module';
+import { MerchSub } from './merch-sub/entities/merch-sub.entity';
 
 @Module({
   imports: [
@@ -38,7 +40,16 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        entities: [User, Company, Merchant, Customer, Table, SubPlan, Category],
+        entities: [
+          User,
+          Company,
+          Merchant,
+          Customer,
+          Table,
+          SubPlan,
+          Category,
+          MerchSub,
+        ],
         synchronize: true,
       }),
     }),
@@ -52,6 +63,8 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
     ProductsInventoryModule,
 
     SubPlanModule,
+
+    MerchSubModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

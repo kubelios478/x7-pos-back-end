@@ -1,44 +1,40 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsPositive, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsPositive,
+  IsIn,
+  IsNotEmpty,
+} from 'class-validator';
 
 export class CreateSubPlanDto {
-  @ApiProperty({
-    example: 'Plan Basic',
-    description: 'Name of the subscription plan',
-  })
+  @ApiProperty({ example: 'Plan Basic' })
   @IsString()
+  @IsNotEmpty()
   name: string;
 
-  @ApiProperty({
-    example: 'Includes basic features and limited support',
-    description: 'Description of the subscription plan',
-  })
+  @ApiProperty({ example: 'Includes basic features' })
   @IsString()
+  @IsNotEmpty()
   description: string;
 
-  @ApiProperty({
-    example: 19.99,
-    description: 'Price of the subscription plan',
-  })
+  @ApiProperty({ example: 19.99 })
   @IsNumber()
   @IsPositive()
   price: number;
 
   @ApiProperty({
     example: 'monthly',
-    description: 'Billing cycle of the subscription plan',
     enum: ['daily', 'weekly', 'monthly', 'yearly'],
   })
   @IsString()
+  @IsNotEmpty()
   @IsIn(['daily', 'weekly', 'monthly', 'yearly'])
   billingCycle: string;
 
-  @ApiProperty({
-    example: 'active',
-    description: 'Status of the subscription plan',
-    enum: ['active', 'inactive'],
-  })
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
   @IsString()
+  @IsNotEmpty()
   @IsIn(['active', 'inactive'])
   status: string;
 }
