@@ -18,10 +18,4 @@ export class SubPlanResponseDto {
 
   @ApiProperty({ example: 'active' })
   status: string;
-
-  @ApiProperty({ example: '2025-10-01T20:10:00.000Z' })
-  createdAt: Date;
-
-  @ApiProperty({ example: '2025-10-01T20:15:00.000Z' })
-  updatedAt: Date;
 }

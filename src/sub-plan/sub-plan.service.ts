@@ -73,8 +73,6 @@ export class SubPlanService {
       price: Number(plan.price),
       billingCycle: plan.billingCycle,
       status: plan.status,
-      createdAt: plan.createdAt,
-      updatedAt: plan.updatedAt,
     }));
 
     return { data, page, limit, total };
@@ -93,8 +91,6 @@ export class SubPlanService {
       price: Number(plan.price),
       billingCycle: plan.billingCycle,
       status: plan.status,
-      createdAt: plan.createdAt,
-      updatedAt: plan.updatedAt,
     };
   }
 

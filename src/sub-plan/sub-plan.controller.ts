@@ -134,8 +134,6 @@ export class SubPlanController {
         price: 9.99,
         billingCycle: 'monthly',
         status: 'active',
-        createdAt: '2025-10-01T13:21:51.237Z',
-        updatedAt: '2025-10-01T13:21:51.237Z',
       },
     },
   })
