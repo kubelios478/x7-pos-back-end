@@ -257,17 +257,27 @@ export class ProductsService {
     return this.findOne(id);
   }
 
-  async remove(id: number): Promise<{ message: string }> {
-    const product = await this.productRepository.findOne({ where: { id } });
+  async remove(
+    user: AuthenticatedUser,
+    id: number,
+  ): Promise<{ message: string }> {
+    const product = await this.productRepository.findOneBy({ id });
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
 
-    await this.productRepository.remove(product);
+    if (product.merchantId !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to delete products for other merchants',
+      );
+    }
+
+    product.isActive = false;
+    await this.productRepository.save(product);
 
     return {
-      message: `Product with ID ${id} were successfully deleted`,
+      message: `Product with ID ${id} was successfully deleted (deactivated)`,
     };
   }
 }

@@ -208,7 +208,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -246,7 +246,10 @@ export class ProductsController {
       },
     },
   })
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.productsService.remove(id);
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.productsService.remove(user, id);
   }
 }

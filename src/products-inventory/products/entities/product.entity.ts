@@ -71,4 +71,8 @@ export class Product {
   })
   @JoinColumn({ name: 'supplierId' })
   supplier: Supplier;
+
+  @ApiProperty({ example: true, description: 'Product active status' })
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
 }
