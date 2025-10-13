@@ -1,8 +1,12 @@
 // src/companies/dtos/update-Merchant.dto.ts
-import { IsOptional, IsString, MinLength } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class MerchantResponseDto {
+  @IsNumber()
+  @ApiProperty({ example: 1, description: 'Merchant ID' })
+  id: number;
+
   @IsOptional()
   @IsString()
   @MinLength(2)

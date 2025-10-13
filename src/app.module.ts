@@ -22,8 +22,9 @@ import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
-
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
+import { Product } from './products-inventory/products/entities/product.entity';
+import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
 
 @Module({
   imports: [
@@ -38,10 +39,21 @@ import { SubPlan } from './sub-plan/entity/sub-plan.entity';
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        entities: [User, Company, Merchant, Customer, Table, SubPlan, Category],
+        entities: [
+          User,
+          Company,
+          Merchant,
+          Customer,
+          Table,
+          SubPlan,
+          Category,
+          Product,
+          Supplier,
+        ],
         synchronize: true,
       }),
     }),
+    // Modules
     AuthModule,
     CompaniesModule,
     MerchantsModule,

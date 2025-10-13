@@ -1,11 +1,21 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ProductsInventoryController } from './products-inventory.controller';
 import { ProductsInventoryService } from './products-inventory.service';
+import { ProductsModule } from './products/products.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
 import { CategoryModule } from './category/category.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Category } from './category/entities/category.entity';
 
 @Module({
   controllers: [ProductsInventoryController],
   providers: [ProductsInventoryService],
-  imports: [CategoryModule],
+  imports: [
+    TypeOrmModule.forFeature([Category]),
+    ProductsModule,
+    SuppliersModule,
+    forwardRef(() => CategoryModule),
+  ],
+  exports: [ProductsInventoryService],
 })
 export class ProductsInventoryModule {}

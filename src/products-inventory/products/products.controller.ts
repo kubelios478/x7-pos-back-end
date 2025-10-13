@@ -3,12 +3,17 @@ import {
   Get,
   Post,
   Body,
+  Patch,
   Param,
   Delete,
   UseGuards,
   ParseIntPipe,
-  Patch,
 } from '@nestjs/common';
+import { ProductsService } from './products.service';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -23,26 +28,21 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { CategoryService } from './category.service';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { ErrorResponse } from 'src/common/dtos/error-response.dto';
+import { Product } from './entities/product.entity';
 import { Roles } from 'src/auth/decorators/roles.decorator';
-import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
-import { Category } from './entities/category.entity';
-import { ErrorResponse } from 'src/common/dtos/error-response.dto';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { UserRole } from 'src/users/constants/role.enum';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@Controller('category')
+@Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
-export class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
+export class ProductsController {
+  constructor(private readonly productsService: ProductsService) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -54,10 +54,10 @@ export class CategoryController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Create a new Category' })
+  @ApiOperation({ summary: 'Create a new Product' })
   @ApiCreatedResponse({
-    description: 'Category created successfully',
-    type: Category,
+    description: 'Product created successfully',
+    type: Product,
   })
   @ApiResponse({
     status: 400,
@@ -66,18 +66,18 @@ export class CategoryController {
     schema: {
       example: {
         statusCode: 400,
-        message: ['category must be longer than or equal to 2 characters'],
+        message: ['Product must be longer than or equal to 2 characters'],
         error: 'Bad Request',
       },
     },
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiConflictResponse({ description: 'Category already exists' })
+  @ApiConflictResponse({ description: 'Product already exists' })
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() createCategoryDto: CreateCategoryDto,
+    @Body() createProductDto: CreateProductDto,
   ) {
-    return this.categoryService.create(user, createCategoryDto);
+    return this.productsService.create(user, createProductDto);
   }
 
   @Get()
@@ -89,10 +89,10 @@ export class CategoryController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get all categories' })
-  @ApiOkResponse({ description: 'List of all categories', type: [Category] })
+  @ApiOperation({ summary: 'Get all products' })
+  @ApiOkResponse({ description: 'List of all products', type: [Product] })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'No categories found' })
+  @ApiNotFoundResponse({ description: 'No products found' })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -107,7 +107,7 @@ export class CategoryController {
   })
   findAll(@CurrentUser() user: AuthenticatedUser) {
     const merchantId = user.merchant.id;
-    return this.categoryService.findAll(merchantId);
+    return this.productsService.findAll(merchantId);
   }
 
   @Get(':id')
@@ -119,19 +119,19 @@ export class CategoryController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get a Category by ID' })
-  @ApiParam({ name: 'id', type: Number, description: 'Category ID' })
-  @ApiOkResponse({ description: 'Category found', type: Category })
+  @ApiOperation({ summary: 'Get a Product by ID' })
+  @ApiParam({ name: 'id', type: Number, description: 'Product ID' })
+  @ApiOkResponse({ description: 'Product found', type: Product })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiNotFoundResponse({ description: 'Product not found' })
   @ApiResponse({
     status: 404,
-    description: 'Category not found',
+    description: 'Product not found',
     type: ErrorResponse,
     schema: {
       example: {
         statusCode: 404,
-        message: 'Category not found',
+        message: 'Product not found',
         error: 'Not Found',
       },
     },
@@ -153,11 +153,11 @@ export class CategoryController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     const merchantId = user.merchant.id;
-    return this.categoryService.findOne(id, merchantId);
+    return this.productsService.findOne(id, merchantId);
   }
 
   @Patch(':id')
-  @Roles(UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -165,24 +165,24 @@ export class CategoryController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Update a Category' })
-  @ApiParam({ name: 'id', type: Number, description: 'Category ID' })
+  @ApiOperation({ summary: 'Update a Product' })
+  @ApiParam({ name: 'id', type: Number, description: 'Product ID' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiNotFoundResponse({ description: 'Product not found' })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiBody({ type: UpdateCategoryDto })
+  @ApiBody({ type: UpdateProductDto })
   @ApiOkResponse({
-    description: 'Category updated successfully',
-    type: Category,
+    description: 'Product updated successfully',
+    type: Product,
   })
   @ApiResponse({
     status: 404,
-    description: 'Category not found',
+    description: 'Product not found',
     type: ErrorResponse,
     schema: {
       example: {
         statusCode: 404,
-        message: 'Category not found',
+        message: 'Product not found',
         error: 'Not Found',
       },
     },
@@ -202,9 +202,9 @@ export class CategoryController {
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateCategoryDto: UpdateCategoryDto,
+    @Body() updateProductDto: UpdateProductDto,
   ) {
-    return this.categoryService.update(user, id, updateCategoryDto);
+    return this.productsService.update(user, id, updateProductDto);
   }
 
   @Delete(':id')
@@ -216,20 +216,20 @@ export class CategoryController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Delete a Category' })
-  @ApiParam({ name: 'id', type: Number, description: 'Category ID' })
+  @ApiOperation({ summary: 'Delete a Product' })
+  @ApiParam({ name: 'id', type: Number, description: 'Product ID' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Category not found' })
+  @ApiNotFoundResponse({ description: 'Product not found' })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiOkResponse({ description: 'Category deleted' })
+  @ApiOkResponse({ description: 'Product deleted' })
   @ApiResponse({
     status: 404,
-    description: 'Category not found',
+    description: 'Product not found',
     type: ErrorResponse,
     schema: {
       example: {
         statusCode: 404,
-        message: 'Category not found',
+        message: 'Product not found',
         error: 'Not Found',
       },
     },
@@ -250,6 +250,6 @@ export class CategoryController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.categoryService.remove(user, id);
+    return this.productsService.remove(user, id);
   }
 }
