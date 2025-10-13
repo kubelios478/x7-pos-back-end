@@ -22,10 +22,11 @@ import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
-
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 import { MerchSubModule } from './merch-sub/merch-sub.module';
 import { MerchSub } from './merch-sub/entities/merch-sub.entity';
+import { Product } from './products-inventory/products/entities/product.entity';
+import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
 
 @Module({
   imports: [
@@ -49,10 +50,13 @@ import { MerchSub } from './merch-sub/entities/merch-sub.entity';
           SubPlan,
           Category,
           MerchSub,
+          Product,
+          Supplier,
         ],
         synchronize: true,
       }),
     }),
+    // Modules
     AuthModule,
     CompaniesModule,
     MerchantsModule,

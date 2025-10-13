@@ -11,6 +11,8 @@ import { Category } from './entities/category.entity';
 import { Repository } from 'typeorm';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { CategoryResponseDto } from './dto/category-response.dto';
+import { ProductsInventoryService } from '../products-inventory.service';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class CategoryService {
@@ -19,12 +21,20 @@ export class CategoryService {
     private readonly categoryRepo: Repository<Category>,
     @InjectRepository(Merchant)
     private readonly merchantRepo: Repository<Merchant>,
+    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
   async create(
+    user: AuthenticatedUser,
     createCategoryDto: CreateCategoryDto,
   ): Promise<CategoryResponseDto> {
     const { name, merchantId, parentId } = createCategoryDto;
+
+    if (merchantId !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to create categories for this merchant',
+      );
+    }
 
     const existingCategory = await this.categoryRepo.findOne({
       where: { name, merchantId },
@@ -67,33 +77,47 @@ export class CategoryService {
     return this.findOne(savedCategory.id);
   }
 
-  async findAll(): Promise<CategoryResponseDto[]> {
+  async findAll(merchantId: number): Promise<CategoryResponseDto[]> {
     const categories = await this.categoryRepo.find({
-      relations: ['merchant', 'parent'],
+      where: { merchantId, isActive: true }, // Filtrar por isActive
+      relations: ['merchant'],
     });
-    return categories.map((category) => {
-      const result: CategoryResponseDto = {
-        id: category.id,
-        name: category.name,
-        merchant: category.merchant
-          ? {
-              name: category.merchant.name,
-              email: category.merchant.email,
-            }
-          : null,
-      };
-      if (category.parentId) {
-        result.parentId = category.parentId;
-        result.parentName = category.parent?.name;
-      }
-      return result;
-    });
+    return Promise.all(
+      categories.map(async (category) => {
+        const result: CategoryResponseDto = {
+          id: category.id,
+          name: category.name,
+          merchant: category.merchant
+            ? {
+                id: category.merchant.id,
+                name: category.merchant.name,
+              }
+            : null,
+        };
+        if (category.parentId) {
+          result.parents =
+            await this.productsInventoryService.findParentCategories(
+              category.id,
+            );
+        }
+        return result;
+      }),
+    );
   }
 
-  async findOne(id: number): Promise<CategoryResponseDto> {
+  async findOne(id: number, merchantId?: number): Promise<CategoryResponseDto> {
+    const whereCondition: { id: number; merchantId?: number; isActive: true } =
+      {
+        id,
+        isActive: true, // Filtrar por isActive
+      };
+    if (merchantId !== undefined) {
+      whereCondition.merchantId = merchantId;
+    }
+
     const category = await this.categoryRepo.findOne({
-      where: { id },
-      relations: ['merchant', 'parent'],
+      where: whereCondition,
+      relations: ['merchant'],
     });
     if (!category) throw new NotFoundException('Category not found');
 
@@ -102,27 +126,33 @@ export class CategoryService {
       name: category.name,
       merchant: category.merchant
         ? {
+            id: category.merchant.id,
             name: category.merchant.name,
-            email: category.merchant.email,
           }
         : null,
     };
-
     if (category.parentId) {
-      result.parentId = category.parentId;
-      result.parentName = category.parent?.name;
+      result.parents =
+        await this.productsInventoryService.findParentCategories(id);
     }
 
     return result;
   }
 
   async update(
+    user: AuthenticatedUser,
     id: number,
     updateCategoryDto: UpdateCategoryDto,
   ): Promise<CategoryResponseDto> {
-    const category = await this.categoryRepo.findOneBy({ id });
+    const category = await this.categoryRepo.findOneBy({ id, isActive: true }); // Filtrar por isActive
     if (!category) {
       throw new NotFoundException(`Category with ID ${id} not found`);
+    }
+
+    if (user.merchant.id !== category.merchantId) {
+      throw new ForbiddenException(
+        'You are not allowed to update categories for this merchant',
+      );
     }
 
     if (
@@ -138,7 +168,7 @@ export class CategoryService {
 
     if (name && name !== category.name) {
       const existingCategory = await this.categoryRepo.findOne({
-        where: { name, merchantId: category.merchantId },
+        where: { name, merchantId: category.merchantId, isActive: true }, // Filtrar por isActive
       });
       if (existingCategory) {
         throw new ConflictException(
@@ -150,6 +180,7 @@ export class CategoryService {
     if (parentId) {
       const parentCategory = await this.categoryRepo.findOneBy({
         id: parentId,
+        isActive: true, // Filtrar por isActive
       });
       if (!parentCategory) {
         throw new NotFoundException(
@@ -164,10 +195,13 @@ export class CategoryService {
     return this.findOne(id);
   }
 
-  async remove(id: number): Promise<{ message: string }> {
+  async remove(
+    user: AuthenticatedUser,
+    id: number,
+  ): Promise<{ message: string }> {
     // Buscar la categoría principal
     const category = await this.categoryRepo.findOne({
-      where: { id },
+      where: { id, isActive: true }, // Asegurarse de que la categoría esté activa
       relations: ['merchant', 'parent'],
     });
 
@@ -175,22 +209,30 @@ export class CategoryService {
       throw new NotFoundException(`Category with ID ${id} not found`);
     }
 
-    const deleteRecursive = async (categoryId: number): Promise<void> => {
+    if (user.merchant.id !== category.merchantId) {
+      throw new ForbiddenException(
+        'You are not allowed to remove categories for this merchant',
+      );
+    }
+
+    const hideRecursive = async (categoryId: number): Promise<void> => {
       const subCategories = await this.categoryRepo.find({
-        where: { parentId: categoryId },
+        where: { parentId: categoryId, isActive: true }, // Solo ocultar subcategorías activas
       });
 
       for (const sub of subCategories) {
-        await deleteRecursive(sub.id);
-        await this.categoryRepo.remove(sub);
+        await hideRecursive(sub.id);
+        sub.isActive = false;
+        await this.categoryRepo.save(sub);
       }
     };
 
-    await deleteRecursive(category.id);
-    await this.categoryRepo.remove(category);
+    await hideRecursive(category.id);
+    category.isActive = false;
+    await this.categoryRepo.save(category);
 
     return {
-      message: `Category with ID ${id} and all its subcategories were successfully deleted`,
+      message: `Category with ID ${id} and all its subcategories were successfully delete`,
     };
   }
 }
