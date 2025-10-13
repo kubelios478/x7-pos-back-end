@@ -1,11 +1,5 @@
 //src/sub-plan/entity/sub-plan.entity.ts
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity('sub_plan')
@@ -51,18 +45,4 @@ export class SubPlan {
   })
   @Column({ type: 'varchar', length: 50 })
   status: string;
-
-  @ApiProperty({
-    example: '2025-09-30T12:00:00Z',
-    description: 'Creation timestamp',
-  })
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
-
-  @ApiProperty({
-    example: '2025-09-30T12:00:00Z',
-    description: 'Update timestamp',
-  })
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
 }

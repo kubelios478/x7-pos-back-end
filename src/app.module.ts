@@ -23,6 +23,8 @@ import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
+import { MerchSubModule } from './merch-sub/merch-sub.module';
+import { MerchSub } from './merch-sub/entities/merch-sub.entity';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
 
@@ -47,6 +49,7 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
           Table,
           SubPlan,
           Category,
+          MerchSub,
           Product,
           Supplier,
         ],
@@ -64,6 +67,8 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
     ProductsInventoryModule,
 
     SubPlanModule,
+
+    MerchSubModule,
   ],
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-// src/companies/companies.controller.ts
+// src/merchants/merchants.controller.ts
 import {
   Controller,
   Post,

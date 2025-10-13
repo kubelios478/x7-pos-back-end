@@ -1,4 +1,4 @@
-// src/companies/companies.module.ts
+// src/customers/customers.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CustomersController } from './customers.controller';
