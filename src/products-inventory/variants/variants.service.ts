@@ -5,6 +5,7 @@ import { UpdateVariantDto } from './dto/update-variant.dto';
 @Injectable()
 export class VariantsService {
   create(createVariantDto: CreateVariantDto) {
+    console.log(createVariantDto);
     return 'This action adds a new variant';
   }
 
@@ -17,6 +18,7 @@ export class VariantsService {
   }
 
   update(id: number, updateVariantDto: UpdateVariantDto) {
+    console.log(updateVariantDto);
     return `This action updates a #${id} variant`;
   }
 
