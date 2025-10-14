@@ -1,11 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity({ name: 'variant' })
 export class Variant {
   @ApiProperty({ example: 1, description: 'Variant ID' })
-  @PrimaryColumn()
+  @PrimaryGeneratedColumn()
   id: number;
 
   @ApiProperty({ example: 'Color', description: 'Variant name' })

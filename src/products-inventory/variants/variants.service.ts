@@ -1,20 +1,114 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Variant } from './entities/variant.entity';
+import { VariantResponseDto } from './dto/variant-response.dto';
+import { ProductResponseDto } from '../products/dto/product-response.dto';
+import { MerchantResponseDto } from '../../merchants/dtos/merchant-response.dto';
+import { CategoryLittleResponseDto } from '../category/dto/category-little-response.dto';
+import { SupplierResponseDto } from '../suppliers/dto/supplier-response.dto';
+import { Product } from '../products/entities/product.entity';
 
 @Injectable()
 export class VariantsService {
+  constructor(
+    @InjectRepository(Variant)
+    private readonly variantRepository: Repository<Variant>,
+  ) {}
+
+  private mapProductToProductResponseDto(
+    product: Product,
+  ): ProductResponseDto | null {
+    if (!product) return null;
+    return {
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      basePrice: product.basePrice,
+      merchant: product.merchant
+        ? ({
+            id: product.merchant.id,
+            name: product.merchant.name,
+          } as MerchantResponseDto)
+        : null,
+      category: product.category
+        ? ({
+            id: product.category.id,
+            name: product.category.name,
+          } as CategoryLittleResponseDto)
+        : null,
+      supplier: product.supplier
+        ? ({
+            id: product.supplier.id,
+            name: product.supplier.name,
+            contactInfo: product.supplier.contactInfo,
+          } as SupplierResponseDto)
+        : null,
+    };
+  }
+
   create(createVariantDto: CreateVariantDto) {
     console.log(createVariantDto);
     return 'This action adds a new variant';
   }
 
-  findAll() {
-    return `This action returns all variants`;
+  async findAll(merchantId: number): Promise<VariantResponseDto[]> {
+    const variants = await this.variantRepository
+      .createQueryBuilder('variant')
+      .leftJoinAndSelect('variant.product', 'product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supplier', 'supplier')
+      .where('product.merchantId = :merchantId', { merchantId })
+      .andWhere('variant.isActive = :isActive', { isActive: true })
+      .getMany();
+
+    return variants.map((variant) => {
+      const result: VariantResponseDto = {
+        id: variant.id,
+        name: variant.name,
+        price: variant.price,
+        sku: variant.sku,
+        product: variant.product
+          ? this.mapProductToProductResponseDto(variant.product)
+          : null,
+      };
+      return result;
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} variant`;
+  async findOne(id: number, merchantId?: number): Promise<VariantResponseDto> {
+    const queryBuilder = this.variantRepository
+      .createQueryBuilder('variant')
+      .leftJoinAndSelect('variant.product', 'product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supplier', 'supplier')
+      .where('variant.id = :id', { id })
+      .andWhere('variant.isActive = :isActive', { isActive: true });
+
+    if (merchantId !== undefined) {
+      queryBuilder.andWhere('product.merchantId = :merchantId', { merchantId });
+    }
+
+    const variant = await queryBuilder.getOne();
+
+    if (!variant) {
+      throw new NotFoundException(`Variant with ID ${id} not found`);
+    }
+
+    const result: VariantResponseDto = {
+      id: variant.id,
+      name: variant.name,
+      price: variant.price,
+      sku: variant.sku,
+      product: variant.product
+        ? this.mapProductToProductResponseDto(variant.product)
+        : null,
+    };
+    return result;
   }
 
   update(id: number, updateVariantDto: UpdateVariantDto) {
