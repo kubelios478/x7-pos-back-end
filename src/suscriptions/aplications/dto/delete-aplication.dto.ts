@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class DeleteSubPlanResponseDto {
+export class DeleteAplicationDto {
   @ApiProperty({ example: true })
   success: boolean;
 
-  @ApiProperty({ example: 'Subscription plan deleted successfully' })
+  @ApiProperty({ example: 'Aplication deleted successfully' })
   message: string;
 }

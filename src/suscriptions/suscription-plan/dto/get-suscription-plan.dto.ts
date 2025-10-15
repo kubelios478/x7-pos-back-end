@@ -1,7 +1,7 @@
 import { IsOptional, IsPositive, IsInt, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class GetSubPlansDto {
+export class GetSuscriptionPlanDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

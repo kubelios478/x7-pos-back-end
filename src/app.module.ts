@@ -13,7 +13,7 @@ import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
-import { SubPlanModule } from './sub-plan/sub-plan.module';
+import { SuscriptionsModule } from './suscriptions/suscriptions.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
@@ -22,10 +22,10 @@ import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
-
-import { SubPlan } from './sub-plan/entity/sub-plan.entity';
-import { MerchSubModule } from './merch-sub/merch-sub.module';
-import { MerchSub } from './merch-sub/entities/merch-sub.entity';
+import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
+import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
+import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
+import { AplicationsModule } from './suscriptions/aplications/aplications.module';
 
 @Module({
   imports: [
@@ -46,9 +46,10 @@ import { MerchSub } from './merch-sub/entities/merch-sub.entity';
           Merchant,
           Customer,
           Table,
-          SubPlan,
+          SuscriptionPlan,
           Category,
-          MerchSub,
+          MerchantSuscription,
+          AplicationEntity,
         ],
         synchronize: true,
       }),
@@ -62,9 +63,9 @@ import { MerchSub } from './merch-sub/entities/merch-sub.entity';
     MailModule,
     ProductsInventoryModule,
 
-    SubPlanModule,
+    SuscriptionsModule,
 
-    MerchSubModule,
+    AplicationsModule,
   ],
 })
 export class AppModule {}

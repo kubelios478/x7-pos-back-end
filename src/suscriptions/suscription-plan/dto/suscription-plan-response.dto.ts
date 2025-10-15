@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SubPlanResponseDto {
+export class SuscriptionPlanResponseDto {
   @ApiProperty({ example: 1 })
   id: number;
 
