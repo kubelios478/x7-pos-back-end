@@ -1,8 +1,26 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateTableDto } from './create-table.dto';
+import { IsString, IsNumber, IsPositive, IsOptional, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
-export class UpdateTableDto extends PartialType(CreateTableDto) {
-    @ApiPropertyOptional({ example: 1, description: 'Table ID (optional for update)' })
-    id?: number;
+export class UpdateTableDto {
+    @ApiPropertyOptional({ example: 'A1', description: 'Table number or identifier' })
+    @IsString()
+    @IsOptional()
+    number?: string;
+
+    @ApiPropertyOptional({ example: 4, description: 'Seating capacity (minimum 1 person)' })
+    @IsNumber()
+    @IsPositive()
+    @Min(1)
+    @IsOptional()
+    capacity?: number;
+
+    @ApiPropertyOptional({ example: 'available', description: 'Table status' })
+    @IsString()
+    @IsOptional()
+    status?: string;
+
+    @ApiPropertyOptional({ example: 'Near window', description: 'Location description' })
+    @IsString()
+    @IsOptional()
+    location?: string;
 }
