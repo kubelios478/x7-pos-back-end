@@ -5,49 +5,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Variant } from './entities/variant.entity';
 import { VariantResponseDto } from './dto/variant-response.dto';
-import { ProductResponseDto } from '../products/dto/product-response.dto';
-import { MerchantResponseDto } from '../../merchants/dtos/merchant-response.dto';
-import { CategoryLittleResponseDto } from '../category/dto/category-little-response.dto';
-import { SupplierResponseDto } from '../suppliers/dto/supplier-response.dto';
-import { Product } from '../products/entities/product.entity';
+import { ProductsInventoryService } from '../products-inventory.service';
 
 @Injectable()
 export class VariantsService {
   constructor(
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
-
-  private mapProductToProductResponseDto(
-    product: Product,
-  ): ProductResponseDto | null {
-    if (!product) return null;
-    return {
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      basePrice: product.basePrice,
-      merchant: product.merchant
-        ? ({
-            id: product.merchant.id,
-            name: product.merchant.name,
-          } as MerchantResponseDto)
-        : null,
-      category: product.category
-        ? ({
-            id: product.category.id,
-            name: product.category.name,
-          } as CategoryLittleResponseDto)
-        : null,
-      supplier: product.supplier
-        ? ({
-            id: product.supplier.id,
-            name: product.supplier.name,
-            contactInfo: product.supplier.contactInfo,
-          } as SupplierResponseDto)
-        : null,
-    };
-  }
 
   create(createVariantDto: CreateVariantDto) {
     console.log(createVariantDto);
@@ -72,7 +38,9 @@ export class VariantsService {
         price: variant.price,
         sku: variant.sku,
         product: variant.product
-          ? this.mapProductToProductResponseDto(variant.product)
+          ? this.productsInventoryService.mapProductToProductResponseDto(
+              variant.product,
+            )
           : null,
       };
       return result;
@@ -105,7 +73,9 @@ export class VariantsService {
       price: variant.price,
       sku: variant.sku,
       product: variant.product
-        ? this.mapProductToProductResponseDto(variant.product)
+        ? this.productsInventoryService.mapProductToProductResponseDto(
+            variant.product,
+          )
         : null,
     };
     return result;
