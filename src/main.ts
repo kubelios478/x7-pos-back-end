@@ -7,6 +7,7 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as dotenv from 'dotenv';
 import { useContainer } from 'class-validator';
+import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 
 dotenv.config();
 
@@ -22,7 +23,22 @@ async function bootstrap() {
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+
+  // Global validation pipe with better error messages
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+
+  // Global exception filter for validation errors
+  app.useGlobalFilters(new ValidationExceptionFilter());
+
   app.enableCors();
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',

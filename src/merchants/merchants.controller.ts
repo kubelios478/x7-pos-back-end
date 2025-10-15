@@ -28,7 +28,10 @@ import {
 import { MerchantsService } from './merchants.service';
 import { CreateMerchantDto } from './dtos/create-merchant.dto';
 import { UpdateMerchantDto } from './dtos/update-merchant.dto';
-import { Merchant } from './entities/merchant.entity';
+import {
+  OneMerchantResponseDto,
+  AllMerchantsResponseDto,
+} from './dtos/merchant-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Scopes } from '../auth/decorators/scopes.decorator';
@@ -57,7 +60,7 @@ export class MerchantsController {
   @ApiOperation({ summary: 'Create a new Merchant' })
   @ApiCreatedResponse({
     description: 'Merchant created successfully',
-    type: Merchant,
+    type: OneMerchantResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -74,7 +77,7 @@ export class MerchantsController {
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiConflictResponse({ description: 'Email already exists' })
   @ApiBody({ type: CreateMerchantDto })
-  create(@Body() dto: CreateMerchantDto) {
+  create(@Body() dto: CreateMerchantDto): Promise<OneMerchantResponseDto> {
     return this.merchantsService.create(dto);
   }
 
@@ -82,7 +85,10 @@ export class MerchantsController {
   @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(Scope.ADMIN_PORTAL)
   @ApiOperation({ summary: 'Get all merchants' })
-  @ApiOkResponse({ description: 'List of all merchants', type: [Merchant] })
+  @ApiOkResponse({
+    description: 'List of all merchants',
+    type: AllMerchantsResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'No merchants found' })
   @ApiResponse({
@@ -97,7 +103,7 @@ export class MerchantsController {
       },
     },
   })
-  findAll() {
+  findAll(): Promise<AllMerchantsResponseDto> {
     return this.merchantsService.findAll();
   }
 
@@ -112,7 +118,10 @@ export class MerchantsController {
   )
   @ApiOperation({ summary: 'Get a Merchant by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'Merchant ID' })
-  @ApiOkResponse({ description: 'Merchant found', type: Merchant })
+  @ApiOkResponse({
+    description: 'Merchant found',
+    type: OneMerchantResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'Merchant not found' })
   @ApiResponse({
@@ -139,7 +148,9 @@ export class MerchantsController {
       },
     },
   })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneMerchantResponseDto> {
     return this.merchantsService.findOne(id);
   }
 
@@ -160,7 +171,7 @@ export class MerchantsController {
   @ApiBody({ type: UpdateMerchantDto })
   @ApiOkResponse({
     description: 'Merchant updated successfully',
-    type: Merchant,
+    type: OneMerchantResponseDto,
   })
   @ApiResponse({
     status: 404,
@@ -189,7 +200,7 @@ export class MerchantsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMerchantDto,
-  ) {
+  ): Promise<OneMerchantResponseDto> {
     return this.merchantsService.update(id, dto);
   }
 
@@ -207,7 +218,10 @@ export class MerchantsController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'Merchant not found' })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiOkResponse({ description: 'Merchant deleted' })
+  @ApiOkResponse({
+    description: 'Merchant deleted successfully',
+    type: OneMerchantResponseDto,
+  })
   @ApiResponse({
     status: 404,
     description: 'Merchant not found',
@@ -232,7 +246,9 @@ export class MerchantsController {
       },
     },
   })
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneMerchantResponseDto> {
     return this.merchantsService.remove(id);
   }
 }

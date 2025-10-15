@@ -81,9 +81,10 @@ export class AuthService {
     };
   }
   async sendResetLink(email: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (!user) throw new NotFoundException('User not found');
+    const userResponse = await this.usersService.findByEmail(email);
+    if (!userResponse) throw new NotFoundException('User not found');
 
+    const user = userResponse.data;
     const resetToken = uuidv4();
     console.log('email:', email);
     console.log('resetToken:', resetToken);

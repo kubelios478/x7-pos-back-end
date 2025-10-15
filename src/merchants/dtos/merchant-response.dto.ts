@@ -1,6 +1,8 @@
 // src/companies/dtos/update-Merchant.dto.ts
 import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { SuccessResponse } from '../../common/dtos/success-response.dto';
+import { Merchant } from '../entities/merchant.entity';
 
 export class MerchantResponseDto {
   @IsNumber()
@@ -33,4 +35,14 @@ export class MerchantResponseDto {
     description: 'Address of the Merchant',
   })
   address?: string;
+}
+
+export class OneMerchantResponseDto extends SuccessResponse {
+  @ApiProperty()
+  data: Merchant;
+}
+
+export class AllMerchantsResponseDto extends SuccessResponse {
+  @ApiProperty()
+  data: Merchant[];
 }
