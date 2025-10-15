@@ -79,7 +79,7 @@ export class CategoryService {
 
   async findAll(merchantId: number): Promise<CategoryResponseDto[]> {
     const categories = await this.categoryRepo.find({
-      where: { merchantId, isActive: true }, // Filtrar por isActive
+      where: { merchantId, isActive: true }, // Filter by isActive
       relations: ['merchant'],
     });
     return Promise.all(
@@ -109,7 +109,7 @@ export class CategoryService {
     const whereCondition: { id: number; merchantId?: number; isActive: true } =
       {
         id,
-        isActive: true, // Filtrar por isActive
+        isActive: true, // Filter by isActive
       };
     if (merchantId !== undefined) {
       whereCondition.merchantId = merchantId;
@@ -199,9 +199,9 @@ export class CategoryService {
     user: AuthenticatedUser,
     id: number,
   ): Promise<{ message: string }> {
-    // Buscar la categoría principal
+    // Find the main category
     const category = await this.categoryRepo.findOne({
-      where: { id, isActive: true }, // Asegurarse de que la categoría esté activa
+      where: { id, isActive: true }, // Ensure the category is active
       relations: ['merchant', 'parent'],
     });
 
@@ -217,7 +217,7 @@ export class CategoryService {
 
     const hideRecursive = async (categoryId: number): Promise<void> => {
       const subCategories = await this.categoryRepo.find({
-        where: { parentId: categoryId, isActive: true }, // Solo ocultar subcategorías activas
+        where: { parentId: categoryId, isActive: true }, // Only hide active subcategories
       });
 
       for (const sub of subCategories) {
