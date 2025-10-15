@@ -19,6 +19,6 @@ import { Variant } from './variants/entities/variant.entity';
     SuppliersModule,
     VariantsModule,
   ],
-  exports: [ProductsInventoryService],
+  exports: [ProductsInventoryService, ProductsModule],
 })
 export class ProductsInventoryModule {}

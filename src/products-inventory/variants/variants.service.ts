@@ -1,23 +1,85 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Variant } from './entities/variant.entity';
 import { VariantResponseDto } from './dto/variant-response.dto';
+import { ProductsService } from '../products/products.service';
 import { ProductsInventoryService } from '../products-inventory.service';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class VariantsService {
   constructor(
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    private readonly productsService: ProductsService,
     private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
-  create(createVariantDto: CreateVariantDto) {
-    console.log(createVariantDto);
-    return 'This action adds a new variant';
+  async create(
+    user: AuthenticatedUser,
+    createVariantDto: CreateVariantDto,
+  ): Promise<VariantResponseDto> {
+    const { productId, ...variantData } = createVariantDto;
+
+    const product = await this.productsService.findOne(productId);
+
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${productId} not found`);
+    }
+
+    if (product.merchant?.id !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to create variants for this merchant',
+      );
+    }
+
+    let existingVariant = await this.variantRepository.findOne({
+      where: { name: variantData.name },
+    });
+
+    if (existingVariant) {
+      if (!existingVariant.isActive) {
+        existingVariant.isActive = true;
+        await this.variantRepository.save(existingVariant);
+        return this.findOne(existingVariant.id);
+      } else {
+        throw new ConflictException(
+          `Variant with name "${variantData.name}" already exists.`,
+        );
+      }
+    }
+
+    existingVariant = await this.variantRepository.findOne({
+      where: { sku: variantData.sku },
+    });
+
+    if (existingVariant) {
+      if (!existingVariant.isActive) {
+        existingVariant.isActive = true;
+        await this.variantRepository.save(existingVariant);
+        return this.findOne(existingVariant.id);
+      } else {
+        throw new ConflictException(
+          `Variant with SKU "${variantData.sku}" already exists.`,
+        );
+      }
+    }
+    const newVariant = this.variantRepository.create({
+      ...variantData,
+      productId: product.id,
+    });
+
+    const savedVariant = await this.variantRepository.save(newVariant);
+
+    return this.findOne(savedVariant.id);
   }
 
   async findAll(merchantId: number): Promise<VariantResponseDto[]> {
@@ -81,12 +143,92 @@ export class VariantsService {
     return result;
   }
 
-  update(id: number, updateVariantDto: UpdateVariantDto) {
-    console.log(updateVariantDto);
-    return `This action updates a #${id} variant`;
+  async update(
+    user: AuthenticatedUser,
+    id: number,
+    updateVariantDto: UpdateVariantDto,
+  ): Promise<VariantResponseDto> {
+    const { productId, ...variantData } = updateVariantDto;
+
+    const variant = await this.variantRepository
+      .createQueryBuilder('variant')
+      .leftJoinAndSelect('variant.product', 'product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .where('variant.id = :id', { id })
+      .andWhere('variant.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!variant) {
+      throw new NotFoundException(`Variant with ID ${id} not found`);
+    }
+
+    if (variant.product.merchant.id !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to modify variants for other merchants',
+      );
+    }
+
+    if (productId && productId !== variant.productId) {
+      throw new ForbiddenException('Product ID cannot be changed');
+    }
+
+    if (variantData.name && variantData.name !== variant.name) {
+      const existingVariantName = await this.variantRepository.findOne({
+        where: { name: variantData.name },
+      });
+
+      if (existingVariantName && existingVariantName.id !== id) {
+        throw new ConflictException(
+          `Variant with name "${variantData.name}" already exists.`,
+        );
+      }
+    }
+
+    if (variantData.sku && variantData.sku !== variant.sku) {
+      const existingVariantSku = await this.variantRepository.findOne({
+        where: { sku: variantData.sku },
+      });
+
+      if (existingVariantSku && existingVariantSku.id !== id) {
+        throw new ConflictException(
+          `Variant with SKU "${variantData.sku}" already exists.`,
+        );
+      }
+    }
+
+    Object.assign(variant, variantData);
+    await this.variantRepository.save(variant);
+
+    return this.findOne(id);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} variant`;
+  async remove(
+    user: AuthenticatedUser,
+    id: number,
+  ): Promise<{ message: string }> {
+    const variant = await this.variantRepository
+      .createQueryBuilder('variant')
+      .leftJoinAndSelect('variant.product', 'product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .where('variant.id = :id', { id })
+      .andWhere('variant.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!variant) {
+      throw new NotFoundException(`Variant with ID ${id} not found`);
+    }
+
+    if (variant.product.merchant.id !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to delete variants for other merchants',
+      );
+    }
+
+    variant.isActive = false;
+    await this.variantRepository.save(variant);
+
+    return {
+      message: `Variant with ID ${id} was successfully deleted`,
+    };
   }
 }

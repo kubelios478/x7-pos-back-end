@@ -13,11 +13,14 @@ import { VariantsService } from './variants.service';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiExtraModels,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -40,8 +43,35 @@ export class VariantsController {
   constructor(private readonly variantsService: VariantsService) {}
 
   @Post()
-  create(@Body() createVariantDto: CreateVariantDto) {
-    return this.variantsService.create(createVariantDto);
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Create a new Variant' })
+  @ApiOkResponse({ description: 'Variant created successfully', type: Variant })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: ['Variant must be longer than or equal to 2 characters'],
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiConflictResponse({ description: 'Variant already exists' })
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createVariantDto: CreateVariantDto,
+  ) {
+    return this.variantsService.create(user, createVariantDto);
   }
 
   @Get()
@@ -120,12 +150,95 @@ export class VariantsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateVariantDto: UpdateVariantDto) {
-    return this.variantsService.update(+id, updateVariantDto);
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Update a Variant' })
+  @ApiParam({ name: 'id', type: Number, description: 'Variant ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Variant not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiOkResponse({ description: 'Variant updated successfully', type: Variant })
+  @ApiResponse({
+    status: 404,
+    description: 'Variant not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Variant not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'name must be longer than or equal to 2 characters',
+        error: 'Bad Request',
+      },
+    },
+  })
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateVariantDto: UpdateVariantDto,
+  ) {
+    return this.variantsService.update(user, id, updateVariantDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.variantsService.remove(+id);
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Delete a Variant' })
+  @ApiParam({ name: 'id', type: Number, description: 'Variant ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Variant not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiOkResponse({ description: 'Variant deleted' })
+  @ApiResponse({
+    status: 404,
+    description: 'Variant not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Variant not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid ID',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Validation failed (numeric string is expected)',
+        error: 'Bad Request',
+      },
+    },
+  })
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.variantsService.remove(user, id);
   }
 }
