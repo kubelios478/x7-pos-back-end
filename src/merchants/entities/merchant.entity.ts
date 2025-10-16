@@ -121,7 +121,6 @@ export class Merchant {
   })
   @OneToMany(() => Category, (category) => category.merchant)
   categories: Category[];
-  @OneToMany(() => Table, (table) => table.merchant)
 
   @ApiProperty({
     type: () => Product,
@@ -141,6 +140,12 @@ export class Merchant {
   @OneToMany(() => Supplier, (supplier) => supplier.merchant)
   suppliers: Supplier[];
 
+  @ApiProperty({
+    type: () => Table,
+    isArray: true,
+    required: false,
+    description: 'List of tables associated with the merchant',
+  })
   @OneToMany(() => Table, (table) => table.merchant_id)
   tables: Table[];
 

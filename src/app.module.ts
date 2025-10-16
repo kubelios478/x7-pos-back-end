@@ -28,7 +28,6 @@ import { Collaborator } from './collaborators/entities/collaborator.entity';
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
-import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 import { MerchSubModule } from './merch-sub/merch-sub.module';
 import { MerchSub } from './merch-sub/entities/merch-sub.entity';
 import { Product } from './products-inventory/products/entities/product.entity';
