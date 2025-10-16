@@ -14,6 +14,7 @@ import { MailModule } from './mail/mail.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
 import { SubPlanModule } from './sub-plan/sub-plan.module';
+import { CollaboratorsModule } from './collaborators/collaborators.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
@@ -22,6 +23,10 @@ import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
+import { Collaborator } from './collaborators/entities/collaborator.entity';
+
+import { SubPlan } from './sub-plan/entity/sub-plan.entity';
+import { ShiftsModule } from './shifts/shifts.module';
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 import { MerchSubModule } from './merch-sub/merch-sub.module';
 import { MerchSub } from './merch-sub/entities/merch-sub.entity';
@@ -41,6 +46,7 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
+        entities: [User, Company, Merchant, Customer, Table, SubPlan, Category, Collaborator],
         entities: [
           User,
           Company,
@@ -65,8 +71,9 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
     TablesModule,
     MailModule,
     ProductsInventoryModule,
-
+    CollaboratorsModule,
     SubPlanModule,
+    ShiftsModule,
 
     MerchSubModule,
   ],

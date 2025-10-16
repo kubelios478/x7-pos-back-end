@@ -4,6 +4,7 @@ import {
     Column,
     ManyToOne,
     Index,
+    JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
@@ -17,8 +18,12 @@ export class Table {
     id: number;
 
     @ApiProperty({ example: 1, description: 'Identifier of the Merchant owning the Table' })
-    @ManyToOne(() => Merchant, (merchant) => merchant.id, { onDelete: 'CASCADE' })
+    @Column({ name: 'merchant_id' })
     merchant_id: number;
+
+    @ManyToOne(() => Merchant, (merchant) => merchant.tables, { onDelete: 'CASCADE' })
+    @JoinColumn({ name: 'merchant_id' })
+    merchant: Merchant;
 
     @ApiProperty({ example: 'A1', description: 'Table number or identifier' })
     @Column({ type: 'varchar', length: 50 })
