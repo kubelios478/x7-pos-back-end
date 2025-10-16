@@ -149,6 +149,12 @@ export class Merchant {
   @OneToMany(() => Table, (table) => table.merchant_id)
   tables: Table[];
 
+  @ApiProperty({
+    type: () => Collaborator,
+    isArray: true,
+    required: false,
+    description: 'List of collaborators associated with the merchant',
+  })
   @OneToMany(() => Collaborator, (collaborator) => collaborator.merchant)
   collaborators: Collaborator[];
 }
