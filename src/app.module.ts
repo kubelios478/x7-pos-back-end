@@ -54,6 +54,7 @@ import { AplicationsModule } from './suscriptions/aplications/aplications.module
         synchronize: true,
       }),
     }),
+    // Modules
     AuthModule,
     CompaniesModule,
     MerchantsModule,

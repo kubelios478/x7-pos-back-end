@@ -22,7 +22,10 @@ import {
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dtos/create-company.dto';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
-import { Company } from './entities/company.entity';
+import {
+  OneCompanyResponseDto,
+  AllCompanyResponseDto,
+} from './dtos/company-response.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Scopes } from '../auth/decorators/scopes.decorator';
@@ -52,7 +55,7 @@ export class CompaniesController {
   @ApiResponse({
     status: 201,
     description: 'Company created successfully',
-    type: Company,
+    type: OneCompanyResponseDto,
   })
   @ApiResponse({
     status: 400,
@@ -67,7 +70,7 @@ export class CompaniesController {
     },
   })
   @ApiBody({ type: CreateCompanyDto })
-  create(@Body() dto: CreateCompanyDto) {
+  create(@Body() dto: CreateCompanyDto): Promise<OneCompanyResponseDto> {
     return this.companiesService.create(dto);
   }
 
@@ -78,7 +81,7 @@ export class CompaniesController {
   @ApiResponse({
     status: 200,
     description: 'List of companies',
-    type: [Company],
+    type: AllCompanyResponseDto,
   })
   @ApiResponse({
     status: 500,
@@ -92,7 +95,7 @@ export class CompaniesController {
       },
     },
   })
-  findAll() {
+  findAll(): Promise<AllCompanyResponseDto> {
     return this.companiesService.findAll();
   }
 
@@ -107,7 +110,11 @@ export class CompaniesController {
   )
   @ApiOperation({ summary: 'Get a company by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'Company ID' })
-  @ApiResponse({ status: 200, description: 'Company found', type: Company })
+  @ApiResponse({
+    status: 200,
+    description: 'Company found',
+    type: OneCompanyResponseDto,
+  })
   @ApiResponse({
     status: 404,
     description: 'Company not found',
@@ -132,7 +139,9 @@ export class CompaniesController {
       },
     },
   })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneCompanyResponseDto> {
     return this.companiesService.findOne(id);
   }
 
@@ -148,7 +157,11 @@ export class CompaniesController {
   @ApiOperation({ summary: 'Update a company' })
   @ApiParam({ name: 'id', type: Number, description: 'Company ID' })
   @ApiBody({ type: UpdateCompanyDto })
-  @ApiResponse({ status: 200, description: 'Company updated', type: Company })
+  @ApiResponse({
+    status: 200,
+    description: 'Company updated',
+    type: OneCompanyResponseDto,
+  })
   @ApiResponse({
     status: 404,
     description: 'Company not found',
@@ -173,7 +186,10 @@ export class CompaniesController {
       },
     },
   })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCompanyDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCompanyDto,
+  ): Promise<OneCompanyResponseDto> {
     return this.companiesService.update(id, dto);
   }
 
@@ -188,7 +204,11 @@ export class CompaniesController {
   )
   @ApiOperation({ summary: 'Delete a company' })
   @ApiParam({ name: 'id', type: Number, description: 'Company ID' })
-  @ApiResponse({ status: 200, description: 'Company deleted' })
+  @ApiResponse({
+    status: 200,
+    description: 'Company deleted successfully',
+    type: OneCompanyResponseDto,
+  })
   @ApiResponse({
     status: 404,
     description: 'Company not found',
@@ -213,7 +233,9 @@ export class CompaniesController {
       },
     },
   })
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneCompanyResponseDto> {
     return this.companiesService.remove(id);
   }
 }
