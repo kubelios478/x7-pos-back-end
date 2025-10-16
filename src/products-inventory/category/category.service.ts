@@ -37,7 +37,7 @@ export class CategoryService {
     }
 
     const existingCategory = await this.categoryRepo.findOne({
-      where: { name, merchantId },
+      where: { name, merchantId, isActive: true },
     });
 
     if (existingCategory) {
@@ -66,15 +66,23 @@ export class CategoryService {
       }
     }
 
-    const newCategory = this.categoryRepo.create({
-      name,
-      merchantId,
-      parentId,
+    const existingButIsNotActive = await this.categoryRepo.findOne({
+      where: { name, merchantId, isActive: false },
     });
 
-    const savedCategory = await this.categoryRepo.save(newCategory);
-
-    return this.findOne(savedCategory.id);
+    if (existingButIsNotActive) {
+      existingButIsNotActive.isActive = true;
+      await this.categoryRepo.save(existingButIsNotActive);
+      return this.findOne(existingButIsNotActive.id);
+    } else {
+      const newCategory = this.categoryRepo.create({
+        name,
+        merchantId,
+        parentId,
+      });
+      const savedCategory = await this.categoryRepo.save(newCategory);
+      return this.findOne(savedCategory.id);
+    }
   }
 
   async findAll(merchantId: number): Promise<CategoryResponseDto[]> {

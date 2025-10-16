@@ -41,45 +41,43 @@ export class VariantsService {
       );
     }
 
-    let existingVariant = await this.variantRepository.findOne({
-      where: { name: variantData.name },
+    const existingVariantByName = await this.variantRepository.findOne({
+      where: [{ name: variantData.name, isActive: true }],
     });
 
-    if (existingVariant) {
-      if (!existingVariant.isActive) {
-        existingVariant.isActive = true;
-        await this.variantRepository.save(existingVariant);
-        return this.findOne(existingVariant.id);
-      } else {
-        throw new ConflictException(
-          `Variant with name "${variantData.name}" already exists.`,
-        );
-      }
+    if (existingVariantByName) {
+      throw new ConflictException(
+        `Variant with name "${variantData.name}" already exists.`,
+      );
     }
 
-    existingVariant = await this.variantRepository.findOne({
-      where: { sku: variantData.sku },
+    const existingVariantBySku = await this.variantRepository.findOne({
+      where: [{ sku: variantData.sku, isActive: true }],
     });
 
-    if (existingVariant) {
-      if (!existingVariant.isActive) {
-        existingVariant.isActive = true;
-        await this.variantRepository.save(existingVariant);
-        return this.findOne(existingVariant.id);
-      } else {
-        throw new ConflictException(
-          `Variant with SKU "${variantData.sku}" already exists.`,
-        );
-      }
+    if (existingVariantBySku) {
+      throw new ConflictException(
+        `Variant with SKU "${variantData.sku}" already exists.`,
+      );
     }
-    const newVariant = this.variantRepository.create({
-      ...variantData,
-      productId: product.id,
+    const existingButIsNotActive = await this.variantRepository.findOne({
+      where: [{ name: variantData.name, isActive: false }],
     });
 
-    const savedVariant = await this.variantRepository.save(newVariant);
+    if (existingButIsNotActive) {
+      existingButIsNotActive.isActive = true;
+      await this.variantRepository.save(existingButIsNotActive);
+      return this.findOne(existingButIsNotActive.id);
+    } else {
+      const newVariant = this.variantRepository.create({
+        ...variantData,
+        productId: product.id,
+      });
 
-    return this.findOne(savedVariant.id);
+      const savedVariant = await this.variantRepository.save(newVariant);
+
+      return this.findOne(savedVariant.id);
+    }
   }
 
   async findAll(merchantId: number): Promise<VariantResponseDto[]> {

@@ -5,8 +5,6 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { Merchant } from '../../../merchants/entities/merchant.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -62,17 +60,4 @@ export class Category {
   @ApiProperty({ example: true, description: 'Category active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
-
-  @CreateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-  })
-  createdAt: Date;
-
-  @UpdateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-    onUpdate: 'CURRENT_TIMESTAMP(6)',
-  })
-  updatedAt: Date;
 }
