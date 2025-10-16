@@ -26,6 +26,7 @@ import { Table } from './tables/entities/table.entity';
 import { Collaborator } from './collaborators/entities/collaborator.entity';
 
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
+import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 import { MerchSubModule } from './merch-sub/merch-sub.module';
@@ -46,7 +47,7 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        entities: [User, Company, Merchant, Customer, Table, SubPlan, Category, Collaborator],
+        
         entities: [
           User,
           Company,
