@@ -27,6 +27,11 @@ import { Collaborator } from './collaborators/entities/collaborator.entity';
 
 import { SubPlan } from './sub-plan/entity/sub-plan.entity';
 import { ShiftsModule } from './shifts/shifts.module';
+import { SubPlan } from './sub-plan/entity/sub-plan.entity';
+import { MerchSubModule } from './merch-sub/merch-sub.module';
+import { MerchSub } from './merch-sub/entities/merch-sub.entity';
+import { Product } from './products-inventory/products/entities/product.entity';
+import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
 
 @Module({
   imports: [
@@ -42,9 +47,22 @@ import { ShiftsModule } from './shifts/shifts.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
         entities: [User, Company, Merchant, Customer, Table, SubPlan, Category, Collaborator],
+        entities: [
+          User,
+          Company,
+          Merchant,
+          Customer,
+          Table,
+          SubPlan,
+          Category,
+          MerchSub,
+          Product,
+          Supplier,
+        ],
         synchronize: true,
       }),
     }),
+    // Modules
     AuthModule,
     CompaniesModule,
     MerchantsModule,
@@ -56,6 +74,8 @@ import { ShiftsModule } from './shifts/shifts.module';
     CollaboratorsModule,
     SubPlanModule,
     ShiftsModule,
+
+    MerchSubModule,
   ],
 })
 export class AppModule {}

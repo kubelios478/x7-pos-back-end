@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Merchant } from '../../../merchants/entities/merchant.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { Product } from 'src/products-inventory/products/entities/product.entity';
 
 @Entity({ name: 'category' })
 export class Category {
@@ -52,4 +53,11 @@ export class Category {
 
   @OneToMany(() => Category, (category) => category.parent)
   children: Category[];
+
+  @OneToMany(() => Product, (product) => product.category)
+  products: Product[];
+
+  @ApiProperty({ example: true, description: 'Category active status' })
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
 }

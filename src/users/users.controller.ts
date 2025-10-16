@@ -34,7 +34,10 @@ import {
   ApiBody,
   ApiParam,
 } from '@nestjs/swagger';
-import { User } from './entities/user.entity';
+import {
+  OneUserResponseDto,
+  AllUsersResponseDto,
+} from './dtos/user-response.dto';
 
 @Controller('users')
 @ApiTags('Users')
@@ -55,12 +58,12 @@ export class UsersController {
   @ApiOperation({ summary: 'Create a new user' })
   @ApiCreatedResponse({
     description: 'User successfully created',
-    type: User,
+    type: OneUserResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiConflictResponse({ description: 'Email already exists' })
   @ApiBody({ type: CreateUserDto })
-  create(@Body() dto: CreateUserDto) {
+  create(@Body() dto: CreateUserDto): Promise<OneUserResponseDto> {
     return this.usersService.create(dto);
   }
 
@@ -68,10 +71,13 @@ export class UsersController {
   @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(Scope.ADMIN_PORTAL)
   @ApiOperation({ summary: 'Get all users' })
-  @ApiOkResponse({ description: 'List of all users', type: [User] })
+  @ApiOkResponse({
+    description: 'List of all users',
+    type: AllUsersResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'No users found' })
-  findAll() {
+  findAll(): Promise<AllUsersResponseDto> {
     return this.usersService.findAll();
   }
 
@@ -84,11 +90,14 @@ export class UsersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get users by Merchant ID' })
-  @ApiOkResponse({ description: 'Users filtered by merchant ID', type: [User] })
+  @ApiOperation({ summary: 'Get user by ID' })
+  @ApiOkResponse({
+    description: 'User found',
+    type: OneUserResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  findById(@Param('id', ParseIntPipe) id: number) {
+  findById(@Param('id', ParseIntPipe) id: number): Promise<OneUserResponseDto> {
     return this.usersService.findOne(id);
   }
 
@@ -102,7 +111,10 @@ export class UsersController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({ summary: 'Get users by Merchant ID' })
-  @ApiOkResponse({ description: 'Users filtered by merchant ID', type: [User] })
+  @ApiOkResponse({
+    description: 'Users filtered by merchant ID',
+    type: AllUsersResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'Merchant or users not found' })
   findByMerchant(
@@ -123,7 +135,10 @@ export class UsersController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({ summary: 'Get users by Email' })
-  @ApiOkResponse({ description: 'Users filtered by email', type: [User] })
+  @ApiOkResponse({
+    description: 'User found by email',
+    type: OneUserResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'User not found' })
   findByEmail(
@@ -137,6 +152,10 @@ export class UsersController {
   @Put(':id')
   @ApiOperation({ summary: 'Update a user by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiOkResponse({
+    description: 'User updated successfully',
+    type: OneUserResponseDto,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'User not found' })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
@@ -145,7 +164,7 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateUserDto,
     @Req() req: Request & { user: AuthenticatedUser },
-  ) {
+  ): Promise<OneUserResponseDto> {
     const currentUser = req.user;
     return this.usersService.update(id, dto, currentUser);
   }

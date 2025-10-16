@@ -1,12 +1,16 @@
-// src/companies/companies.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+// src/merchants/merchants.service.ts
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from './entities/merchant.entity';
 import { CreateMerchantDto } from './dtos/create-merchant.dto';
 import { UpdateMerchantDto } from './dtos/update-merchant.dto';
 import { Company } from '../companies/entities/company.entity';
-import { console } from 'inspector';
+import {
+  OneMerchantResponseDto,
+  AllMerchantsResponseDto,
+} from './dtos/merchant-response.dto';
+import { ErrorHandler } from '../common/utils/error-handler.util';
 
 @Injectable()
 export class MerchantsService {
@@ -18,92 +22,169 @@ export class MerchantsService {
     private readonly companyRepo: Repository<Company>,
   ) {}
 
-  async create(dto: CreateMerchantDto) {
-    const company = dto.companyId
-      ? await this.companyRepo.findOne({ where: { id: dto.companyId } })
-      : undefined;
-
-    console.log('Company:', company);
-
-    if (dto.companyId && !company) {
-      throw new NotFoundException('Company not found');
+  async create(dto: CreateMerchantDto): Promise<OneMerchantResponseDto> {
+    // Validate companyId format if provided
+    if (
+      dto.companyId &&
+      (!Number.isInteger(dto.companyId) || dto.companyId <= 0)
+    ) {
+      ErrorHandler.invalidId('Company ID must be a positive integer');
     }
-    console.log('Creating merchant with company:', company);
-    const merchant = this.merchantRepo.create({
-      name: dto.name,
-      email: dto.email,
-      address: dto.address,
-      companyId: dto.companyId,
-    } as Partial<Merchant>);
-    console.log('Merchant entity before save:', merchant);
-    await this.merchantRepo.save(merchant);
-    console.log('Merchant saved:', merchant);
-    return { merchant };
+
+    try {
+      // Check if company exists when companyId is provided
+      let company: Company | null = null;
+      if (dto.companyId) {
+        company = await this.companyRepo.findOne({
+          where: { id: dto.companyId },
+        });
+        if (!company) {
+          ErrorHandler.resourceNotFound('Company', dto.companyId);
+        }
+      }
+
+      const merchant = this.merchantRepo.create({
+        name: dto.name,
+        email: dto.email,
+        phone: dto.phone,
+        rut: dto.rut,
+        address: dto.address,
+        city: dto.city,
+        state: dto.state,
+        country: dto.country,
+        companyId: dto.companyId,
+      } as Partial<Merchant>);
+
+      const savedMerchant = await this.merchantRepo.save(merchant);
+
+      return {
+        statusCode: 201,
+        message: 'Merchant created successfully',
+        data: savedMerchant,
+      };
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+    }
   }
 
-  async findAll() {
+  async findAll(): Promise<AllMerchantsResponseDto> {
     const merchants = await this.merchantRepo.find({
       relations: ['company', 'users'],
+      select: {
+        users: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          scope: true,
+        },
+      },
     });
-    return merchants.map((m) => ({
-      ...m,
-      company: m.company ? { id: m.company.id, name: m.company.name } : null,
-      users: m.users
-        ? m.users.map((user) => ({ id: user.id, username: user.username }))
-        : null,
-    }));
-  }
 
-  async findOne(id: number) {
-    const merchant = await this.merchantRepo.findOne({
-      where: { id },
-      relations: ['company', 'users'],
-    });
-    if (!merchant) throw new NotFoundException('Merchant not found');
     return {
-      ...merchant,
-      company: merchant.company
-        ? { id: merchant.company.id, name: merchant.company.name }
-        : null,
-      users: merchant.users
-        ? merchant.users.map((user) => ({
-            id: user.id,
-            username: user.username,
-          }))
-        : null,
+      statusCode: 200,
+      message: 'Merchants retrieved successfully',
+      data: merchants,
     };
   }
 
-  async update(id: number, dto: UpdateMerchantDto) {
+  async findOne(id: number): Promise<OneMerchantResponseDto> {
+    // Validate ID format
+    if (!Number.isInteger(id) || id <= 0) {
+      ErrorHandler.invalidId('Merchant ID must be a positive integer');
+    }
+
     const merchant = await this.merchantRepo.findOne({
       where: { id },
       relations: ['company', 'users'],
+      select: {
+        users: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          scope: true,
+        },
+      },
     });
-    if (!merchant) throw new NotFoundException('Merchant not found');
-    Object.assign(merchant, dto);
-    const updatedMerchant = await this.merchantRepo.save(merchant);
+
+    if (!merchant) {
+      ErrorHandler.merchantNotFound();
+    }
+
     return {
-      id: updatedMerchant.id,
-      name: updatedMerchant.name,
-      email: updatedMerchant.email,
-      address: updatedMerchant.address,
-      company: updatedMerchant.company
-        ? { id: updatedMerchant.company.id, name: updatedMerchant.company.name }
-        : null,
-      users: updatedMerchant.users
-        ? updatedMerchant.users.map((user) => ({
-            id: user.id,
-            username: user.username,
-          }))
-        : null,
+      statusCode: 200,
+      message: 'Merchant retrieved successfully',
+      data: merchant,
     };
   }
 
-  async remove(id: number) {
-    const merchant = await this.merchantRepo.findOne({
-      where: { id },
-    });
-    if (!merchant) throw new NotFoundException('Merchant not found');
-    return this.merchantRepo.remove(merchant);
+  async update(
+    id: number,
+    dto: UpdateMerchantDto,
+  ): Promise<OneMerchantResponseDto> {
+    // Validate ID format
+    if (!Number.isInteger(id) || id <= 0) {
+      ErrorHandler.invalidId('Merchant ID must be a positive integer');
+    }
+
+    try {
+      const merchant = await this.merchantRepo.findOne({
+        where: { id },
+        relations: ['company', 'users'],
+        select: {
+          users: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            scope: true,
+          },
+        },
+      });
+
+      if (!merchant) {
+        ErrorHandler.merchantNotFound();
+      }
+
+      Object.assign(merchant, dto);
+      const updatedMerchant = await this.merchantRepo.save(merchant);
+
+      return {
+        statusCode: 200,
+        message: 'Merchant updated successfully',
+        data: updatedMerchant,
+      };
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  async remove(id: number): Promise<OneMerchantResponseDto> {
+    // Validate ID format
+    if (!Number.isInteger(id) || id <= 0) {
+      ErrorHandler.invalidId('Merchant ID must be a positive integer');
+    }
+
+    try {
+      const merchant = await this.merchantRepo.findOne({
+        where: { id },
+      });
+
+      if (!merchant) {
+        ErrorHandler.merchantNotFound();
+      }
+
+      const deletedMerchant = { ...merchant };
+      await this.merchantRepo.remove(merchant);
+
+      return {
+        statusCode: 200,
+        message: 'Merchant deleted successfully',
+        data: deletedMerchant,
+      };
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+    }
   }
 }

@@ -14,6 +14,7 @@ export class CategoryResponseDto {
     description: 'Associated merchant details',
   })
   merchant: MerchantResponseDto | null;
+
   @ApiProperty({
     example: 123,
     description: 'Parent ID',
@@ -29,4 +30,12 @@ export class CategoryResponseDto {
     nullable: true,
   })
   parentName?: string;
+
+  @ApiProperty({
+    example: [{ id: 1, parentName: 'Food' }],
+    description: 'Parent categories',
+    required: false,
+    nullable: true,
+  })
+  parents?: { id: number; parentName: string }[];
 }

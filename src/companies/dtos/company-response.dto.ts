@@ -1,8 +1,10 @@
 // src/companies/dtos/update-company.dto.ts
 import { IsOptional, IsString, MinLength } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from '../../common/dtos/success-response.dto';
+import { Company } from '../entities/company.entity';
 
-export class CompanyResponseDto {
+export class SummaryCompanyResponseDto {
   @IsOptional()
   @IsString()
   @MinLength(2)
@@ -29,4 +31,14 @@ export class CompanyResponseDto {
     description: 'Address of the company',
   })
   address?: string;
+}
+
+export class OneCompanyResponseDto extends SuccessResponse {
+  @ApiProperty()
+  data: Company;
+}
+
+export class AllCompanyResponseDto extends SuccessResponse {
+  @ApiProperty()
+  data: Company[];
 }

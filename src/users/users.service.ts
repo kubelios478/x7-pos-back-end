@@ -1,10 +1,5 @@
 // src/users/users.service.ts
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -13,8 +8,13 @@ import { UpdateUserDto } from './dtos/update-user.dto';
 import { Company } from '../companies/entities/company.entity';
 import { Merchant } from '../merchants/entities/merchant.entity';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import {
+  OneUserResponseDto,
+  AllUsersResponseDto,
+} from './dtos/user-response.dto';
 import * as bcrypt from 'bcrypt';
 import { console } from 'inspector';
+import { ErrorHandler } from '../common/utils/error-handler.util';
 
 @Injectable()
 export class UsersService {
@@ -29,13 +29,22 @@ export class UsersService {
     private readonly merchantRepo: Repository<Merchant>,
   ) {}
 
-  async create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto): Promise<OneUserResponseDto> {
+    // Validate input ID parameters
+    if (dto.companyId && dto.companyId <= 0) {
+      ErrorHandler.invalidId('Company ID must be a positive number');
+    }
+    if (dto.merchantId && dto.merchantId <= 0) {
+      ErrorHandler.invalidId('Merchant ID must be a positive number');
+    }
+
     const company = dto.companyId
       ? await this.companyRepo.findOne({ where: { id: dto.companyId } })
       : undefined;
     console.log('Company:', company);
+
     if (dto.companyId && !company) {
-      throw new NotFoundException('Company not found');
+      ErrorHandler.companyNotFound();
     }
 
     const merchant = dto.merchantId
@@ -43,7 +52,7 @@ export class UsersService {
       : undefined;
 
     if (dto.merchantId && !merchant) {
-      throw new NotFoundException('Merchant not found');
+      ErrorHandler.merchantNotFound();
     }
     console.log('Merchant:', merchant);
 
@@ -58,31 +67,47 @@ export class UsersService {
     } as Partial<User>);
 
     try {
-      const response = await this.userRepo.save(user);
-      return response;
+      const savedUser = await this.userRepo.save(user);
+
+      const safeUserData = {
+        id: savedUser.id,
+        username: savedUser.username,
+        email: savedUser.email,
+        role: savedUser.role,
+        scope: savedUser.scope,
+        merchantId: savedUser.merchantId,
+        merchant: savedUser.merchant,
+      };
+
+      return {
+        statusCode: 201,
+        message: 'User created successfully',
+        data: safeUserData,
+      };
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      if (error.code === '23505') {
-        throw new ConflictException('Email already exists');
-      }
-      throw error;
+      ErrorHandler.handleDatabaseError(error);
     }
   }
 
-  async findAll() {
+  async findAll(): Promise<AllUsersResponseDto> {
     const users = await this.userRepo.find({
       relations: ['merchant'],
     });
-    return users.map((user) => ({
+    const mappedUsers = users.map((user) => ({
       id: user.id,
       username: user.username,
       email: user.email,
       role: user.role,
       scope: user.scope,
-      merchant: user.merchant
-        ? { id: user.merchant.id, name: user.merchant.name }
-        : null,
+      merchantId: user.merchantId,
+      merchant: user.merchant,
     }));
+
+    return {
+      statusCode: 200,
+      message: 'Users retrieved successfully',
+      data: mappedUsers,
+    };
   }
 
   async findById(id: number) {
@@ -90,70 +115,107 @@ export class UsersService {
     return user;
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<OneUserResponseDto> {
+    // Validate ID parameter
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('User ID must be a positive number');
+    }
+
     const user = await this.userRepo.findOne({
       where: { id },
       relations: ['merchant'],
     });
-    if (!user) throw new NotFoundException('User not found');
-    return {
+
+    if (!user) {
+      ErrorHandler.userNotFound();
+    }
+
+    const safeUserData = {
       id: user.id,
       username: user.username,
       email: user.email,
       role: user.role,
       scope: user.scope,
-      merchant: user.merchant
-        ? { id: user.merchant.id, name: user.merchant.name }
-        : null,
+      merchantId: user.merchantId,
+      merchant: user.merchant,
+    };
+
+    return {
+      statusCode: 200,
+      message: 'User retrieved successfully',
+      data: safeUserData,
     };
   }
 
-  async findByMerchant(merchantId: number, user: AuthenticatedUser) {
-    if (user.merchant.id !== merchantId) {
-      throw new ForbiddenException(
-        'You do not have permission to list this merchant users',
-      );
+  async findByMerchant(
+    merchantId: number,
+    user: AuthenticatedUser,
+  ): Promise<AllUsersResponseDto> {
+    // Validate merchant ID
+    if (!merchantId || merchantId <= 0) {
+      ErrorHandler.invalidId('Merchant ID must be a positive number');
     }
+
+    // Check permissions
+    if (!user.merchant || user.merchant.id !== merchantId) {
+      ErrorHandler.differentMerchant();
+    }
+
     const users = await this.userRepo.find({
       where: { merchant: { id: merchantId } },
       relations: ['merchant'],
     });
 
-    return users.map((user) => ({
+    const mappedUsers = users.map((user) => ({
       id: user.id,
       username: user.username,
       email: user.email,
       role: user.role,
       scope: user.scope,
-      merchant: user.merchant
-        ? { id: user.merchant.id, name: user.merchant.name }
-        : null,
+      merchantId: user.merchantId,
+      merchant: user.merchant,
     }));
+
+    return {
+      statusCode: 200,
+      message: 'Users retrieved successfully',
+      data: mappedUsers,
+    };
   }
 
-  async findByEmail(email: string) {
+  async findByEmail(email: string): Promise<OneUserResponseDto> {
+    // Validate email format
+    if (!email || !email.includes('@')) {
+      ErrorHandler.invalidFormat('Please provide a valid email address');
+    }
+
     console.log('Searching for user by email:', email);
     const foundUser = await this.userRepo.findOne({
       where: { email },
       relations: ['merchant'],
     });
-    if (foundUser) {
-      console.log('User found:', foundUser);
-      return {
-        id: foundUser.id,
-        username: foundUser.username,
-        email: foundUser.email,
-        role: foundUser.role,
-        scope: foundUser.scope,
-        merchant: foundUser.merchant
-          ? { id: foundUser.merchant.id, name: foundUser.merchant.name }
-          : null,
-      };
-    } else {
-      throw new ForbiddenException(
-        'You do not have permission to list this merchant users',
-      );
+
+    if (!foundUser) {
+      ErrorHandler.userNotFound();
     }
+
+    console.log('User found:', foundUser);
+
+    const safeUserData = {
+      id: foundUser.id,
+      username: foundUser.username,
+      email: foundUser.email,
+      role: foundUser.role,
+      scope: foundUser.scope,
+      merchantId: foundUser.merchantId,
+      merchant: foundUser.merchant,
+    };
+
+    return {
+      statusCode: 200,
+      message: 'User retrieved successfully',
+      data: safeUserData,
+    };
   }
 
   async findByResetToken(token: string): Promise<User | null> {
@@ -185,13 +247,23 @@ export class UsersService {
     await this.userRepo.update(userId, { refreshToken: token });
   }
 
-  async update(id: number, dto: UpdateUserDto, currentUser: AuthenticatedUser) {
+  async update(
+    id: number,
+    dto: UpdateUserDto,
+    currentUser: AuthenticatedUser,
+  ): Promise<OneUserResponseDto> {
+    // Validate ID parameter
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('User ID must be a positive number');
+    }
+
     const user = await this.userRepo.findOne({
       where: { id },
       relations: ['merchant'],
     });
+
     if (!user) {
-      throw new NotFoundException('User not found');
+      ErrorHandler.userNotFound();
     }
 
     const isSelf = user.id === currentUser.id;
@@ -201,8 +273,8 @@ export class UsersService {
       user.merchant.id === currentUser.merchant.id;
 
     if (!isSelf && !sameMerchant) {
-      throw new ForbiddenException(
-        'You do not have permission to update this user',
+      ErrorHandler.insufficientPermissions(
+        'You can only update your own profile or users from your merchant',
       );
     }
 
@@ -210,17 +282,27 @@ export class UsersService {
       dto.password = await bcrypt.hash(dto.password, 10);
     }
 
-    Object.assign(user, dto);
-    const updatedUser = await this.userRepo.save(user);
-    return {
-      id: updatedUser.id,
-      username: updatedUser.username,
-      email: updatedUser.email,
-      role: updatedUser.role,
-      scope: updatedUser.scope,
-      merchant: updatedUser.merchant
-        ? { id: updatedUser.merchant.id, name: updatedUser.merchant.name }
-        : null,
-    };
+    try {
+      Object.assign(user, dto);
+      const updatedUser = await this.userRepo.save(user);
+
+      const safeUserData = {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        scope: updatedUser.scope,
+        merchantId: updatedUser.merchantId,
+        merchant: updatedUser.merchant,
+      };
+
+      return {
+        statusCode: 200,
+        message: 'User updated successfully',
+        data: safeUserData,
+      };
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+    }
   }
 }
