@@ -1,3 +1,4 @@
+//src/suscriptions/aplications/dto/aplication-response.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 
 export class AplicationResponseDto {

@@ -26,6 +26,7 @@ import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscript
 import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
 import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
 import { AplicationsModule } from './suscriptions/aplications/aplications.module';
+import { AplicationPlanModule } from './suscriptions/aplication-plan/aplication-plan.module';
 
 @Module({
   imports: [
@@ -67,6 +68,8 @@ import { AplicationsModule } from './suscriptions/aplications/aplications.module
     SuscriptionsModule,
 
     AplicationsModule,
+
+    AplicationPlanModule,
   ],
 })
 export class AppModule {}

@@ -1,3 +1,4 @@
+//src/suscriptions/aplications/dto/get-aplication.dto.ts
 import { IsOptional, IsPositive, IsInt, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 

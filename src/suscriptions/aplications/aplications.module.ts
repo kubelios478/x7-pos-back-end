@@ -1,3 +1,4 @@
+//src/suscriptions/aplications/dto/aplications.module.ts
 import { Module } from '@nestjs/common';
 import { AplicationsController } from './aplications.controller';
 import { AplicationsService } from './aplications.service';
