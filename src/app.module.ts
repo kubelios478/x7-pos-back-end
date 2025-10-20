@@ -32,6 +32,7 @@ import { MerchSubModule } from './merch-sub/merch-sub.module';
 import { MerchSub } from './merch-sub/entities/merch-sub.entity';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
+import { Variant } from './products-inventory/variants/entities/variant.entity';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
           MerchSub,
           Product,
           Supplier,
+          Variant,
           Collaborator,
           Shift,
         ],

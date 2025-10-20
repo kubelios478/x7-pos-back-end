@@ -1,0 +1,51 @@
+## Informe de Sprint 1: Implementación de Módulos de Gestión de Inventario (Productos y Categorías)
+
+Como parte de la metodología Scrum, en este Sprint 1 nos hemos enfocado en la implementación de los módulos de `Product` y `Category`, componentes fundamentales para la gestión de inventario del sistema.
+
+### Módulo de Categorías
+
+**Objetivo:** Desarrollar un subsistema para la organización jerárquica de productos.
+
+**Aspectos Clave Implementados:**
+*   **Entidad `Category`:** Definición de la estructura de datos con `id`, `name` (único por comerciante), `merchantId`, `parentId` (para jerarquía) e `isActive` (soft-delete).
+*   **Servicio `CategoryService`:** Lógica de negocio para el CRUD de categorías. Incluye validaciones de autorización, unicidad y existencia de relaciones (comerciante, categoría padre). Se implementó soft-delete recursivo para subcategorías.
+
+### Módulo de Productos
+
+**Objetivo:** Implementar la gestión de artículos individuales del inventario.
+
+**Aspectos Clave Implementados:**
+*   **Entidad `Product`:** Diseño de la estructura de datos con `id`, `name`, `sku` (único por comerciante/categoría), `basePrice`, `merchantId`, `categoryId`, `supplierId` (opcional) e `isActive` (soft-delete).
+*   **Servicio `ProductsService`:** Lógica de negocio para el CRUD de productos. Incluye validaciones de autorización, unicidad del `sku` y existencia de relaciones (comerciante, categoría, proveedor). Se implementó soft-delete.
+
+### Módulo de Variantes
+
+**Objetivo:** Extender la funcionalidad de productos para manejar diferentes versiones o atributos (variantes) de un mismo producto.
+
+**Aspectos Clave Implementados:**
+*   **Entidad `Variant` (`src/products-inventory/variants/entities/variant.entity.ts`):**
+    *   Atributos: `id` (PK), `name` (ej. "Color", "Talla"), `price`, `sku` (único), `productId` (FK a `Product`), `isActive` (para soft-delete).
+    *   Relaciones: ManyToOne con `Product` (una variante pertenece a un producto).
+*   **Servicio `VariantsService` (`src/products-inventory/variants/variants.service.ts`):**
+    *   **`create(user, createVariantDto)`:** Implementa la creación de variantes. Incluye validaciones de autorización (el producto debe pertenecer al comerciante del usuario), existencia del `Product` asociado, y unicidad del `name` y `sku` de la variante. Si una variante con el mismo nombre existe pero está inactiva, se reactiva.
+    *   **`update(user, id, updateVariantDto)`:** Permite la modificación de variantes con validaciones similares a la creación, incluyendo la inmutabilidad de `productId` y la verificación de unicidad del `name` y `sku` si estos se modifican.
+    *   **`remove(user, id)`:** Realiza un soft-delete (`isActive = false`) de la variante.
+    *   **`findAll(merchantId)` / `findOne(id, merchantId?)`:** Métodos para la recuperación de datos, incluyendo la carga de las relaciones con el producto, comerciante, categoría y proveedor.
+
+**Conclusión:**
+Este sprint ha sentado las bases para una gestión de inventario robusta, aplicando principios de diseño de software y validaciones de negocio esenciales. La adición del módulo de `Variant` permite una mayor flexibilidad en la definición de productos.
+
+---
+
+### Evidencias Sugeridas (Capturas de Pantalla)
+
+Para complementar este informe, se sugiere adjuntar las siguientes capturas de pantalla:
+
+1.  **Estructura de Archivos:** Explorador de VS Code mostrando `src/products-inventory/category`, `src/products-inventory/products` y `src/products-inventory/variants` (`.entity.ts`, `.service.ts`, `.controller.ts`).
+2.  **Definición de Entidades:** Archivos `category.entity.ts`, `product.entity.ts` y `variant.entity.ts` para mostrar la definición de tablas y relaciones.
+3.  **Lógica de Creación (Servicios):** Métodos `create` en `category.service.ts`, `products.service.ts` y `variants.service.ts`, destacando validaciones y persistencia.
+4.  **Pruebas de API (Postman/Swagger):**
+    *   Solicitudes POST exitosas para crear categorías, productos y variantes, con sus respuestas JSON.
+    *   Solicitudes GET para listar categorías, productos y variantes, con sus respuestas JSON.
+    *   Ejemplos de validaciones (ej. creación con datos duplicados o sin permisos).
+5.  **Base de Datos (Opcional):** Tablas `category`, `product` y `variant` en una herramienta de gestión de bases de datos, mostrando registros y el estado `isActive`.

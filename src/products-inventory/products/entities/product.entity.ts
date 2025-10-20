@@ -2,11 +2,13 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Category } from 'src/products-inventory/category/entities/category.entity';
 import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
+import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -75,4 +77,13 @@ export class Product {
   @ApiProperty({ example: true, description: 'Product active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @ApiProperty({
+    type: () => Variant,
+    isArray: true,
+    required: false,
+    description: 'List of suppliers associated with the merchant',
+  })
+  @OneToMany(() => Variant, (variant) => variant.product)
+  variants: Variant[];
 }

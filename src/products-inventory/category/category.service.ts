@@ -37,7 +37,7 @@ export class CategoryService {
     }
 
     const existingCategory = await this.categoryRepo.findOne({
-      where: { name, merchantId },
+      where: { name, merchantId, isActive: true },
     });
 
     if (existingCategory) {
@@ -66,20 +66,28 @@ export class CategoryService {
       }
     }
 
-    const newCategory = this.categoryRepo.create({
-      name,
-      merchantId,
-      parentId,
+    const existingButIsNotActive = await this.categoryRepo.findOne({
+      where: { name, merchantId, isActive: false },
     });
 
-    const savedCategory = await this.categoryRepo.save(newCategory);
-
-    return this.findOne(savedCategory.id);
+    if (existingButIsNotActive) {
+      existingButIsNotActive.isActive = true;
+      await this.categoryRepo.save(existingButIsNotActive);
+      return this.findOne(existingButIsNotActive.id);
+    } else {
+      const newCategory = this.categoryRepo.create({
+        name,
+        merchantId,
+        parentId,
+      });
+      const savedCategory = await this.categoryRepo.save(newCategory);
+      return this.findOne(savedCategory.id);
+    }
   }
 
   async findAll(merchantId: number): Promise<CategoryResponseDto[]> {
     const categories = await this.categoryRepo.find({
-      where: { merchantId, isActive: true }, // Filtrar por isActive
+      where: { merchantId, isActive: true }, // Filter by isActive
       relations: ['merchant'],
     });
     return Promise.all(
@@ -109,7 +117,7 @@ export class CategoryService {
     const whereCondition: { id: number; merchantId?: number; isActive: true } =
       {
         id,
-        isActive: true, // Filtrar por isActive
+        isActive: true, // Filter by isActive
       };
     if (merchantId !== undefined) {
       whereCondition.merchantId = merchantId;
@@ -199,9 +207,9 @@ export class CategoryService {
     user: AuthenticatedUser,
     id: number,
   ): Promise<{ message: string }> {
-    // Buscar la categoría principal
+    // Find the main category
     const category = await this.categoryRepo.findOne({
-      where: { id, isActive: true }, // Asegurarse de que la categoría esté activa
+      where: { id, isActive: true }, // Ensure the category is active
       relations: ['merchant', 'parent'],
     });
 
@@ -217,7 +225,7 @@ export class CategoryService {
 
     const hideRecursive = async (categoryId: number): Promise<void> => {
       const subCategories = await this.categoryRepo.find({
-        where: { parentId: categoryId, isActive: true }, // Solo ocultar subcategorías activas
+        where: { parentId: categoryId, isActive: true }, // Only hide active subcategories
       });
 
       for (const sub of subCategories) {
