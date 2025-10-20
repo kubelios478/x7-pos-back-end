@@ -1,7 +1,8 @@
+//src/suscriptions/aplications/dto/get-aplication.dto.ts
 import { IsOptional, IsPositive, IsInt, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class GetSubPlansDto {
+export class GetAplicationDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

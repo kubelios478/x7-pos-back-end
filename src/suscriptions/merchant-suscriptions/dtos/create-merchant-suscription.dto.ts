@@ -7,7 +7,7 @@ import {
   IsNumber,
 } from 'class-validator';
 
-export class CreateMerchSubDto {
+export class CreateMerchantSuscriptionDto {
   @ApiProperty({ example: 1, description: 'ID del merchant asociado' })
   @IsNumber()
   @IsNotEmpty()

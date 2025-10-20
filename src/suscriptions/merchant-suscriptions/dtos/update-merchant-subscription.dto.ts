@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsNumber, IsString, IsDateString } from 'class-validator';
 
-export class UpdateMerchSubDto {
+export class UpdateMerchantSuscriptionDto {
   @ApiPropertyOptional({ example: 1, description: 'ID del merchant asociado' })
   @IsNumber()
   @IsOptional()

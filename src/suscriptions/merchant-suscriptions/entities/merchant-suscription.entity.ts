@@ -7,11 +7,11 @@ import {
   UpdateDateColumn,
   JoinColumn,
 } from 'typeorm';
-import { Merchant } from '../../merchants/entities/merchant.entity';
-import { SubPlan } from '../../sub-plan/entity/sub-plan.entity';
+import { Merchant } from 'src/merchants/entities/merchant.entity';
+import { SuscriptionPlan } from '../../suscription-plan/entity/suscription-plan.entity';
 
-@Entity({ name: 'merch_sub' })
-export class MerchSub {
+@Entity({ name: 'merchant_suscription' })
+export class MerchantSuscription {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -19,9 +19,9 @@ export class MerchSub {
   @JoinColumn({ name: 'merchant_id' })
   merchant: Merchant;
 
-  @ManyToOne(() => SubPlan, { eager: true })
+  @ManyToOne(() => SuscriptionPlan, { eager: true })
   @JoinColumn({ name: 'plan_id' })
-  plan: SubPlan;
+  plan: SuscriptionPlan;
 
   @Column({ type: 'date' })
   startDate: Date;

@@ -1,54 +1,70 @@
 import {
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    ManyToOne,
-    Index,
-    JoinColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  Index,
+  JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity("table")
-@Index(["merchant_id", "number"], { unique: true })
+@Entity('table')
+@Index(['merchant_id', 'number'], { unique: true })
 export class Table {
-    @ApiProperty({ example: 1, description: 'Unique identifier of the Table' })
-    @PrimaryGeneratedColumn()
-    id: number;
+  @ApiProperty({ example: 1, description: 'Unique identifier of the Table' })
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @ApiProperty({ example: 1, description: 'Identifier of the Merchant owning the Table' })
-    @Column({ name: 'merchant_id' })
-    merchant_id: number;
+  @ApiProperty({
+    example: 1,
+    description: 'Identifier of the Merchant owning the Table',
+  })
+  @Column({ name: 'merchant_id' })
+  merchant_id: number;
 
-    @ManyToOne(() => Merchant, (merchant) => merchant.tables, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'merchant_id' })
-    merchant: Merchant;
+  @ManyToOne(() => Merchant, (merchant) => merchant.tables, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'merchant_id' })
+  merchant: Merchant;
 
-    @ApiProperty({ example: 'A1', description: 'Table number or identifier' })
-    @Column({ type: 'varchar', length: 50 })
-    number: string;
+  @ApiProperty({ example: 'A1', description: 'Table number or identifier' })
+  @Column({ type: 'varchar', length: 50 })
+  number: string;
 
-    @ApiProperty({ example: 4, description: 'Seating capacity of the Table' })
-    @Column()
-    capacity: number;
+  @ApiProperty({ example: 4, description: 'Seating capacity of the Table' })
+  @Column()
+  capacity: number;
 
-    @ApiProperty({ example: 'available', description: 'Current status of the Table' })
-    @Column({ type: 'varchar', length: 50 })
-    status: string;
+  @ApiProperty({
+    example: 'available',
+    description: 'Current status of the Table',
+  })
+  @Column({ type: 'varchar', length: 50 })
+  status: string;
 
-    @ApiProperty({ example: 'Near window', description: 'Location description of the Table' })
-    @Column({ type: 'varchar', length: 100 })
-    location: string;
+  @ApiProperty({
+    example: 'Near window',
+    description: 'Location description of the Table',
+  })
+  @Column({ type: 'varchar', length: 100 })
+  location: string;
 
-    @ApiProperty({ example: '2023-10-01T12:00:00Z', description: 'Creation timestamp of the Table record' })
-    @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-    created_at: Date;
+  @ApiProperty({
+    example: '2023-10-01T12:00:00Z',
+    description: 'Creation timestamp of the Table record',
+  })
+  @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
+  created_at: Date;
 
-    @ApiProperty({ example: '2023-10-01T12:00:00Z', description: 'Last update timestamp of the Table record' })
-    @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-    updated_at: Date;
-
+  @ApiProperty({
+    example: '2023-10-01T12:00:00Z',
+    description: 'Last update timestamp of the Table record',
+  })
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
+  updated_at: Date;
 }
 
 /*
