@@ -6,7 +6,7 @@ import { Product } from './products/entities/product.entity';
 import { Supplier } from './suppliers/entities/supplier.entity';
 import { ProductResponseDto } from './products/dto/product-response.dto';
 import { MerchantResponseDto } from '../merchants/dtos/merchant-response.dto';
-import { CategoryLittleResponseDto } from './category/dto/category-little-response.dto';
+import { CategoryLittleResponseDto } from '../../prueba/category-little-response.dto';
 import { SupplierResponseDto } from './suppliers/dto/supplier-response.dto';
 
 interface IdNameDto {

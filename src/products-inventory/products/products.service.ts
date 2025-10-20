@@ -14,7 +14,7 @@ import { Category } from '../category/entities/category.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import { CategoryLittleResponseDto } from '../category/dto/category-little-response.dto';
+import { CategoryLittleResponseDto } from '../category/dto/category-response.dto';
 
 @Injectable()
 export class ProductsService {
