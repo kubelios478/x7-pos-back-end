@@ -14,6 +14,8 @@ import { MailModule } from './mail/mail.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
 import { SuscriptionsModule } from './suscriptions/suscriptions.module';
+import { PlanAplicationsModule } from './suscriptions/plan-aplications/plan-aplications.module';
+import { AplicationsModule } from './suscriptions/aplications/aplications.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
@@ -21,12 +23,13 @@ import { Company } from './companies/entities/company.entity';
 import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
+import { Product } from './products-inventory/products/entities/product.entity';
+import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
 import { Table } from './tables/entities/table.entity';
 import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
 import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
 import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
-import { AplicationsModule } from './suscriptions/aplications/aplications.module';
-import { AplicationPlanModule } from './suscriptions/aplication-plan/aplication-plan.module';
+import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-aplications.entity';
 
 @Module({
   imports: [
@@ -49,8 +52,11 @@ import { AplicationPlanModule } from './suscriptions/aplication-plan/aplication-
           Table,
           SuscriptionPlan,
           Category,
+          Product,
+          Supplier,
           MerchantSuscription,
           AplicationEntity,
+          PlanAplication,
         ],
         synchronize: true,
       }),
@@ -69,7 +75,7 @@ import { AplicationPlanModule } from './suscriptions/aplication-plan/aplication-
 
     AplicationsModule,
 
-    AplicationPlanModule,
+    PlanAplicationsModule,
   ],
 })
 export class AppModule {}
