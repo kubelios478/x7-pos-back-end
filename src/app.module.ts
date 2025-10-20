@@ -46,7 +46,7 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        
+
         entities: [
           User,
           Company,
@@ -58,6 +58,8 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
           MerchSub,
           Product,
           Supplier,
+          Collaborator,
+          Shift,
         ],
         synchronize: true,
       }),
