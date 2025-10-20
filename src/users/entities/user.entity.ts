@@ -1,9 +1,10 @@
 // src/users/entities/user.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { UserRole } from '../constants/role.enum';
 import { Scope } from '../constants/scope.enum';
 import { ApiProperty } from '@nestjs/swagger';
+import { Collaborator } from '../../collaborators/entities/collaborator.entity';
 
 @Entity('users')
 export class User {
@@ -85,4 +86,7 @@ export class User {
     nullable: true,
   })
   merchant?: Merchant;
+
+  @OneToMany(() => Collaborator, (collaborator) => collaborator.user)
+  collaborators: Collaborator[];
 }
