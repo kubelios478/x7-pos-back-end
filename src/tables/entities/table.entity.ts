@@ -1,10 +1,10 @@
 import {
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    ManyToOne,
-    Index,
-    JoinColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  Index,
+  JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
@@ -17,17 +17,22 @@ export class Table {
   @PrimaryGeneratedColumn()
   id: number;
 
-    @ApiProperty({ example: 1, description: 'Identifier of the Merchant owning the Table' })
-    @Column({ name: 'merchant_id' })
-    merchant_id: number;
+  @ApiProperty({
+    example: 1,
+    description: 'Identifier of the Merchant owning the Table',
+  })
+  @Column({ name: 'merchant_id' })
+  merchant_id: number;
 
-    @ManyToOne(() => Merchant, (merchant) => merchant.tables, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'merchant_id' })
-    merchant: Merchant;
+  @ManyToOne(() => Merchant, (merchant) => merchant.tables, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'merchant_id' })
+  merchant: Merchant;
 
-    @ApiProperty({ example: 'A1', description: 'Table number or identifier' })
-    @Column({ type: 'varchar', length: 50 })
-    number: string;
+  @ApiProperty({ example: 'A1', description: 'Table number or identifier' })
+  @Column({ type: 'varchar', length: 50 })
+  number: string;
 
   @ApiProperty({ example: 4, description: 'Seating capacity of the Table' })
   @Column()

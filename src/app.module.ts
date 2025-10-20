@@ -27,12 +27,10 @@ import { Category } from './products-inventory/category/entities/category.entity
 import { Table } from './tables/entities/table.entity';
 import { Collaborator } from './collaborators/entities/collaborator.entity';
 
-
 import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
-import { Table } from './tables/entities/table.entity';
 import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
 import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
 import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
@@ -51,7 +49,7 @@ import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-apli
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
-        
+
         entities: [
           User,
           Company,
@@ -65,6 +63,8 @@ import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-apli
           MerchantSuscription,
           AplicationEntity,
           PlanAplication,
+          Collaborator,
+          Shift,
         ],
         synchronize: true,
       }),
