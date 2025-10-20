@@ -16,6 +16,7 @@ import { TablesModule } from './tables/tables.module';
 import { SuscriptionsModule } from './suscriptions/suscriptions.module';
 import { PlanAplicationsModule } from './suscriptions/plan-aplications/plan-aplications.module';
 import { AplicationsModule } from './suscriptions/aplications/aplications.module';
+import { CollaboratorsModule } from './collaborators/collaborators.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
@@ -23,6 +24,12 @@ import { Company } from './companies/entities/company.entity';
 import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
+import { Table } from './tables/entities/table.entity';
+import { Collaborator } from './collaborators/entities/collaborator.entity';
+
+
+import { Shift } from './shifts/entities/shift.entity';
+import { ShiftsModule } from './shifts/shifts.module';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
 import { Table } from './tables/entities/table.entity';
@@ -44,6 +51,7 @@ import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-apli
         username: config.get('DB_USERNAME'),
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_NAME'),
+        
         entities: [
           User,
           Company,
@@ -74,6 +82,8 @@ import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-apli
     SuscriptionsModule,
 
     AplicationsModule,
+    CollaboratorsModule,
+    ShiftsModule,
 
     PlanAplicationsModule,
   ],
