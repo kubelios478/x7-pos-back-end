@@ -13,8 +13,8 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { MerchSubService } from './merch-sub.service';
-import { CreateMerchSubDto } from './dtos/create-merch-sub.dto';
+import { MerchantSuscriptionService } from './merchant-suscription.service';
+import { CreateMerchantSuscriptionDto } from './dtos/create-merchant-suscription.dto';
 import { MerchantSubscriptionSummaryDto } from './dtos/merchant-subscription-summary.dto';
 import {
   ApiTags,
@@ -38,14 +38,14 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/users/constants/role.enum';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { Scope } from 'src/users/constants/scope.enum';
-import { UpdateMerchSubDto } from './dtos/update-merchant-subscription.dto';
+import { UpdateMerchantSuscriptionDto } from './dtos/update-merchant-subscription.dto';
 
 @ApiTags('Merchant Subscriptions')
 @ApiBearerAuth()
-@Controller('merch-sub')
+@Controller('merchant-suscription')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MerchSubController {
-  constructor(private readonly merchSubService: MerchSubService) {}
+  constructor(private readonly merchSubService: MerchantSuscriptionService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -61,7 +61,7 @@ export class MerchSubController {
     description: 'Endpoint for create a new Merchant Suscription.',
   })
   @ApiBody({
-    type: CreateMerchSubDto,
+    type: CreateMerchantSuscriptionDto,
     description: 'Require Data for a new Merchant Subscription',
   })
   @ApiCreatedResponse({
@@ -111,7 +111,7 @@ export class MerchSubController {
     },
   })
   async create(
-    @Body() dto: CreateMerchSubDto,
+    @Body() dto: CreateMerchantSuscriptionDto,
   ): Promise<MerchantSubscriptionSummaryDto> {
     return this.merchSubService.create(dto);
   }
@@ -319,7 +319,7 @@ export class MerchSubController {
   })
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateMerchSubDto,
+    @Body() dto: UpdateMerchantSuscriptionDto,
   ): Promise<{ message: string }> {
     try {
       return await this.merchSubService.update(id, dto);

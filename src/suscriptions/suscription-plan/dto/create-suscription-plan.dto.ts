@@ -7,7 +7,7 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 
-export class CreateSubPlanDto {
+export class CreateSuscriptionPlanDto {
   @ApiProperty({ example: 'Plan Basic' })
   @IsString()
   @IsNotEmpty()

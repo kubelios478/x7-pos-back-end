@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class DeleteSubPlanResponseDto {
+export class DeleteSuscriptionPlanDto {
   @ApiProperty({ example: true })
   success: boolean;
 

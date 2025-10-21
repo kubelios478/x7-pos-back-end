@@ -13,7 +13,9 @@ import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
-import { SubPlanModule } from './sub-plan/sub-plan.module';
+import { SuscriptionsModule } from './suscriptions/suscriptions.module';
+import { PlanAplicationsModule } from './suscriptions/plan-aplications/plan-aplications.module';
+import { AplicationsModule } from './suscriptions/aplications/aplications.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
 
 // Entities;
@@ -24,13 +26,12 @@ import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
 import { Collaborator } from './collaborators/entities/collaborator.entity';
-import { SubPlan } from './sub-plan/entity/sub-plan.entity';
+
 import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
-import { MerchSubModule } from './merch-sub/merch-sub.module';
-import { MerchSub } from './merch-sub/entities/merch-sub.entity';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
+import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
 import { Variant } from './products-inventory/variants/entities/variant.entity';
 import { Modifier } from './products-inventory/modifiers/entities/modifier.entity';
 
@@ -54,9 +55,8 @@ import { Modifier } from './products-inventory/modifiers/entities/modifier.entit
           Merchant,
           Customer,
           Table,
-          SubPlan,
+          SuscriptionPlan,
           Category,
-          MerchSub,
           Product,
           Supplier,
           Variant,
@@ -76,10 +76,11 @@ import { Modifier } from './products-inventory/modifiers/entities/modifier.entit
     TablesModule,
     MailModule,
     ProductsInventoryModule,
+    SuscriptionsModule,
+    AplicationsModule,
     CollaboratorsModule,
-    SubPlanModule,
     ShiftsModule,
-    MerchSubModule,
+    PlanAplicationsModule,
   ],
 })
 export class AppModule {}

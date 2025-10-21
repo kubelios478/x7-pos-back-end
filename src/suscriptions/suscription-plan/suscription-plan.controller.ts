@@ -12,13 +12,13 @@ import {
   ParseIntPipe,
   UseGuards,
 } from '@nestjs/common';
-import { SubPlanService } from './sub-plan.service';
-import { CreateSubPlanDto } from './dto/create-sub-plan.dto';
-import { SubPlanResponseDto } from './dto/sub-plan-response.dto';
-import { UpdateSubPlanDto } from './dto/update-sub-plan.dto';
-import { GetSubPlansDto } from './dto/get-sub-plan.dto';
-import { DeleteSubPlanResponseDto } from './dto/delete-sub-plan.dto';
-import { SubPlan } from './entity/sub-plan.entity';
+import { SuscriptionPlanService } from './suscription-plan.service';
+import { CreateSuscriptionPlanDto } from './dto/create-suscription-plan.dto';
+import { SuscriptionPlanResponseDto } from './dto/suscription-plan-response.dto';
+import { UpdateSuscriptionPlanDto } from './dto/update-suscription-plan.dto';
+import { GetSuscriptionPlanDto } from './dto/get-suscription-plan.dto';
+import { DeleteSuscriptionPlanDto } from './dto/delete-suscription-plan.dto';
+import { SuscriptionPlan } from './entity/suscription-plan.entity';
 import {
   ApiTags,
   ApiOperation,
@@ -31,22 +31,22 @@ import {
   ApiNotFoundResponse,
   ApiConflictResponse,
 } from '@nestjs/swagger';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Scopes } from '../auth/decorators/scopes.decorator';
-import { UserRole } from '../users/constants/role.enum';
-import { Scope } from '../users/constants/scope.enum';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Scopes } from 'src/auth/decorators/scopes.decorator';
+import { UserRole } from 'src/users/constants/role.enum';
+import { Scope } from 'src/users/constants/scope.enum';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
 
 @ApiTags('Subscription Plans')
-@Controller('sub-plan')
-export class SubPlanController {
-  constructor(private readonly subPlanService: SubPlanService) {}
+@Controller('suscription-plan')
+export class SuscriptionPlanController {
+  constructor(private readonly subPlanService: SuscriptionPlanService) {}
 
   @ApiOperation({ summary: 'Create a new subscription plan' })
   @ApiCreatedResponse({
     description: 'The subscription plan has been successfully created',
-    type: SubPlan,
+    type: SuscriptionPlan,
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data',
@@ -58,7 +58,7 @@ export class SubPlanController {
   @ApiOperation({ summary: 'Create a new subscription plan' })
   @ApiCreatedResponse({
     description: 'The subscription plan has been successfully created',
-    type: SubPlan,
+    type: SuscriptionPlan,
   })
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiConflictResponse({
@@ -67,9 +67,11 @@ export class SubPlanController {
   @ApiForbiddenResponse({ description: 'Forbidden. Insufficient role.' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('portal_admin')
-  @ApiBody({ type: CreateSubPlanDto })
+  @ApiBody({ type: CreateSuscriptionPlanDto })
   @Post()
-  async create(@Body() dto: CreateSubPlanDto): Promise<SubPlan> {
+  async create(
+    @Body() dto: CreateSuscriptionPlanDto,
+  ): Promise<SuscriptionPlan> {
     return this.subPlanService.create(dto);
   }
   @Get()
@@ -78,7 +80,7 @@ export class SubPlanController {
   })
   @ApiOkResponse({
     description: 'List of subscription plans',
-    type: [SubPlanResponseDto],
+    type: [SuscriptionPlanResponseDto],
   })
   @ApiForbiddenResponse({
     description: 'Forbidden. Insufficient role.',
@@ -104,8 +106,9 @@ export class SubPlanController {
     },
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('portal_admin')
-  async findAll(@Query() query: GetSubPlansDto) {
+  @Roles(UserRole.PORTAL_ADMIN)
+  @Scopes(Scope.ADMIN_PORTAL)
+  async findAll(@Query() query: GetSuscriptionPlanDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const status = query.status;
@@ -125,7 +128,7 @@ export class SubPlanController {
   })
   @ApiOkResponse({
     description: 'Subscription plan found',
-    type: SubPlanResponseDto,
+    type: SuscriptionPlanResponseDto,
     schema: {
       example: {
         id: 1,
@@ -181,7 +184,7 @@ export class SubPlanController {
   @ApiOperation({ summary: 'Update subscription plan by ID' })
   @ApiBody({
     description: 'Fields to update in the subscription plan',
-    type: UpdateSubPlanDto,
+    type: UpdateSuscriptionPlanDto,
     examples: {
       example1: {
         summary: 'Update only name',
@@ -239,7 +242,7 @@ export class SubPlanController {
   })
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateSubPlanDto: UpdateSubPlanDto,
+    @Body() updateSubPlanDto: UpdateSuscriptionPlanDto,
   ): Promise<{ message: string }> {
     return this.subPlanService.update(id, updateSubPlanDto);
   }
@@ -295,7 +298,7 @@ export class SubPlanController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<DeleteSubPlanResponseDto> {
+  ): Promise<DeleteSuscriptionPlanDto> {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive integer');
     }
