@@ -57,7 +57,7 @@ export class Category {
   @OneToMany(() => Product, (product) => product.category)
   products: Product[];
 
-  @ApiProperty({ example: true, description: 'Category active status' })
+  //@ApiProperty({ example: true, description: 'Category active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 }

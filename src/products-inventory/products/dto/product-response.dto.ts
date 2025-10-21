@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MerchantResponseDto } from 'src/merchants/dtos/merchant-response.dto';
-import { CategoryLittleResponseDto } from 'prueba/category-little-response.dto';
+import { CategoryLittleResponseDto } from '../../category/dto/category-response.dto';
 import { SupplierResponseDto } from 'src/products-inventory/suppliers/dto/supplier-response.dto';
 
 export class ProductResponseDto {

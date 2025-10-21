@@ -22,7 +22,7 @@ export class Modifier {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   priceDelta: number;
 
-  @ApiProperty({ example: true, description: 'Modifier active status' })
+  // @ApiProperty({ example: true, description: 'Modifier active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
