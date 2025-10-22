@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateModifierDto } from './dto/create-modifier.dto';
 import { UpdateModifierDto } from './dto/update-modifier.dto';
 import { ModifierResponseDto } from './dto/modifier-response.dto';
@@ -7,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductsService } from '../products/products.service';
 import { ProductsInventoryService } from '../products-inventory.service';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class ModifiersService {
@@ -17,9 +23,51 @@ export class ModifiersService {
     private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
-  create(createModifierDto: CreateModifierDto) {
-    console.log(createModifierDto);
-    return 'This action adds a new modifier';
+  async create(
+    user: AuthenticatedUser,
+    createModifierDto: CreateModifierDto,
+  ): Promise<ModifierResponseDto> {
+    const { productId, ...modifierData } = createModifierDto;
+
+    const product = await this.productsService.findOne(productId);
+
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${productId} not found`);
+    }
+
+    if (product.merchant?.id !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to create modifiers for this merchant',
+      );
+    }
+
+    const existingModifierByName = await this.modifierRepository.findOne({
+      where: [{ name: modifierData.name, isActive: true }],
+    });
+
+    if (existingModifierByName) {
+      throw new ConflictException(
+        `Modifier with name "${modifierData.name}" already exists.`,
+      );
+    }
+    const existingButIsNotActive = await this.modifierRepository.findOne({
+      where: [{ name: modifierData.name, isActive: false }],
+    });
+
+    if (existingButIsNotActive) {
+      existingButIsNotActive.isActive = true;
+      await this.modifierRepository.save(existingButIsNotActive);
+      return this.findOne(existingButIsNotActive.id);
+    } else {
+      const newModifier = this.modifierRepository.create({
+        ...modifierData,
+        productId: product.id,
+      });
+
+      const savedModifier = await this.modifierRepository.save(newModifier);
+
+      return this.findOne(savedModifier.id);
+    }
   }
 
   async findAll(merchantId: number): Promise<ModifierResponseDto[]> {
@@ -80,12 +128,80 @@ export class ModifiersService {
     return result;
   }
 
-  update(id: number, updateModifierDto: UpdateModifierDto) {
-    console.log(updateModifierDto);
-    return `This action updates a #${id} modifier`;
+  async update(
+    user: AuthenticatedUser,
+    id: number,
+    updateModifierDto: UpdateModifierDto,
+  ): Promise<ModifierResponseDto> {
+    const { productId, ...modifierData } = updateModifierDto;
+
+    const modifier = await this.modifierRepository
+      .createQueryBuilder('modifier')
+      .leftJoinAndSelect('modifier.product', 'product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .where('modifier.id = :id', { id })
+      .andWhere('modifier.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!modifier) {
+      throw new NotFoundException(`Modifier with ID ${id} not found`);
+    }
+
+    if (modifier.product.merchant.id !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to modify modifiers for other merchants',
+      );
+    }
+
+    if (productId && productId !== modifier.productId) {
+      throw new ForbiddenException('Product ID cannot be changed');
+    }
+
+    if (modifierData.name && modifierData.name !== modifier.name) {
+      const existingModifierName = await this.modifierRepository.findOne({
+        where: { name: modifierData.name },
+      });
+
+      if (existingModifierName && existingModifierName.id !== id) {
+        throw new ConflictException(
+          `Modifier with name "${modifierData.name}" already exists.`,
+        );
+      }
+    }
+
+    Object.assign(modifier, modifierData);
+    await this.modifierRepository.save(modifier);
+
+    return this.findOne(id);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} modifier`;
+  async remove(
+    user: AuthenticatedUser,
+    id: number,
+  ): Promise<{ message: string }> {
+    const modifier = await this.modifierRepository
+      .createQueryBuilder('modifier')
+      .leftJoinAndSelect('modifier.product', 'product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .where('modifier.id = :id', { id })
+      .andWhere('modifier.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!modifier) {
+      throw new NotFoundException(`Modifier with ID ${id} not found`);
+    }
+
+    if (modifier.product.merchant.id !== user.merchant.id) {
+      throw new ForbiddenException(
+        'You are not allowed to delete modifiers for other merchants',
+      );
+    }
+
+    modifier.isActive = false;
+    await this.modifierRepository.save(modifier);
+
+    return {
+      message: `Modifier with ID ${id} was successfully deleted`,
+    };
   }
 }
