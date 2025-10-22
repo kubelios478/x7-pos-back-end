@@ -1,5 +1,11 @@
 // src/users/entities/user.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { UserRole } from '../constants/role.enum';
 import { Scope } from '../constants/scope.enum';
