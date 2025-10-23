@@ -20,12 +20,12 @@ export class TablesService {
   ) { }
 
   async create(dto: CreateTableDto, authenticatedUserMerchantId: number): Promise<TableResponseDto> {
-    // 1. Validar que el usuario autenticado tiene merchant_id
+    // 1. Validate that the authenticated user has merchant_id
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('User must be associated with a merchant to create tables');
     }
 
-    // 2. Validar que el usuario solo puede crear mesas para su propio merchant
+    // 2. Validate that the user can only create tables for their own merchant
     const dtoMerchantId = Number(dto.merchant_id);
     const userMerchantId = Number(authenticatedUserMerchantId);
     
@@ -33,13 +33,13 @@ export class TablesService {
       throw new ForbiddenException('You can only create tables for your own merchant');
     }
 
-    // 3. Validar que el merchant existe
+    // 3. Validate that the merchant exists
     const merchant = await this.merchantRepo.findOne({ where: { id: dto.merchant_id } });
     if (!merchant) {
       throw new NotFoundException(`Merchant with ID ${dto.merchant_id} not found`);
     }
 
-    // 4. Validar unicidad del número de mesa dentro del merchant
+    // 4. Validate uniqueness of table number within the merchant
     const existingTable = await this.tableRepo
       .createQueryBuilder('table')
       .where('table.number = :number', { number: dto.number })
@@ -52,12 +52,12 @@ export class TablesService {
       );
     }
 
-    // 4. Validaciones de reglas de negocio
+    // 5. Business rule validations
     if (dto.capacity <= 0) {
       throw new BadRequestException('Table capacity must be greater than 0');
     }
 
-    // 5. Crear la mesa
+    // 6. Create the table
     const table = this.tableRepo.create({
       merchant: { id: dto.merchant_id } as Merchant,
       number: dto.number,
@@ -68,7 +68,7 @@ export class TablesService {
 
     const savedTable = await this.tableRepo.save(table);
 
-    // 6. Retornar respuesta con información del merchant (sin fechas)
+    // 7. Return response with merchant information (without dates)
     return {
       id: savedTable.id,
       merchant_id: savedTable.merchant_id,
@@ -95,7 +95,7 @@ export class TablesService {
       throw new NotFoundException(`Merchant with ID ${authenticatedUserMerchantId} not found`);
     }
 
-    // 3. Configurar paginación
+    // 3. Configure pagination
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
@@ -129,14 +129,14 @@ export class TablesService {
     // 7. Obtener total de registros
     const total = await queryBuilder.getCount();
 
-    // 8. Aplicar paginación y ordenamiento
+    // 8. Apply pagination and sorting
     const tables = await queryBuilder
       .orderBy('table.number', 'ASC')
       .skip(skip)
       .take(limit)
       .getMany();
 
-    // 9. Calcular metadatos de paginación
+    // 9. Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
@@ -178,7 +178,7 @@ export class TablesService {
       throw new ForbiddenException('User must be associated with a merchant to view tables');
     }
 
-    // 2. Validar que el ID es válido
+    // 2. Validate that the ID is valid
     if (!id || id <= 0) {
       console.log('❌ VALIDATION FAILED: Invalid table ID');
       throw new BadRequestException('Invalid table ID');
@@ -239,7 +239,7 @@ export class TablesService {
       name: merchant.name
     });
 
-    // 6. Retornar respuesta con información del merchant (sin fechas)
+    // 7. Return response with merchant information (without dates)
     const response = {
       id: table.id,
       merchant_id: table.merchant_id,
@@ -265,13 +265,13 @@ export class TablesService {
     console.log('DTO type:', typeof dto);
     console.log('DTO keys:', dto ? Object.keys(dto) : 'N/A');
 
-    // 0. Validar que el DTO existe y no está vacío
+    // 0. Validate that the DTO exists and is not empty
     if (!dto || (typeof dto === 'object' && Object.keys(dto).length === 0)) {
       console.log('❌ VALIDATION FAILED: DTO is undefined or empty');
       throw new BadRequestException('Update data is required');
     }
 
-    // 0.1. Validar que al menos un campo válido está presente
+    // 0.1. Validate that at least one valid field is present
     const validFields = ['number', 'capacity', 'status', 'location'];
     const hasValidField = validFields.some(field => dto[field] !== undefined);
     
@@ -286,7 +286,7 @@ export class TablesService {
       throw new ForbiddenException('User must be associated with a merchant to update tables');
     }
 
-    // 2. Validar que el ID es válido (Validate that the id parameter is valid)
+    // 2. Validate that the ID is valid (Validate that the id parameter is valid)
     if (!id || id <= 0 || !Number.isInteger(id)) {
       console.log('❌ VALIDATION FAILED: Invalid table ID');
       throw new BadRequestException('Invalid table ID');
@@ -322,8 +322,8 @@ export class TablesService {
       throw new ForbiddenException('You can only update tables from your own merchant');
     }
 
-    // 5. Validar que no se está intentando modificar el merchant_id (The merchant value cannot be modified)
-    // Nota: merchant_id no está presente en UpdateTableDto, por lo que esta validación ya no es necesaria
+    // 5. Validate that merchant_id is not being modified (The merchant value cannot be modified)
+    // Note: merchant_id is not present in UpdateTableDto, so this validation is no longer necessary
 
     // 6. Validar campos y tipos (Validate allowed fields and types)
     if (dto.capacity !== undefined) {
@@ -354,7 +354,7 @@ export class TablesService {
       }
     }
 
-    // 7. Validar unicidad si se está actualizando el number (Validate uniqueness if updating unique fields)
+    // 7. Validate uniqueness if updating the number field
     if (dto.number !== undefined && dto.number !== table.number) {
       console.log('🔍 Checking uniqueness for number:', dto.number);
       const existingTable = await this.tableRepo
@@ -404,7 +404,7 @@ export class TablesService {
 
     console.log('✅ Table updated successfully');
 
-    // 12. Retornar respuesta con información del merchant (sin fechas)
+    // 12. Return response with merchant information (without dates)
     const response = {
       id: updatedTable.id,
       merchant_id: table.merchant_id, // Usar table.merchant_id directamente
@@ -434,7 +434,7 @@ export class TablesService {
       throw new ForbiddenException('User must be associated with a merchant to delete tables');
     }
 
-    // 2. Validar que el ID es válido
+    // 2. Validate that the ID is valid
     if (!id || id <= 0) {
       console.log('❌ VALIDATION FAILED: Invalid table ID');
       throw new BadRequestException('Invalid table ID');
@@ -474,19 +474,19 @@ export class TablesService {
 
     console.log('✅ VALIDATION PASSED: User deleting table from their own merchant');
 
-    // 6. Validar que la tabla no esté ya eliminada
+    // 6. Validate that the table is not already deleted
     if (table.status === 'deleted') {
       throw new ConflictException('Table is already deleted');
     }
 
-    // 7. Validar dependencias (aquí puedes agregar validaciones específicas)
-    // Por ejemplo, verificar si hay órdenes activas, reservas, etc.
+    // 7. Validate dependencies (here you can add specific validations)
+    // For example, check if there are active orders, reservations, etc.
     // const activeOrders = await this.orderRepo.count({ where: { table_id: id, status: 'active' } });
     // if (activeOrders > 0) {
     //   throw new ConflictException('Cannot delete table with active orders');
     // }
 
-    // 8. Obtener información del merchant para la respuesta (ya sabemos que authenticatedUserMerchantId = table.merchant)
+    // 8. Get merchant information for the response (we already know that authenticatedUserMerchantId = table.merchant)
     const merchant = await this.merchantRepo.findOne({ where: { id: authenticatedUserMerchantId } });
     if (!merchant) {
       throw new NotFoundException(`Merchant with ID ${authenticatedUserMerchantId} not found`);
@@ -496,7 +496,7 @@ export class TablesService {
     table.status = 'deleted';
     const updatedTable = await this.tableRepo.save(table);
 
-    // 10. Retornar respuesta con información del merchant (sin fechas)
+    // 10. Return response with merchant information (without dates)
     return {
       id: updatedTable.id,
       merchant_id: table.merchant_id,

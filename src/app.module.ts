@@ -32,6 +32,10 @@ import { MerchSubModule } from './merch-sub/merch-sub.module';
 import { MerchSub } from './merch-sub/entities/merch-sub.entity';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
+import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.module';
+import { ShiftAssignment } from './shift-assignments/entities/shift-assignment.entity';
+import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
+import { TableAssignment } from './table-assignments/entities/table-assignment.entity';
 
 @Module({
   imports: [
@@ -55,6 +59,10 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
           Table,
           SubPlan,
           Category,
+          Collaborator,
+          Shift,
+          ShiftAssignment,
+          TableAssignment,
           MerchSub,
           Product,
           Supplier,
@@ -76,6 +84,10 @@ import { Supplier } from './products-inventory/suppliers/entities/supplier.entit
     ShiftsModule,
 
     MerchSubModule,
+
+    ShiftAssignmentsModule,
+
+    TableAssignmentsModule,
   ],
 })
 export class AppModule {}
