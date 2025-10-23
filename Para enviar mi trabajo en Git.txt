@@ -1,5 +1,13 @@
 Para enviar mi trabajo en Git
 
+git status: para ver los cambios que hiciste
+
+git add .: Para añadir los cambios que hiciste
+
+git commit -m "Añade texto": Para guardar los cambios
+
+git log: Para mostrar lo que se guardo
+
 En el GitHub: SyncFork en el Forked que cree
 
 En el Git Bash: 

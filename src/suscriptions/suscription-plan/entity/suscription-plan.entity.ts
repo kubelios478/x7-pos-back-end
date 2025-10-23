@@ -1,12 +1,12 @@
-//src/sub-plan/entity/sub-plan.entity.ts
+//src/suscriptions/sub-plan/entity/sub-plan.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 
-@Entity('sub_plan')
-export class SubPlan {
+@Entity('suscription_plan')
+export class SuscriptionPlan {
   @ApiProperty({
     example: 1,
-    description: 'Unique identifier of the subscription plan',
+    description: 'Unique identifier of the subscription plan1111',
   })
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;

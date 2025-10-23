@@ -7,28 +7,28 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MerchSub } from './entities/merch-sub.entity';
-import { Merchant } from '../merchants/entities/merchant.entity';
-import { SubPlan } from '../sub-plan/entity/sub-plan.entity';
-import { CreateMerchSubDto } from './dtos/create-merch-sub.dto';
+import { MerchantSuscription } from './entities/merchant-suscription.entity';
+import { Merchant } from 'src/merchants/entities/merchant.entity';
+import { SuscriptionPlan } from '../suscription-plan/entity/suscription-plan.entity';
+import { CreateMerchantSuscriptionDto } from './dtos/create-merchant-suscription.dto';
 import { MerchantSubscriptionSummaryDto } from './dtos/merchant-subscription-summary.dto';
-import { UpdateMerchSubDto } from './dtos/update-merchant-subscription.dto';
+import { UpdateMerchantSuscriptionDto } from './dtos/update-merchant-subscription.dto';
 
 @Injectable()
-export class MerchSubService {
+export class MerchantSuscriptionService {
   constructor(
-    @InjectRepository(MerchSub)
-    private readonly merchSubRepository: Repository<MerchSub>,
+    @InjectRepository(MerchantSuscription)
+    private readonly merchSubRepository: Repository<MerchantSuscription>,
 
     @InjectRepository(Merchant)
     private readonly merchantRepository: Repository<Merchant>,
 
-    @InjectRepository(SubPlan)
-    private readonly subPlanRepository: Repository<SubPlan>,
+    @InjectRepository(SuscriptionPlan)
+    private readonly subPlanRepository: Repository<SuscriptionPlan>,
   ) {}
 
   async create(
-    createDto: CreateMerchSubDto,
+    createDto: CreateMerchantSuscriptionDto,
   ): Promise<MerchantSubscriptionSummaryDto> {
     // 🔹 Validación de fechas
     if (createDto.startDate >= createDto.endDate) {
@@ -164,7 +164,7 @@ export class MerchSubService {
 
   async update(
     id: number,
-    dto: UpdateMerchSubDto,
+    dto: UpdateMerchantSuscriptionDto,
   ): Promise<{ message: string }> {
     const subscription = await this.merchSubRepository.findOne({
       where: { id },
