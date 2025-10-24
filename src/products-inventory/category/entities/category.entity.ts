@@ -17,7 +17,7 @@ export class Category {
   id: number;
 
   @ApiProperty({ example: 'Beverages', description: 'Category name' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @ApiProperty({

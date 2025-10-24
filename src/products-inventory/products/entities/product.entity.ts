@@ -20,11 +20,11 @@ export class Product {
   id: number;
 
   @ApiProperty({ example: 'Coca-Cola', description: 'Product name' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @ApiProperty({ example: '123456', description: 'Product SKU' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   sku: string;
 
   @ApiProperty({ example: 10.99, description: 'Product base price' })
@@ -79,21 +79,9 @@ export class Product {
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  /* @ApiProperty({
-    type: () => Variant,
-    isArray: true,
-    required: false,
-    description: 'List of suppliers associated with the product',
-  }) */
   @OneToMany(() => Variant, (variant) => variant.product)
   variants: Variant[];
 
-  /* @ApiProperty({
-    type: () => Modifier,
-    isArray: true,
-    required: false,
-    description: 'List of modifiers associated with the product',
-  }) */
   @OneToMany(() => Modifier, (modifier) => modifier.product)
   modifiers: Modifier[];
 }
