@@ -6,9 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Category } from '../category/entities/category.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
-
+import { Variant } from '../variants/entities/variant.entity';
 @Module({
-  imports: [TypeOrmModule.forFeature([Product, Merchant, Category, Supplier])],
+  imports: [
+    TypeOrmModule.forFeature([Product, Merchant, Category, Supplier, Variant]),
+  ],
   controllers: [ProductsController],
   providers: [ProductsService],
   exports: [ProductsService],

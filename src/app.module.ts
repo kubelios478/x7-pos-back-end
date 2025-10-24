@@ -36,6 +36,8 @@ import { ShiftAssignment } from './shift-assignments/entities/shift-assignment.e
 import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
 import { TableAssignment } from './table-assignments/entities/table-assignment.entity';
 import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
+import { Variant } from './products-inventory/variants/entities/variant.entity';
+import { Modifier } from './products-inventory/modifiers/entities/modifier.entity';
 import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
 import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
 import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-aplications.entity';
@@ -73,6 +75,8 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
           MerchSub,
           Product,
           Supplier,
+          Variant,
+          Modifier,
           MerchantSubscription,
           ApplicationEntity,
           PlanApplication,
@@ -91,6 +95,10 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
     TablesModule,
     MailModule,
     ProductsInventoryModule,
+    SuscriptionsModule,
+    AplicationsModule,
+    CollaboratorsModule,
+    ShiftsModule,
 
     SubscriptionsModule,
 
