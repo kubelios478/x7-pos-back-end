@@ -3,13 +3,15 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   JoinColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { ShiftRole } from '../constants/shift-role.enum';
+import { ShiftStatus } from '../constants/shift-status.enum';
+import { ShiftAssignment } from '../../shift-assignments/entities/shift-assignment.entity';
+import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
 
 @Entity()
 export class Shift {
@@ -47,27 +49,43 @@ export class Shift {
   })
   role: ShiftRole;
 
+  @ApiProperty({ 
+    enum: ShiftStatus,
+    example: ShiftStatus.ACTIVE,
+    description: 'Current status of the shift' 
+  })
+  @Column({ 
+    type: 'enum', 
+    enum: ShiftStatus,
+    default: ShiftStatus.ACTIVE
+  })
+  status: ShiftStatus;
+
   @ApiProperty({
     type: () => Merchant,
     description: 'Merchant associated with the shift',
   })
-  @ManyToOne(() => Merchant, (merchant) => merchant.id, {
+  @ManyToOne(() => Merchant, (merchant) => merchant.shifts, {
     nullable: false,
   })
   @JoinColumn({ name: 'merchantId' })
   merchant: Merchant;
 
-  @ApiProperty({ 
-    example: '2024-01-15T10:30:00Z', 
-    description: 'Date when the shift was created' 
+  @ApiProperty({
+    type: () => ShiftAssignment,
+    isArray: true,
+    required: false,
+    description: 'List of shift assignments for this shift',
   })
-  @CreateDateColumn()
-  createdAt: Date;
+  @OneToMany(() => ShiftAssignment, (shiftAssignment) => shiftAssignment.shift)
+  shiftAssignments: ShiftAssignment[];
 
-  @ApiProperty({ 
-    example: '2024-01-15T10:30:00Z', 
-    description: 'Date when the shift was last updated' 
+  @ApiProperty({
+    type: () => TableAssignment,
+    isArray: true,
+    required: false,
+    description: 'List of table assignments for this shift',
   })
-  @UpdateDateColumn()
-  updatedAt: Date;
+  @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.shift)
+  tableAssignments: TableAssignment[];
 }

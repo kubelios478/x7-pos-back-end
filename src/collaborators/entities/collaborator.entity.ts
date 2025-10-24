@@ -3,6 +3,7 @@ import {
     PrimaryGeneratedColumn,
     Column,
     ManyToOne,
+    OneToMany,
     Index,
     JoinColumn,
 } from 'typeorm';
@@ -12,6 +13,8 @@ import { Merchant } from '../../merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ShiftRole } from '../constants/shift-role.enum';
 import { CollaboratorStatus } from '../constants/collaborator-status.enum';
+import { ShiftAssignment } from '../../shift-assignments/entities/shift-assignment.entity';
+import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
 
 @Entity("collaborator")
 @Index(["user_id"], { unique: true })
@@ -63,6 +66,24 @@ export class Collaborator {
     @ApiProperty({ example: '2023-10-01T12:00:00Z', description: 'Last update timestamp of the Collaborator record' })
     @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
     updated_at: Date;
+
+    @ApiProperty({
+        type: () => ShiftAssignment,
+        isArray: true,
+        required: false,
+        description: 'List of shift assignments for this collaborator',
+    })
+    @OneToMany(() => ShiftAssignment, (shiftAssignment) => shiftAssignment.collaborator)
+    shiftAssignments: ShiftAssignment[];
+
+    @ApiProperty({
+        type: () => TableAssignment,
+        isArray: true,
+        required: false,
+        description: 'List of table assignments for this collaborator',
+    })
+    @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.collaborator)
+    tableAssignments: TableAssignment[];
 }
 
 /*
@@ -70,7 +91,7 @@ Table Collaborator {
   id BIGSERIAL [pk]
   user_id BIGINT [ref: > User.id]          // referencia al usuario del sistema
   merchant_id BIGINT [ref: > Merchant.id]
-  name VARCHAR(150)                        // puede duplicarse del User para personalización
+  name VARCHAR(150)                        // can be duplicated from User for customization
   role ShiftRole                            // mesero, cajero, cocinero, etc.
   status VARCHAR(50)
   created_at TIMESTAMP

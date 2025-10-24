@@ -1,14 +1,16 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  Index,
-  JoinColumn,
+    Entity,
+    PrimaryGeneratedColumn,
+    Column,
+    ManyToOne,
+    OneToMany,
+    Index,
+    JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
 
 @Entity('table')
 @Index(['merchant_id', 'number'], { unique: true })
@@ -52,12 +54,22 @@ export class Table {
   @Column({ type: 'varchar', length: 100 })
   location: string;
 
+    @ApiProperty({ example: '2023-10-01T12:00:00Z', description: 'Creation timestamp of the Table record' })
+    @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
+    created_at: Date;
+
+  @ApiProperty({ example: '2023-10-01T12:00:00Z', description: 'Last update timestamp of the Table record' })
+  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
+  updated_at: Date;
+
   @ApiProperty({
-    example: '2023-10-01T12:00:00Z',
-    description: 'Creation timestamp of the Table record',
+    type: () => TableAssignment,
+    isArray: true,
+    required: false,
+    description: 'List of table assignments for this table',
   })
-  @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-  created_at: Date;
+  @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.table)
+  tableAssignments: TableAssignment[];
 
   @ApiProperty({
     example: '2023-10-01T12:00:00Z',

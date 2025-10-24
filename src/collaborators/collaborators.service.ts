@@ -96,7 +96,7 @@ export class CollaboratorsService {
     const savedCollaborator = await this.collaboratorRepo.save(collaborator);
     console.log('✅ Collaborator created successfully');
 
-    // 8. Retornar respuesta con información del merchant y user (sin fechas)
+    // 8. Return response with merchant and user information (without dates)
     const response: CollaboratorResponseDto = {
       id: savedCollaborator.id,
       user_id: savedCollaborator.user_id,
@@ -138,7 +138,7 @@ export class CollaboratorsService {
       throw new NotFoundException(`Merchant with ID ${authenticatedUserMerchantId} not found`);
     }
 
-    // 3. Configurar paginación
+    // 3. Configure pagination
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
@@ -158,14 +158,14 @@ export class CollaboratorsService {
     // 6. Obtener total de registros
     const total = await queryBuilder.getCount();
 
-    // 7. Aplicar paginación y ordenamiento
+    // 7. Apply pagination and sorting
     const collaborators = await queryBuilder
       .orderBy('collaborator.name', 'ASC')
       .skip(skip)
       .take(limit)
       .getMany();
 
-    // 8. Calcular metadatos de paginación
+    // 8. Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
@@ -216,7 +216,7 @@ export class CollaboratorsService {
       throw new ForbiddenException('User must be associated with a merchant to view collaborators');
     }
 
-    // 2. Validar que el ID es válido
+    // 2. Validate that the ID is valid
     if (!id || id <= 0) {
       console.log('❌ VALIDATION FAILED: Invalid collaborator ID');
       throw new BadRequestException('Invalid collaborator ID');
@@ -286,7 +286,7 @@ export class CollaboratorsService {
       email: user.email
     });
 
-    // 7. Retornar respuesta con información del merchant y user (sin fechas)
+    // 7. Return response with merchant and user information (without dates)
     const response: CollaboratorResponseDto = {
       id: collaborator.id,
       user_id: collaborator.user_id,
@@ -317,13 +317,13 @@ export class CollaboratorsService {
     console.log('DTO type:', typeof dto);
     console.log('DTO keys:', dto ? Object.keys(dto) : 'N/A');
 
-    // 0. Validar que el DTO existe y no está vacío
+    // 0. Validate that the DTO exists and is not empty
     if (!dto || (typeof dto === 'object' && Object.keys(dto).length === 0)) {
       console.log('❌ VALIDATION FAILED: DTO is undefined or empty');
       throw new BadRequestException('Update data is required');
     }
 
-    // 0.1. Validar que al menos un campo válido está presente
+    // 0.1. Validate that at least one valid field is present
     const validFields = ['user_id', 'name', 'role', 'status'];
     const hasValidField = validFields.some(field => dto[field] !== undefined);
     
@@ -338,7 +338,7 @@ export class CollaboratorsService {
       throw new ForbiddenException('User must be associated with a merchant to update collaborators');
     }
 
-    // 2. Validar que el ID es válido
+    // 2. Validate that the ID is valid
     if (!id || id <= 0 || !Number.isInteger(id)) {
       console.log('❌ VALIDATION FAILED: Invalid collaborator ID');
       throw new BadRequestException('Invalid collaborator ID');
@@ -392,7 +392,7 @@ export class CollaboratorsService {
       }
     }
 
-    // 6. Validar unicidad si se está actualizando el user_id
+    // 6. Validate uniqueness if updating the user_id
     if (dto.user_id !== undefined && dto.user_id !== collaborator.user_id) {
       console.log('🔍 Checking uniqueness for user_id:', dto.user_id);
       const existingCollaborator = await this.collaboratorRepo.findOne({ 
@@ -407,7 +407,7 @@ export class CollaboratorsService {
       }
     }
 
-    // 7. Validar que el usuario existe si se está actualizando
+    // 7. Validate that the user exists if updating
     if (dto.user_id !== undefined) {
       console.log('🔍 Validating user existence for ID:', dto.user_id);
       const user = await this.userRepo.findOne({ where: { id: dto.user_id } });
@@ -451,13 +451,13 @@ export class CollaboratorsService {
 
     console.log('✅ Collaborator updated successfully');
 
-    // 12. Obtener información del usuario para la respuesta
+    // 12. Get user information for the response
     const user = await this.userRepo.findOne({ where: { id: updatedCollaborator.user_id } });
     if (!user) {
       throw new NotFoundException(`User with ID ${updatedCollaborator.user_id} not found`);
     }
 
-    // 13. Retornar respuesta con información del merchant y user (sin fechas)
+    // 13. Return response with merchant and user information (without dates)
     const response: CollaboratorResponseDto = {
       id: updatedCollaborator.id,
       user_id: updatedCollaborator.user_id,
@@ -492,7 +492,7 @@ export class CollaboratorsService {
       throw new ForbiddenException('User must be associated with a merchant to delete collaborators');
     }
 
-    // 2. Validar que el ID es válido
+    // 2. Validate that the ID is valid
     if (!id || id <= 0) {
       console.log('❌ VALIDATION FAILED: Invalid collaborator ID');
       throw new BadRequestException('Invalid collaborator ID');
@@ -535,14 +535,14 @@ export class CollaboratorsService {
       status: collaborator.status
     });
 
-    // 5. Validar que el colaborador no esté ya eliminado
+    // 5. Validate that the collaborator is not already deleted
     if (collaborator.status === CollaboratorStatus.DELETED) {
       console.log('❌ VALIDATION FAILED: Collaborator is already deleted');
       throw new ConflictException('Collaborator is already deleted');
     }
 
-    // 6. Validar dependencias (aquí puedes agregar validaciones específicas)
-    // Por ejemplo, verificar si hay turnos activos, órdenes, etc.
+    // 6. Validate dependencies (here you can add specific validations)
+    // For example, check if there are active shifts, orders, etc.
     // const activeShifts = await this.shiftRepo.count({ where: { collaborator_id: id, status: 'active' } });
     // if (activeShifts > 0) {
     //   console.log('❌ VALIDATION FAILED: Collaborator has active shifts');
@@ -583,7 +583,7 @@ export class CollaboratorsService {
 
     console.log('✅ Collaborator soft deleted successfully');
 
-    // 10. Retornar respuesta con información del merchant y user (sin fechas)
+    // 10. Return response with merchant and user information (without dates)
     const response: CollaboratorResponseDto = {
       id: updatedCollaborator.id,
       user_id: updatedCollaborator.user_id,
