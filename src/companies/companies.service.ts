@@ -10,6 +10,7 @@ import {
   AllCompanyResponseDto,
 } from './dtos/company-response.dto';
 import { ErrorHandler } from '../common/utils/error-handler.util';
+import { ErrorMessage } from 'src/common/constants/error-messages';
 
 @Injectable()
 export class CompaniesService {
@@ -55,7 +56,7 @@ export class CompaniesService {
     });
 
     if (!company) {
-      ErrorHandler.companyNotFound();
+      ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
     }
 
     return {
@@ -80,7 +81,7 @@ export class CompaniesService {
     });
 
     if (!company) {
-      ErrorHandler.companyNotFound();
+      ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
     }
 
     try {
@@ -108,7 +109,7 @@ export class CompaniesService {
     });
 
     if (!company) {
-      ErrorHandler.companyNotFound();
+      ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
     }
 
     // We save the data before deleting

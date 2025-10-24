@@ -18,6 +18,7 @@ export enum ErrorMessage {
   FORBIDDEN = 'Access denied',
   INSUFFICIENT_PERMISSIONS = 'Insufficient permissions to perform this action',
   DIFFERENT_MERCHANT = 'You can only access resources from your own merchant',
+  CHANGED_MERCHANT = 'Merchant ID cannot be changed',
   NOT_OWNER = 'You can only modify your own resources',
 
   // 404 Not Found
@@ -25,12 +26,21 @@ export enum ErrorMessage {
   COMPANY_NOT_FOUND = 'Company not found',
   MERCHANT_NOT_FOUND = 'Merchant not found',
   RESOURCE_NOT_FOUND = 'Requested resource not found',
+  CATEGORY_NOT_FOUND = 'Category not found',
+  PARENT_NOT_FOUND = 'Parent not found',
+  PRODUCT_NOT_FOUND = 'Product not found',
+  VARIANT_NOT_FOUND = 'Variant not found',
+  MODIFIER_NOT_FOUND = 'Modifier not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',
   USERNAME_ALREADY_EXISTS = 'Username is already taken',
   COMPANY_NAME_EXISTS = 'Company name already exists',
   MERCHANT_NAME_EXISTS = 'Merchant name already exists',
+  CATEGORY_NAME_EXISTS = 'Category name already exists',
+  PRODUCT_NAME_EXISTS = 'Product name already exists',
+  VARIANT_NAME_EXISTS = 'Variant name already exists',
+  MODIFIER_NAME_EXISTS = 'Modifier name already exists',
   RUT_ALREADY_EXISTS = 'RUT is already registered',
   DUPLICATE_RESOURCE = 'Resource already exists',
 
