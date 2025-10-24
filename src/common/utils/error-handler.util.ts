@@ -81,6 +81,30 @@ export class ErrorHandler {
     throw new NotFoundException(message);
   }
 
+  static applicationNotFound(
+    message: string = ErrorMessage.APPPLICATION_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static merchantSubscriptionNotFound(
+    message: string = ErrorMessage.MERCHANT_SUBSCRIPTION_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static planApplicationNotFound(
+    message: string = ErrorMessage.PLAN_APPLICATION_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static subscriptionPlanNotFound(
+    message: string = ErrorMessage.SUBSCRIPTION_PLAN_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
   static resourceNotFound(resource: string, id?: number | string): never {
     const message = id
       ? `${resource} with ID ${id} not found`
