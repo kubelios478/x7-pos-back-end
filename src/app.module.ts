@@ -13,9 +13,9 @@ import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
-import { SuscriptionsModule } from './suscriptions/suscriptions.module';
-import { PlanAplicationsModule } from './suscriptions/plan-aplications/plan-aplications.module';
-import { AplicationsModule } from './suscriptions/aplications/aplications.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { PlanApplicationsModule } from './subscriptions/plan-applications/plan-applications.module';
+import { ApplicationsModule } from './subscriptions/applications/applications.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
 
 // Entities;
@@ -31,10 +31,10 @@ import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
-import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
-import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
-import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
-import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-aplications.entity';
+import { SubscriptionPlan } from './subscriptions/subscription-plan/entity/subscription-plan.entity';
+import { MerchantSubscription } from './subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
+import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
+import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
 
 @Module({
   imports: [
@@ -56,13 +56,13 @@ import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-apli
           Merchant,
           Customer,
           Table,
-          SuscriptionPlan,
+          SubscriptionPlan,
           Category,
           Product,
           Supplier,
-          MerchantSuscription,
-          AplicationEntity,
-          PlanAplication,
+          MerchantSubscription,
+          ApplicationEntity,
+          PlanApplication,
           Collaborator,
           Shift,
         ],
@@ -79,13 +79,13 @@ import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-apli
     MailModule,
     ProductsInventoryModule,
 
-    SuscriptionsModule,
+    SubscriptionsModule,
 
-    AplicationsModule,
+    ApplicationsModule,
     CollaboratorsModule,
     ShiftsModule,
 
-    PlanAplicationsModule,
+    PlanApplicationsModule,
   ],
 })
 export class AppModule {}
