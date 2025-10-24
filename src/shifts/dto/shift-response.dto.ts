@@ -1,5 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ShiftRole } from '../constants/shift-role.enum';
+import { ShiftStatus } from '../constants/shift-status.enum';
+import { SuccessResponse } from '../../common/dtos/success-response.dto';
+import { Shift } from '../entities/shift.entity';
+
+export class BasicMerchantInfoDto {
+  @ApiProperty({ example: 1, description: 'Merchant ID' })
+  id: number;
+
+  @ApiProperty({ example: 'Restaurant ABC', description: 'Merchant name' })
+  name: string;
+}
 
 export class ShiftResponseDto {
   @ApiProperty({ example: 1, description: 'Unique identifier of the Shift' })
@@ -28,15 +39,26 @@ export class ShiftResponseDto {
   role: ShiftRole;
 
   @ApiProperty({ 
-    example: '2024-01-15T10:30:00Z', 
-    description: 'Date when the shift was created' 
+    enum: ShiftStatus,
+    example: ShiftStatus.ACTIVE,
+    description: 'Current status of the shift' 
   })
-  createdAt: Date;
+  status: ShiftStatus;
 
   @ApiProperty({ 
-    example: '2024-01-15T10:30:00Z', 
-    description: 'Date when the shift was last updated' 
+    type: BasicMerchantInfoDto,
+    description: 'Basic merchant information' 
   })
-  updatedAt: Date;
+  merchant: BasicMerchantInfoDto;
+}
+
+export class OneShiftResponseDto extends SuccessResponse {
+  @ApiProperty({ type: ShiftResponseDto })
+  data: ShiftResponseDto;
+}
+
+export class AllShiftsResponseDto extends SuccessResponse {
+  @ApiProperty({ type: [ShiftResponseDto] })
+  data: ShiftResponseDto[];
 }
 

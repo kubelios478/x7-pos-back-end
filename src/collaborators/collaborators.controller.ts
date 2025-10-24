@@ -60,17 +60,135 @@ export class CollaboratorsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Create a new Collaborator' })
+  @ApiOperation({ 
+    summary: 'Create a new Collaborator',
+    description: 'Creates a new collaborator for the authenticated user\'s merchant. Only portal administrators and merchant administrators can create collaborators. The user must exist and not be already associated with another merchant.'
+  })
   @ApiCreatedResponse({
     description: 'Collaborator created successfully',
     type: CollaboratorResponseDto,
+    schema: {
+      example: {
+        id: 1,
+        user_id: 1,
+        merchant_id: 1,
+        name: 'Juan Pérez',
+        role: 'WAITER',
+        status: 'ACTIVO',
+        merchant: {
+          id: 1,
+          name: 'Restaurant ABC'
+        },
+        user: {
+          id: 1,
+          firstname: 'Juan',
+          lastname: 'Pérez'
+        }
+      }
+    }
   })
-  @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiForbiddenResponse({ description: 'Forbidden - You can only create collaborators for your own merchant' })
-  @ApiNotFoundResponse({ description: 'User or Merchant not found' })
-  @ApiConflictResponse({ description: 'User is already a collaborator of another merchant' })
-  @ApiBody({ type: CreateCollaboratorDto })
+  @ApiBadRequestResponse({ 
+    description: 'Invalid input data or validation errors',
+    schema: {
+      examples: {
+        invalidUserId: {
+          summary: 'Invalid user ID',
+          value: {
+            statusCode: 400,
+            message: 'user_id must be a positive number',
+            error: 'Bad Request'
+          }
+        },
+        invalidName: {
+          summary: 'Invalid name',
+          value: {
+            statusCode: 400,
+            message: 'name must be longer than or equal to 1 characters',
+            error: 'Bad Request'
+          }
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ 
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized'
+      }
+    }
+  })
+  @ApiForbiddenResponse({ 
+    description: 'Forbidden - You can only create collaborators for your own merchant',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'You can only create collaborators for your own merchant',
+        error: 'Forbidden'
+      }
+    }
+  })
+  @ApiNotFoundResponse({ 
+    description: 'User or Merchant not found',
+    schema: {
+      examples: {
+        userNotFound: {
+          summary: 'User not found',
+          value: {
+            statusCode: 404,
+            message: 'User with ID 999 not found',
+            error: 'Not Found'
+          }
+        },
+        merchantNotFound: {
+          summary: 'Merchant not found',
+          value: {
+            statusCode: 404,
+            message: 'Merchant with ID 999 not found',
+            error: 'Not Found'
+          }
+        }
+      }
+    }
+  })
+  @ApiConflictResponse({ 
+    description: 'User is already a collaborator of another merchant',
+    schema: {
+      example: {
+        statusCode: 409,
+        message: 'User is already a collaborator of another merchant',
+        error: 'Conflict'
+      }
+    }
+  })
+  @ApiBody({ 
+    type: CreateCollaboratorDto,
+    description: 'Collaborator creation data',
+    examples: {
+      example1: {
+        summary: 'Create waiter collaborator',
+        value: {
+          user_id: 1,
+          merchant_id: 1,
+          name: 'Juan Pérez',
+          role: 'WAITER',
+          status: 'ACTIVO'
+        }
+      },
+      example2: {
+        summary: 'Create cook collaborator',
+        value: {
+          user_id: 2,
+          merchant_id: 1,
+          name: 'María García',
+          role: 'COOK',
+          status: 'ACTIVO'
+        }
+      }
+    }
+  })
   async create(
     @Body() dto: CreateCollaboratorDto,
     @Request() req: any,
@@ -253,15 +371,134 @@ export class CollaboratorsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Update a Collaborator by ID' })
-  @ApiParam({ name: 'id', type: Number, description: 'Collaborator ID' })
-  @ApiOkResponse({ description: 'Collaborator updated successfully', type: CollaboratorResponseDto })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiForbiddenResponse({ description: 'Forbidden - You can only update collaborators from your own merchant' })
-  @ApiNotFoundResponse({ description: 'Collaborator, User or Merchant not found' })
-  @ApiBadRequestResponse({ description: 'Invalid input data or ID' })
-  @ApiConflictResponse({ description: 'User is already a collaborator of another merchant' })
-  @ApiBody({ type: UpdateCollaboratorDto })
+  @ApiOperation({ 
+    summary: 'Update a Collaborator by ID',
+    description: 'Updates an existing collaborator for the authenticated user\'s merchant. Only portal administrators and merchant administrators can update collaborators. All fields are optional.'
+  })
+  @ApiParam({ 
+    name: 'id', 
+    type: Number, 
+    description: 'Collaborator ID to update',
+    example: 1
+  })
+  @ApiOkResponse({ 
+    description: 'Collaborator updated successfully', 
+    type: CollaboratorResponseDto,
+    schema: {
+      example: {
+        id: 1,
+        user_id: 1,
+        merchant_id: 1,
+        name: 'Juan Pérez Updated',
+        role: 'COOK',
+        status: 'ACTIVO',
+        merchant: {
+          id: 1,
+          name: 'Restaurant ABC'
+        },
+        user: {
+          id: 1,
+          firstname: 'Juan',
+          lastname: 'Pérez'
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ 
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized'
+      }
+    }
+  })
+  @ApiForbiddenResponse({ 
+    description: 'Forbidden - You can only update collaborators from your own merchant',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'You can only update collaborators from your own merchant',
+        error: 'Forbidden'
+      }
+    }
+  })
+  @ApiNotFoundResponse({ 
+    description: 'Collaborator, User or Merchant not found',
+    schema: {
+      examples: {
+        collaboratorNotFound: {
+          summary: 'Collaborator not found',
+          value: {
+            statusCode: 404,
+            message: 'Collaborator with ID 999 not found',
+            error: 'Not Found'
+          }
+        },
+        userNotFound: {
+          summary: 'User not found',
+          value: {
+            statusCode: 404,
+            message: 'User with ID 999 not found',
+            error: 'Not Found'
+          }
+        }
+      }
+    }
+  })
+  @ApiBadRequestResponse({ 
+    description: 'Invalid input data or ID',
+    schema: {
+      examples: {
+        invalidId: {
+          summary: 'Invalid ID',
+          value: {
+            statusCode: 400,
+            message: 'Invalid collaborator ID',
+            error: 'Bad Request'
+          }
+        },
+        invalidData: {
+          summary: 'Invalid input data',
+          value: {
+            statusCode: 400,
+            message: 'name must be longer than or equal to 1 characters',
+            error: 'Bad Request'
+          }
+        }
+      }
+    }
+  })
+  @ApiConflictResponse({ 
+    description: 'User is already a collaborator of another merchant',
+    schema: {
+      example: {
+        statusCode: 409,
+        message: 'User is already a collaborator of another merchant',
+        error: 'Conflict'
+      }
+    }
+  })
+  @ApiBody({ 
+    type: UpdateCollaboratorDto,
+    description: 'Collaborator update data (all fields optional)',
+    examples: {
+      example1: {
+        summary: 'Update name and role',
+        value: {
+          name: 'Juan Pérez Updated',
+          role: 'COOK'
+        }
+      },
+      example2: {
+        summary: 'Update status only',
+        value: {
+          status: 'VACACIONES'
+        }
+      }
+    }
+  })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCollaboratorDto,
