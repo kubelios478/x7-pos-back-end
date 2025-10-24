@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { ProductResponseDto } from './dto/product-response.dto';
+import {
+  AllProductsResponse,
+  OneProductResponse,
+  ProductResponseDto,
+} from './dto/product-response.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
@@ -15,6 +19,8 @@ import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { CategoryLittleResponseDto } from '../category/dto/category-response.dto';
+import { ErrorHandler } from 'src/common/utils/error-handler.util';
+import { ErrorMessage } from 'src/common/constants/error-messages';
 
 @Injectable()
 export class ProductsService {
@@ -31,7 +37,7 @@ export class ProductsService {
   async create(
     user: AuthenticatedUser,
     createProductDto: CreateProductDto,
-  ): Promise<ProductResponseDto> {
+  ): Promise<OneProductResponse> {
     const { name, sku, basePrice, categoryId, merchantId, supplierId } =
       createProductDto;
 
@@ -92,7 +98,7 @@ export class ProductsService {
     if (existingButIsNotActive) {
       existingButIsNotActive.isActive = true;
       await this.productRepository.save(existingButIsNotActive);
-      return this.findOne(existingButIsNotActive.id);
+      return this.findOne1(existingButIsNotActive.id, undefined, 'Created');
     } else {
       const newProduct = this.productRepository.create({
         name,
@@ -105,59 +111,75 @@ export class ProductsService {
 
       const savedProduct = await this.productRepository.save(newProduct);
 
-      return this.findOne(savedProduct.id);
+      return this.findOne1(savedProduct.id, undefined, 'Created');
     }
   }
 
-  async findAll(merchantId: number): Promise<ProductResponseDto[]> {
+  async findAll(merchantId: number): Promise<AllProductsResponse> {
     const products = await this.productRepository.find({
       where: { merchantId, isActive: true },
       relations: ['merchant', 'category', 'category.parent', 'supplier'],
     });
 
-    return products.map((product) => {
-      const result: ProductResponseDto = {
-        id: product.id,
-        name: product.name,
-        sku: product.sku,
-        basePrice: product.basePrice,
-        merchant: product.merchant
-          ? {
-              id: product.merchant.id,
-              name: product.merchant.name,
-            }
-          : null,
-        category: product.category
-          ? {
-              id: product.category.id,
-              name: product.category.name,
-              parent: product.category.parent
-                ? ({
-                    id: product.category.parent.id,
-                    name: product.category.parent.name,
-                  } as CategoryLittleResponseDto)
-                : null,
-            }
-          : null,
-        supplier: product.supplier
-          ? {
-              id: product.supplier.id,
-              name: product.supplier.name,
-              contactInfo: product.supplier.contactInfo,
-            }
-          : null,
-      };
-      //console.log(result.supplier);
-      return result;
-    });
+    const productsResponseDtos: ProductResponseDto[] = await Promise.all(
+      products.map((product) => {
+        const result: ProductResponseDto = {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          basePrice: product.basePrice,
+          merchant: product.merchant
+            ? {
+                id: product.merchant.id,
+                name: product.merchant.name,
+              }
+            : null,
+          category: product.category
+            ? {
+                id: product.category.id,
+                name: product.category.name,
+                parent: product.category.parent
+                  ? ({
+                      id: product.category.parent.id,
+                      name: product.category.parent.name,
+                    } as CategoryLittleResponseDto)
+                  : null,
+              }
+            : null,
+          supplier: product.supplier
+            ? {
+                id: product.supplier.id,
+                name: product.supplier.name,
+                contactInfo: product.supplier.contactInfo,
+              }
+            : null,
+        };
+        return result;
+      }),
+    );
+    return {
+      statusCode: 200,
+      message: 'Products retrieved successfully',
+      data: productsResponseDtos,
+    };
   }
 
-  async findOne(id: number, merchantId?: number): Promise<ProductResponseDto> {
-    const whereCondition: { id: number; merchantId?: number; isActive: true } =
-      {
-        id,
-        isActive: true,
-      };
+  async findOne1(
+    id: number,
+    merchantId?: number,
+    createdUpdateDelete?: string,
+  ): Promise<OneProductResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Product ID id incorrect');
+    }
+    const whereCondition: {
+      id: number;
+      merchantId?: number;
+      isActive: boolean;
+    } = {
+      id,
+      isActive: createdUpdateDelete === 'Deleted' ? false : true,
+    };
     if (merchantId !== undefined) {
       whereCondition.merchantId = merchantId;
     }
@@ -166,9 +188,8 @@ export class ProductsService {
       where: whereCondition,
       relations: ['merchant', 'category', 'category.parent', 'supplier'],
     });
-    if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
-    }
+
+    if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
 
     const result: ProductResponseDto = {
       id: product.id,
@@ -202,14 +223,46 @@ export class ProductsService {
         : null,
     };
 
-    return result;
+    let response: OneProductResponse;
+
+    switch (createdUpdateDelete) {
+      case 'Created':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      case 'Updated':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      case 'Deleted':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      default:
+        response = {
+          statusCode: 200,
+          message: 'Category retrieved successfully',
+          data: result,
+        };
+        break;
+    }
+    return response;
   }
 
   async update(
     user: AuthenticatedUser,
     id: number,
     updateProductDto: UpdateProductDto,
-  ): Promise<ProductResponseDto> {
+  ): Promise<OneProductResponse> {
     const { name, merchantId, categoryId, supplierId, sku, ...updateData } =
       updateProductDto;
 
@@ -291,7 +344,7 @@ export class ProductsService {
     });
     await this.productRepository.save(product);
 
-    return this.findOne(id);
+    return this.findOne1(id, undefined, 'Updated');
   }
 
   async remove(
@@ -319,5 +372,58 @@ export class ProductsService {
     return {
       message: `Product with ID ${id} was successfully deleted`,
     };
+  }
+
+  async findOne(id: number, merchantId?: number): Promise<ProductResponseDto> {
+    const whereCondition: { id: number; merchantId?: number; isActive: true } =
+      {
+        id,
+        isActive: true,
+      };
+    if (merchantId !== undefined) {
+      whereCondition.merchantId = merchantId;
+    }
+
+    const product = await this.productRepository.findOne({
+      where: whereCondition,
+      relations: ['merchant', 'category', 'category.parent', 'supplier'],
+    });
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+
+    const result: ProductResponseDto = {
+      id: product.id,
+      name: product.name,
+      sku: product.sku,
+      basePrice: product.basePrice,
+      merchant: product.merchant
+        ? {
+            id: product.merchant.id,
+            name: product.merchant.name,
+          }
+        : null,
+      category: product.category
+        ? {
+            id: product.category.id,
+            name: product.category.name,
+            parent: product.category.parent
+              ? ({
+                  id: product.category.parent.id,
+                  name: product.category.parent.name,
+                } as CategoryLittleResponseDto)
+              : null,
+          }
+        : null,
+      supplier: product.supplier
+        ? {
+            id: product.supplier.id,
+            name: product.supplier.name,
+            contactInfo: product.supplier.contactInfo,
+          }
+        : null,
+    };
+
+    return result;
   }
 }

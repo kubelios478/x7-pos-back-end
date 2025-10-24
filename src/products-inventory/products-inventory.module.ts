@@ -10,12 +10,13 @@ import { ModifiersModule } from './modifiers/modifiers.module';
 import { Category } from './category/entities/category.entity';
 import { Variant } from './variants/entities/variant.entity';
 import { Modifier } from './modifiers/entities/modifier.entity';
+import { Product } from './products/entities/product.entity';
 
 @Module({
   controllers: [ProductsInventoryController],
   providers: [ProductsInventoryService],
   imports: [
-    TypeOrmModule.forFeature([Category, Variant, Modifier]),
+    TypeOrmModule.forFeature([Category, Product, Variant, Modifier]),
     CategoryModule,
     ProductsModule,
     SuppliersModule,
