@@ -25,7 +25,7 @@ export enum ErrorMessage {
   COMPANY_NOT_FOUND = 'Company not found',
   MERCHANT_NOT_FOUND = 'Merchant not found',
   RESOURCE_NOT_FOUND = 'Requested resource not found',
-  APPPLICATION_NOT_FOUND = 'Application not found',
+  APPLICATION_NOT_FOUND = 'Application not found',
   MERCHANT_SUBSCRIPTION_NOT_FOUND = 'Merchant subscription not found',
   PLAN_APPLICATION_NOT_FOUND = 'Plan Application not found',
   SUBSCRIPTION_PLAN_NOT_FOUND = 'Subscription Plan not found',

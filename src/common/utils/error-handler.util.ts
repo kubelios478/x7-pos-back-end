@@ -82,7 +82,7 @@ export class ErrorHandler {
   }
 
   static applicationNotFound(
-    message: string = ErrorMessage.APPPLICATION_NOT_FOUND,
+    message: string = ErrorMessage.APPLICATION_NOT_FOUND,
   ): never {
     throw new NotFoundException(message);
   }

@@ -11,12 +11,15 @@ import { MerchantsModule } from './merchants/merchants.module';
 import { CustomersModule } from './customers/customers.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
-import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
-import { SubscriptionsModule } from './subscriptions/subscriptions.module';
-import { PlanApplicationsModule } from './subscriptions/plan-applications/plan-applications.module';
-import { ApplicationsModule } from './subscriptions/applications/applications.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
+import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.module';
+import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+// import { MerchantSubscriptionModule } from './subscriptions/merchant-subscriptions/merchant-subscription.module';
+// import { ApplicationsModule } from './subscriptions/applications/applications.module';
+// import { PlanApplicationsModule } from './subscriptions/plan-applications/plan-applications.module';
+import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
@@ -31,16 +34,10 @@ import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
-import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.module';
 import { ShiftAssignment } from './shift-assignments/entities/shift-assignment.entity';
-import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
 import { TableAssignment } from './table-assignments/entities/table-assignment.entity';
-import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
 import { Variant } from './products-inventory/variants/entities/variant.entity';
 import { Modifier } from './products-inventory/modifiers/entities/modifier.entity';
-import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
-import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
-import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-aplications.entity';
 import { SubscriptionPlan } from './subscriptions/subscription-plan/entity/subscription-plan.entity';
 import { MerchantSubscription } from './subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
@@ -72,14 +69,13 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
           Shift,
           ShiftAssignment,
           TableAssignment,
-          MerchSub,
+          MerchantSubscription,
+          ApplicationEntity,
+          PlanApplication,
           Product,
           Supplier,
           Variant,
           Modifier,
-          MerchantSubscription,
-          ApplicationEntity,
-          PlanApplication,
           Collaborator,
           Shift,
         ],
@@ -88,31 +84,24 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
     }),
     // Modules
     AuthModule,
+    MailModule,
     CompaniesModule,
     MerchantsModule,
     UsersModule,
     CustomersModule,
+
     TablesModule,
-    MailModule,
-    ProductsInventoryModule,
-    SuscriptionsModule,
-    AplicationsModule,
     CollaboratorsModule,
     ShiftsModule,
+    ShiftAssignmentsModule,
+    TableAssignmentsModule,
+
+    ProductsInventoryModule,
 
     SubscriptionsModule,
-
-    ApplicationsModule,
-    CollaboratorsModule,
-    ShiftsModule,
-
-    MerchSubModule,
-
-    ShiftAssignmentsModule,
-
-    TableAssignmentsModule,
-    PlanAplicationsModule,
-    PlanApplicationsModule,
+    // MerchantSubscriptionModule,
+    // ApplicationsModule,
+    // PlanApplicationsModule,
   ],
 })
 export class AppModule {}
