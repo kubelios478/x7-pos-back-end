@@ -15,7 +15,7 @@ export class Modifier {
   id: number;
 
   @ApiProperty({ example: 'Size', description: 'Modifier name' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @ApiProperty({ example: 10.99, description: 'Modifier price' })

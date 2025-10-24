@@ -15,7 +15,7 @@ export class Variant {
   id: number;
 
   @ApiProperty({ example: 'Color', description: 'Variant name' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @ApiProperty({ example: 10.99, description: 'Variant price' })
@@ -23,7 +23,7 @@ export class Variant {
   price: number;
 
   @ApiProperty({ example: '123456', description: 'Variant SKU' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   sku: string;
 
   @ApiProperty({

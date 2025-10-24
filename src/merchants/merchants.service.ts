@@ -11,6 +11,7 @@ import {
   AllMerchantsResponseDto,
 } from './dtos/merchant-response.dto';
 import { ErrorHandler } from '../common/utils/error-handler.util';
+import { ErrorMessage } from 'src/common/constants/error-messages';
 
 @Injectable()
 export class MerchantsService {
@@ -109,7 +110,7 @@ export class MerchantsService {
     });
 
     if (!merchant) {
-      ErrorHandler.merchantNotFound();
+      ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
     }
 
     return {
@@ -144,7 +145,7 @@ export class MerchantsService {
       });
 
       if (!merchant) {
-        ErrorHandler.merchantNotFound();
+        ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
       }
 
       Object.assign(merchant, dto);
@@ -172,7 +173,7 @@ export class MerchantsService {
       });
 
       if (!merchant) {
-        ErrorHandler.merchantNotFound();
+        ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
       }
 
       const deletedMerchant = { ...merchant };
