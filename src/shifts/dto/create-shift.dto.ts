@@ -1,6 +1,7 @@
 import { IsNumber, IsNotEmpty, IsDateString, IsEnum, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ShiftRole } from '../constants/shift-role.enum';
+import { ShiftStatus } from '../constants/shift-status.enum';
 
 export class CreateShiftDto {
   @ApiProperty({ example: 1, description: 'Merchant ID associated with the shift' })
@@ -32,4 +33,13 @@ export class CreateShiftDto {
   @IsEnum(ShiftRole)
   @IsOptional()
   role?: ShiftRole;
+
+  @ApiProperty({ 
+    enum: ShiftStatus,
+    example: ShiftStatus.ACTIVE,
+    description: 'Status of the shift' 
+  })
+  @IsEnum(ShiftStatus)
+  @IsOptional()
+  status?: ShiftStatus;
 }

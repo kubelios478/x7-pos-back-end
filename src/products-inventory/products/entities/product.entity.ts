@@ -1,12 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Category } from 'src/products-inventory/category/entities/category.entity';
+import { Modifier } from 'src/products-inventory/modifiers/entities/modifier.entity';
 import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
+import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
@@ -72,7 +75,25 @@ export class Product {
   @JoinColumn({ name: 'supplierId' })
   supplier: Supplier;
 
-  @ApiProperty({ example: true, description: 'Product active status' })
+  //@ApiProperty({ example: true, description: 'Product active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  /* @ApiProperty({
+    type: () => Variant,
+    isArray: true,
+    required: false,
+    description: 'List of suppliers associated with the product',
+  }) */
+  @OneToMany(() => Variant, (variant) => variant.product)
+  variants: Variant[];
+
+  /* @ApiProperty({
+    type: () => Modifier,
+    isArray: true,
+    required: false,
+    description: 'List of modifiers associated with the product',
+  }) */
+  @OneToMany(() => Modifier, (modifier) => modifier.product)
+  modifiers: Modifier[];
 }

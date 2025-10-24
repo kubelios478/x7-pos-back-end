@@ -14,7 +14,7 @@ import { Category } from '../category/entities/category.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Supplier } from '../suppliers/entities/supplier.entity';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import { CategoryLittleResponseDto } from '../category/dto/category-little-response.dto';
+import { CategoryLittleResponseDto } from '../category/dto/category-response.dto';
 
 @Injectable()
 export class ProductsService {
@@ -68,31 +68,45 @@ export class ProductsService {
     }
 
     const existingProduct = await this.productRepository.findOne({
-      where: [
-        { sku, merchantId },
-        { sku, categoryId },
-      ],
+      where: [{ name: name, isActive: true }],
     });
 
     if (existingProduct) {
       throw new ConflictException(
-        `Product with SKU "${sku}" already exists for this category.`,
+        `Product with name "${name}" already exists.`,
       );
     }
 
-    const newProduct = this.productRepository.create({
-      name,
-      sku,
-      basePrice,
-      merchantId,
-      categoryId,
-      supplierId,
+    const existingSku = await this.productRepository.findOne({
+      where: [{ sku: sku, isActive: true }],
     });
 
-    const savedProduct = await this.productRepository.save(newProduct);
+    if (existingSku) {
+      throw new ConflictException(`Product with sku "${sku}" already exists.`);
+    }
 
-    console.log(createProductDto);
-    return this.findOne(savedProduct.id);
+    const existingButIsNotActive = await this.productRepository.findOne({
+      where: [{ name: name, isActive: false }],
+    });
+
+    if (existingButIsNotActive) {
+      existingButIsNotActive.isActive = true;
+      await this.productRepository.save(existingButIsNotActive);
+      return this.findOne(existingButIsNotActive.id);
+    } else {
+      const newProduct = this.productRepository.create({
+        name,
+        sku,
+        basePrice,
+        merchantId,
+        categoryId,
+        supplierId,
+      });
+
+      const savedProduct = await this.productRepository.save(newProduct);
+
+      return this.findOne(savedProduct.id);
+    }
   }
 
   async findAll(merchantId: number): Promise<ProductResponseDto[]> {
@@ -196,7 +210,7 @@ export class ProductsService {
     id: number,
     updateProductDto: UpdateProductDto,
   ): Promise<ProductResponseDto> {
-    const { merchantId, categoryId, supplierId, sku, ...updateData } =
+    const { name, merchantId, categoryId, supplierId, sku, ...updateData } =
       updateProductDto;
 
     const product = await this.productRepository.findOneBy({
@@ -244,21 +258,37 @@ export class ProductsService {
       });
     }
 
-    if (sku && sku !== product.sku) {
-      const existingProduct = await this.productRepository.findOne({
-        where: [
-          { sku, merchantId: product.merchantId },
-          { sku, categoryId: product.categoryId },
-        ],
+    if (name && name !== product.name) {
+      const existingProductByName = await this.productRepository.findOne({
+        where: { name },
       });
-      if (existingProduct && existingProduct.id !== id) {
+
+      if (existingProductByName && existingProductByName.id !== id) {
         throw new ConflictException(
-          `Product with SKU "${sku}" already exists for this merchant or category.`,
+          `Product with name "${name}" already exists.`,
         );
       }
     }
 
-    Object.assign(product, { ...updateData, categoryId, supplierId, sku });
+    if (sku && sku !== product.sku) {
+      const existingSku = await this.productRepository.findOne({
+        where: { sku },
+      });
+
+      if (existingSku && existingSku.id !== id) {
+        throw new ConflictException(
+          `Product with SKU "${sku}" already exists.`,
+        );
+      }
+    }
+
+    Object.assign(product, {
+      ...updateData,
+      name,
+      categoryId,
+      supplierId,
+      sku,
+    });
     await this.productRepository.save(product);
 
     return this.findOne(id);
