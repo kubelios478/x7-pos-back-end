@@ -61,7 +61,7 @@ export class CategoryService {
       if (existingButIsNotActive) {
         existingButIsNotActive.isActive = true;
         await this.categoryRepo.save(existingButIsNotActive);
-        return this.findOne(existingButIsNotActive.id, undefined, 'created');
+        return this.findOne(existingButIsNotActive.id, undefined, 'Created');
       } else {
         const newCategory = this.categoryRepo.create({
           name,
@@ -72,8 +72,8 @@ export class CategoryService {
         return this.findOne(savedCategory.id, undefined, 'Created');
       }
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
+      console.log(error);
     }
   }
 
@@ -119,11 +119,14 @@ export class CategoryService {
       ErrorHandler.invalidId('Category ID id incorrect');
     }
 
-    const whereCondition: { id: number; merchantId?: number; isActive: true } =
-      {
-        id,
-        isActive: true, // Filter by isActive
-      };
+    const whereCondition: {
+      id: number;
+      merchantId?: number;
+      isActive: boolean;
+    } = {
+      id,
+      isActive: createdUpdateDelete === 'Deleted' ? false : true,
+    };
     if (merchantId !== undefined) {
       whereCondition.merchantId = merchantId;
     }
@@ -134,7 +137,7 @@ export class CategoryService {
     });
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
-    const result: CategoryResponseDto = {
+    const dataForResponse: CategoryResponseDto = {
       id: category.id,
       name: category.name,
       merchant: category.merchant
@@ -145,37 +148,42 @@ export class CategoryService {
         : null,
     };
     if (category.parentId) {
-      result.parents =
+      dataForResponse.parents =
         await this.productsInventoryService.findParentCategories(id);
     }
 
     let response: OneCategoryResponse;
-    if (createdUpdateDelete === 'Created') {
-      response = {
-        statusCode: 201,
-        message: `Category ${createdUpdateDelete} successfully`,
-        data: result,
-      };
-    } else if (createdUpdateDelete === 'Updated') {
-      response = {
-        statusCode: 201,
-        message: `Category ${createdUpdateDelete} successfully`,
-        data: result,
-      };
-    } else if (createdUpdateDelete === 'Deleted') {
-      response = {
-        statusCode: 201,
-        message: `Category ${createdUpdateDelete} successfully`,
-        data: result,
-      };
-    } else {
-      response = {
-        statusCode: 200,
-        message: 'Category retrieved successfully',
-        data: result,
-      };
-    }
 
+    switch (createdUpdateDelete) {
+      case 'Created':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: dataForResponse,
+        };
+        break;
+      case 'Updated':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: dataForResponse,
+        };
+        break;
+      case 'Deleted':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: dataForResponse,
+        };
+        break;
+      default:
+        response = {
+          statusCode: 200,
+          message: 'Category retrieved successfully',
+          data: dataForResponse,
+        };
+        break;
+    }
     return response;
   }
 
@@ -196,30 +204,33 @@ export class CategoryService {
     )
       ErrorHandler.changedMerchant();
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { merchantId, ...updateData } = updateCategoryDto;
-    const { name, parentId } = updateData;
+    const { name, parentId, ...restOfUpdateData } = updateCategoryDto;
 
-    if (name && name !== category.name) {
+    if (name !== undefined && name !== category.name) {
       const existingCategory = await this.categoryRepo.findOne({
         where: { name, merchantId: category.merchantId, isActive: true },
       });
       if (existingCategory)
         ErrorHandler.exists(ErrorMessage.CATEGORY_NAME_EXISTS);
-
-      if (parentId) {
-        const parentCategory = await this.categoryRepo.findOneBy({
-          id: parentId,
-          isActive: true,
-        });
-        if (!parentCategory)
-          ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
-      }
-
-      Object.assign(category, updateData);
-      await this.categoryRepo.save(category);
     }
-    return this.findOne(id, undefined, 'Updated');
+
+    if (parentId !== undefined) {
+      const parentCategory = await this.categoryRepo.findOneBy({
+        id: parentId,
+        isActive: true,
+      });
+      if (!parentCategory) ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
+    }
+
+    Object.assign(category, { name, parentId, ...restOfUpdateData });
+
+    try {
+      await this.categoryRepo.save(category);
+      return this.findOne(id, undefined, 'Updated');
+    } catch (error) {
+      console.log(error);
+      ErrorHandler.handleDatabaseError(error);
+    }
   }
 
   async remove(
@@ -231,29 +242,33 @@ export class CategoryService {
       where: { id, isActive: true }, // Ensure the category is active
       relations: ['merchant', 'parent'],
     });
-
+    console.log(category);
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
     if (user.merchant.id !== category.merchantId) {
       ErrorHandler.differentMerchant();
     }
 
-    const hideRecursive = async (categoryId: number): Promise<void> => {
-      const subCategories = await this.categoryRepo.find({
-        where: { parentId: categoryId, isActive: true }, // Only hide active subcategories
-      });
+    try {
+      const hideRecursive = async (categoryId: number): Promise<void> => {
+        const subCategories = await this.categoryRepo.find({
+          where: { parentId: categoryId, isActive: true }, // Only hide active subcategories
+        });
 
-      for (const sub of subCategories) {
-        await hideRecursive(sub.id);
-        sub.isActive = false;
-        await this.categoryRepo.save(sub);
-      }
-    };
+        for (const sub of subCategories) {
+          await hideRecursive(sub.id);
+          sub.isActive = false;
+          await this.categoryRepo.save(sub);
+        }
+      };
 
-    await hideRecursive(category.id);
-    category.isActive = false;
-    await this.categoryRepo.save(category);
-
-    return this.findOne(id, undefined, 'Deleted');
+      await hideRecursive(category.id);
+      category.isActive = false;
+      await this.categoryRepo.save(category);
+      return this.findOne(id, undefined, 'Deleted');
+    } catch (error) {
+      console.log(error);
+      ErrorHandler.handleDatabaseError(error);
+    }
   }
 }
