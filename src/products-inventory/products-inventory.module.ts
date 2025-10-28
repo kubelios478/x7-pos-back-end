@@ -11,9 +11,12 @@ import { Category } from './category/entities/category.entity';
 import { Variant } from './variants/entities/variant.entity';
 import { Modifier } from './modifiers/entities/modifier.entity';
 import { Product } from './products/entities/product.entity';
+import { StockController } from './stock/stock.controller';
+import { StocksController } from './stocks/stocks.controller';
+import { StocksModule } from './stocks/stocks.module';
 
 @Module({
-  controllers: [ProductsInventoryController],
+  controllers: [ProductsInventoryController, StockController, StocksController],
   providers: [ProductsInventoryService],
   imports: [
     TypeOrmModule.forFeature([Category, Product, Variant, Modifier]),
@@ -22,6 +25,7 @@ import { Product } from './products/entities/product.entity';
     SuppliersModule,
     VariantsModule,
     ModifiersModule,
+    StocksModule,
   ],
   exports: [ProductsInventoryService, ProductsModule],
 })
