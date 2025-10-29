@@ -6,6 +6,6 @@ import { MovementsModule } from './movements/movements.module';
 
 @Module({
   providers: [StocksService],
-  imports: [LocationsModule, ItemsModule, MovementsModule]
+  imports: [LocationsModule, ItemsModule, MovementsModule],
 })
 export class StocksModule {}

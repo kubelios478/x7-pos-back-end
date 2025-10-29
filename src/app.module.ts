@@ -29,6 +29,7 @@ import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
 import { Collaborator } from './collaborators/entities/collaborator.entity';
+import { Location } from './products-inventory/stocks/locations/entities/location.entity';
 
 import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
@@ -76,6 +77,7 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
           Supplier,
           Variant,
           Modifier,
+          Location,
           Collaborator,
           Shift,
         ],
