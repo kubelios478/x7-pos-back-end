@@ -1,6 +1,6 @@
 //src/subscriptions/applications/dto/create-application.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsIn } from 'class-validator';
 
 export class CreateApplicationDto {
   @ApiProperty({ example: 'My Application' })
@@ -18,8 +18,9 @@ export class CreateApplicationDto {
   @IsNotEmpty()
   category: string;
 
-  @ApiProperty({ example: 'active' })
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
   @IsString()
   @IsNotEmpty()
+  @IsIn(['active', 'inactive'])
   status: string;
 }

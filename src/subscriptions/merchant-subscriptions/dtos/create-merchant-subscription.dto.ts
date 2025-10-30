@@ -1,12 +1,14 @@
 //src/subscriptions/merchant-subscriptions/dtos/create-merchant-subscriptions.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsDateString,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsNumber,
+  IsDate,
+  IsIn,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateMerchantSubscriptionDto {
   @ApiProperty({ example: 1, description: 'ID of Merchant Associated' })
@@ -15,7 +17,7 @@ export class CreateMerchantSubscriptionDto {
   merchantId: number;
 
   @ApiProperty({
-    example: 2,
+    example: 1,
     description: 'ID of Subscription Plan Associated',
   })
   @IsNumber()
@@ -26,23 +28,23 @@ export class CreateMerchantSubscriptionDto {
     example: '2025-10-07',
     description: 'Subscription Start Date',
   })
-  @IsDateString()
-  @IsNotEmpty()
+  @Type(() => Date)
+  @IsDate()
   startDate: Date;
 
-  @ApiProperty({ example: '2026-10-07', required: false })
-  @IsDateString()
-  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
   endDate: Date;
 
-  @ApiProperty({ example: '2025-11-07', required: false })
-  @IsDateString()
+  @Type(() => Date)
+  @IsDate()
   @IsOptional()
   renewalDate?: Date;
 
-  @ApiProperty({ example: 'active', description: 'Subscription State' })
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
   @IsString()
   @IsNotEmpty()
+  @IsIn(['active', 'inactive'])
   status: string;
 
   @ApiProperty({

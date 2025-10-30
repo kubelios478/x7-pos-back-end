@@ -5,6 +5,7 @@ import { SubscriptionPlanModule } from './subscription-plan/subscription-plan.mo
 import { MerchantSubscriptionModule } from './merchant-subscriptions/merchant-subscription.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { PlanApplicationsModule } from './plan-applications/plan-applications.module';
+import { SubscriptionApplicationModule } from './subscription-application/subscription-application.module';
 
 @Module({
   controllers: [SubscriptionsController],
@@ -15,6 +16,7 @@ import { PlanApplicationsModule } from './plan-applications/plan-applications.mo
     MerchantSubscriptionModule,
     ApplicationsModule,
     PlanApplicationsModule,
+    SubscriptionApplicationModule,
   ],
 })
 export class SubscriptionsModule {}
