@@ -1,4 +1,4 @@
-//src/sub-plan/sub-plan.controller.ts
+// src/subscriptions/subscription-plan/subscription-plan.controller.ts
 import {
   Controller,
   Post,
@@ -30,6 +30,8 @@ import {
   ApiParam,
   ApiNotFoundResponse,
   ApiConflictResponse,
+  ApiUnauthorizedResponse,
+  ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
@@ -44,42 +46,47 @@ export class SubscriptionPlanController {
   constructor(
     private readonly subscriptionPlanService: SubscriptionPlanService,
   ) {}
-
-  @ApiOperation({ summary: 'Create a new Subscription Plan' })
+  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PORTAL_ADMIN)
+  @Scopes(Scope.ADMIN_PORTAL)
+  @ApiOperation({
+    summary: 'Create a new Subscription Plan',
+    description: 'Endpoint for creating a new Subscription Plan in the system.',
+  })
+  @ApiBody({
+    type: CreateSubscriptionPlanDto,
+    description: 'Require Data for a new Subscription Plan',
+  })
   @ApiCreatedResponse({
     description: 'The Subscription Plan has been successfully created',
     type: SubscriptionPlan,
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: [
+          'name must be a string',
+          'description must be a string',
+          'price must be a number conforming to the specified constraints',
+          'billingCycle must be a string',
+          'status must be a string',
+        ],
+        error: 'Bad Request',
+      },
+    },
   })
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.PORTAL_ADMIN)
-  @Scopes(Scope.ADMIN_PORTAL)
-  @ApiOperation({ summary: 'Create a new Subscription Plan' })
-  @ApiCreatedResponse({
-    description: 'The Subscription Plan has been successfully created',
-    type: SubscriptionPlan,
-  })
-  @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiConflictResponse({
-    description: 'Subscription Plan with this name already exists',
-  })
-  @ApiForbiddenResponse({ description: 'Forbidden. Insufficient role.' })
-  @ApiBody({ type: CreateSubscriptionPlanDto })
-  @Post()
-  async create(
-    @Body() dto: CreateSubscriptionPlanDto,
-  ): Promise<OneSubscriptionPlanResponseDto> {
-    return this.subscriptionPlanService.create(dto);
-  }
-  @Get()
-  @ApiOperation({
-    summary: 'Get all Subscription Plans',
-  })
-  @ApiOkResponse({
-    description: 'List of Subscription Plans',
-    type: [OneSubscriptionPlanResponseDto],
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Authentication required',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
   })
   @ApiForbiddenResponse({
     description: 'Forbidden. Insufficient role.',
@@ -91,22 +98,91 @@ export class SubscriptionPlanController {
       },
     },
   })
-  @ApiBadRequestResponse({
-    description: 'Invalid request parameters',
+  @ApiConflictResponse({
+    description: 'Subscription Plan with this name already exists',
     schema: {
       example: {
-        statusCode: 400,
-        message: [
-          'page must be a positive number',
-          'limit must be a positive number',
-        ],
-        error: 'Bad Request',
+        statusCode: 409,
+        message: 'Subscription Plan with this name already exists',
+        error: 'Conflict',
       },
     },
   })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
+  async create(
+    @Body() dto: CreateSubscriptionPlanDto,
+  ): Promise<OneSubscriptionPlanResponseDto> {
+    return this.subscriptionPlanService.create(dto);
+  }
+  @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(Scope.ADMIN_PORTAL)
+  @ApiOperation({
+    summary: 'Get all Subscription Plans',
+  })
+  @ApiOkResponse({
+    description: 'List of all Subscription Plans',
+    schema: {
+      example: [
+        {
+          id: 1,
+          name: 'Basic Plan',
+          description: 'Acceso limitado',
+          price: 9.99,
+          billingCycle: 'monthly',
+          status: 'active',
+        },
+        {
+          id: 2,
+          name: 'Pro Plan',
+          description: 'Acceso completo',
+          price: 29.99,
+          billingCycle: 'monthly',
+          status: 'active',
+        },
+      ],
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Authentication required',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden. Insufficient permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
   async findAll(): Promise<AllSubscriptionPlanResponseDto> {
     return this.subscriptionPlanService.findAll();
   }
@@ -122,8 +198,7 @@ export class SubscriptionPlanController {
     example: 1,
   })
   @ApiOkResponse({
-    description: 'Subscription Plan found',
-    type: AllSubscriptionPlanResponseDto,
+    description: 'Subscription Plan retrieved successfully',
     schema: {
       example: {
         id: 1,
@@ -145,13 +220,13 @@ export class SubscriptionPlanController {
       },
     },
   })
-  @ApiNotFoundResponse({
-    description: 'Subscription Plan not found',
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Authentication required',
     schema: {
       example: {
-        statusCode: 404,
-        message: 'Subscription Plan with id 5 not found',
-        error: 'Not Found',
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
       },
     },
   })
@@ -165,7 +240,27 @@ export class SubscriptionPlanController {
       },
     },
   })
-  async getOne(@Param('id', ParseIntPipe) id: number) {
+  @ApiNotFoundResponse({
+    description: 'Subscription Plan not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Subscription Plan not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive integer');
     }
@@ -215,23 +310,43 @@ export class SubscriptionPlanController {
       },
     },
   })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Authentication required',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden. Insufficient permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
   @ApiNotFoundResponse({
     description: 'Subscription Plan not found',
     schema: {
       example: {
         statusCode: 404,
-        message: 'Subscription Plan with id 5 not found',
+        message: 'Subscription Plan not found',
         error: 'Not Found',
       },
     },
   })
-  @ApiConflictResponse({
-    description: 'Subscription Plan with this name already exists',
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
     schema: {
       example: {
-        statusCode: 409,
-        message: 'A Subscription Plan with this name already exists.',
-        error: 'Conflict',
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
       },
     },
   })
@@ -271,13 +386,13 @@ export class SubscriptionPlanController {
       },
     },
   })
-  @ApiNotFoundResponse({
-    description: 'Subscription Plan not found',
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Authentication required',
     schema: {
       example: {
-        statusCode: 404,
-        message: 'Subscription plan with id 5 not found',
-        error: 'Not Found',
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
       },
     },
   })
@@ -288,6 +403,26 @@ export class SubscriptionPlanController {
         statusCode: 403,
         message: 'Forbidden resource',
         error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Subscription Plan not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Subscription plan not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
       },
     },
   })

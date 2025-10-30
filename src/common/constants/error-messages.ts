@@ -29,6 +29,7 @@ export enum ErrorMessage {
   MERCHANT_SUBSCRIPTION_NOT_FOUND = 'Merchant subscription not found',
   PLAN_APPLICATION_NOT_FOUND = 'Plan Application not found',
   SUBSCRIPTION_PLAN_NOT_FOUND = 'Subscription Plan not found',
+  SUBSCRIPTION_APPLICATION_NOT_FOUND = 'Subscription Application not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',

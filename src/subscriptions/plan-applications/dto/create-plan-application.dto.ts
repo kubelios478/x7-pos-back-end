@@ -10,18 +10,18 @@ import {
 
 export class CreatePlanApplicationDto {
   @ApiProperty({
-    example: 10,
+    example: 1,
     description:
-      'Unique identifier of the Application to be linked in this Plan-Aplication',
+      'Unique identifier of the Application to be linked in this Plan-Application',
   })
   @IsNumber()
   @IsNotEmpty()
   application: number;
 
   @ApiProperty({
-    example: 10,
+    example: 1,
     description:
-      'Unique identifier of the Subscription Plan to be linked in this Plan-Aplication',
+      'Unique identifier of the Subscription Plan to be linked in this Plan-Application',
   })
   @IsNumber()
   @IsNotEmpty()
@@ -30,7 +30,7 @@ export class CreatePlanApplicationDto {
   @ApiProperty({
     example: 'Basic usage limit: 100 users per month',
     description:
-      'Defines the usage limits or restrictions for the Plan-Aplication',
+      'Defines the usage limits or restrictions for the Plan-Application',
     required: false,
   })
   @IsOptional()

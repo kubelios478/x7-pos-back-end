@@ -8,12 +8,10 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
-  HttpCode,
-  HttpStatus,
   Param,
   BadRequestException,
 } from '@nestjs/common';
-import { MerchantSuscriptionService } from './merchant-subscription.service';
+import { MerchantSubscriptionService } from './merchant-subscription.service';
 import { CreateMerchantSubscriptionDto } from './dtos/create-merchant-subscription.dto';
 import {
   AllMerchantSubscriptionSummaryDto,
@@ -31,7 +29,6 @@ import {
   ApiCreatedResponse,
   ApiBadRequestResponse,
   ApiUnauthorizedResponse,
-  ApiConflictResponse,
   ApiOkResponse,
   ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
@@ -50,11 +47,10 @@ import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscripti
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class MerchantSubscriptionController {
   constructor(
-    private readonly merchantSubscriptionService: MerchantSuscriptionService,
+    private readonly merchantSubscriptionService: MerchantSubscriptionService,
   ) {}
 
   @Post()
-  @HttpCode(HttpStatus.CREATED)
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
@@ -65,43 +61,72 @@ export class MerchantSubscriptionController {
   )
   @ApiOperation({
     summary: 'Create a new Merchant Subscription',
-    description: 'Endpoint for create a new Merchant Subscription.',
+    description:
+      'Endpoint for creating a new Merchant Subscription in the system.',
   })
   @ApiBody({
     type: CreateMerchantSubscriptionDto,
     description: 'Require Data for a new Merchant Subscription',
   })
   @ApiCreatedResponse({
-    description: 'Merchant Subscription created successfully',
+    description: 'The Merchant Subscription has been successfully created',
     type: MerchantSubscriptionSummaryDto,
+    schema: {
+      example: {
+        id: 1,
+        merchant: { id: 5, name: 'Acme Corp' },
+        plan: { id: 2, name: 'Gold Plan' },
+        startDate: '2025-10-01T00:00:00.000Z',
+        endDate: '2026-10-01T00:00:00.000Z',
+        renewalDate: '2026-09-25T00:00:00.000Z',
+        status: 'active',
+        paymentMethod: 'credit_card',
+      },
+    },
   })
   @ApiBadRequestResponse({
-    description: 'Bad Request: Invalid input data',
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Unauthorized: Invalid or missing authentication token',
-  })
-  @ApiConflictResponse({
-    description:
-      'Conflict: Merchant Subscription with the same details already exists',
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid input data or business rule violation',
+    description: 'Invalid input data',
     schema: {
       example: {
         statusCode: 400,
-        message: 'Start date must be before end date',
+        message: [
+          'merchantId must be a number',
+          'planId must be a number',
+          'startDate must be a Date instance',
+          'status must be one of the following values: active, inactive',
+          'paymentMethod must be a string',
+        ],
         error: 'Bad Request',
       },
     },
   })
-  @ApiNotFoundResponse({
-    description: 'Merchant or Subscription Plan not found',
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Authentication required',
     schema: {
       example: {
-        statusCode: 404,
-        message: 'Subscription Plan with id 3 not found',
-        error: 'Not Found',
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden. Insufficient role.',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
       },
     },
   })
@@ -151,6 +176,16 @@ export class MerchantSubscriptionController {
       ],
     },
   })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Authentication required',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
   @ApiForbiddenResponse({
     description: 'Forbidden: Insufficient role or permissions',
     schema: {
@@ -158,16 +193,6 @@ export class MerchantSubscriptionController {
         statusCode: 403,
         message: 'Forbidden resource',
         error: 'Forbidden',
-      },
-    },
-  })
-  @ApiBadRequestResponse({
-    description: 'Bad Request: Invalid query parameters or filters',
-    schema: {
-      example: {
-        statusCode: 400,
-        message: 'Invalid pagination parameters',
-        error: 'Bad Request',
       },
     },
   })
@@ -193,9 +218,11 @@ export class MerchantSubscriptionController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
-    summary: 'Get one Merchant Subscription',
-    description: 'Retrieve details of a specific Merchant Subscription by ID.',
+    summary: 'Get a Merchant Subscription by ID',
+    description:
+      'Endpoint to retrieve a specific Merchant Subscription using its ID.',
   })
   @ApiParam({
     name: 'id',
@@ -206,20 +233,70 @@ export class MerchantSubscriptionController {
   @ApiOkResponse({
     description: 'Merchant Subscription retrieved successfully',
     type: MerchantSubscriptionSummaryDto,
+    schema: {
+      example: {
+        id: 1,
+        merchant: { id: 5, name: 'Acme Corp' },
+        plan: { id: 2, name: 'Gold Plan' },
+        startDate: '2025-10-01T00:00:00.000Z',
+        endDate: '2026-10-01T00:00:00.000Z',
+        renewalDate: '2026-09-25T00:00:00.000Z',
+        status: 'active',
+        paymentMethod: 'credit_card',
+      },
+    },
   })
   @ApiBadRequestResponse({
-    description: 'Bad Request: Invalid ID parameter',
-  })
-  @ApiNotFoundResponse({
-    description: 'Not Found: Merchant Subscription not found',
-  })
-  @ApiForbiddenResponse({
-    description: 'Forbidden: Insufficient permissions',
+    description: 'Bad Request: Invalid ID format',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Invalid ID. Must be a positive number.',
+        error: 'Bad Request',
+      },
+    },
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized: Missing or invalid authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
   })
-  async getOne(
+  @ApiForbiddenResponse({
+    description: 'Forbidden: Insufficient permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Not Found: Merchant Subscription not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant Subscription not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
+  async findOne(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<OneMerchantSubscriptionSummaryDto> {
     if (id <= 0) {
@@ -242,28 +319,45 @@ export class MerchantSubscriptionController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'Update a Merchant Subscription',
-    description: 'Endpoint to update an existing Merchant Subscription by ID.',
+    description:
+      'Endpoint to update an existing Merchant Subscription by its ID.',
   })
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'Merchant Subscription ID to update',
+    description: 'Merchant Subscription ID',
     example: 1,
+  })
+  @ApiBody({
+    type: UpdateMerchantSubscriptionDto,
+    description: 'Data for updating the Merchant Subscription',
   })
   @ApiOkResponse({
     description: 'Merchant Subscription updated successfully',
+    type: MerchantSubscriptionSummaryDto,
     schema: {
       example: {
-        message: 'Merchant Subscription with ID 1 updated successfully',
+        id: 1,
+        merchant: { id: 5, name: 'Acme Corp' },
+        plan: { id: 2, name: 'Gold Plan' },
+        startDate: '2025-10-01T00:00:00.000Z',
+        endDate: '2026-10-01T00:00:00.000Z',
+        renewalDate: '2026-09-25T00:00:00.000Z',
+        status: 'active',
+        paymentMethod: 'credit_card',
       },
     },
   })
   @ApiBadRequestResponse({
-    description: 'Bad Request: Invalid ID or request data',
+    description: 'Bad Request: Invalid ID format or input data',
     schema: {
       example: {
         statusCode: 400,
-        message: 'Invalid ID format. ID must be a number.',
+        message: [
+          'Invalid ID. Must be a positive number.',
+          'startDate must be a Date instance',
+          'status must be one of the following values: active, inactive',
+        ],
         error: 'Bad Request',
       },
     },
@@ -273,16 +367,40 @@ export class MerchantSubscriptionController {
     schema: {
       example: {
         statusCode: 404,
-        message: 'Subscription with ID 5 not found',
+        message: 'Merchant Subscription not found',
         error: 'Not Found',
       },
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden: Insufficient permissions',
+    description: 'Forbidden: Insufficient role or permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized: Missing or invalid authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
   })
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -290,7 +408,6 @@ export class MerchantSubscriptionController {
   ): Promise<OneMerchantSubscriptionSummaryDto> {
     return this.merchantSubscriptionService.update(id, dto);
   }
-
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -303,7 +420,8 @@ export class MerchantSubscriptionController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'Delete a Merchant Subscription',
-    description: 'Endpoint to delete a Merchant Subscription by its ID.',
+    description:
+      'Endpoint to delete an existing Merchant Subscription by its ID.',
   })
   @ApiParam({
     name: 'id',
@@ -313,14 +431,22 @@ export class MerchantSubscriptionController {
   })
   @ApiOkResponse({
     description: 'Merchant Subscription deleted successfully',
+    type: MerchantSubscriptionSummaryDto,
     schema: {
       example: {
-        message: 'Merchant Subscription with ID 1 deleted successfully',
+        id: 1,
+        merchant: { id: 5, name: 'Acme Corp' },
+        plan: { id: 2, name: 'Gold Plan' },
+        startDate: '2025-10-01T00:00:00.000Z',
+        endDate: '2026-10-01T00:00:00.000Z',
+        renewalDate: '2026-09-25T00:00:00.000Z',
+        status: 'active',
+        paymentMethod: 'credit_card',
       },
     },
   })
   @ApiBadRequestResponse({
-    description: 'Invalid ID format',
+    description: 'Bad Request: Invalid ID format',
     schema: {
       example: {
         statusCode: 400,
@@ -330,20 +456,44 @@ export class MerchantSubscriptionController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Merchant Subscription not found',
+    description: 'Not Found: Merchant Subscription not found',
     schema: {
       example: {
         statusCode: 404,
-        message: 'Merchant Subscription with ID 5 not found',
+        message: 'Merchant Subscription not found',
         error: 'Not Found',
       },
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden. Insufficient role or scope.',
+    description: 'Forbidden: Insufficient role or permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
   })
   @ApiUnauthorizedResponse({
-    description: 'Unauthorized. Missing or invalid authentication token.',
+    description: 'Unauthorized: Missing or invalid authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
