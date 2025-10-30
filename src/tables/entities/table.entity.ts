@@ -3,12 +3,14 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   Index,
   JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
 
 @Entity('table')
 @Index(['merchant_id', 'number'], { unique: true })
@@ -65,6 +67,15 @@ export class Table {
   })
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updated_at: Date;
+
+  @ApiProperty({
+    type: () => TableAssignment,
+    isArray: true,
+    required: false,
+    description: 'List of table assignments for this table',
+  })
+  @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.table)
+  tableAssignments: TableAssignment[];
 }
 
 /*

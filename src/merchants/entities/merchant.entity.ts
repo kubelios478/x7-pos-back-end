@@ -17,6 +17,9 @@ import { Table } from 'src/tables/entities/table.entity';
 import { Collaborator } from 'src/collaborators/entities/collaborator.entity';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
 import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
+import { Shift } from 'src/shifts/entities/shift.entity';
+import { ShiftAssignment } from 'src/shift-assignments/entities/shift-assignment.entity';
+import { TableAssignment } from 'src/table-assignments/entities/table-assignment.entity';
 
 @Entity()
 export class Merchant {
@@ -157,4 +160,31 @@ export class Merchant {
   })
   @OneToMany(() => Collaborator, (collaborator) => collaborator.merchant)
   collaborators: Collaborator[];
+
+  @ApiProperty({
+    type: () => Shift,
+    isArray: true,
+    required: false,
+    description: 'List of shifts associated with the merchant',
+  })
+  @OneToMany(() => Shift, (shift) => shift.merchant)
+  shifts: Shift[];
+
+  @ApiProperty({
+    type: () => ShiftAssignment,
+    isArray: true,
+    required: false,
+    description: 'List of shift assignments associated with the merchant',
+  })
+  @OneToMany(() => ShiftAssignment, (shiftAssignment) => shiftAssignment.shift)
+  shiftAssignments: ShiftAssignment[];
+
+  @ApiProperty({
+    type: () => TableAssignment,
+    isArray: true,
+    required: false,
+    description: 'List of table assignments associated with the merchant',
+  })
+  @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.shift)
+  tableAssignments: TableAssignment[];
 }

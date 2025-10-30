@@ -15,6 +15,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { console } from 'inspector';
 import { ErrorHandler } from '../common/utils/error-handler.util';
+import { ErrorMessage } from 'src/common/constants/error-messages';
 
 @Injectable()
 export class UsersService {
@@ -44,7 +45,7 @@ export class UsersService {
     console.log('Company:', company);
 
     if (dto.companyId && !company) {
-      ErrorHandler.companyNotFound();
+      ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
     }
 
     const merchant = dto.merchantId
@@ -52,7 +53,7 @@ export class UsersService {
       : undefined;
 
     if (dto.merchantId && !merchant) {
-      ErrorHandler.merchantNotFound();
+      ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
     }
     console.log('Merchant:', merchant);
 
@@ -127,7 +128,7 @@ export class UsersService {
     });
 
     if (!user) {
-      ErrorHandler.userNotFound();
+      ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
     const safeUserData = {
@@ -196,7 +197,7 @@ export class UsersService {
     });
 
     if (!foundUser) {
-      ErrorHandler.userNotFound();
+      ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
     console.log('User found:', foundUser);
@@ -263,7 +264,7 @@ export class UsersService {
     });
 
     if (!user) {
-      ErrorHandler.userNotFound();
+      ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
     const isSelf = user.id === currentUser.id;

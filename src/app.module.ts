@@ -1,5 +1,4 @@
 // src/app.module.ts
-
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -11,7 +10,6 @@ import { MerchantsModule } from './merchants/merchants.module';
 import { CustomersModule } from './customers/customers.module';
 import { UsersModule } from './users/users.module';
 import { MailModule } from './mail/mail.module';
-import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 import { TablesModule } from './tables/tables.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PlanApplicationsModule } from './subscriptions/plan-applications/plan-applications.module';
@@ -19,6 +17,9 @@ import { MerchantSubscriptionModule } from './subscriptions/merchant-subscriptio
 import { ApplicationsModule } from './subscriptions/applications/applications.module';
 import { SubscriptionApplicationModule } from './subscriptions/subscription-application/subscription-application.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
+import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.module';
+import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
+import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
 
 // Entities;
 import { User } from './users/entities/user.entity';
@@ -33,6 +34,10 @@ import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
 import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
+import { ShiftAssignment } from './shift-assignments/entities/shift-assignment.entity';
+import { TableAssignment } from './table-assignments/entities/table-assignment.entity';
+import { Variant } from './products-inventory/variants/entities/variant.entity';
+import { Modifier } from './products-inventory/modifiers/entities/modifier.entity';
 import { SubscriptionPlan } from './subscriptions/subscription-plan/entity/subscription-plan.entity';
 import { MerchantSubscription } from './subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
@@ -61,12 +66,18 @@ import { SubscriptionApplication } from './subscriptions/subscription-applicatio
           Table,
           SubscriptionPlan,
           Category,
-          Product,
-          Supplier,
+          Collaborator,
+          Shift,
+          ShiftAssignment,
+          TableAssignment,
           MerchantSubscription,
           ApplicationEntity,
           PlanApplication,
           SubscriptionApplication,
+          Product,
+          Supplier,
+          Variant,
+          Modifier,
           Collaborator,
           Shift,
         ],
@@ -75,12 +86,18 @@ import { SubscriptionApplication } from './subscriptions/subscription-applicatio
     }),
     // Modules
     AuthModule,
+    MailModule,
     CompaniesModule,
     MerchantsModule,
     UsersModule,
     CustomersModule,
+
     TablesModule,
-    MailModule,
+    CollaboratorsModule,
+    ShiftsModule,
+    ShiftAssignmentsModule,
+    TableAssignmentsModule,
+
     ProductsInventoryModule,
 
     SubscriptionsModule,

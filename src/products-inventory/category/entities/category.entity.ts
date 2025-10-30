@@ -17,7 +17,7 @@ export class Category {
   id: number;
 
   @ApiProperty({ example: 'Beverages', description: 'Category name' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @ApiProperty({
@@ -57,7 +57,7 @@ export class Category {
   @OneToMany(() => Product, (product) => product.category)
   products: Product[];
 
-  @ApiProperty({ example: true, description: 'Category active status' })
+  //@ApiProperty({ example: true, description: 'Category active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 }
