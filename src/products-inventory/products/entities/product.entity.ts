@@ -12,6 +12,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Item } from 'src/products-inventory/stocks/items/entities/item.entity';
 
 @Entity({ name: 'product' })
 export class Product {
@@ -84,4 +85,7 @@ export class Product {
 
   @OneToMany(() => Modifier, (modifier) => modifier.product)
   modifiers: Modifier[];
+
+  @OneToMany(() => Item, (item) => item.product)
+  items: Item[];
 }

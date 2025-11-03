@@ -4,9 +4,11 @@ import {
   Column,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   Entity,
 } from 'typeorm';
+import { Item } from 'src/products-inventory/stocks/items/entities/item.entity';
 
 @Entity({ name: 'location' })
 export class Location {
@@ -38,4 +40,7 @@ export class Location {
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @OneToMany(() => Item, (item) => item.location)
+  items: Item[];
 }

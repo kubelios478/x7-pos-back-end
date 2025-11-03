@@ -43,6 +43,7 @@ import { SubscriptionPlan } from './subscriptions/subscription-plan/entity/subsc
 import { MerchantSubscription } from './subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
+import { Item } from './products-inventory/stocks/items/entities/item.entity';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
           Variant,
           Modifier,
           Location,
+          Item,
           Collaborator,
           Shift,
         ],
