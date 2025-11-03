@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
@@ -41,11 +36,7 @@ export class ProductsService {
     const { name, sku, basePrice, categoryId, merchantId, supplierId } =
       createProductDto;
 
-    if (merchantId !== user.merchant.id) {
-      throw new ForbiddenException(
-        'You are not allowed to create products for this merchant',
-      );
-    }
+    if (merchantId !== user.merchant.id) ErrorHandler.differentMerchant();
 
     const [merchant, category, supplier] = await Promise.all([
       this.merchantRepository.findOneBy({ id: merchantId }),
@@ -57,61 +48,50 @@ export class ProductsService {
         : Promise.resolve(null),
     ]);
 
-    const notFound = [];
-    if (!merchant)
-      notFound.push(`Merchant with ID ${merchantId} not found` as never);
-    if (!category)
-      notFound.push(`Category with ID ${categoryId} not found` as never);
-    if (!supplier)
-      notFound.push(`Supplier with ID ${supplierId} not found` as never);
-
-    if (notFound.length > 0) {
-      throw new NotFoundException({
-        message: notFound,
-        error: 'Not Found',
-        status: 404,
-      });
-    }
+    if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
+    if (categoryId && !category)
+      ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
+    if (supplierId && !supplier)
+      ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 
     const existingProduct = await this.productRepository.findOne({
       where: [{ name: name, isActive: true }],
     });
 
-    if (existingProduct) {
-      throw new ConflictException(
-        `Product with name "${name}" already exists.`,
-      );
-    }
+    if (existingProduct) ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
 
     const existingSku = await this.productRepository.findOne({
       where: [{ sku: sku, isActive: true }],
     });
 
-    if (existingSku) {
-      throw new ConflictException(`Product with sku "${sku}" already exists.`);
-    }
+    if (existingSku) ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
 
-    const existingButIsNotActive = await this.productRepository.findOne({
-      where: [{ name: name, isActive: false }],
-    });
-
-    if (existingButIsNotActive) {
-      existingButIsNotActive.isActive = true;
-      await this.productRepository.save(existingButIsNotActive);
-      return this.findOne1(existingButIsNotActive.id, undefined, 'Created');
-    } else {
-      const newProduct = this.productRepository.create({
-        name,
-        sku,
-        basePrice,
-        merchantId,
-        categoryId,
-        supplierId,
+    try {
+      const existingButIsNotActive = await this.productRepository.findOne({
+        where: [{ name: name, isActive: false }],
       });
 
-      const savedProduct = await this.productRepository.save(newProduct);
+      if (existingButIsNotActive) {
+        existingButIsNotActive.isActive = true;
+        await this.productRepository.save(existingButIsNotActive);
+        return this.findOne1(existingButIsNotActive.id, undefined, 'Created');
+      } else {
+        const newProduct = this.productRepository.create({
+          name,
+          sku,
+          basePrice,
+          merchantId,
+          categoryId,
+          supplierId,
+        });
 
-      return this.findOne1(savedProduct.id, undefined, 'Created');
+        const savedProduct = await this.productRepository.save(newProduct);
+
+        return this.findOne1(savedProduct.id, undefined, 'Created');
+      }
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+      console.log(error);
     }
   }
 
@@ -229,28 +209,28 @@ export class ProductsService {
       case 'Created':
         response = {
           statusCode: 201,
-          message: `Category ${createdUpdateDelete} successfully`,
+          message: `Product ${createdUpdateDelete} successfully`,
           data: result,
         };
         break;
       case 'Updated':
         response = {
           statusCode: 201,
-          message: `Category ${createdUpdateDelete} successfully`,
+          message: `Product ${createdUpdateDelete} successfully`,
           data: result,
         };
         break;
       case 'Deleted':
         response = {
           statusCode: 201,
-          message: `Category ${createdUpdateDelete} successfully`,
+          message: `Product ${createdUpdateDelete} successfully`,
           data: result,
         };
         break;
       default:
         response = {
           statusCode: 200,
-          message: 'Category retrieved successfully',
+          message: 'Product retrieved successfully',
           data: result,
         };
         break;
@@ -271,44 +251,25 @@ export class ProductsService {
       isActive: true,
     });
 
-    if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
-    }
+    if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
 
-    if (product.merchantId !== user.merchant.id) {
-      throw new ForbiddenException(
-        'You are not allowed to modify products for other merchants',
-      );
-    }
+    if (product.merchantId !== user.merchant.id)
+      ErrorHandler.differentMerchant();
 
-    if (merchantId && merchantId !== product.merchantId) {
-      throw new ForbiddenException('Merchant ID cannot be changed');
-    }
+    if (merchantId && merchantId !== product.merchantId)
+      ErrorHandler.changedMerchant();
 
-    const notFound = [];
     if (categoryId && categoryId !== product.categoryId) {
       const category = await this.categoryRepository.findOneBy({
         id: categoryId,
       });
-      if (!category) {
-        notFound.push(`Category with ID ${categoryId} not found` as never);
-      }
+      if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
     }
     if (supplierId && supplierId !== product.supplierId) {
       const supplier = await this.supplierRepository.findOneBy({
         id: supplierId,
       });
-      if (!supplier) {
-        notFound.push(`Supplier with ID ${supplierId} not found` as never);
-      }
-    }
-
-    if (notFound.length > 0) {
-      throw new NotFoundException({
-        message: notFound,
-        error: 'Not Found',
-        status: 404,
-      });
+      if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
     }
 
     if (name && name !== product.name) {
@@ -316,11 +277,8 @@ export class ProductsService {
         where: { name },
       });
 
-      if (existingProductByName && existingProductByName.id !== id) {
-        throw new ConflictException(
-          `Product with name "${name}" already exists.`,
-        );
-      }
+      if (existingProductByName && existingProductByName.id !== id)
+        ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
     }
 
     if (sku && sku !== product.sku) {
@@ -328,11 +286,8 @@ export class ProductsService {
         where: { sku },
       });
 
-      if (existingSku && existingSku.id !== id) {
-        throw new ConflictException(
-          `Product with SKU "${sku}" already exists.`,
-        );
-      }
+      if (existingSku && existingSku.id !== id)
+        ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
     }
 
     Object.assign(product, {
@@ -342,36 +297,37 @@ export class ProductsService {
       supplierId,
       sku,
     });
-    await this.productRepository.save(product);
-
-    return this.findOne1(id, undefined, 'Updated');
+    try {
+      await this.productRepository.save(product);
+      return this.findOne1(id, undefined, 'Updated');
+    } catch (error) {
+      console.log(error);
+      ErrorHandler.handleDatabaseError(error);
+    }
   }
 
   async remove(
     user: AuthenticatedUser,
     id: number,
-  ): Promise<{ message: string }> {
+  ): Promise<OneProductResponse> {
     const product = await this.productRepository.findOneBy({
       id,
       isActive: true,
     });
 
-    if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
+    if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+
+    if (product.merchantId !== user.merchant.id)
+      ErrorHandler.differentMerchant();
+
+    try {
+      product.isActive = false;
+      await this.productRepository.save(product);
+      return this.findOne1(id, undefined, 'Deleted');
+    } catch (error) {
+      console.log(error);
+      ErrorHandler.handleDatabaseError(error);
     }
-
-    if (product.merchantId !== user.merchant.id) {
-      throw new ForbiddenException(
-        'You are not allowed to delete products for other merchants',
-      );
-    }
-
-    product.isActive = false;
-    await this.productRepository.save(product);
-
-    return {
-      message: `Product with ID ${id} was successfully deleted`,
-    };
   }
 
   async findOne(id: number, merchantId?: number): Promise<ProductResponseDto> {

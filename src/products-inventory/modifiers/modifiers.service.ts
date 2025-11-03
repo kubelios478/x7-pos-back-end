@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { CreateModifierDto } from './dto/create-modifier.dto';
 import { UpdateModifierDto } from './dto/update-modifier.dto';
-import { ModifierResponseDto } from './dto/modifier-response.dto';
+import {
+  AllModifiersResponse,
+  ModifierResponseDto,
+} from './dto/modifier-response.dto';
 import { Modifier } from './entities/modifier.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -70,7 +73,7 @@ export class ModifiersService {
     }
   }
 
-  async findAll(merchantId: number): Promise<ModifierResponseDto[]> {
+  async findAll(merchantId: number): Promise<AllModifiersResponse> {
     const modifiers = await this.modifierRepository
       .createQueryBuilder('modifier')
       .leftJoinAndSelect('modifier.product', 'product')
@@ -80,19 +83,28 @@ export class ModifiersService {
       .where('product.merchantId = :merchantId', { merchantId })
       .andWhere('modifier.isActive = :isActive', { isActive: true })
       .getMany();
-    return modifiers.map((modifier) => {
-      const result: ModifierResponseDto = {
-        id: modifier.id,
-        name: modifier.name,
-        priceDelta: modifier.priceDelta,
-        product: modifier.product
-          ? this.productsInventoryService.mapProductToProductResponseDto(
-              modifier.product,
-            )
-          : null,
-      };
-      return result;
-    });
+
+    const modifiersResponse: ModifierResponseDto[] = await Promise.all(
+      modifiers.map((modifier) => {
+        const result: ModifierResponseDto = {
+          id: modifier.id,
+          name: modifier.name,
+          priceDelta: modifier.priceDelta,
+          product: modifier.product
+            ? this.productsInventoryService.mapProductToProductResponseDto(
+                modifier.product,
+              )
+            : null,
+        };
+        return result;
+      }),
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Modifiers retrieved successfully',
+      data: modifiersResponse,
+    };
   }
 
   async findOne(id: number, merchantId?: number): Promise<ModifierResponseDto> {
