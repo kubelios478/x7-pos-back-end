@@ -153,7 +153,7 @@ export class ProductsController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     const merchantId = user.merchant.id;
-    return this.productsService.findOne1(id, merchantId);
+    return this.productsService.findOne(id, merchantId);
   }
 
   @Patch(':id')

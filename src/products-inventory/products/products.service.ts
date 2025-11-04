@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
@@ -74,7 +74,7 @@ export class ProductsService {
       if (existingButIsNotActive) {
         existingButIsNotActive.isActive = true;
         await this.productRepository.save(existingButIsNotActive);
-        return this.findOne1(existingButIsNotActive.id, undefined, 'Created');
+        return this.findOne(existingButIsNotActive.id, undefined, 'Created');
       } else {
         const newProduct = this.productRepository.create({
           name,
@@ -87,7 +87,7 @@ export class ProductsService {
 
         const savedProduct = await this.productRepository.save(newProduct);
 
-        return this.findOne1(savedProduct.id, undefined, 'Created');
+        return this.findOne(savedProduct.id, undefined, 'Created');
       }
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
@@ -144,13 +144,13 @@ export class ProductsService {
     };
   }
 
-  async findOne1(
+  async findOne(
     id: number,
     merchantId?: number,
     createdUpdateDelete?: string,
   ): Promise<OneProductResponse> {
     if (!id || id <= 0) {
-      ErrorHandler.invalidId('Product ID id incorrect');
+      ErrorHandler.invalidId('Product ID incorrect');
     }
     const whereCondition: {
       id: number;
@@ -299,7 +299,7 @@ export class ProductsService {
     });
     try {
       await this.productRepository.save(product);
-      return this.findOne1(id, undefined, 'Updated');
+      return this.findOne(id, undefined, 'Updated');
     } catch (error) {
       console.log(error);
       ErrorHandler.handleDatabaseError(error);
@@ -323,63 +323,10 @@ export class ProductsService {
     try {
       product.isActive = false;
       await this.productRepository.save(product);
-      return this.findOne1(id, undefined, 'Deleted');
+      return this.findOne(id, undefined, 'Deleted');
     } catch (error) {
       console.log(error);
       ErrorHandler.handleDatabaseError(error);
     }
-  }
-
-  async findOne(id: number, merchantId?: number): Promise<ProductResponseDto> {
-    const whereCondition: { id: number; merchantId?: number; isActive: true } =
-      {
-        id,
-        isActive: true,
-      };
-    if (merchantId !== undefined) {
-      whereCondition.merchantId = merchantId;
-    }
-
-    const product = await this.productRepository.findOne({
-      where: whereCondition,
-      relations: ['merchant', 'category', 'category.parent', 'supplier'],
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with ID ${id} not found`);
-    }
-
-    const result: ProductResponseDto = {
-      id: product.id,
-      name: product.name,
-      sku: product.sku,
-      basePrice: product.basePrice,
-      merchant: product.merchant
-        ? {
-            id: product.merchant.id,
-            name: product.merchant.name,
-          }
-        : null,
-      category: product.category
-        ? {
-            id: product.category.id,
-            name: product.category.name,
-            parent: product.category.parent
-              ? ({
-                  id: product.category.parent.id,
-                  name: product.category.parent.name,
-                } as CategoryLittleResponseDto)
-              : null,
-          }
-        : null,
-      supplier: product.supplier
-        ? {
-            id: product.supplier.id,
-            name: product.supplier.name,
-            contactInfo: product.supplier.contactInfo,
-          }
-        : null,
-    };
-
-    return result;
   }
 }

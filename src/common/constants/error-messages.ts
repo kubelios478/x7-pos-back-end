@@ -20,6 +20,7 @@ export enum ErrorMessage {
   DIFFERENT_MERCHANT = 'You can only access resources from your own merchant',
   CHANGED_MERCHANT = 'Merchant ID cannot be changed',
   NOT_OWNER = 'You can only modify your own resources',
+  PRODUCT_ID_NOT_CHANGED = 'Product ID cannot be changed',
 
   // 404 Not Found
   USER_NOT_FOUND = 'User not found',
@@ -49,6 +50,7 @@ export enum ErrorMessage {
   PRODUCT_NAME_EXISTS = 'Product name already exists',
   PRODUCT_SKU_EXISTS = 'Product with SKU already exists',
   VARIANT_NAME_EXISTS = 'Variant name already exists',
+  VARIANT_SKU_EXISTS = 'Variant with SKU already exists',
   LOCATION_NAME_EXISTS = 'Location name already exists',
   ITEM_NAME_EXISTS = 'Item name already exists',
   MOVEMENT_NAME_EXISTS = 'Movement name already exists',
