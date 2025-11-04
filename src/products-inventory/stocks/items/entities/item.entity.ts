@@ -4,11 +4,13 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
 import { Location } from 'src/products-inventory/stocks/locations/entities/location.entity';
+import { Movement } from 'src/products-inventory/stocks/movements/entities/movement.entity';
 
 @Entity({ name: 'item' })
 export class Item {
@@ -38,13 +40,12 @@ export class Item {
     example: 1,
     description: 'Variant ID associated with the item',
   })
-  @Column({ type: 'int', nullable: true })
-  variantId: number | null;
+  @Column({ type: 'int' })
+  variantId: number;
 
   @ManyToOne(() => Variant, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
-    nullable: true,
   })
   @JoinColumn({ name: 'variantId' })
   variant: Variant;
@@ -53,13 +54,12 @@ export class Item {
     example: 1,
     description: 'Location ID associated with the item',
   })
-  @Column({ type: 'int', nullable: true })
-  locationId: number | null;
+  @Column({ type: 'int' })
+  locationId: number;
 
   @ManyToOne(() => Location, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
-    nullable: true,
   })
   @JoinColumn({ name: 'locationId' })
   location: Location;
@@ -67,4 +67,7 @@ export class Item {
   @ApiProperty({ example: true, description: 'Indica si el item está activo' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @OneToMany(() => Movement, (movement) => movement.item)
+  movements: Movement[];
 }

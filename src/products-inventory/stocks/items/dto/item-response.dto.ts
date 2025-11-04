@@ -32,6 +32,14 @@ export class ItemResponseDto {
   location: LocationLittleResponseDto | null;
 }
 
+export class ItemLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Item ID' })
+  id: number;
+
+  @ApiProperty({ example: 5, description: 'Current quantity' })
+  currentQty: number;
+}
+
 export class OneItemResponse extends SuccessResponse {
   @ApiProperty()
   data: ItemResponseDto;

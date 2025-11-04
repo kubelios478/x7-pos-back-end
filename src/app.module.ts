@@ -44,6 +44,7 @@ import { MerchantSubscription } from './subscriptions/merchant-subscriptions/ent
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
 import { Item } from './products-inventory/stocks/items/entities/item.entity';
+import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { Item } from './products-inventory/stocks/items/entities/item.entity';
           Modifier,
           Location,
           Item,
+          Movement,
           Collaborator,
           Shift,
         ],
