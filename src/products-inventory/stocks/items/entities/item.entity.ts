@@ -39,7 +39,7 @@ export class Item {
     description: 'Variant ID associated with the item',
   })
   @Column({ type: 'int', nullable: true })
-  variantId: number;
+  variantId: number | null;
 
   @ManyToOne(() => Variant, {
     onDelete: 'CASCADE',
@@ -53,13 +53,18 @@ export class Item {
     example: 1,
     description: 'Location ID associated with the item',
   })
-  @Column({ type: 'int' })
-  stockLocationId: number;
+  @Column({ type: 'int', nullable: true })
+  locationId: number | null;
 
   @ManyToOne(() => Location, {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
+    nullable: true,
   })
-  @JoinColumn({ name: 'stockLocationId' })
+  @JoinColumn({ name: 'locationId' })
   location: Location;
+
+  @ApiProperty({ example: true, description: 'Indica si el item está activo' })
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
 }

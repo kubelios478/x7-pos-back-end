@@ -20,6 +20,14 @@ export class LocationResponseDto {
   merchant: MerchantResponseDto | null;
 }
 
+export class LocationLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Location ID' })
+  id: number;
+
+  @ApiProperty({ example: 'New York', description: 'Location name' })
+  name: string;
+}
+
 export class OneLocationResponse extends SuccessResponse {
   @ApiProperty()
   data: LocationResponseDto;

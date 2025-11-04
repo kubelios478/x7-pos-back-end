@@ -39,6 +39,14 @@ export class ProductResponseDto {
   supplier: SupplierResponseDto | null;
 }
 
+export class ProductLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Product ID' })
+  id: number;
+
+  @ApiProperty({ example: 'Phone', description: 'Product name' })
+  name: string;
+}
+
 export class OneProductResponse extends SuccessResponse {
   @ApiProperty()
   data: ProductResponseDto;

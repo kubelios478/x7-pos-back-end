@@ -14,12 +14,13 @@ import { Product } from './products/entities/product.entity';
 import { ItemsModule } from './stocks/items/items.module';
 import { LocationsModule } from './stocks/locations/locations.module';
 import { MovementsModule } from './stocks/movements/movements.module';
+import { Item } from './stocks/items/entities/item.entity';
 
 @Module({
   controllers: [ProductsInventoryController],
   providers: [ProductsInventoryService],
   imports: [
-    TypeOrmModule.forFeature([Category, Product, Variant, Modifier]),
+    TypeOrmModule.forFeature([Category, Product, Variant, Modifier, Item]),
     CategoryModule,
     ProductsModule,
     SuppliersModule,

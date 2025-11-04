@@ -21,3 +21,11 @@ export class VariantResponseDto {
   })
   product: ProductResponseDto | null;
 }
+
+export class VariantLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Variant ID' })
+  id: number;
+
+  @ApiProperty({ example: 'Phone', description: 'Variant name' })
+  name: string;
+}
