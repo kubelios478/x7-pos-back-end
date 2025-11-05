@@ -16,6 +16,7 @@ import { PlanApplicationsModule } from './subscriptions/plan-applications/plan-a
 import { MerchantSubscriptionModule } from './subscriptions/merchant-subscriptions/merchant-subscription.module';
 import { ApplicationsModule } from './subscriptions/applications/applications.module';
 import { SubscriptionApplicationModule } from './subscriptions/subscription-application/subscription-application.module';
+import { FeaturesModule } from './subscriptions/features/features.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
 import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.module';
 import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
@@ -46,6 +47,7 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
 import { SubscriptionApplication } from './subscriptions/subscription-application/entity/subscription-application.entity';
 import { Item } from './products-inventory/stocks/items/entities/item.entity';
 import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
+import { FeatureEntity } from './subscriptions/features/entity/features.entity';
 
 @Module({
   imports: [
@@ -77,6 +79,7 @@ import { Movement } from './products-inventory/stocks/movements/entities/movemen
           ApplicationEntity,
           PlanApplication,
           SubscriptionApplication,
+          FeatureEntity,
           Product,
           Supplier,
           Variant,
@@ -116,6 +119,8 @@ import { Movement } from './products-inventory/stocks/movements/entities/movemen
     PlanApplicationsModule,
 
     SubscriptionApplicationModule,
+
+    FeaturesModule,
   ],
 })
 export class AppModule {}
