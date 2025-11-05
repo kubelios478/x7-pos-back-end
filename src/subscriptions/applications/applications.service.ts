@@ -68,7 +68,6 @@ export class ApplicationsService {
     id: number,
     dto: UpdateApplicationDto,
   ): Promise<OneApplicationResponseDto> {
-    // Validate ID parameter
     if (!id || id <= 0) {
       ErrorHandler.invalidId('Application ID must be a positive number');
     }

@@ -38,8 +38,8 @@ import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
 
-@ApiTags('Subscription Application')
-@Controller('subscription-application')
+@ApiTags('Subscription Applications')
+@Controller('subscription-applications')
 export class SubscriptionApplicationController {
   constructor(
     private readonly subscriptionApplicationService: SubscriptionApplicationService,

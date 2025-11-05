@@ -1,50 +1,51 @@
-//src/subscriptions/applications/applications.controller.ts
+// src/subscriptions/features/features.controller.ts
 import {
   Controller,
   Post,
-  Body,
   UseGuards,
+  Body,
   Get,
+  ParseIntPipe,
+  BadRequestException,
   Param,
   Patch,
   Delete,
-  ParseIntPipe,
-  BadRequestException,
 } from '@nestjs/common';
-import { ApplicationsService } from './applications.service';
-import { CreateApplicationDto } from './dto/create-application.dto';
-import { UpdateApplicationDto } from './dto/update-application.dto';
 import {
-  AllApplicationResponseDto,
-  ApplicationResponseDto,
-  OneApplicationResponseDto,
-} from './dto/application-response.dto';
-import {
-  ApiOperation,
+  ApiBadRequestResponse,
   ApiBody,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiInternalServerErrorResponse,
+  ApiOkResponse,
+  ApiOperation,
   ApiParam,
   ApiTags,
-  ApiBadRequestResponse,
-  ApiCreatedResponse,
-  ApiConflictResponse,
-  ApiForbiddenResponse,
-  ApiOkResponse,
-  ApiNotFoundResponse,
   ApiUnauthorizedResponse,
-  ApiInternalServerErrorResponse,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
-import { Roles } from 'src/auth/decorators/roles.decorator';
-import { Scopes } from 'src/auth/decorators/scopes.decorator';
-import { UserRole } from 'src/users/constants/role.enum';
-import { Scope } from 'src/users/constants/scope.enum';
+import { FeaturesService } from './features.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { UserRole } from 'src/users/constants/role.enum';
+import { Scope } from 'src/users/constants/scope.enum';
+import { CreateFeatureDto } from './dto/create-feature.dto';
+import {
+  AllFeatureResponseDto,
+  FeatureResponseDto,
+  OneFeatureResponseDto,
+} from './dto/feature-response.dto';
+import { Scopes } from 'src/auth/decorators/scopes.decorator';
+import { UpdateFeatureDto } from './dto/update-feature.dto';
 
-@ApiTags('Applications')
-@Controller('applications')
-export class ApplicationsController {
-  constructor(private readonly appService: ApplicationsService) {}
+@ApiTags('Features')
+@Controller('features')
+export class FeaturesController {
+  constructor(private readonly featuresService: FeaturesService) {}
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
@@ -53,26 +54,24 @@ export class ApplicationsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_WEB,
   )
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
-    summary: 'Create a new Application',
+    summary: 'Create a new Feature',
     description:
-      'Endpoint to create a new Application. Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
+      'Endpoint to create a new Feature. Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
   })
   @ApiBody({
-    type: CreateApplicationDto,
-    description: 'Data for the new Application',
+    type: CreateFeatureDto,
+    description: 'Data for a new Feature',
   })
   @ApiCreatedResponse({
-    description: 'Application created successfully',
-    type: ApplicationResponseDto,
+    description: 'Feature created succesfully',
+    type: FeatureResponseDto,
     schema: {
       example: {
         id: 1,
         name: 'Sample Application',
         description: 'This is a sample Application',
-        category: 'utilities',
-        status: 'active',
+        unit: 'Unit Feature',
       },
     },
   })
@@ -83,18 +82,19 @@ export class ApplicationsController {
         statusCode: 400,
         message: [
           'name must be a string',
-          'status must be either active or inactive',
+          'description must be a string',
+          'unit must be a string',
         ],
         error: 'Bad Request',
       },
     },
   })
   @ApiConflictResponse({
-    description: 'Application with this name already exists',
+    description: 'Feature with this name already exists',
     schema: {
       example: {
         statusCode: 409,
-        message: 'Application with this name already exists.',
+        message: 'Feature with this name already exists.',
         error: 'Conflict',
       },
     },
@@ -129,10 +129,8 @@ export class ApplicationsController {
       },
     },
   })
-  async create(
-    @Body() dto: CreateApplicationDto,
-  ): Promise<OneApplicationResponseDto> {
-    return this.appService.create(dto);
+  async create(@Body() dto: CreateFeatureDto): Promise<OneFeatureResponseDto> {
+    return this.featuresService.create(dto);
   }
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -145,23 +143,22 @@ export class ApplicationsController {
     Scope.MERCHANT_WEB,
   )
   @ApiOperation({
-    summary: 'Get all of the Applications',
+    summary: 'Get All of the Features',
     description:
-      'Endpoint to retrieve all Applications. Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
+      'Endpoint to retrieve all Features, Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
   })
   @ApiOkResponse({
-    description: 'Applications retrieved successfully',
+    description: 'Features retrieved successfully',
     schema: {
       example: {
         statusCode: 200,
-        message: 'Applications retrieved successfully',
+        message: 'Features retrieved succesfully',
         data: [
           {
             id: 1,
-            name: 'Sample Application',
-            description: 'This is a sample Application',
-            category: 'utilities',
-            status: 'active',
+            name: 'Advanced Analytics',
+            description: 'Provides advanced data analytics capabilities',
+            Unit: 'unit 1',
           },
         ],
       },
@@ -197,8 +194,8 @@ export class ApplicationsController {
       },
     },
   })
-  async findAll(): Promise<AllApplicationResponseDto> {
-    return this.appService.findAll();
+  async findAll(): Promise<AllFeatureResponseDto> {
+    return this.featuresService.findAll();
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -210,48 +207,42 @@ export class ApplicationsController {
     Scope.MERCHANT_WEB,
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Get a Application by ID' })
+  @ApiOperation({ summary: 'Get a Feature by ID' })
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'ID of the Application',
+    description: 'ID of the Feature',
     example: 1,
   })
   @ApiOkResponse({
-    description: 'Application found',
-    type: ApplicationResponseDto,
+    description: 'Features retrieved successfully',
     schema: {
       example: {
-        id: 1,
-        name: 'Sample Application',
-        description: 'This is a sample Application',
-        category: 'utilities',
-        status: 'active',
-      },
-    },
-  })
-  @ApiBadRequestResponse({
-    description: 'Invalid ID parameter',
-    schema: {
-      example: {
-        statusCode: 400,
-        message: 'ID must be a positive integer',
-        error: 'Bad Request',
+        statusCode: 200,
+        message: 'Features retrieved succesfully',
+        data: [
+          {
+            id: 1,
+            name: 'Advanced Analytics',
+            description: 'Provides advanced data analytics capabilities',
+            Unit: 'unit 1',
+          },
+        ],
       },
     },
   })
   @ApiNotFoundResponse({
-    description: 'Application not found',
+    description: 'Feature not found',
     schema: {
       example: {
         statusCode: 404,
-        message: 'Application not found',
+        message: 'Feature not found',
         error: 'Not Found',
       },
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden. Insufficient permissions',
+    description: 'Forbidden. Insufficient role.',
     schema: {
       example: {
         statusCode: 403,
@@ -284,8 +275,8 @@ export class ApplicationsController {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive integer');
     }
-    const application = await this.appService.findOne(id);
-    return application;
+    const feature = await this.featuresService.findOne(id);
+    return feature;
   }
   @Patch(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -297,31 +288,30 @@ export class ApplicationsController {
     Scope.MERCHANT_WEB,
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Update Application by ID' })
+  @ApiOperation({ summary: 'Update a Feature by ID' })
   @ApiBody({
-    description: 'Fields to update in the Application',
-    type: UpdateApplicationDto,
+    description: 'Fields to update in the Feature',
+    type: UpdateFeatureDto,
     examples: {
       example1: {
         summary: 'Update only name',
-        value: { name: 'Updated Application Name' },
+        value: { name: 'Updated Feature Name' },
       },
       example2: {
         summary: 'Update multiple fields',
         value: {
-          name: 'ApplicationTest',
-          description: 'Is an Test',
-          category: 'SAMPLE',
-          status: 'active',
+          name: 'Updated Advanced Analytics',
+          description: 'Provides advanced data analytics capabilities',
+          Unit: 'unit 2',
         },
       },
     },
   })
   @ApiOkResponse({
-    description: 'Application successfully updated',
+    description: 'Feature successfully updated',
     schema: {
       example: {
-        message: 'Application with ID 5 was successfully updated.',
+        message: 'Feature was successfully updated.',
       },
     },
   })
@@ -331,9 +321,9 @@ export class ApplicationsController {
       example: {
         statusCode: 400,
         message: [
-          'ID must be a positive integer',
           'name must be a string',
-          'status must be either active or inactive',
+          'description must be a string',
+          'unit must be a string',
         ],
         error: 'Bad Request',
       },
@@ -360,11 +350,11 @@ export class ApplicationsController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Application not found',
+    description: 'Feature not found',
     schema: {
       example: {
         statusCode: 404,
-        message: 'Application with id 5 not found',
+        message: 'Feature not found',
         error: 'Not Found',
       },
     },
@@ -381,9 +371,9 @@ export class ApplicationsController {
   })
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateApplicationDto,
-  ): Promise<OneApplicationResponseDto> {
-    return this.appService.update(id, dto);
+    @Body() dto: UpdateFeatureDto,
+  ): Promise<OneFeatureResponseDto> {
+    return this.featuresService.update(id, dto);
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -395,19 +385,19 @@ export class ApplicationsController {
     Scope.MERCHANT_WEB,
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiOperation({ summary: 'Delete a Application' })
+  @ApiOperation({ summary: 'Delete a Feature' })
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'ID of the Application to delete',
+    description: 'ID of the Feature to delete',
     example: 1,
   })
   @ApiOkResponse({
-    description: 'Application deleted successfully',
+    description: 'Feature deleted successfully',
     schema: {
       example: {
         success: true,
-        message: 'Application deleted successfully',
+        message: 'Feature deleted successfully',
       },
     },
   })
@@ -422,11 +412,11 @@ export class ApplicationsController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Application not found',
+    description: 'Feature not found',
     schema: {
       example: {
         statusCode: 404,
-        message: 'Application with id 5 not found',
+        message: 'Feature not found',
         error: 'Not Found',
       },
     },
@@ -463,7 +453,7 @@ export class ApplicationsController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<OneApplicationResponseDto> {
-    return this.appService.remove(id);
+  ): Promise<OneFeatureResponseDto> {
+    return this.featuresService.remove(id);
   }
 }
