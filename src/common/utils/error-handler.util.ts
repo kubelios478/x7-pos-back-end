@@ -105,6 +105,12 @@ export class ErrorHandler {
     throw new NotFoundException(message);
   }
 
+  static featureNotFound(
+    message: string = ErrorMessage.FEATURE_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
   static resourceNotFound(resource: string, id?: number | string): never {
     const message = id
       ? `${resource} with ID ${id} not found`
