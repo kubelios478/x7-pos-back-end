@@ -30,6 +30,7 @@ import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
 import { Collaborator } from './collaborators/entities/collaborator.entity';
+import { Location } from './products-inventory/stocks/locations/entities/location.entity';
 
 import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
@@ -44,6 +45,8 @@ import { MerchantSubscription } from './subscriptions/merchant-subscriptions/ent
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
 import { SubscriptionApplication } from './subscriptions/subscription-application/entity/subscription-application.entity';
+import { Item } from './products-inventory/stocks/items/entities/item.entity';
+import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
 import { FeatureEntity } from './subscriptions/features/entity/features.entity';
 
 @Module({
@@ -81,6 +84,9 @@ import { FeatureEntity } from './subscriptions/features/entity/features.entity';
           Supplier,
           Variant,
           Modifier,
+          Location,
+          Item,
+          Movement,
           Collaborator,
           Shift,
         ],

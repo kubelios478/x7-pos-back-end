@@ -1,0 +1,259 @@
+import { Injectable } from '@nestjs/common';
+import { CreateMovementDto } from './dto/create-movement.dto';
+import { UpdateMovementDto } from './dto/update-movement.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Movement } from './entities/movement.entity';
+import {
+  AllMovementsResponse,
+  MovementResponseDto,
+  OneMovementResponse,
+} from './dto/movement-response.dto';
+import { ItemLittleResponseDto } from '../items/dto/item-response.dto';
+import { ErrorHandler } from 'src/common/utils/error-handler.util';
+import { ErrorMessage } from 'src/common/constants/error-messages';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { Item } from '../items/entities/item.entity';
+
+@Injectable()
+export class MovementsService {
+  constructor(
+    @InjectRepository(Movement)
+    private readonly movementRepository: Repository<Movement>,
+    @InjectRepository(Item)
+    private readonly itemRepository: Repository<Item>,
+  ) {}
+
+  async create(
+    user: AuthenticatedUser,
+    createMovementDto: CreateMovementDto,
+  ): Promise<OneMovementResponse> {
+    const { stockItemId, quantity, type, reference } = createMovementDto;
+    const merchantId = user.merchant.id;
+
+    const item = await this.itemRepository
+      .createQueryBuilder('item')
+      .leftJoinAndSelect('item.product', 'product')
+      .where('item.id = :stockItemId', { stockItemId })
+      .andWhere('product.merchantId = :merchantId', { merchantId })
+      .andWhere('item.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!item) {
+      ErrorHandler.notFound(ErrorMessage.ITEM_NOT_FOUND);
+    }
+
+    const newMovement = this.movementRepository.create({
+      item,
+      quantity,
+      type,
+      reference,
+      isActive: true,
+    });
+
+    const savedMovement = await this.movementRepository.save(newMovement);
+
+    return this.findOne(savedMovement.id, merchantId, 'Created');
+  }
+
+  async findAll(merchantId: number): Promise<AllMovementsResponse> {
+    const movements = await this.movementRepository
+      .createQueryBuilder('movement')
+      .leftJoinAndSelect('movement.item', 'item')
+      .leftJoinAndSelect('item.product', 'product')
+      .where('product.merchantId = :merchantId', { merchantId })
+      .andWhere('movement.isActive = :isActive', { isActive: true })
+      .getMany();
+
+    const movementsResponse: MovementResponseDto[] = await Promise.all(
+      movements.map((movement) => {
+        const result: MovementResponseDto = {
+          id: movement.id,
+          item: movement.item
+            ? ({
+                id: movement.item.id,
+                currentQty: movement.item.currentQty,
+              } as ItemLittleResponseDto)
+            : null,
+          quantity: movement.quantity,
+          type: movement.type,
+          reference: movement.reference,
+          isActive: movement.isActive,
+          createdAt: movement.createdAt,
+        };
+        return result;
+      }),
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Movements retrieved successfully',
+      data: movementsResponse,
+    };
+  }
+
+  async findOne(
+    id: number,
+    merchantId?: number,
+    createdUpdateDelete?: string,
+  ): Promise<OneMovementResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId(ErrorMessage.INVALID_ID);
+    }
+
+    const whereCondition: {
+      id: number;
+      merchantId?: number;
+      isActive: boolean;
+    } = {
+      id,
+      isActive: createdUpdateDelete === 'Deleted' ? false : true,
+    };
+
+    if (merchantId !== undefined) {
+      whereCondition.merchantId = merchantId;
+    }
+
+    const movement = await this.movementRepository
+      .createQueryBuilder('movement')
+      .leftJoinAndSelect('movement.item', 'item')
+      .leftJoinAndSelect('item.product', 'product') // Join product through item
+      .where('movement.id = :id', { id })
+      .andWhere('product.merchantId = :merchantId', { merchantId })
+      .andWhere('movement.isActive = :isActive', {
+        isActive: whereCondition.isActive,
+      })
+      .getOne();
+
+    if (!movement) {
+      ErrorHandler.notFound(ErrorMessage.MOVEMENT_NOT_FOUND); // Need to add MOVEMENT_NOT_FOUND to error-messages.ts
+    }
+
+    const result: MovementResponseDto = {
+      id: movement.id,
+      item: movement.item
+        ? ({
+            id: movement.item.id,
+            currentQty: movement.item.currentQty,
+          } as ItemLittleResponseDto)
+        : null,
+      quantity: movement.quantity,
+      type: movement.type,
+      reference: movement.reference,
+      isActive: movement.isActive,
+      createdAt: movement.createdAt,
+    };
+
+    let response: OneMovementResponse;
+
+    switch (createdUpdateDelete) {
+      case 'Created':
+        response = {
+          statusCode: 201,
+          message: `Movement ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      case 'Updated':
+        response = {
+          statusCode: 201,
+          message: `Movement ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      case 'Deleted':
+        response = {
+          statusCode: 201,
+          message: `Movement ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      default:
+        response = {
+          statusCode: 200,
+          message: 'Movement retrieved successfully',
+          data: result,
+        };
+        break;
+    }
+    return response;
+  }
+
+  async update(
+    user: AuthenticatedUser,
+    id: number,
+    updateMovementDto: UpdateMovementDto,
+  ): Promise<OneMovementResponse> {
+    const merchantId = user.merchant.id;
+    const { stockItemId, quantity, type, reference } = updateMovementDto;
+
+    const movement = await this.movementRepository
+      .createQueryBuilder('movement')
+      .leftJoinAndSelect('movement.item', 'item')
+      .leftJoinAndSelect('item.product', 'product')
+      .where('movement.id = :id', { id })
+      .andWhere('product.merchantId = :merchantId', { merchantId })
+      .andWhere('movement.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!movement) {
+      ErrorHandler.notFound(ErrorMessage.MOVEMENT_NOT_FOUND);
+    }
+
+    if (stockItemId) {
+      const item = await this.itemRepository
+        .createQueryBuilder('item')
+        .leftJoinAndSelect('item.product', 'product')
+        .where('item.id = :stockItemId', { stockItemId })
+        .andWhere('product.merchantId = :merchantId', { merchantId })
+        .andWhere('item.isActive = :isActive', { isActive: true })
+        .getOne();
+
+      if (!item) {
+        ErrorHandler.notFound(ErrorMessage.ITEM_NOT_FOUND);
+      }
+      movement.item = item;
+    }
+
+    if (quantity) {
+      movement.quantity = quantity;
+    }
+
+    if (type) {
+      movement.type = type;
+    }
+
+    if (reference) {
+      movement.reference = reference;
+    }
+
+    const updatedMovement = await this.movementRepository.save(movement);
+
+    return this.findOne(updatedMovement.id, merchantId, 'Updated');
+  }
+
+  async remove(
+    user: AuthenticatedUser,
+    id: number,
+  ): Promise<OneMovementResponse> {
+    const merchantId = user.merchant.id;
+
+    const movement = await this.movementRepository
+      .createQueryBuilder('movement')
+      .leftJoinAndSelect('movement.item', 'item')
+      .leftJoinAndSelect('item.product', 'product')
+      .where('movement.id = :id', { id })
+      .andWhere('product.merchantId = :merchantId', { merchantId })
+      .andWhere('movement.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!movement) {
+      ErrorHandler.notFound(ErrorMessage.MOVEMENT_NOT_FOUND);
+    }
+
+    movement.isActive = false;
+    const removedMovement = await this.movementRepository.save(movement);
+
+    return this.findOne(removedMovement.id, merchantId, 'Deleted');
+  }
+}
