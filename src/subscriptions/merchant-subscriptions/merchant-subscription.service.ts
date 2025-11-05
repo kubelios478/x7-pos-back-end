@@ -14,7 +14,7 @@ import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscripti
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 
 @Injectable()
-export class MerchantSuscriptionService {
+export class MerchantSubscriptionService {
   constructor(
     @InjectRepository(MerchantSubscription)
     private readonly merchantSubscriptionRepository: Repository<MerchantSubscription>,
@@ -48,7 +48,7 @@ export class MerchantSuscriptionService {
             where: { id: dto.merchantId },
           });
           if (!merchant) {
-            ErrorHandler.resourceNotFound('Merchant', dto.merchantId);
+            ErrorHandler.merchantNotFound();
           }
         }
         if (dto.planId) {
@@ -56,7 +56,7 @@ export class MerchantSuscriptionService {
             where: { id: dto.planId },
           });
           if (!plan) {
-            ErrorHandler.resourceNotFound('Subscription Plan', dto.planId);
+            ErrorHandler.subscriptionPlanNotFound();
           }
         }
       }
@@ -141,6 +141,11 @@ export class MerchantSuscriptionService {
         'Merchant Subscription ID must be a positive integer',
       );
     }
+    const merchantSubscription =
+      await this.merchantSubscriptionRepository.findOne({ where: { id } });
+    if (!merchantSubscription) {
+      ErrorHandler.merchantSubscriptionNotFound();
+    }
     try {
       const merchantSubscription =
         await this.merchantSubscriptionRepository.findOne({
@@ -179,6 +184,11 @@ export class MerchantSuscriptionService {
       ErrorHandler.invalidId(
         'Merchant Subscription ID must be a positive integer',
       );
+    }
+    const merchantSubscription =
+      await this.merchantSubscriptionRepository.findOne({ where: { id } });
+    if (!merchantSubscription) {
+      ErrorHandler.merchantSubscriptionNotFound();
     }
     try {
       const merchantSubscription =

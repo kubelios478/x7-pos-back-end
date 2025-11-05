@@ -17,13 +17,13 @@ import { UpdatePlanApplicationDto } from './dto/update-plan-application.dto';
 export class PlanApplicationsService {
   constructor(
     @InjectRepository(PlanApplication)
-    private readonly planAplicationRepository: Repository<PlanApplication>,
+    private readonly planApplicationRepository: Repository<PlanApplication>,
 
     @InjectRepository(SubscriptionPlan)
-    private readonly suscriptionPlanRepository: Repository<SubscriptionPlan>,
+    private readonly subscriptionPlanRepository: Repository<SubscriptionPlan>,
 
     @InjectRepository(ApplicationEntity)
-    private readonly aplicationRepository: Repository<ApplicationEntity>,
+    private readonly applicationRepository: Repository<ApplicationEntity>,
   ) {}
   async create(
     dto: CreatePlanApplicationDto,
@@ -45,32 +45,30 @@ export class PlanApplicationsService {
       let application: ApplicationEntity | null = null;
 
       if (dto.subscriptionPlan) {
-        subscriptionPlan = await this.suscriptionPlanRepository.findOne({
+        subscriptionPlan = await this.subscriptionPlanRepository.findOne({
           where: { id: dto.subscriptionPlan },
         });
         if (!subscriptionPlan) {
-          ErrorHandler.resourceNotFound(
-            'Subscription Plan',
-            dto.subscriptionPlan,
-          );
+          ErrorHandler.subscriptionPlanNotFound();
         }
       }
 
       if (dto.application) {
-        application = await this.aplicationRepository.findOne({
+        application = await this.applicationRepository.findOne({
           where: { id: dto.application },
         });
         if (!application) {
-          ErrorHandler.resourceNotFound('Application', dto.application);
+          ErrorHandler.applicationNotFound();
         }
       }
-      const newPlanApp = this.planAplicationRepository.create({
-        suscriptionPlan: subscriptionPlan,
-        aplication: application,
+      const newPlanApp = this.planApplicationRepository.create({
+        subscriptionPlan: subscriptionPlan,
+        application: application,
         limits: dto.limits,
       } as Partial<PlanApplication>);
 
-      const savedPlanApp = await this.planAplicationRepository.save(newPlanApp);
+      const savedPlanApp =
+        await this.planApplicationRepository.save(newPlanApp);
 
       return {
         statusCode: 201,
@@ -83,7 +81,7 @@ export class PlanApplicationsService {
   }
 
   async findAll(): Promise<AllPlanApplicationsResponseDto> {
-    const planApps = await this.planAplicationRepository.find({
+    const planApps = await this.planApplicationRepository.find({
       relations: ['subscriptionPlan', 'application'],
       select: {
         subscriptionPlan: {
@@ -107,7 +105,7 @@ export class PlanApplicationsService {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('Plan Application ID must be a positive integer');
     }
-    const planApp = await this.planAplicationRepository.findOne({
+    const planApp = await this.planApplicationRepository.findOne({
       where: { planApplication: id },
       relations: ['subscriptionPlan', 'application'],
       select: {
@@ -138,7 +136,7 @@ export class PlanApplicationsService {
       ErrorHandler.invalidId('Plan Application ID must be a positive integer');
     }
     try {
-      const planApp = await this.planAplicationRepository.findOne({
+      const planApp = await this.planApplicationRepository.findOne({
         where: { planApplication: id },
         relations: ['subscriptionPlan', 'application'],
         select: {
@@ -153,11 +151,11 @@ export class PlanApplicationsService {
         },
       });
       if (!planApp) {
-        ErrorHandler.resourceNotFound('Plan Application', id);
+        ErrorHandler.planApplicationNotFound();
       }
       Object.assign(planApp, dto);
 
-      const updatedPlanApp = await this.planAplicationRepository.save(planApp);
+      const updatedPlanApp = await this.planApplicationRepository.save(planApp);
 
       return {
         statusCode: 200,
@@ -173,13 +171,13 @@ export class PlanApplicationsService {
       ErrorHandler.invalidId('Plan Application ID must be a positive integer');
     }
     try {
-      const planApp = await this.planAplicationRepository.findOne({
+      const planApp = await this.planApplicationRepository.findOne({
         where: { planApplication: id },
       });
       if (!planApp) {
         ErrorHandler.planApplicationNotFound();
       }
-      await this.planAplicationRepository.remove(planApp);
+      await this.planApplicationRepository.remove(planApp);
       return {
         statusCode: 200,
         message: 'Plan Application deleted successfully',

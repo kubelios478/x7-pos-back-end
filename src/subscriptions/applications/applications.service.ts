@@ -1,5 +1,5 @@
 //src/subscriptions/applications/applications.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { ApplicationEntity } from './entity/application-entity';
 import { CreateApplicationDto } from './dto/create-application.dto';
@@ -18,6 +18,14 @@ export class ApplicationsService {
     private readonly applicationRepo: Repository<ApplicationEntity>,
   ) {}
   async create(dto: CreateApplicationDto): Promise<OneApplicationResponseDto> {
+    const existing = await this.applicationRepo.findOne({
+      where: { name: dto.name },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Application with name "${dto.name}" already exists`,
+      );
+    }
     try {
       const application = this.applicationRepo.create(dto);
       const createdApplication = await this.applicationRepo.save(application);

@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 
 export class CreateSubscriptionPlanDto {
-  @ApiProperty({ example: 'Plan Basic' })
+  @ApiProperty({ example: 'Basic Plan' })
   @IsString()
   @IsNotEmpty()
   name: string;

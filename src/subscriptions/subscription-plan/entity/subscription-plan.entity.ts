@@ -19,7 +19,7 @@ export class SubscriptionPlan {
   name: string;
 
   @ApiProperty({
-    example: 'Includes basic features and limited support',
+    example: 'Includes basic features',
     description: 'Description of the subscription plan',
   })
   @Column({ type: 'text' })
