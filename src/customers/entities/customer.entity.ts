@@ -3,6 +3,8 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Company } from 'src/companies/entities/company.entity';
+import { OneToMany } from 'typeorm';
+import { Order } from '../../orders/entities/order.entity';
 
 @Entity()
 export class Customer {
@@ -87,4 +89,13 @@ export class Customer {
     nullable: true,
   })
   company: Company;
+
+  @ApiProperty({
+    type: () => Order,
+    isArray: true,
+    required: false,
+    description: 'List of orders for this customer',
+  })
+  @OneToMany(() => Order, (order) => order.customer)
+  orders: Order[];
 }

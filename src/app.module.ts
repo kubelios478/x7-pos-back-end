@@ -35,14 +35,19 @@ import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.mo
 import { ShiftAssignment } from './shift-assignments/entities/shift-assignment.entity';
 import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
 import { TableAssignment } from './table-assignments/entities/table-assignment.entity';
-import { SuscriptionPlan } from './suscriptions/suscription-plan/entity/suscription-plan.entity';
-import { MerchantSuscription } from './suscriptions/merchant-suscriptions/entities/merchant-suscription.entity';
-import { AplicationEntity } from './suscriptions/aplications/entity/aplication-entity';
-import { PlanAplication } from './suscriptions/plan-aplications/entity/plan-aplications.entity';
+import { CashDrawersModule } from './cash-drawers/cash-drawers.module';
+import { CashDrawer } from './cash-drawers/entities/cash-drawer.entity';
+import { CashTransaction } from './cash-transactions/entities/cash-transaction.entity';
+import { Receipt } from './receipts/entities/receipt.entity';
+import { Order } from './orders/entities/order.entity';
+
 import { SubscriptionPlan } from './subscriptions/subscription-plan/entity/subscription-plan.entity';
 import { MerchantSubscription } from './subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
+import { CashTransactionsModule } from './cash-transactions/cash-transactions.module';
+import { ReceiptsModule } from './receipts/receipts.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -70,14 +75,15 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
           Shift,
           ShiftAssignment,
           TableAssignment,
-          MerchSub,
+          CashDrawer,
+          CashTransaction,
+          Receipt,
+          Order,
           Product,
           Supplier,
           MerchantSubscription,
           ApplicationEntity,
           PlanApplication,
-          Collaborator,
-          Shift,
         ],
         synchronize: true,
       }),
@@ -98,13 +104,21 @@ import { PlanApplication } from './subscriptions/plan-applications/entity/plan-a
     CollaboratorsModule,
     ShiftsModule,
 
-    MerchSubModule,
+
 
     ShiftAssignmentsModule,
 
     TableAssignmentsModule,
-    PlanAplicationsModule,
+
+    CashDrawersModule,
+
     PlanApplicationsModule,
+
+    CashTransactionsModule,
+
+    ReceiptsModule,
+
+    OrdersModule,
   ],
 })
 export class AppModule {}

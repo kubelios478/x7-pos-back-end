@@ -11,6 +11,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
+import { Order } from '../../orders/entities/order.entity';
 
 @Entity('table')
 @Index(['merchant_id', 'number'], { unique: true })
@@ -72,11 +73,15 @@ export class Table {
   tableAssignments: TableAssignment[];
 
   @ApiProperty({
-    example: '2023-10-01T12:00:00Z',
-    description: 'Last update timestamp of the Table record',
+    type: () => Order,
+    isArray: true,
+    required: false,
+    description: 'List of orders for this table',
   })
-  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-  updated_at: Date;
+  @OneToMany(() => Order, (order) => order.table)
+  orders: Order[];
+
+
 }
 
 /*
