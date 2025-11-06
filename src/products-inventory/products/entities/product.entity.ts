@@ -1,14 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Category } from 'src/products-inventory/category/entities/category.entity';
+import { Modifier } from 'src/products-inventory/modifiers/entities/modifier.entity';
 import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
+import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Item } from 'src/products-inventory/stocks/items/entities/item.entity';
 
 @Entity({ name: 'product' })
 export class Product {
@@ -17,11 +21,11 @@ export class Product {
   id: number;
 
   @ApiProperty({ example: 'Coca-Cola', description: 'Product name' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   name: string;
 
   @ApiProperty({ example: '123456', description: 'Product SKU' })
-  @Column({ unique: true, type: 'varchar', length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   sku: string;
 
   @ApiProperty({ example: 10.99, description: 'Product base price' })
@@ -72,7 +76,16 @@ export class Product {
   @JoinColumn({ name: 'supplierId' })
   supplier: Supplier;
 
-  @ApiProperty({ example: true, description: 'Product active status' })
+  //@ApiProperty({ example: true, description: 'Product active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @OneToMany(() => Variant, (variant) => variant.product)
+  variants: Variant[];
+
+  @OneToMany(() => Modifier, (modifier) => modifier.product)
+  modifiers: Modifier[];
+
+  @OneToMany(() => Item, (item) => item.product)
+  items: Item[];
 }

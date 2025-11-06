@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
-import { ApplicationEntity } from './entity/application-entity';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import {
   AllApplicationResponseDto,
@@ -31,6 +30,8 @@ import {
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiNotFoundResponse,
+  ApiUnauthorizedResponse,
+  ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
@@ -43,17 +44,6 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 @Controller('applications')
 export class ApplicationsController {
   constructor(private readonly appService: ApplicationsService) {}
-  @ApiOperation({ summary: 'Create a new Application' })
-  @ApiCreatedResponse({
-    description: 'The Application has been successfully created.',
-    type: ApplicationEntity,
-  })
-  @ApiBadRequestResponse({ description: 'Invalid input data' })
-  @ApiConflictResponse({
-    description: 'Application with this name already exists',
-  })
-  @ApiForbiddenResponse({ description: 'Forbidden. Insufficient role.' })
-  @ApiBadRequestResponse({ description: 'Invalid input data.' })
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -64,18 +54,50 @@ export class ApplicationsController {
     Scope.MERCHANT_WEB,
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
-  async create(
-    @Body() dto: CreateApplicationDto,
-  ): Promise<OneApplicationResponseDto> {
-    return this.appService.create(dto);
-  }
-  @Get()
   @ApiOperation({
-    summary: 'Get all Applications',
+    summary: 'Create a new Application',
+    description:
+      'Endpoint to create a new Application. Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
   })
-  @ApiOkResponse({
-    description: 'List of Applications',
-    type: [ApplicationResponseDto],
+  @ApiBody({
+    type: CreateApplicationDto,
+    description: 'Data for the new Application',
+  })
+  @ApiCreatedResponse({
+    description: 'Application created successfully',
+    type: ApplicationResponseDto,
+    schema: {
+      example: {
+        id: 1,
+        name: 'Sample Application',
+        description: 'This is a sample Application',
+        category: 'utilities',
+        status: 'active',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: [
+          'name must be a string',
+          'status must be either active or inactive',
+        ],
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description: 'Application with this name already exists',
+    schema: {
+      example: {
+        statusCode: 409,
+        message: 'Application with this name already exists.',
+        error: 'Conflict',
+      },
+    },
   })
   @ApiForbiddenResponse({
     description: 'Forbidden. Insufficient role.',
@@ -87,19 +109,32 @@ export class ApplicationsController {
       },
     },
   })
-  @ApiBadRequestResponse({
-    description: 'Invalid request parameters',
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Invalid or missing token.',
     schema: {
       example: {
-        statusCode: 400,
-        message: [
-          'page must be a positive number',
-          'limit must be a positive number',
-        ],
-        error: 'Bad Request',
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
       },
     },
   })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
+  async create(
+    @Body() dto: CreateApplicationDto,
+  ): Promise<OneApplicationResponseDto> {
+    return this.appService.create(dto);
+  }
+  @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -109,6 +144,59 @@ export class ApplicationsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_WEB,
   )
+  @ApiOperation({
+    summary: 'Get all of the Applications',
+    description:
+      'Endpoint to retrieve all Applications. Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
+  })
+  @ApiOkResponse({
+    description: 'Applications retrieved successfully',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Applications retrieved successfully',
+        data: [
+          {
+            id: 1,
+            name: 'Sample Application',
+            description: 'This is a sample Application',
+            category: 'utilities',
+            status: 'active',
+          },
+        ],
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden. Insufficient role.',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Invalid or missing token.',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
   async findAll(): Promise<AllApplicationResponseDto> {
     return this.appService.findAll();
   }
@@ -157,7 +245,7 @@ export class ApplicationsController {
     schema: {
       example: {
         statusCode: 404,
-        message: 'Application with id 5 not found',
+        message: 'Application not found',
         error: 'Not Found',
       },
     },
@@ -172,12 +260,32 @@ export class ApplicationsController {
       },
     },
   })
-  async getOne(@Param('id', ParseIntPipe) id: number) {
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Invalid or missing token.',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive integer');
     }
-    const plan = await this.appService.findOne(id);
-    return plan;
+    const application = await this.appService.findOne(id);
+    return application;
   }
   @Patch(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -218,12 +326,36 @@ export class ApplicationsController {
     },
   })
   @ApiBadRequestResponse({
-    description: 'Invalid ID parameter or invalid input data',
+    description: 'Invalid input data or ID parameter',
     schema: {
       example: {
         statusCode: 400,
-        message: ['id must be a number', 'name must be a string'],
+        message: [
+          'ID must be a positive integer',
+          'name must be a string',
+          'status must be either active or inactive',
+        ],
         error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Invalid or missing token.',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden. Insufficient permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
       },
     },
   })
@@ -237,13 +369,13 @@ export class ApplicationsController {
       },
     },
   })
-  @ApiConflictResponse({
-    description: 'Application with this name already exists',
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
     schema: {
       example: {
-        statusCode: 409,
-        message: 'Application with this name already exists.',
-        error: 'Conflict',
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
       },
     },
   })
@@ -306,6 +438,26 @@ export class ApplicationsController {
         statusCode: 403,
         message: 'Forbidden resource',
         error: 'Forbidden',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized. Invalid or missing token.',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Authentication required',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
       },
     },
   })

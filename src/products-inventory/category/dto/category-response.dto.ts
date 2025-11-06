@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 import { MerchantResponseDto } from 'src/merchants/dtos/merchant-response.dto';
 
 export class CategoryResponseDto {
@@ -38,4 +39,27 @@ export class CategoryResponseDto {
     nullable: true,
   })
   parents?: { id: number; parentName: string }[];
+}
+export class CategoryLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Category ID' })
+  id: number;
+
+  @ApiProperty({ example: 'Beverages', description: 'Category name' })
+  name: string;
+
+  @ApiProperty({
+    type: () => CategoryLittleResponseDto,
+    nullable: true,
+    description: 'Parent category details',
+  })
+  parent?: CategoryLittleResponseDto | null;
+}
+
+export class OneCategoryResponse extends SuccessResponse {
+  @ApiProperty()
+  data: CategoryResponseDto;
+}
+export class AllCategoryResponse extends SuccessResponse {
+  @ApiProperty()
+  data: CategoryResponseDto[];
 }

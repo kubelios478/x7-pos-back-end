@@ -1,5 +1,5 @@
-// src/sub-plan/sub-plan.service.ts
-import { Injectable } from '@nestjs/common';
+// src/subscriptions/subscription-plan/subscription-plan.service.ts
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SubscriptionPlan } from './entity/subscription-plan.entity';
@@ -21,6 +21,14 @@ export class SubscriptionPlanService {
   async create(
     dto: CreateSubscriptionPlanDto,
   ): Promise<OneSubscriptionPlanResponseDto> {
+    const existing = await this.subscriptionPlanRepo.findOne({
+      where: { name: dto.name },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Subscription Plan with name "${dto.name}" already exists`,
+      );
+    }
     try {
       const subscriptionPlan = this.subscriptionPlanRepo.create(dto);
       const createdPlan =
@@ -45,7 +53,7 @@ export class SubscriptionPlanService {
   }
   async findOne(id: number): Promise<OneSubscriptionPlanResponseDto> {
     if (!id || isNaN(Number(id))) {
-      ErrorHandler.invalidId('Subscription Plan ID must be a positive number');
+      ErrorHandler.invalidId();
     }
     const plan = await this.subscriptionPlanRepo.findOne({ where: { id } });
     if (!plan) {

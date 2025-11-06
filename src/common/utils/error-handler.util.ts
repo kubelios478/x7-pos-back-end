@@ -60,29 +60,23 @@ export class ErrorHandler {
     throw new ForbiddenException(message);
   }
 
+  static changedMerchant(
+    message: string = ErrorMessage.CHANGED_MERCHANT,
+  ): never {
+    throw new ForbiddenException(message);
+  }
+
   static notOwner(message: string = ErrorMessage.NOT_OWNER): never {
     throw new ForbiddenException(message);
   }
 
   // 404 Not Found Errors
-  static userNotFound(message: string = ErrorMessage.USER_NOT_FOUND): never {
-    throw new NotFoundException(message);
-  }
-
-  static companyNotFound(
-    message: string = ErrorMessage.COMPANY_NOT_FOUND,
-  ): never {
-    throw new NotFoundException(message);
-  }
-
-  static merchantNotFound(
-    message: string = ErrorMessage.MERCHANT_NOT_FOUND,
-  ): never {
+  static notFound(message: string): never {
     throw new NotFoundException(message);
   }
 
   static applicationNotFound(
-    message: string = ErrorMessage.APPPLICATION_NOT_FOUND,
+    message: string = ErrorMessage.APPLICATION_NOT_FOUND,
   ): never {
     throw new NotFoundException(message);
   }
@@ -101,6 +95,18 @@ export class ErrorHandler {
 
   static subscriptionPlanNotFound(
     message: string = ErrorMessage.SUBSCRIPTION_PLAN_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static subscriptionApplicationNotFound(
+    message: string = ErrorMessage.SUBSCRIPTION_APPLICATION_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static featureNotFound(
+    message: string = ErrorMessage.FEATURE_NOT_FOUND,
   ): never {
     throw new NotFoundException(message);
   }
@@ -132,6 +138,10 @@ export class ErrorHandler {
   }
 
   static rutExists(message: string = ErrorMessage.RUT_ALREADY_EXISTS): never {
+    throw new ConflictException(message);
+  }
+
+  static exists(message: string): never {
     throw new ConflictException(message);
   }
 

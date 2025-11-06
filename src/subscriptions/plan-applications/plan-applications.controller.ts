@@ -13,7 +13,6 @@ import {
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
-  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOperation,
@@ -39,23 +38,11 @@ import {
   PlanApplicationSummaryDto,
 } from './dto/summary-plan-applications.dto';
 import { UpdatePlanApplicationDto } from './dto/update-plan-application.dto';
-import { PlanApplication } from './entity/plan-applications.entity';
 
 @ApiTags('Plan Applications')
 @Controller('plan-applications')
 export class PlanApplicationsController {
   constructor(private readonly planAppService: PlanApplicationsService) {}
-
-  @ApiOperation({ summary: 'Create a new Plan Application' })
-  @ApiCreatedResponse({
-    description: 'The Plan Aplication has been created successfully.',
-    type: PlanApplication,
-  })
-  @ApiBadRequestResponse({ description: 'Invalid input data.' })
-  @ApiConflictResponse({
-    description: 'Plan Application with this combination already exists.',
-  })
-  @ApiForbiddenResponse({ description: 'Forbidden. Insufficient role.' })
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -66,6 +53,55 @@ export class PlanApplicationsController {
     Scope.MERCHANT_WEB,
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Create a new Plan Application',
+    description:
+      'Endpoint to create a new Plan Application linking a Subscription Plan to an Application.',
+  })
+  @ApiCreatedResponse({
+    description: 'Plan Application created successfully',
+    type: PlanApplicationSummaryDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request: Invalid input data',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Invalid input data',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden: Insufficient role or permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized: Missing or invalid authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
+  })
   async create(
     @Body() dto: CreatePlanApplicationDto,
   ): Promise<OnePlanApplicationResponseDto> {
@@ -79,6 +115,7 @@ export class PlanApplicationsController {
     Scope.MERCHANT_ANDROID,
     Scope.MERCHANT_IOS,
   )
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'Get all Plan Applications',
     description:
@@ -90,7 +127,7 @@ export class PlanApplicationsController {
     type: [PlanApplicationSummaryDto],
   })
   @ApiOkResponse({
-    description: 'List of merchant subscriptions retrieved successfully',
+    description: 'List of Plan Applications retrieved successfully',
     type: [PlanApplicationSummaryDto],
     schema: {
       example: [
@@ -113,13 +150,13 @@ export class PlanApplicationsController {
       },
     },
   })
-  @ApiBadRequestResponse({
-    description: 'Bad Request: Invalid query parameters or filters',
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized: Missing or invalid authentication token',
     schema: {
       example: {
-        statusCode: 400,
-        message: 'Invalid pagination parameters',
-        error: 'Bad Request',
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
       },
     },
   })
@@ -143,32 +180,74 @@ export class PlanApplicationsController {
     Scope.MERCHANT_WEB,
     Scope.MERCHANT_ANDROID,
     Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
   )
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
-    summary: 'Get one Plan Application',
-    description: 'Retrieve details of a specific Plan Application by ID.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: Number,
-    description: 'Plan ApplicationID',
-    example: 1,
+    summary: 'Get a Plan Application by ID',
+    description: 'Retrieve details of a specific Plan Application by its ID.',
   })
   @ApiOkResponse({
     description: 'Plan Application retrieved successfully',
     type: PlanApplicationSummaryDto,
+    schema: {
+      example: {
+        id: 1,
+        application: { id: 5, name: 'NewApplication' },
+        plan: { id: 2, name: 'Gold Plan' },
+        limits: { description: 'This are the limits' },
+      },
+    },
   })
   @ApiBadRequestResponse({
     description: 'Bad Request: Invalid ID parameter',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'ID must be a positive integer',
+        error: 'Bad Request',
+      },
+    },
   })
   @ApiNotFoundResponse({
     description: 'Not Found: Plan Application not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Plan Application not found',
+        error: 'Not Found',
+      },
+    },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden: Insufficient permissions',
+    description: 'Forbidden: Insufficient role or permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized: Missing or invalid authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
   })
   async getOne(
     @Param('id', ParseIntPipe) id: number,
@@ -185,7 +264,9 @@ export class PlanApplicationsController {
     Scope.MERCHANT_WEB,
     Scope.MERCHANT_ANDROID,
     Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
   )
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'Update a Plan Application',
     description: 'Endpoint to update an existing Plan Application',
@@ -219,16 +300,40 @@ export class PlanApplicationsController {
     schema: {
       example: {
         statusCode: 404,
-        message: 'Subscription with ID 5 not found',
+        message: 'Plan Application not found',
         error: 'Not Found',
       },
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden: Insufficient permissions',
+    description: 'Forbidden: Insufficient role or permissions',
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized: Missing or invalid authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
+      },
+    },
   })
   async update(
     @Param('id', ParseIntPipe) id: number,
@@ -277,7 +382,7 @@ export class PlanApplicationsController {
     schema: {
       example: {
         statusCode: 404,
-        message: 'Plan Application with id 5 not found',
+        message: 'Plan Application not found',
         error: 'Not Found',
       },
     },
@@ -289,6 +394,26 @@ export class PlanApplicationsController {
         statusCode: 403,
         message: 'Forbidden resource',
         error: 'Forbidden',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized: Missing or invalid authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiInternalServerErrorResponse({
+    description: 'Unexpected server error',
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'InternalServerError',
       },
     },
   })
