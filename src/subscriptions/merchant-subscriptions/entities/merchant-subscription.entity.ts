@@ -7,9 +7,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { SubscriptionPlan } from '../../subscription-plan/entity/subscription-plan.entity';
+import { Order } from 'src/orders/entities/order.entity';
 
 @Entity({ name: 'merchant_subscription' })
 export class MerchantSubscription {
@@ -44,4 +47,13 @@ export class MerchantSubscription {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @ApiProperty({
+    type: () => Order,
+    isArray: true,
+    required: false,
+    description: 'List of orders associated with this subscription',
+  })
+  @OneToMany(() => Order, (order) => order.subscription)
+  orders: Order[];
 }

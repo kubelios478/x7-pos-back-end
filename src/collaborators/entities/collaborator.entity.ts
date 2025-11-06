@@ -15,6 +15,8 @@ import { ShiftRole } from '../constants/shift-role.enum';
 import { CollaboratorStatus } from '../constants/collaborator-status.enum';
 import { ShiftAssignment } from '../../shift-assignments/entities/shift-assignment.entity';
 import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
+import { CashDrawer } from '../../cash-drawers/entities/cash-drawer.entity';
+import { Order } from '../../orders/entities/order.entity';
 
 @Entity("collaborator")
 @Index(["user_id"], { unique: true })
@@ -84,6 +86,33 @@ export class Collaborator {
     })
     @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.collaborator)
     tableAssignments: TableAssignment[];
+
+    @ApiProperty({
+        type: () => CashDrawer,
+        isArray: true,
+        required: false,
+        description: 'List of cash drawers opened by this collaborator',
+    })
+    @OneToMany(() => CashDrawer, (cashDrawer) => cashDrawer.openedByCollaborator)
+    openedCashDrawers: CashDrawer[];
+
+    @ApiProperty({
+        type: () => CashDrawer,
+        isArray: true,
+        required: false,
+        description: 'List of cash drawers closed by this collaborator',
+    })
+    @OneToMany(() => CashDrawer, (cashDrawer) => cashDrawer.closedByCollaborator)
+    closedCashDrawers: CashDrawer[];
+
+    @ApiProperty({
+        type: () => Order,
+        isArray: true,
+        required: false,
+        description: 'List of orders taken by this collaborator',
+    })
+    @OneToMany(() => Order, (order) => order.collaborator)
+    orders: Order[];
 }
 
 /*
