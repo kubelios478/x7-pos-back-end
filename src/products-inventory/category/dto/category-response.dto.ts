@@ -59,7 +59,3 @@ export class OneCategoryResponse extends SuccessResponse {
   @ApiProperty()
   data: CategoryResponseDto;
 }
-export class AllCategoryResponse extends SuccessResponse {
-  @ApiProperty()
-  data: CategoryResponseDto[];
-}

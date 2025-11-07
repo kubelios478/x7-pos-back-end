@@ -6,10 +6,11 @@ import { Category } from './entities/category.entity';
 import { Repository } from 'typeorm';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import {
-  AllCategoryResponse,
   CategoryResponseDto,
   OneCategoryResponse,
 } from './dto/category-response.dto';
+import { GetCategoriesQueryDto } from './dto/get-categories-query.dto';
+import { AllPaginatedCategories } from './dto/all-paginated-categories.dto';
 import { ProductsInventoryService } from '../products-inventory.service';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
@@ -77,12 +78,46 @@ export class CategoryService {
     }
   }
 
-  async findAll(merchantId: number): Promise<AllCategoryResponse> {
-    const categories = await this.categoryRepo.find({
-      where: { merchantId, isActive: true }, // Filter by isActive
-      relations: ['merchant'],
-    });
-    const categoryResponseDtos: CategoryResponseDto[] = await Promise.all(
+  async findAll(
+    query: GetCategoriesQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedCategories> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.categoryRepo
+      .createQueryBuilder('category')
+      .leftJoinAndSelect('category.merchant', 'merchant')
+      .where('category.merchantId = :merchantId', { merchantId })
+      .andWhere('category.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(category.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const categories = await queryBuilder
+      .orderBy('category.name', 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to CategoryResponseDto (with parent categories)
+    const data: CategoryResponseDto[] = await Promise.all(
       categories.map(async (category) => {
         const result: CategoryResponseDto = {
           id: category.id,
@@ -103,10 +138,17 @@ export class CategoryService {
         return result;
       }),
     );
+
     return {
       statusCode: 200,
       message: 'Categories retrieved successfully',
-      data: categoryResponseDtos,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
