@@ -8,6 +8,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Patch,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -22,10 +23,13 @@ import {
   ApiParam,
   ApiResponse,
   ApiUnauthorizedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { MovementsService } from './movements.service';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
+import { GetMovementsQueryDto } from './dto/get-movements-query.dto';
+import { AllPaginatedMovements } from './dto/all-paginated-movements.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
@@ -36,10 +40,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import {
-  AllMovementsResponse,
-  OneMovementResponse,
-} from './dto/movement-response.dto';
+import { OneMovementResponse } from './dto/movement-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
@@ -92,10 +93,109 @@ export class MovementsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get all movements' })
-  @ApiOkResponse({ description: 'List of all movements', type: [Movement] })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'No movements found' })
+  @ApiOperation({
+    summary: 'Get all movements with pagination and filters',
+    description:
+      'Retrieves a paginated list of movements with optional filters. Users can only see movements from their own merchant. Supports filtering by item ID.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination (minimum 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page (1-100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'itemId',
+    required: false,
+    type: Number,
+    description: 'Filter movements by item ID',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of movements retrieved successfully',
+    type: AllPaginatedMovements,
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            item: { id: 1, currentQty: 10 },
+            quantity: 5,
+            type: 'entry',
+            reference: 'PO-001',
+            isActive: true,
+            createdAt: '2023-01-01T10:00:00Z',
+          },
+          {
+            id: 2,
+            item: { id: 2, currentQty: 20 },
+            quantity: 2,
+            type: 'exit',
+            reference: 'SO-005',
+            isActive: true,
+            createdAt: '2023-01-02T11:00:00Z',
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 25,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Merchant not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid query parameters or business rule violation',
+    schema: {
+      examples: {
+        invalidPage: {
+          summary: 'Invalid page number',
+          value: {
+            statusCode: 400,
+            message: 'page must not be less than 1',
+            error: 'Bad Request',
+          },
+        },
+        invalidLimit: {
+          summary: 'Invalid limit',
+          value: {
+            statusCode: 400,
+            message: 'limit must not be greater than 100',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -108,11 +208,12 @@ export class MovementsController {
       },
     },
   })
-  findAll(
+  async findAll(
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<AllMovementsResponse> {
+    @Query() query: GetMovementsQueryDto,
+  ): Promise<AllPaginatedMovements> {
     const merchantId = user.merchant.id;
-    return this.movementsService.findAll(merchantId);
+    return this.movementsService.findAll(query, merchantId);
   }
 
   @Get(':id')

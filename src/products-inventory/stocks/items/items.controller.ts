@@ -8,6 +8,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Patch,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -22,10 +23,13 @@ import {
   ApiParam,
   ApiResponse,
   ApiUnauthorizedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { GetItemsQueryDto } from './dto/get-items-query.dto';
+import { AllPaginatedItems } from './dto/all-paginated-items.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
@@ -36,7 +40,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import { AllItemsResponse, OneItemResponse } from './dto/item-response.dto';
+import { OneItemResponse } from './dto/item-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
@@ -89,10 +93,105 @@ export class ItemsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get all items' })
-  @ApiOkResponse({ description: 'List of all items', type: [Item] })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'No items found' })
+  @ApiOperation({
+    summary: 'Get all items with pagination and filters',
+    description:
+      'Retrieves a paginated list of items with optional filters. Users can only see items from their own merchant. Supports filtering by product name.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination (minimum 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page (1-100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'productName',
+    required: false,
+    type: String,
+    description: 'Filter items by product name',
+    example: 'Laptop Pro',
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of items retrieved successfully',
+    type: AllPaginatedItems,
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            currentQty: 10,
+            product: { id: 1, name: 'Laptop Pro' },
+            variant: { id: 1, name: 'Silver 16GB' },
+            location: { id: 1, name: 'Warehouse A' },
+          },
+          {
+            id: 2,
+            currentQty: 5,
+            product: { id: 2, name: 'Smartphone X' },
+            variant: { id: 2, name: 'Black 128GB' },
+            location: { id: 1, name: 'Warehouse A' },
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 25,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Merchant not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid query parameters or business rule violation',
+    schema: {
+      examples: {
+        invalidPage: {
+          summary: 'Invalid page number',
+          value: {
+            statusCode: 400,
+            message: 'page must not be less than 1',
+            error: 'Bad Request',
+          },
+        },
+        invalidLimit: {
+          summary: 'Invalid limit',
+          value: {
+            statusCode: 400,
+            message: 'limit must not be greater than 100',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -105,9 +204,12 @@ export class ItemsController {
       },
     },
   })
-  findAll(@CurrentUser() user: AuthenticatedUser): Promise<AllItemsResponse> {
+  async findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetItemsQueryDto,
+  ): Promise<AllPaginatedItems> {
     const merchantId = user.merchant.id;
-    return this.itemsService.findAll(merchantId);
+    return this.itemsService.findAll(query, merchantId);
   }
 
   @Get(':id')

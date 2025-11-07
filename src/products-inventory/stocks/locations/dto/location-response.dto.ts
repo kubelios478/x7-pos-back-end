@@ -32,7 +32,3 @@ export class OneLocationResponse extends SuccessResponse {
   @ApiProperty()
   data: LocationResponseDto;
 }
-export class AllLocationResponse extends SuccessResponse {
-  @ApiProperty()
-  data: LocationResponseDto[];
-}

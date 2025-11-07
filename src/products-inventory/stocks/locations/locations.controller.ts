@@ -8,6 +8,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Patch,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -22,10 +23,13 @@ import {
   ApiParam,
   ApiResponse,
   ApiUnauthorizedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { LocationsService } from './locations.service';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { GetLocationsQueryDto } from './dto/get-locations-query.dto';
+import { AllPaginatedLocations } from './dto/all-paginated-locations.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
@@ -36,10 +40,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import {
-  AllLocationResponse,
-  OneLocationResponse,
-} from './dto/location-response.dto';
+import { OneLocationResponse } from './dto/location-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
@@ -92,10 +93,109 @@ export class LocationsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get all locations' })
-  @ApiOkResponse({ description: 'List of all locations', type: [Location] })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'No locations found' })
+  @ApiOperation({
+    summary: 'Get all locations with pagination and filters',
+    description:
+      'Retrieves a paginated list of locations with optional filters. Users can only see locations from their own merchant. Supports filtering by name.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination (minimum 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page (1-100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'name',
+    required: false,
+    type: String,
+    description: 'Filter locations by name',
+    example: 'Warehouse A',
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of locations retrieved successfully',
+    type: AllPaginatedLocations,
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            name: 'Warehouse A',
+            address: '123 Main St',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+            },
+          },
+          {
+            id: 2,
+            name: 'Store B',
+            address: '456 Oak Ave',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+            },
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 25,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Merchant not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid query parameters or business rule violation',
+    schema: {
+      examples: {
+        invalidPage: {
+          summary: 'Invalid page number',
+          value: {
+            statusCode: 400,
+            message: 'page must not be less than 1',
+            error: 'Bad Request',
+          },
+        },
+        invalidLimit: {
+          summary: 'Invalid limit',
+          value: {
+            statusCode: 400,
+            message: 'limit must not be greater than 100',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -108,11 +208,12 @@ export class LocationsController {
       },
     },
   })
-  findAll(
+  async findAll(
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<AllLocationResponse> {
+    @Query() query: GetLocationsQueryDto,
+  ): Promise<AllPaginatedLocations> {
     const merchantId = user.merchant.id;
-    return this.locationsService.findAll(merchantId);
+    return this.locationsService.findAll(query, merchantId);
   }
 
   @Get(':id')
