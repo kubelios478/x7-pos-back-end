@@ -29,18 +29,13 @@ export class SubscriptionPlanService {
         `Subscription Plan with name "${dto.name}" already exists`,
       );
     }
-    try {
-      const subscriptionPlan = this.subscriptionPlanRepo.create(dto);
-      const createdPlan =
-        await this.subscriptionPlanRepo.save(subscriptionPlan);
-      return {
-        statusCode: 201,
-        message: 'Subscription Plan created successfully',
-        data: createdPlan,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const subscriptionPlan = this.subscriptionPlanRepo.create(dto);
+    const createdPlan = await this.subscriptionPlanRepo.save(subscriptionPlan);
+    return {
+      statusCode: 201,
+      message: 'Subscription Plan created successfully',
+      data: createdPlan,
+    };
   }
 
   async findAll(): Promise<AllSubscriptionPlanResponseDto> {
@@ -78,16 +73,12 @@ export class SubscriptionPlanService {
       ErrorHandler.subscriptionPlanNotFound();
     }
     Object.assign(plan, dto);
-    try {
-      const updatedPlan = await this.subscriptionPlanRepo.save(plan);
-      return {
-        statusCode: 200,
-        message: 'Subscription Plan updated successfully',
-        data: updatedPlan,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const updatedPlan = await this.subscriptionPlanRepo.save(plan);
+    return {
+      statusCode: 200,
+      message: 'Subscription Plan updated successfully',
+      data: updatedPlan,
+    };
   }
   async remove(id: number): Promise<OneSubscriptionPlanResponseDto> {
     if (!id || isNaN(Number(id))) {
@@ -97,15 +88,11 @@ export class SubscriptionPlanService {
     if (!plan) {
       ErrorHandler.subscriptionPlanNotFound();
     }
-    try {
-      await this.subscriptionPlanRepo.remove(plan);
-      return {
-        statusCode: 200,
-        message: 'Subscription Plan deleted successfully',
-        data: plan,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    await this.subscriptionPlanRepo.remove(plan);
+    return {
+      statusCode: 200,
+      message: 'Subscription Plan deleted successfully',
+      data: plan,
+    };
   }
 }

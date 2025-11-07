@@ -26,18 +26,15 @@ export class ApplicationsService {
         `Application with name "${dto.name}" already exists`,
       );
     }
-    try {
-      const application = this.applicationRepo.create(dto);
-      const createdApplication = await this.applicationRepo.save(application);
-      return {
-        statusCode: 201,
-        message: 'Application created successfully',
-        data: createdApplication,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const application = this.applicationRepo.create(dto);
+    const createdApplication = await this.applicationRepo.save(application);
+    return {
+      statusCode: 201,
+      message: 'Application created successfully',
+      data: createdApplication,
+    };
   }
+
   async findAll(): Promise<AllApplicationResponseDto> {
     const applications = await this.applicationRepo.find();
     return {
@@ -80,16 +77,12 @@ export class ApplicationsService {
 
     Object.assign(application, dto);
 
-    try {
-      const updatedApplication = await this.applicationRepo.save(application);
-      return {
-        statusCode: 200,
-        message: 'Application updated successfully',
-        data: updatedApplication,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const updatedApplication = await this.applicationRepo.save(application);
+    return {
+      statusCode: 200,
+      message: 'Application updated successfully',
+      data: updatedApplication,
+    };
   }
   async remove(id: number): Promise<OneApplicationResponseDto> {
     // Validate ID parameter
@@ -103,15 +96,11 @@ export class ApplicationsService {
       ErrorHandler.applicationNotFound();
     }
 
-    try {
-      await this.applicationRepo.remove(application);
-      return {
-        statusCode: 200,
-        message: 'Application deleted successfully',
-        data: application,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    await this.applicationRepo.remove(application);
+    return {
+      statusCode: 200,
+      message: 'Application deleted successfully',
+      data: application,
+    };
   }
 }

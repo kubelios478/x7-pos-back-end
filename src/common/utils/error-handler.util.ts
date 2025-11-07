@@ -111,6 +111,12 @@ export class ErrorHandler {
     throw new NotFoundException(message);
   }
 
+  static planFeatureNotFound(
+    message: string = ErrorMessage.PLAN_FEATURE_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
   static resourceNotFound(resource: string, id?: number | string): never {
     const message = id
       ? `${resource} with ID ${id} not found`

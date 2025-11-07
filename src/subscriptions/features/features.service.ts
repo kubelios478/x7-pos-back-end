@@ -26,17 +26,13 @@ export class FeaturesService {
         `Feature with name "${dto.name}" already exists`,
       );
     }
-    try {
-      const feature = this.featureRepo.create(dto);
-      const createdFeature = await this.featureRepo.save(feature);
-      return {
-        statusCode: 201,
-        message: 'Feature created successfully',
-        data: createdFeature,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const feature = this.featureRepo.create(dto);
+    const createdFeature = await this.featureRepo.save(feature);
+    return {
+      statusCode: 201,
+      message: 'Feature created successfully',
+      data: createdFeature,
+    };
   }
   async findAll(): Promise<AllFeatureResponseDto> {
     const features = await this.featureRepo.find();
@@ -79,16 +75,12 @@ export class FeaturesService {
 
     Object.assign(feature, dto);
 
-    try {
-      const updatedFeature = await this.featureRepo.save(feature);
-      return {
-        statusCode: 200,
-        message: 'Feature updated successfully',
-        data: updatedFeature,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const updatedFeature = await this.featureRepo.save(feature);
+    return {
+      statusCode: 200,
+      message: 'Feature updated successfully',
+      data: updatedFeature,
+    };
   }
   async remove(id: number): Promise<OneFeatureResponseDto> {
     // Validate ID parameter
@@ -99,18 +91,13 @@ export class FeaturesService {
     const feature = await this.featureRepo.findOne({ where: { id } });
 
     if (!feature) {
-      ErrorHandler.applicationNotFound();
+      ErrorHandler.featureNotFound();
     }
-
-    try {
-      await this.featureRepo.remove(feature);
-      return {
-        statusCode: 200,
-        message: 'Feature deleted successfully',
-        data: feature,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    await this.featureRepo.remove(feature);
+    return {
+      statusCode: 200,
+      message: 'Feature deleted successfully',
+      data: feature,
+    };
   }
 }

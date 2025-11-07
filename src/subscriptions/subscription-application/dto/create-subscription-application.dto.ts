@@ -1,3 +1,4 @@
+// src/subscriptions/subscription-application/dto/create-subscription-application.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, IsNotEmpty, IsIn, IsString } from 'class-validator';
 
