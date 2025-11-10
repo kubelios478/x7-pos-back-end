@@ -8,10 +8,13 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { GetProductsQueryDto } from './dto/get-products-query.dto';
+import { AllPaginatedProducts } from './dto/all-paginated-products.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import {
@@ -27,6 +30,7 @@ import {
   ApiParam,
   ApiResponse,
   ApiUnauthorizedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { Product } from './entities/product.entity';
@@ -89,10 +93,126 @@ export class ProductsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get all products' })
-  @ApiOkResponse({ description: 'List of all products', type: [Product] })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'No products found' })
+  @ApiOperation({
+    summary: 'Get all products with pagination and filters',
+    description:
+      'Retrieves a paginated list of products with optional filters. Users can only see products from their own merchant. Supports filtering by name and category ID.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination (minimum 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page (1-100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'name',
+    required: false,
+    type: String,
+    description: 'Filter products by name',
+    example: 'Coffee',
+  })
+  @ApiQuery({
+    name: 'categoryId',
+    required: false,
+    type: Number,
+    description: 'Filter products by category ID',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of products retrieved successfully',
+    type: AllPaginatedProducts,
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            name: 'Espresso',
+            description: 'Strong black coffee',
+            price: 2.5,
+            category: {
+              id: 1,
+              name: 'Beverages',
+            },
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+            },
+          },
+          {
+            id: 2,
+            name: 'Latte',
+            description: 'Coffee with steamed milk',
+            price: 3.0,
+            category: {
+              id: 1,
+              name: 'Beverages',
+            },
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+            },
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 25,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Merchant not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid query parameters or business rule violation',
+    schema: {
+      examples: {
+        invalidPage: {
+          summary: 'Invalid page number',
+          value: {
+            statusCode: 400,
+            message: 'page must not be less than 1',
+            error: 'Bad Request',
+          },
+        },
+        invalidLimit: {
+          summary: 'Invalid limit',
+          value: {
+            statusCode: 400,
+            message: 'limit must not be greater than 100',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -105,9 +225,12 @@ export class ProductsController {
       },
     },
   })
-  findAll(@CurrentUser() user: AuthenticatedUser) {
+  async findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetProductsQueryDto,
+  ): Promise<AllPaginatedProducts> {
     const merchantId = user.merchant.id;
-    return this.productsService.findAll(merchantId);
+    return this.productsService.findAll(query, merchantId);
   }
 
   @Get(':id')

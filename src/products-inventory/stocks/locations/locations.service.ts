@@ -3,13 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { GetLocationsQueryDto } from './dto/get-locations-query.dto';
+import { AllPaginatedLocations } from './dto/all-paginated-locations.dto';
 import { Location } from './entities/location.entity';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import {
-  AllLocationResponse,
   LocationResponseDto,
   OneLocationResponse,
 } from './dto/location-response.dto';
@@ -73,12 +74,46 @@ export class LocationsService {
     }
   }
 
-  async findAll(merchantId: number): Promise<AllLocationResponse> {
-    const locations = await this.locationRepository.find({
-      where: { merchantId, isActive: true }, // Filter by isActive
-      relations: ['merchant'],
-    });
-    const locationResponseDtos: LocationResponseDto[] = await Promise.all(
+  async findAll(
+    query: GetLocationsQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedLocations> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.locationRepository
+      .createQueryBuilder('location')
+      .leftJoinAndSelect('location.merchant', 'merchant')
+      .where('location.merchantId = :merchantId', { merchantId })
+      .andWhere('location.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(location.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const locations = await queryBuilder
+      .orderBy('location.name', 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to LocationResponseDto
+    const data: LocationResponseDto[] = await Promise.all(
       locations.map((location) => {
         const result: LocationResponseDto = {
           id: location.id,
@@ -94,10 +129,17 @@ export class LocationsService {
         return result;
       }),
     );
+
     return {
       statusCode: 200,
-      message: 'Categories retrieved successfully',
-      data: locationResponseDtos,
+      message: 'Locations retrieved successfully',
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 

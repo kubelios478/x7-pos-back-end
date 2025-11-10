@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { CreateModifierDto } from './dto/create-modifier.dto';
 import { UpdateModifierDto } from './dto/update-modifier.dto';
 import {
-  AllModifiersResponse,
   ModifierResponseDto,
   OneModifierResponse,
 } from './dto/modifier-response.dto';
+import { GetModifiersQueryDto } from './dto/get-modifiers-query.dto';
+import { AllPaginatedModifiers } from './dto/all-paginated-modifiers.dto';
 import { Modifier } from './entities/modifier.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -67,18 +68,49 @@ export class ModifiersService {
     }
   }
 
-  async findAll(merchantId: number): Promise<AllModifiersResponse> {
-    const modifiers = await this.modifierRepository
+  async findAll(
+    query: GetModifiersQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedModifiers> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.modifierRepository
       .createQueryBuilder('modifier')
       .leftJoinAndSelect('modifier.product', 'product')
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
       .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('modifier.isActive = :isActive', { isActive: true })
+      .andWhere('modifier.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(modifier.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const modifiers = await queryBuilder
+      .orderBy('modifier.name', 'ASC')
+      .skip(skip)
+      .take(limit)
       .getMany();
 
-    const modifiersResponse: ModifierResponseDto[] = await Promise.all(
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to ModifierResponseDto
+    const data: ModifierResponseDto[] = await Promise.all(
       modifiers.map((modifier) => {
         const result: ModifierResponseDto = {
           id: modifier.id,
@@ -97,7 +129,13 @@ export class ModifiersService {
     return {
       statusCode: 200,
       message: 'Modifiers retrieved successfully',
-      data: modifiersResponse,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 

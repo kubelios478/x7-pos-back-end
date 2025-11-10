@@ -46,8 +46,3 @@ export class OneMovementResponse extends SuccessResponse {
   @ApiProperty()
   data: MovementResponseDto;
 }
-
-export class AllMovementsResponse extends SuccessResponse {
-  @ApiProperty({ type: [MovementResponseDto] })
-  data: MovementResponseDto[];
-}

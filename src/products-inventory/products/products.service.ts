@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
-  AllProductsResponse,
   OneProductResponse,
   ProductResponseDto,
 } from './dto/product-response.dto';
+import { GetProductsQueryDto } from './dto/get-products-query.dto';
+import { AllPaginatedProducts } from './dto/all-paginated-products.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
@@ -95,13 +96,54 @@ export class ProductsService {
     }
   }
 
-  async findAll(merchantId: number): Promise<AllProductsResponse> {
-    const products = await this.productRepository.find({
-      where: { merchantId, isActive: true },
-      relations: ['merchant', 'category', 'category.parent', 'supplier'],
-    });
+  async findAll(
+    query: GetProductsQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedProducts> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
 
-    const productsResponseDtos: ProductResponseDto[] = await Promise.all(
+    // 4. Build query with filters
+    const queryBuilder = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('product.supplier', 'supplier')
+      .where('product.merchantId = :merchantId', { merchantId })
+      .andWhere('product.isActive = :isActive', { isActive: true });
+
+    // 5. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(product.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    if (query.categoryId) {
+      queryBuilder.andWhere('product.categoryId = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+
+    // 6. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 7. Apply pagination and sorting
+    const products = await queryBuilder
+      .orderBy('product.name', 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    // 8. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 9. Map to ProductResponseDto
+    const data: ProductResponseDto[] = await Promise.all(
       products.map((product) => {
         const result: ProductResponseDto = {
           id: product.id,
@@ -137,10 +179,17 @@ export class ProductsService {
         return result;
       }),
     );
+
     return {
       statusCode: 200,
       message: 'Products retrieved successfully',
-      data: productsResponseDtos,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 

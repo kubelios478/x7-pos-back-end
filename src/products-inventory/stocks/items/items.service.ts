@@ -4,11 +4,9 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
 import { Repository } from 'typeorm';
-import {
-  AllItemsResponse,
-  ItemResponseDto,
-  OneItemResponse,
-} from './dto/item-response.dto';
+import { ItemResponseDto, OneItemResponse } from './dto/item-response.dto';
+import { GetItemsQueryDto } from './dto/get-items-query.dto';
+import { AllPaginatedItems } from './dto/all-paginated-items.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
@@ -92,17 +90,48 @@ export class ItemsService {
     return this.findOne(savedItem.id, merchantId, 'Created');
   }
 
-  async findAll(merchantId: number): Promise<AllItemsResponse> {
-    const items = await this.itemRepository
+  async findAll(
+    query: GetItemsQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedItems> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.itemRepository
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.product', 'product')
       .leftJoinAndSelect('item.variant', 'variant')
       .leftJoinAndSelect('item.location', 'location')
       .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('item.isActive = :isActive', { isActive: true })
+      .andWhere('item.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.productName) {
+      queryBuilder.andWhere('LOWER(product.name) LIKE LOWER(:productName)', {
+        productName: `%${query.productName}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const items = await queryBuilder
+      .orderBy('product.name', 'ASC')
+      .skip(skip)
+      .take(limit)
       .getMany();
 
-    const itemsResponse: ItemResponseDto[] = await Promise.all(
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to ItemResponseDto
+    const data: ItemResponseDto[] = await Promise.all(
       items.map((item) => {
         const result: ItemResponseDto = {
           id: item.id,
@@ -133,7 +162,13 @@ export class ItemsService {
     return {
       statusCode: 200,
       message: 'Items retrieved successfully',
-      data: itemsResponse,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
