@@ -270,8 +270,8 @@ export class CategoryService {
       await this.categoryRepo.save(category);
       return this.findOne(id, undefined, 'Updated');
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
+      console.log(error);
     }
   }
 
@@ -309,8 +309,8 @@ export class CategoryService {
       await this.categoryRepo.save(category);
       return this.findOne(id, undefined, 'Deleted');
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
+      console.log(error);
     }
   }
 }

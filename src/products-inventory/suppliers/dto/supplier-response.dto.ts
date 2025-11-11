@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 import { MerchantResponseDto } from 'src/merchants/dtos/merchant-response.dto';
 
 export class SupplierResponseDto {
@@ -11,13 +12,15 @@ export class SupplierResponseDto {
   @ApiProperty({ example: '+123456789', description: 'Supplier contact info' })
   contactInfo: string;
 
-  @ApiProperty({ example: true, description: 'Supplier status' })
-  isActive?: boolean;
-
   @ApiProperty({
     type: () => MerchantResponseDto,
     nullable: true,
     description: 'Associated merchant details',
   })
   merchant: MerchantResponseDto | null;
+}
+
+export class OneSupplierResponse extends SuccessResponse {
+  @ApiProperty()
+  data: SupplierResponseDto;
 }

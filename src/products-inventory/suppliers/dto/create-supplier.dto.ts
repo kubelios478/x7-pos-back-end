@@ -1,8 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsBoolean,
   IsNotEmpty,
-  IsOptional,
+  IsNumber,
   IsString,
   MaxLength,
   MinLength,
@@ -24,12 +23,10 @@ export class CreateSupplierDto {
   contactInfo: string;
 
   @ApiProperty({
-    example: true,
-    description: 'Supplier status',
-    required: false,
-    default: true,
+    example: 1,
+    description: 'Merchant ID associated with the supplier',
   })
-  @IsBoolean()
-  @IsOptional()
-  isActive?: boolean;
+  @IsNotEmpty()
+  @IsNumber()
+  merchantId: number;
 }
