@@ -1,15 +1,23 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { MerchantResponseDto } from 'src/merchants/dtos/merchant-response.dto';
 
 export class SupplierResponseDto {
   @ApiProperty({ example: 1, description: 'Supplier ID' })
   id: number;
 
-  @ApiProperty({ example: 'Supplier Name', description: 'Supplier name' })
+  @ApiProperty({ example: 'Coca-Cola', description: 'Supplier name' })
   name: string;
 
-  @ApiProperty({
-    example: 'contact@supplier.com',
-    description: 'Supplier contact info',
-  })
+  @ApiProperty({ example: '+123456789', description: 'Supplier contact info' })
   contactInfo: string;
+
+  @ApiProperty({ example: true, description: 'Supplier status' })
+  isActive?: boolean;
+
+  @ApiProperty({
+    type: () => MerchantResponseDto,
+    nullable: true,
+    description: 'Associated merchant details',
+  })
+  merchant: MerchantResponseDto | null;
 }

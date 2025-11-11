@@ -62,6 +62,10 @@ export class ProductsInventoryService {
       id: supplier.id,
       name: supplier.name,
       contactInfo: supplier.contactInfo,
+      merchant: {
+        id: supplier.merchant.id,
+        name: supplier.merchant.name,
+      },
     };
   }
 

@@ -38,6 +38,10 @@ export class Supplier {
   @JoinColumn({ name: 'merchantId' })
   merchant: Merchant;
 
+  @ApiProperty({ example: true, description: 'Supplier status' })
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
+
   @OneToMany(() => Product, (product) => product.supplier)
   products: Product[];
 }

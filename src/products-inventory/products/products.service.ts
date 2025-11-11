@@ -111,6 +111,7 @@ export class ProductsService {
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
+      .leftJoinAndSelect('supplier.merchant', 'merchant')
       .where('product.merchantId = :merchantId', { merchantId })
       .andWhere('product.isActive = :isActive', { isActive: true });
 
@@ -173,6 +174,12 @@ export class ProductsService {
                 id: product.supplier.id,
                 name: product.supplier.name,
                 contactInfo: product.supplier.contactInfo,
+                merchant: product.supplier.merchant
+                  ? {
+                      id: product.supplier.merchant.id,
+                      name: product.supplier.merchant.name,
+                    }
+                  : null,
               }
             : null,
         };
@@ -215,7 +222,13 @@ export class ProductsService {
 
     const product = await this.productRepository.findOne({
       where: whereCondition,
-      relations: ['merchant', 'category', 'category.parent', 'supplier'],
+      relations: [
+        'merchant',
+        'category',
+        'category.parent',
+        'supplier',
+        'supplier.merchant',
+      ],
     });
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
@@ -248,6 +261,12 @@ export class ProductsService {
             id: product.supplier.id,
             name: product.supplier.name,
             contactInfo: product.supplier.contactInfo,
+            merchant: product.supplier.merchant
+              ? {
+                  id: product.supplier.merchant.id,
+                  name: product.supplier.merchant.name,
+                }
+              : null,
           }
         : null,
     };
