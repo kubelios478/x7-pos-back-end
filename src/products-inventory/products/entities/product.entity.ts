@@ -4,6 +4,7 @@ import { Category } from 'src/products-inventory/category/entities/category.enti
 import { Modifier } from 'src/products-inventory/modifiers/entities/modifier.entity';
 import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
 import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
+import { OrderItem } from 'src/products-inventory/purchase/order-item/entities/order-item.entity';
 import {
   Column,
   Entity,
@@ -88,4 +89,7 @@ export class Product {
 
   @OneToMany(() => Item, (item) => item.product)
   items: Item[];
+
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
+  purchaseOrderItems: OrderItem[];
 }

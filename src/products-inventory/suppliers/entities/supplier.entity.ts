@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
+import { Order } from 'src/products-inventory/purchase/order/entities/order.entity';
 import {
   Column,
   Entity,
@@ -44,4 +45,7 @@ export class Supplier {
 
   @OneToMany(() => Product, (product) => product.supplier)
   products: Product[];
+
+  @OneToMany(() => Order, (order) => order.supplier)
+  purchaseOrders: Order[];
 }

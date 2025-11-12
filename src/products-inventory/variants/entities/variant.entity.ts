@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
+import { OrderItem } from 'src/products-inventory/purchase/order-item/entities/order-item.entity';
 import {
   Column,
   Entity,
@@ -48,4 +49,7 @@ export class Variant {
 
   @OneToMany(() => Item, (item) => item.variant)
   items: Item[];
+
+  @OneToMany(() => OrderItem, (orderItem) => orderItem.variant)
+  purchaseOrderItems: OrderItem[];
 }
