@@ -10,7 +10,7 @@ import {
   Column,
 } from 'typeorm';
 
-@Entity({ name: 'plan-features' })
+@Entity({ name: 'plan_features' })
 export class PlanFeature {
   @ApiProperty({
     example: 1,
@@ -38,4 +38,11 @@ export class PlanFeature {
   })
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   limit_value: number;
+
+  @ApiProperty({
+    example: 'active',
+    description: 'Status of the subscription plan',
+  })
+  @Column({ type: 'varchar', length: 50 })
+  status: string;
 }

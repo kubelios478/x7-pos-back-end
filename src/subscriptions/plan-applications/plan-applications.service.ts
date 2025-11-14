@@ -1,7 +1,7 @@
 //src/subscriptions/plan-applications/plan-applications.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { PlanApplication } from './entity/plan-applications.entity';
 import { CreatePlanApplicationDto } from './dto/create-plan-application.dto';
 import {
@@ -63,6 +63,7 @@ export class PlanApplicationsService {
       subscriptionPlan: subscriptionPlan,
       application: application,
       limits: dto.limits,
+      status: dto.status,
     } as Partial<PlanApplication>);
 
     const savedPlanApp = await this.planApplicationRepository.save(newPlanApp);
@@ -76,7 +77,7 @@ export class PlanApplicationsService {
 
   async findAll(): Promise<AllPlanApplicationsResponseDto> {
     const planApps = await this.planApplicationRepository.find({
-      relations: ['subscriptionPlan', 'application'],
+      where: { status: In(['active', 'inactive']) },
       select: {
         subscriptionPlan: {
           id: true,
@@ -100,7 +101,7 @@ export class PlanApplicationsService {
       ErrorHandler.invalidId('Plan Application ID must be a positive integer');
     }
     const planApp = await this.planApplicationRepository.findOne({
-      where: { planApplication: id },
+      where: { id, status: In(['active', 'inactive']) },
       relations: ['subscriptionPlan', 'application'],
       select: {
         subscriptionPlan: {
@@ -130,7 +131,7 @@ export class PlanApplicationsService {
       ErrorHandler.invalidId('Plan Application ID must be a positive integer');
     }
     const planApp = await this.planApplicationRepository.findOne({
-      where: { planApplication: id },
+      where: { id: id },
       relations: ['subscriptionPlan', 'application'],
       select: {
         subscriptionPlan: {
@@ -161,15 +162,16 @@ export class PlanApplicationsService {
       ErrorHandler.invalidId('Plan Application ID must be a positive integer');
     }
     const planApp = await this.planApplicationRepository.findOne({
-      where: { planApplication: id },
+      where: { id: id },
     });
     if (!planApp) {
       ErrorHandler.planApplicationNotFound();
     }
-    await this.planApplicationRepository.remove(planApp);
+    planApp.status = 'deleted';
+    await this.planApplicationRepository.save(planApp);
     return {
       statusCode: 200,
-      message: 'Plan Application deleted successfully',
+      message: `Plan Application with ID ${id} deleted successfully`,
       data: planApp,
     };
   }

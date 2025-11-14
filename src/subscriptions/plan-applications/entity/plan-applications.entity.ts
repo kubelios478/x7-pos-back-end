@@ -18,7 +18,7 @@ export class PlanApplication {
       'Unique identifier of the Subscription Plan related to this Plan-Application',
   })
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
-  planApplication: number;
+  id: number;
 
   @ApiProperty({
     example: 'MySubscriptionPlan',
@@ -39,4 +39,11 @@ export class PlanApplication {
   })
   @Column({ type: 'varchar', length: 50 })
   limits: string;
+
+  @ApiProperty({
+    example: 'active',
+    description: 'Status of the subscription plan',
+  })
+  @Column({ type: 'varchar', length: 50 })
+  status: string;
 }

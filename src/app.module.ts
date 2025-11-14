@@ -47,6 +47,8 @@ import { SubscriptionApplication } from './subscriptions/subscription-applicatio
 import { FeatureEntity } from './subscriptions/features/entity/features.entity';
 import { PlanFeaturesModule } from './subscriptions/plan-features/plan-features.module';
 import { PlanFeature } from './subscriptions/plan-features/entity/plan-features.entity';
+import { SubscriptionPaymentsModule } from './subscriptions/subscription-payments/subscription-payments.module';
+import { SubscriptionPayment } from './subscriptions/subscription-payments/entity/subscription-payments.entity';
 
 @Module({
   imports: [
@@ -80,6 +82,7 @@ import { PlanFeature } from './subscriptions/plan-features/entity/plan-features.
           SubscriptionApplication,
           FeatureEntity,
           PlanFeature,
+          SubscriptionPayment,
           Product,
           Supplier,
           Variant,
@@ -120,6 +123,8 @@ import { PlanFeature } from './subscriptions/plan-features/entity/plan-features.
     FeaturesModule,
 
     PlanFeaturesModule,
+
+    SubscriptionPaymentsModule,
   ],
 })
 export class AppModule {}
