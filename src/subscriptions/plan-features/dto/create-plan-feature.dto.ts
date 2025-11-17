@@ -1,6 +1,6 @@
 // src/subscriptions/plan-features/dto/create-plan-features.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsIn } from 'class-validator';
 
 export class CreatePlanFeatureDto {
   @ApiProperty({
@@ -28,4 +28,10 @@ export class CreatePlanFeatureDto {
   @IsNotEmpty()
   @IsNumber()
   limit_value: number;
+
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['active', 'inactive'])
+  status: string;
 }

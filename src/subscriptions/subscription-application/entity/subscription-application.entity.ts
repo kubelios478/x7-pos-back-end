@@ -17,7 +17,7 @@ export class SubscriptionApplication {
     description: 'Unique identifier of the Subscription-Application',
   })
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
-  subscriptionApplication: number;
+  id: number;
 
   @ApiProperty({
     example: 'MyMerchantSubscription',

@@ -1,7 +1,7 @@
 //src/subscriptions/merchant-subscriptions/merchant-subscription.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { MerchantSubscription } from './entities/merchant-subscription.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
@@ -80,6 +80,7 @@ export class MerchantSubscriptionService {
   async findAll(): Promise<AllMerchantSubscriptionSummaryDto> {
     const merchantSubscriptions =
       await this.merchantSubscriptionRepository.find({
+        where: { status: In(['active', 'inactive']) },
         relations: ['merchant', 'plan'],
         select: {
           merchant: {
@@ -106,7 +107,7 @@ export class MerchantSubscriptionService {
     }
     const merchantSubscription =
       await this.merchantSubscriptionRepository.findOne({
-        where: { id },
+        where: { id, status: In(['active', 'inactive']) },
         relations: ['merchant', 'plan'],
         select: {
           merchant: {
@@ -181,11 +182,11 @@ export class MerchantSubscriptionService {
     if (!merchantSubscription) {
       ErrorHandler.merchantSubscriptionNotFound();
     }
-
-    await this.merchantSubscriptionRepository.remove(merchantSubscription);
+    merchantSubscription.status = 'deleted';
+    await this.merchantSubscriptionRepository.save(merchantSubscription);
     return {
       statusCode: 200,
-      message: 'Merchant Subscription deleted successfully',
+      message: `Merchant-Subscription with ID ${id} deleted successfully`,
       data: merchantSubscription,
     };
   }

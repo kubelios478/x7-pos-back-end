@@ -2,7 +2,7 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FeatureEntity } from './entity/features.entity';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { CreateFeatureDto } from './dto/create-feature.dto';
 import {
   AllFeatureResponseDto,
@@ -35,7 +35,9 @@ export class FeaturesService {
     };
   }
   async findAll(): Promise<AllFeatureResponseDto> {
-    const features = await this.featureRepo.find();
+    const features = await this.featureRepo.find({
+      where: { status: In(['active', 'inactive']) },
+    });
     return {
       statusCode: 200,
       message: 'Features retrieved successfully',
@@ -47,7 +49,9 @@ export class FeaturesService {
       ErrorHandler.invalidId('Feature ID must be a positive number');
     }
 
-    const feature = await this.featureRepo.findOne({ where: { id } });
+    const feature = await this.featureRepo.findOne({
+      where: { id, status: In(['active', 'inactive']) },
+    });
 
     if (!feature) {
       ErrorHandler.featureNotFound();
@@ -93,7 +97,8 @@ export class FeaturesService {
     if (!feature) {
       ErrorHandler.featureNotFound();
     }
-    await this.featureRepo.remove(feature);
+    feature.status = 'deleted';
+    await this.featureRepo.save(feature);
     return {
       statusCode: 200,
       message: 'Feature deleted successfully',

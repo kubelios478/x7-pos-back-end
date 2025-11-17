@@ -1,7 +1,7 @@
 // src/subscriptions/subscription-plan/subscription-plan.service.ts
 import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { SubscriptionPlan } from './entity/subscription-plan.entity';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
 import {
@@ -39,7 +39,9 @@ export class SubscriptionPlanService {
   }
 
   async findAll(): Promise<AllSubscriptionPlanResponseDto> {
-    const plans = await this.subscriptionPlanRepo.find();
+    const plans = await this.subscriptionPlanRepo.find({
+      where: { status: In(['active', 'inactive']) },
+    });
     return {
       statusCode: 200,
       message: 'Subscription Plans retrieved successfully',
@@ -50,7 +52,9 @@ export class SubscriptionPlanService {
     if (!id || isNaN(Number(id))) {
       ErrorHandler.invalidId();
     }
-    const plan = await this.subscriptionPlanRepo.findOne({ where: { id } });
+    const plan = await this.subscriptionPlanRepo.findOne({
+      where: { id, status: In(['active', 'inactive']) },
+    });
     if (!plan) {
       ErrorHandler.subscriptionPlanNotFound();
     }
@@ -88,10 +92,11 @@ export class SubscriptionPlanService {
     if (!plan) {
       ErrorHandler.subscriptionPlanNotFound();
     }
-    await this.subscriptionPlanRepo.remove(plan);
+    plan.status = 'deleted';
+    await this.subscriptionPlanRepo.save(plan);
     return {
       statusCode: 200,
-      message: 'Subscription Plan deleted successfully',
+      message: `Subscription with ID ${id} deleted successfully`,
       data: plan,
     };
   }

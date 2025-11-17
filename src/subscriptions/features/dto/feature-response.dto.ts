@@ -15,6 +15,9 @@ export class FeatureResponseDto {
 
   @ApiProperty({ example: 'This is the sample feature unit' })
   unit: string;
+
+  @ApiProperty({ example: 'active' })
+  status: string;
 }
 
 export class OneFeatureResponseDto extends SuccessResponse {

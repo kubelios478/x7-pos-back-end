@@ -15,6 +15,9 @@ export class PlanFeatureResponseDto {
 
   @ApiProperty({ example: 10990 })
   limit_value: number;
+
+  @ApiProperty({ example: 'active' })
+  status: string;
 }
 
 export class OnePlanFeatureResponseDto extends SuccessResponse {

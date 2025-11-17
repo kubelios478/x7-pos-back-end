@@ -1,7 +1,7 @@
 // src/subscriptions/subscription-application/subscription-application.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { MerchantSubscription } from '../merchant-subscriptions/entities/merchant-subscription.entity';
 import { SubscriptionApplication } from './entity/subscription-application.entity';
@@ -83,6 +83,7 @@ export class SubscriptionApplicationService {
   async findAll(): Promise<AllSubscriptionApplicationsResponseDto> {
     const subscriptionApplications =
       await this.subscriptionApplicationRepository.find({
+        where: { status: In(['active', 'inactive']) },
         relations: ['merchantSubscription', 'application'],
         select: {
           application: { id: true, name: true },
@@ -104,7 +105,7 @@ export class SubscriptionApplicationService {
     }
     const subscriptionApplication =
       await this.subscriptionApplicationRepository.findOne({
-        where: { subscriptionApplication: id },
+        where: { id, status: In(['active', 'inactive']) },
         relations: ['merchantSubscription', 'application'],
       });
     if (!subscriptionApplication) {
@@ -127,7 +128,7 @@ export class SubscriptionApplicationService {
     }
     const subscriptionApplication =
       await this.subscriptionApplicationRepository.findOne({
-        where: { subscriptionApplication: id },
+        where: { id: id },
       });
     if (!subscriptionApplication) {
       ErrorHandler.subscriptionApplicationNotFound();
@@ -156,15 +157,13 @@ export class SubscriptionApplicationService {
     }
     const subscriptionApplication =
       await this.subscriptionApplicationRepository.findOne({
-        where: { subscriptionApplication: id },
+        where: { id: id },
       });
     if (!subscriptionApplication) {
       ErrorHandler.subscriptionApplicationNotFound();
     }
-
-    await this.subscriptionApplicationRepository.remove(
-      subscriptionApplication,
-    );
+    subscriptionApplication.status = 'deleted';
+    await this.subscriptionApplicationRepository.save(subscriptionApplication);
 
     return {
       statusCode: 200,

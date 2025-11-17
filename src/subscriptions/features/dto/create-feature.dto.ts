@@ -1,6 +1,6 @@
 //src/subscriptions/features/dto/create-feature.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsIn } from 'class-validator';
 
 export class CreateFeatureDto {
   @ApiProperty({
@@ -26,4 +26,10 @@ export class CreateFeatureDto {
   @IsString()
   @IsNotEmpty()
   Unit: string;
+
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['active', 'inactive'])
+  status: string;
 }

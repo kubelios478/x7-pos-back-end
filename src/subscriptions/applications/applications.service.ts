@@ -1,6 +1,6 @@
 //src/subscriptions/applications/applications.service.ts
 import { Injectable, ConflictException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ApplicationEntity } from './entity/application-entity';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -36,7 +36,9 @@ export class ApplicationsService {
   }
 
   async findAll(): Promise<AllApplicationResponseDto> {
-    const applications = await this.applicationRepo.find();
+    const applications = await this.applicationRepo.find({
+      where: { status: In(['active', 'inactive']) },
+    });
     return {
       statusCode: 200,
       message: 'Applications retrieved successfully',
@@ -49,7 +51,9 @@ export class ApplicationsService {
       ErrorHandler.invalidId('Application ID must be a positive number');
     }
 
-    const application = await this.applicationRepo.findOne({ where: { id } });
+    const application = await this.applicationRepo.findOne({
+      where: { id, status: In(['active', 'inactive']) },
+    });
 
     if (!application) {
       ErrorHandler.applicationNotFound();
@@ -95,11 +99,11 @@ export class ApplicationsService {
     if (!application) {
       ErrorHandler.applicationNotFound();
     }
-
-    await this.applicationRepo.remove(application);
+    application.status = 'deleted';
+    await this.applicationRepo.save(application);
     return {
       statusCode: 200,
-      message: 'Application deleted successfully',
+      message: `Application with ID ${id} deleted successfully`,
       data: application,
     };
   }

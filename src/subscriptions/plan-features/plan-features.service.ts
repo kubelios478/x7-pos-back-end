@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PlanFeature } from './entity/plan-features.entity';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { FeatureEntity } from '../features/entity/features.entity';
 import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
 import { CreatePlanFeatureDto } from './dto/create-plan-feature.dto';
@@ -63,6 +63,7 @@ export class PlanFeaturesService {
       subscriptionPlan: subscriptionPlan,
       feature: feature,
       limit_value: dto.limit_value,
+      status: dto.status,
     } as Partial<PlanFeature>);
 
     const savedPlanFeature = await this.planFeatureRepo.save(planFeature);
@@ -74,11 +75,13 @@ export class PlanFeaturesService {
   }
   async findAll(): Promise<AllPlanFeatureResponseDto> {
     const planFeatures = await this.planFeatureRepo.find({
+      where: { status: In(['active', 'inactive']) },
       relations: ['feature', 'subscriptionPlan'],
       select: {
         feature: { id: true, name: true },
         subscriptionPlan: { id: true, name: true },
         limit_value: true,
+        status: true,
       },
     });
     return {
@@ -112,7 +115,7 @@ export class PlanFeaturesService {
       ErrorHandler.invalidId('Plan Feature ID must be a positive integer');
     }
     const planFeature = await this.planFeatureRepo.findOne({
-      where: { planFeature: id },
+      where: { planFeature: id, status: In(['active', 'inactive']) },
     });
     if (!planFeature) {
       ErrorHandler.planFeatureNotFound();
@@ -138,8 +141,8 @@ export class PlanFeaturesService {
     if (!planFeature) {
       ErrorHandler.planFeatureNotFound();
     }
-
-    await this.planFeatureRepo.remove(planFeature);
+    planFeature.status = 'deleted';
+    await this.planFeatureRepo.save(planFeature);
 
     return {
       statusCode: 200,
