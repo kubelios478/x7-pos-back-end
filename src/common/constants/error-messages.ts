@@ -35,6 +35,8 @@ export enum ErrorMessage {
   MODIFIER_NOT_FOUND = 'Modifier not found',
   LOCATION_NOT_FOUND = 'Location not found',
   ITEM_NOT_FOUND = 'Item not found',
+  PURCHASE_ORDER_NOT_FOUND = 'Purchase Order not found',
+  PURCHASE_ORDER_ITEM_NOT_FOUND = 'Purchase Order Item not found',
   MOVEMENT_NOT_FOUND = 'Movement not found',
   APPLICATION_NOT_FOUND = 'Application not found',
   MERCHANT_SUBSCRIPTION_NOT_FOUND = 'Merchant subscription not found',

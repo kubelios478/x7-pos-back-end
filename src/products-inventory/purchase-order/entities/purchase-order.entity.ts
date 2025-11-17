@@ -5,13 +5,15 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
 import { PurchaseOrderItem } from 'src/products-inventory/purchase-order-item/entities/purchase-order-item.entity';
+import { PurchaseOrderStatus } from '../constants/purchase-order-status.enum';
 
-@Entity('purchase_orders')
+@Entity('purchase_order')
 export class PurchaseOrder {
   @ApiProperty({ example: 1, description: 'Purchase order ID' })
   @PrimaryGeneratedColumn()
@@ -36,15 +38,20 @@ export class PurchaseOrder {
     example: '2023-10-26T10:00:00Z',
     description: 'Purchase order date',
   })
-  @Column({ type: 'timestamp', name: 'order_date' })
+  @CreateDateColumn({ type: 'timestamp', name: 'order_date' })
   orderDate: Date;
 
   @ApiProperty({
-    example: 'pending',
+    example: PurchaseOrderStatus.PENDING,
     description: 'Purchase order status',
+    enum: PurchaseOrderStatus,
   })
-  @Column({ type: 'varchar', length: 50 })
-  status: string;
+  @Column({
+    type: 'enum',
+    enum: PurchaseOrderStatus,
+    default: PurchaseOrderStatus.PENDING,
+  })
+  status: PurchaseOrderStatus;
 
   @ApiProperty({
     example: 100.5,

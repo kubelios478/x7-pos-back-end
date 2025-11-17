@@ -20,6 +20,17 @@ export class SupplierResponseDto {
   merchant: MerchantResponseDto | null;
 }
 
+export class SupplierLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Supplier ID' })
+  id: number;
+
+  @ApiProperty({ example: 'Phone', description: 'Supplier name' })
+  name: string;
+
+  @ApiProperty({ example: '+123456789', description: 'Supplier contact info' })
+  contactInfo: string;
+}
+
 export class OneSupplierResponse extends SuccessResponse {
   @ApiProperty()
   data: SupplierResponseDto;
