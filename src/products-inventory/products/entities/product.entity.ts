@@ -4,7 +4,6 @@ import { Category } from 'src/products-inventory/category/entities/category.enti
 import { Modifier } from 'src/products-inventory/modifiers/entities/modifier.entity';
 import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.entity';
 import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
-import { OrderItem } from 'src/products-inventory/purchase/order-item/entities/order-item.entity';
 import {
   Column,
   Entity,
@@ -14,6 +13,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Item } from 'src/products-inventory/stocks/items/entities/item.entity';
+import { PurchaseOrderItem } from 'src/products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 
 @Entity({ name: 'product' })
 export class Product {
@@ -77,7 +77,6 @@ export class Product {
   @JoinColumn({ name: 'supplierId' })
   supplier: Supplier;
 
-  //@ApiProperty({ example: true, description: 'Product active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
@@ -90,6 +89,9 @@ export class Product {
   @OneToMany(() => Item, (item) => item.product)
   items: Item[];
 
-  @OneToMany(() => OrderItem, (orderItem) => orderItem.product)
-  purchaseOrderItems: OrderItem[];
+  @OneToMany(
+    () => PurchaseOrderItem,
+    (purchaseOrderItem) => purchaseOrderItem.product,
+  )
+  purchaseOrderItems: PurchaseOrderItem[];
 }

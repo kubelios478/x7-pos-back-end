@@ -15,8 +15,8 @@ import { ItemsModule } from './stocks/items/items.module';
 import { LocationsModule } from './stocks/locations/locations.module';
 import { MovementsModule } from './stocks/movements/movements.module';
 import { Item } from './stocks/items/entities/item.entity';
-import { OrderModule } from './purchase/order/order.module';
-import { OrderItemModule } from './purchase/order-item/order-item.module';
+import { PurchaseOrderModule } from './purchase-order/purchase-order.module';
+import { PurchaseOrderItemModule } from './purchase-order-item/purchase-order-item.module';
 
 @Module({
   controllers: [ProductsInventoryController],
@@ -31,8 +31,10 @@ import { OrderItemModule } from './purchase/order-item/order-item.module';
     ItemsModule,
     LocationsModule,
     MovementsModule,
-    OrderModule,
-    OrderItemModule,
+    PurchaseOrderModule,
+    PurchaseOrderItemModule,
+    PurchaseOrderModule,
+    PurchaseOrderItemModule,
   ],
   exports: [ProductsInventoryService, ProductsModule],
 })

@@ -52,11 +52,14 @@ import { ApplicationEntity } from './subscriptions/applications/entity/applicati
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
 import { CashTransactionsModule } from './cash-transactions/cash-transactions.module';
 import { ReceiptsModule } from './receipts/receipts.module';
-import { OrdersModule } from './orders/orders.module';
 import { SubscriptionApplication } from './subscriptions/subscription-application/entity/subscription-application.entity';
 import { Item } from './products-inventory/stocks/items/entities/item.entity';
 import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
 import { FeatureEntity } from './subscriptions/features/entity/features.entity';
+import { PurchaseOrderModule } from './products-inventory/purchase-order/purchase-order.module';
+import { PurchaseOrderItemModule } from './products-inventory/purchase-order-item/purchase-order-item.module';
+import { PurchaseOrder } from './products-inventory/purchase-order/entities/purchase-order.entity';
+import { PurchaseOrderItem } from './products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 
 @Module({
   imports: [
@@ -105,6 +108,8 @@ import { FeatureEntity } from './subscriptions/features/entity/features.entity';
           Location,
           Item,
           Movement,
+          PurchaseOrder,
+          PurchaseOrderItem,
           Collaborator,
           Shift,
         ],
@@ -136,7 +141,8 @@ import { FeatureEntity } from './subscriptions/features/entity/features.entity';
     PlanApplicationsModule,
     CashTransactionsModule,
     ReceiptsModule,
-    OrdersModule,
+    PurchaseOrderModule,
+    PurchaseOrderItemModule,
     FeaturesModule,
   ],
 })

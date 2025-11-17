@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
-import { Order } from 'src/products-inventory/purchase/order/entities/order.entity';
+import { PurchaseOrder } from 'src/products-inventory/purchase-order/entities/purchase-order.entity';
 import {
   Column,
   Entity,
@@ -39,13 +39,12 @@ export class Supplier {
   @JoinColumn({ name: 'merchantId' })
   merchant: Merchant;
 
-  @ApiProperty({ example: true, description: 'Supplier status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
   @OneToMany(() => Product, (product) => product.supplier)
   products: Product[];
 
-  @OneToMany(() => Order, (order) => order.supplier)
-  purchaseOrders: Order[];
+  @OneToMany(() => PurchaseOrder, (purchaseOrder) => purchaseOrder.supplier)
+  purchaseOrders: PurchaseOrder[];
 }
