@@ -31,7 +31,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { GetPurchaseOrdersQueryDto } from './dto/get-purchase-orders-query.dto';
-import { AllPaginatedPurchaseOrders } from './dto/all-paginated-products.dto';
+import { AllPaginatedPurchaseOrders } from './dto/all-paginated-purchase-order.dto';
 import { PurchaseOrderStatus } from './constants/purchase-order-status.enum';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -163,13 +163,6 @@ export class PurchaseOrderController {
     enum: PurchaseOrderStatus,
     description: 'Filter purchase orders by status',
     example: PurchaseOrderStatus.PENDING,
-  })
-  @ApiQuery({
-    name: 'supplierId',
-    required: false,
-    type: Number,
-    description: 'Filter purchase orders by supplier ID',
-    example: 1,
   })
   @ApiOkResponse({
     description: 'Paginated list of purchase orders retrieved successfully',

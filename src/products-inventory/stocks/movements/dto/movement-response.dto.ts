@@ -30,12 +30,6 @@ export class MovementResponseDto {
   reference: string | null;
 
   @ApiProperty({
-    example: true,
-    description: 'Indicates if the movement is active',
-  })
-  isActive: boolean;
-
-  @ApiProperty({
     example: '2023-01-01T12:00:00Z',
     description: 'Movement creation date',
   })

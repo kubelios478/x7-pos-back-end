@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { GetPurchaseOrdersQueryDto } from './dto/get-purchase-orders-query.dto';
-import { AllPaginatedPurchaseOrders } from './dto/all-paginated-products.dto';
+import { AllPaginatedPurchaseOrders } from './dto/all-paginated-purchase-order.dto';
 import { PurchaseOrder } from './entities/purchase-order.entity';
 import {
   OnePurchaseOrderResponse,
@@ -84,12 +84,6 @@ export class PurchaseOrderService {
       .andWhere('purchaseOrder.isActive = :isActive', { isActive: true });
 
     // 5. Apply optional filters
-    if (query.name) {
-      queryBuilder.andWhere('LOWER(purchaseOrder.name) LIKE LOWER(:name)', {
-        name: `%${query.name}%`,
-      });
-    }
-
     if (query.status) {
       queryBuilder.andWhere('purchaseOrder.status = :status', {
         status: query.status,

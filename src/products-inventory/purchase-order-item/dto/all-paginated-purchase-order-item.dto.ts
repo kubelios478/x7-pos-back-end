@@ -4,7 +4,7 @@ import { PurchaseOrderItemResponseDto } from './purchase-order-item-response.dto
 
 export class AllPaginatedPurchaseOrdersItems extends SuccessResponse {
   @ApiProperty({
-    description: 'Array of products',
+    description: 'Array of purchase order items',
     type: [PurchaseOrderItemResponseDto],
   })
   data: PurchaseOrderItemResponseDto[];

@@ -116,8 +116,8 @@ export class MovementsController {
     name: 'itemId',
     required: false,
     type: Number,
-    description: 'Filter movements by item ID',
-    example: 1,
+    description: 'Filter movements by item',
+    example: 'Item 1',
   })
   @ApiOkResponse({
     description: 'Paginated list of movements retrieved successfully',
@@ -131,7 +131,6 @@ export class MovementsController {
             quantity: 5,
             type: 'entry',
             reference: 'PO-001',
-            isActive: true,
             createdAt: '2023-01-01T10:00:00Z',
           },
           {
@@ -140,7 +139,6 @@ export class MovementsController {
             quantity: 2,
             type: 'exit',
             reference: 'SO-005',
-            isActive: true,
             createdAt: '2023-01-02T11:00:00Z',
           },
         ],

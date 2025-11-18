@@ -36,8 +36,8 @@ export class GetPurchaseOrdersQueryDto {
   name?: string;
 
   @ApiPropertyOptional({
-    example: 1,
-    description: 'Filter products by status',
+    example: 'PENDING',
+    description: 'Filter purchase orders by status (e.g., PENDING, COMPLETED)',
   })
   @IsOptional()
   @IsString()

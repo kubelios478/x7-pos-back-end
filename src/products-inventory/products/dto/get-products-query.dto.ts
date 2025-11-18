@@ -37,10 +37,9 @@ export class GetProductsQueryDto {
 
   @ApiPropertyOptional({
     example: 1,
-    description: 'Filter products by category ID',
+    description: 'Filter products by category',
   })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  categoryId?: number;
+  @IsString()
+  category?: string;
 }

@@ -99,11 +99,11 @@ export class ProductsController {
       'Retrieves a paginated list of products with optional filters. Users can only see products from their own merchant. Supports filtering by name and category ID.',
   })
   @ApiQuery({
-    name: 'page',
+    name: 'categoryName',
     required: false,
-    type: Number,
-    description: 'Page number for pagination (minimum 1)',
-    example: 1,
+    type: String,
+    description: 'Filter products by category name',
+    example: 'Beverages',
   })
   @ApiQuery({
     name: 'limit',
@@ -120,10 +120,10 @@ export class ProductsController {
     example: 'Coffee',
   })
   @ApiQuery({
-    name: 'categoryId',
+    name: 'category',
     required: false,
-    type: Number,
-    description: 'Filter products by category ID',
+    type: String,
+    description: 'Filter products by category',
     example: 1,
   })
   @ApiOkResponse({

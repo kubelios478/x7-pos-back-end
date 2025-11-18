@@ -10,7 +10,7 @@ import { PurchaseOrder } from 'src/products-inventory/purchase-order/entities/pu
 import { Product } from 'src/products-inventory/products/entities/product.entity';
 import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
 
-@Entity('purchase_order_items')
+@Entity('purchase_order_item')
 export class PurchaseOrderItem {
   @ApiProperty({ example: 1, description: 'Purchase order item ID' })
   @PrimaryGeneratedColumn()

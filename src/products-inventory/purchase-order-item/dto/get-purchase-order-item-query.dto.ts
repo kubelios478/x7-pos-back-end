@@ -28,18 +28,10 @@ export class GetPurchaseOrdersItemsQueryDto {
   limit?: number = 10;
 
   @ApiPropertyOptional({
-    example: 'Coffee',
-    description: 'Filter products by name',
-  })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiPropertyOptional({
     example: 1,
     description: 'Filter products by status',
   })
   @IsOptional()
   @IsString()
-  status?: string;
+  product?: string;
 }

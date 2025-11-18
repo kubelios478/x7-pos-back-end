@@ -118,13 +118,6 @@ export class SuppliersController {
     description: 'Filter suppliers by name',
     example: 'Coca-Cola',
   })
-  @ApiQuery({
-    name: 'isActive',
-    required: false,
-    type: Boolean,
-    description: 'Filter suppliers by active status',
-    example: true,
-  })
   @ApiOkResponse({
     description: 'Paginated list of suppliers retrieved successfully',
     type: AllPaginatedSuppliers,
@@ -135,7 +128,6 @@ export class SuppliersController {
             id: 1,
             name: 'Coca-Cola',
             contactInfo: '+123456789',
-            isActive: true,
             merchant: {
               id: 1,
               name: 'Restaurant ABC',

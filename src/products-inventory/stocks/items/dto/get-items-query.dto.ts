@@ -34,4 +34,12 @@ export class GetItemsQueryDto {
   @IsOptional()
   @IsString()
   productName?: string;
+
+  @ApiPropertyOptional({
+    example: 'Variant A',
+    description: 'Filter items by variant name',
+  })
+  @IsOptional()
+  @IsString()
+  variantName?: string;
 }

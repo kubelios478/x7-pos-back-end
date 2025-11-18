@@ -119,6 +119,13 @@ export class ItemsController {
     description: 'Filter items by product name',
     example: 'Laptop Pro',
   })
+  @ApiQuery({
+    name: 'variantName',
+    required: false,
+    type: String,
+    description: 'Filter items by variant name',
+    example: 'Laptop Pro 1',
+  })
   @ApiOkResponse({
     description: 'Paginated list of items retrieved successfully',
     type: AllPaginatedItems,

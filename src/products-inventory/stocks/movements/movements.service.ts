@@ -75,8 +75,10 @@ export class MovementsService {
       .andWhere('movement.isActive = :isActive', { isActive: true });
 
     // 3. Apply optional filters
-    if (query.itemId) {
-      queryBuilder.andWhere('item.id = :itemId', { itemId: query.itemId });
+    if (query.itemName) {
+      queryBuilder.andWhere('LOWER(item.name) LIKE LOWER(:itemName)', {
+        itemName: `%${query.itemName}%`,
+      });
     }
 
     // 4. Get total records
@@ -108,7 +110,6 @@ export class MovementsService {
           quantity: movement.quantity,
           type: movement.type,
           reference: movement.reference,
-          isActive: movement.isActive,
           createdAt: movement.createdAt,
         };
         return result;
@@ -176,7 +177,6 @@ export class MovementsService {
       quantity: movement.quantity,
       type: movement.type,
       reference: movement.reference,
-      isActive: movement.isActive,
       createdAt: movement.createdAt,
     };
 

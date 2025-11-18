@@ -28,10 +28,4 @@ export class CreatePurchaseOrderItemDto {
   @IsNumber()
   @Min(0)
   unitPrice: number;
-
-  @ApiProperty({ example: 5.99, description: 'Unit price of the item' })
-  @IsNotEmpty()
-  @IsNumber()
-  @Min(0)
-  totalPrice?: number;
 }

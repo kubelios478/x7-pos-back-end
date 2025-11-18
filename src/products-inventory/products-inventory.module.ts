@@ -33,8 +33,6 @@ import { PurchaseOrderItemModule } from './purchase-order-item/purchase-order-it
     MovementsModule,
     PurchaseOrderModule,
     PurchaseOrderItemModule,
-    PurchaseOrderModule,
-    PurchaseOrderItemModule,
   ],
   exports: [ProductsInventoryService, ProductsModule],
 })

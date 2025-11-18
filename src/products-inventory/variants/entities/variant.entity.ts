@@ -43,7 +43,6 @@ export class Variant {
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  //@ApiProperty({ example: true, description: 'Variant active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

@@ -122,9 +122,9 @@ export class ProductsService {
       });
     }
 
-    if (query.categoryId) {
-      queryBuilder.andWhere('product.categoryId = :categoryId', {
-        categoryId: query.categoryId,
+    if (query.category) {
+      queryBuilder.andWhere('LOWER(category.name) LIKE LOWER(:categoryName)', {
+        categoryName: `%${query.category}%`,
       });
     }
 

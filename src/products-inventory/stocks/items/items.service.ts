@@ -115,6 +115,12 @@ export class ItemsService {
       });
     }
 
+    if (query.variantName) {
+      queryBuilder.andWhere('LOWER(variant.name) LIKE LOWER(:variantName)', {
+        variantName: `%${query.variantName}%`,
+      });
+    }
+
     // 4. Get total records
     const total = await queryBuilder.getCount();
 

@@ -38,6 +38,23 @@ export class PurchaseOrderResponseDto {
   supplier: SupplierLittleResponseDto | null;
 }
 
+export class PurchaseOrderLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Product ID' })
+  id: number;
+
+  @ApiProperty({
+    example: '2023-10-26T10:00:00Z',
+    description: 'Date the purchase order was created',
+  })
+  orderDate: Date;
+
+  @ApiProperty({
+    example: 'PENDING',
+    description: 'Status of the purchase order',
+  })
+  status: string;
+}
+
 export class OnePurchaseOrderResponse extends SuccessResponse {
   @ApiProperty()
   data: PurchaseOrderResponseDto;
