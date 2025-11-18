@@ -6,7 +6,7 @@ import {
   ProductResponseDto,
 } from './dto/product-response.dto';
 import { GetProductsQueryDto } from './dto/get-products-query.dto';
-import { AllPaginatedProducts } from './dto/all-paginated-products.dto';
+import { AllPaginatedProducts } from './dto/all-paginated-purchase-orders.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
