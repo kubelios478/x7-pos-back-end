@@ -56,6 +56,10 @@ import { SubscriptionApplication } from './subscriptions/subscription-applicatio
 import { Item } from './products-inventory/stocks/items/entities/item.entity';
 import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
 import { FeatureEntity } from './subscriptions/features/entity/features.entity';
+import { PlanFeaturesModule } from './subscriptions/plan-features/plan-features.module';
+import { PlanFeature } from './subscriptions/plan-features/entity/plan-features.entity';
+import { SubscriptionPaymentsModule } from './subscriptions/subscription-payments/subscription-payments.module';
+import { SubscriptionPayment } from './subscriptions/subscription-payments/entity/subscription-payments.entity';
 import { PurchaseOrderModule } from './products-inventory/purchase-order/purchase-order.module';
 import { PurchaseOrderItemModule } from './products-inventory/purchase-order-item/purchase-order-item.module';
 import { PurchaseOrder } from './products-inventory/purchase-order/entities/purchase-order.entity';
@@ -101,6 +105,8 @@ import { PurchaseOrderItem } from './products-inventory/purchase-order-item/enti
           PlanApplication,
           SubscriptionApplication,
           FeatureEntity,
+          PlanFeature,
+          SubscriptionPayment,
           Product,
           Supplier,
           Variant,
@@ -144,6 +150,10 @@ import { PurchaseOrderItem } from './products-inventory/purchase-order-item/enti
     PurchaseOrderModule,
     PurchaseOrderItemModule,
     FeaturesModule,
+
+    PlanFeaturesModule,
+
+    SubscriptionPaymentsModule,
   ],
 })
 export class AppModule {}

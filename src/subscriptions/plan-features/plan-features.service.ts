@@ -1,0 +1,153 @@
+// src/subscription/plan-features/plan-features.service.ts
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PlanFeature } from './entity/plan-features.entity';
+import { Repository, In } from 'typeorm';
+import { FeatureEntity } from '../features/entity/features.entity';
+import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
+import { CreatePlanFeatureDto } from './dto/create-plan-feature.dto';
+import {
+  AllPlanFeatureResponseDto,
+  OnePlanFeatureResponseDto,
+} from './dto/plan-feature-response.dto';
+import { ErrorHandler } from 'src/common/utils/error-handler.util';
+import { UpdatePlanFeatureDto } from './dto/update-plan-features.dto';
+
+@Injectable()
+export class PlanFeaturesService {
+  constructor(
+    @InjectRepository(PlanFeature)
+    private readonly planFeatureRepo: Repository<PlanFeature>,
+
+    @InjectRepository(FeatureEntity)
+    private readonly featureRepo: Repository<FeatureEntity>,
+
+    @InjectRepository(SubscriptionPlan)
+    private readonly subscriptionPlanRepo: Repository<SubscriptionPlan>,
+  ) {}
+  async create(dto: CreatePlanFeatureDto): Promise<OnePlanFeatureResponseDto> {
+    if (
+      (dto.featureId &&
+        (!Number.isInteger(dto.featureId) || dto.featureId <= 0)) ||
+      (dto.subscriptionPlanId &&
+        (!Number.isInteger(dto.subscriptionPlanId) ||
+          dto.subscriptionPlanId <= 0))
+    ) {
+      ErrorHandler.invalidId(
+        'SubscriptionPlan and Feature ID must be positive integers',
+      );
+    }
+    let subscriptionPlan: SubscriptionPlan | null = null;
+    let feature: FeatureEntity | null = null;
+
+    if (dto.featureId || dto.subscriptionPlanId) {
+      if (dto.featureId) {
+        feature = await this.featureRepo.findOne({
+          where: { id: dto.featureId },
+        });
+        if (!feature) {
+          ErrorHandler.featureNotFound();
+        }
+      }
+      if (dto.subscriptionPlanId) {
+        subscriptionPlan = await this.subscriptionPlanRepo.findOne({
+          where: { id: dto.subscriptionPlanId },
+        });
+        if (!subscriptionPlan) {
+          ErrorHandler.subscriptionPlanNotFound();
+        }
+      }
+    }
+
+    const planFeature = this.planFeatureRepo.create({
+      subscriptionPlan: subscriptionPlan,
+      feature: feature,
+      limit_value: dto.limit_value,
+      status: dto.status,
+    } as Partial<PlanFeature>);
+
+    const savedPlanFeature = await this.planFeatureRepo.save(planFeature);
+    return {
+      statusCode: 201,
+      message: 'Plan Feature created successfully',
+      data: savedPlanFeature,
+    };
+  }
+  async findAll(): Promise<AllPlanFeatureResponseDto> {
+    const planFeatures = await this.planFeatureRepo.find({
+      where: { status: In(['active', 'inactive']) },
+      relations: ['feature', 'subscriptionPlan'],
+      select: {
+        feature: { id: true, name: true },
+        subscriptionPlan: { id: true, name: true },
+        limit_value: true,
+        status: true,
+      },
+    });
+    return {
+      statusCode: 200,
+      message: 'Plan Features retrieved successfully',
+      data: planFeatures,
+    };
+  }
+  async findOne(id: number): Promise<OnePlanFeatureResponseDto> {
+    if (!Number.isInteger(id) || id <= 0) {
+      ErrorHandler.invalidId('Plan Feature ID must be a positive integer');
+    }
+    const planFeatures = await this.planFeatureRepo.findOne({
+      where: { planFeature: id },
+      relations: ['feature', 'subscriptionPlan'],
+    });
+    if (!planFeatures) {
+      ErrorHandler.planFeatureNotFound();
+    }
+    return {
+      statusCode: 200,
+      message: 'Plan Feature retrieved successfully',
+      data: planFeatures,
+    };
+  }
+  async update(
+    id: number,
+    dto: UpdatePlanFeatureDto,
+  ): Promise<OnePlanFeatureResponseDto> {
+    if (!Number.isInteger(id) || id <= 0) {
+      ErrorHandler.invalidId('Plan Feature ID must be a positive integer');
+    }
+    const planFeature = await this.planFeatureRepo.findOne({
+      where: { planFeature: id, status: In(['active', 'inactive']) },
+    });
+    if (!planFeature) {
+      ErrorHandler.planFeatureNotFound();
+    }
+    if (dto.limit_value !== undefined) {
+      planFeature.limit_value = dto.limit_value;
+    }
+    const updatedPlanFeature = await this.planFeatureRepo.save(planFeature);
+
+    return {
+      statusCode: 200,
+      message: `Subscription Application with ID ${id} updated successfully`,
+      data: updatedPlanFeature,
+    };
+  }
+  async remove(id: number): Promise<OnePlanFeatureResponseDto> {
+    if (!Number.isInteger(id) || id <= 0) {
+      ErrorHandler.invalidId('Plan Feature ID must be a positive integer');
+    }
+    const planFeature = await this.planFeatureRepo.findOne({
+      where: { planFeature: id },
+    });
+    if (!planFeature) {
+      ErrorHandler.planFeatureNotFound();
+    }
+    planFeature.status = 'deleted';
+    await this.planFeatureRepo.save(planFeature);
+
+    return {
+      statusCode: 200,
+      message: `Plan Feature with ID ${id} deleted successfully`,
+      data: planFeature,
+    };
+  }
+}

@@ -31,4 +31,11 @@ export class FeatureEntity {
   })
   @Column({ type: 'varchar', length: 50 })
   Unit: string;
+
+  @ApiProperty({
+    example: 'active',
+    description: 'Status of the subscription plan',
+  })
+  @Column({ type: 'varchar', length: 50 })
+  status: string;
 }

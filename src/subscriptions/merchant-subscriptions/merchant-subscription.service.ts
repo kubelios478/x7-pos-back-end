@@ -1,7 +1,7 @@
 //src/subscriptions/merchant-subscriptions/merchant-subscription.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { MerchantSubscription } from './entities/merchant-subscription.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
@@ -38,52 +38,49 @@ export class MerchantSubscriptionService {
         'Merchant ID and Plan ID must be positive integers',
       );
     }
-    try {
-      let merchant: Merchant | null = null;
-      let plan: SubscriptionPlan | null = null;
+    let merchant: Merchant | null = null;
+    let plan: SubscriptionPlan | null = null;
 
-      if (dto.merchantId || dto.planId) {
-        if (dto.merchantId) {
-          merchant = await this.merchantRepository.findOne({
-            where: { id: dto.merchantId },
-          });
-          if (!merchant) {
-            ErrorHandler.merchantSubscriptionNotFound();
-          }
-        }
-        if (dto.planId) {
-          plan = await this.subscriptionPlanRepository.findOne({
-            where: { id: dto.planId },
-          });
-          if (!plan) {
-            ErrorHandler.subscriptionPlanNotFound();
-          }
+    if (dto.merchantId || dto.planId) {
+      if (dto.merchantId) {
+        merchant = await this.merchantRepository.findOne({
+          where: { id: dto.merchantId },
+        });
+        if (!merchant) {
+          ErrorHandler.merchantSubscriptionNotFound();
         }
       }
-      const merchantSubscription = this.merchantSubscriptionRepository.create({
-        merchant: merchant,
-        plan: plan,
-        startDate: dto.startDate,
-        endDate: dto.endDate,
-        renewalDate: dto.renewalDate,
-        status: dto.status,
-        paymentMethod: dto.paymentMethod,
-      } as Partial<MerchantSubscription>);
-
-      const savedMerchantSubscription =
-        await this.merchantSubscriptionRepository.save(merchantSubscription);
-      return {
-        statusCode: 201,
-        message: 'Merchant Subscription created successfully',
-        data: savedMerchantSubscription,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
+      if (dto.planId) {
+        plan = await this.subscriptionPlanRepository.findOne({
+          where: { id: dto.planId },
+        });
+        if (!plan) {
+          ErrorHandler.subscriptionPlanNotFound();
+        }
+      }
     }
+    const merchantSubscription = this.merchantSubscriptionRepository.create({
+      merchant: merchant,
+      plan: plan,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      renewalDate: dto.renewalDate,
+      status: dto.status,
+      paymentMethod: dto.paymentMethod,
+    } as Partial<MerchantSubscription>);
+
+    const savedMerchantSubscription =
+      await this.merchantSubscriptionRepository.save(merchantSubscription);
+    return {
+      statusCode: 201,
+      message: 'Merchant Subscription created successfully',
+      data: savedMerchantSubscription,
+    };
   }
   async findAll(): Promise<AllMerchantSubscriptionSummaryDto> {
     const merchantSubscriptions =
       await this.merchantSubscriptionRepository.find({
+        where: { status: In(['active', 'inactive']) },
         relations: ['merchant', 'plan'],
         select: {
           merchant: {
@@ -110,7 +107,7 @@ export class MerchantSubscriptionService {
     }
     const merchantSubscription =
       await this.merchantSubscriptionRepository.findOne({
-        where: { id },
+        where: { id, status: In(['active', 'inactive']) },
         relations: ['merchant', 'plan'],
         select: {
           merchant: {
@@ -142,71 +139,55 @@ export class MerchantSubscriptionService {
       );
     }
     const merchantSubscription =
-      await this.merchantSubscriptionRepository.findOne({ where: { id } });
+      await this.merchantSubscriptionRepository.findOne({
+        where: { id },
+        relations: ['merchant', 'plan'],
+        select: {
+          merchant: {
+            id: true,
+            name: true,
+          },
+          plan: {
+            id: true,
+            name: true,
+          },
+        },
+      });
     if (!merchantSubscription) {
       ErrorHandler.merchantSubscriptionNotFound();
     }
-    try {
-      const merchantSubscription =
-        await this.merchantSubscriptionRepository.findOne({
-          where: { id },
-          relations: ['merchant', 'plan'],
-          select: {
-            merchant: {
-              id: true,
-              name: true,
-            },
-            plan: {
-              id: true,
-              name: true,
-            },
-          },
-        });
-      if (!merchantSubscription) {
-        ErrorHandler.merchantSubscriptionNotFound();
-      }
 
-      Object.assign(merchantSubscription, dto);
+    Object.assign(merchantSubscription, dto);
 
-      const updatedMerchantSubscription =
-        await this.merchantSubscriptionRepository.save(merchantSubscription);
-      return {
-        statusCode: 200,
-        message: 'Merchant Subscription updated successfully',
-        data: updatedMerchantSubscription,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const updatedMerchantSubscription =
+      await this.merchantSubscriptionRepository.save(merchantSubscription);
+    return {
+      statusCode: 200,
+      message: 'Merchant Subscription updated successfully',
+      data: updatedMerchantSubscription,
+    };
   }
+
   async remove(id: number): Promise<OneMerchantSubscriptionSummaryDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId(
         'Merchant Subscription ID must be a positive integer',
       );
     }
+
     const merchantSubscription =
-      await this.merchantSubscriptionRepository.findOne({ where: { id } });
+      await this.merchantSubscriptionRepository.findOne({
+        where: { id },
+      });
     if (!merchantSubscription) {
       ErrorHandler.merchantSubscriptionNotFound();
     }
-    try {
-      const merchantSubscription =
-        await this.merchantSubscriptionRepository.findOne({
-          where: { id },
-        });
-      if (!merchantSubscription) {
-        ErrorHandler.merchantSubscriptionNotFound();
-      }
-
-      await this.merchantSubscriptionRepository.remove(merchantSubscription);
-      return {
-        statusCode: 200,
-        message: 'Merchant Subscription deleted successfully',
-        data: merchantSubscription,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    merchantSubscription.status = 'deleted';
+    await this.merchantSubscriptionRepository.save(merchantSubscription);
+    return {
+      statusCode: 200,
+      message: `Merchant-Subscription with ID ${id} deleted successfully`,
+      data: merchantSubscription,
+    };
   }
 }

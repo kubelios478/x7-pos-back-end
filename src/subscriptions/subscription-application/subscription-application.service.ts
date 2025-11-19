@@ -1,7 +1,7 @@
 // src/subscriptions/subscription-application/subscription-application.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { MerchantSubscription } from '../merchant-subscriptions/entities/merchant-subscription.entity';
 import { SubscriptionApplication } from './entity/subscription-application.entity';
@@ -40,54 +40,50 @@ export class SubscriptionApplicationService {
         'Merchant Subscription ID and Application ID must be positive integers',
       );
     }
-    try {
-      let merchantSubscription: MerchantSubscription | null = null;
-      let application: ApplicationEntity | null = null;
+    let merchantSubscription: MerchantSubscription | null = null;
+    let application: ApplicationEntity | null = null;
 
-      if (dto.merchantSubscriptionId || dto.applicationId) {
-        if (dto.merchantSubscriptionId) {
-          merchantSubscription =
-            await this.merchantSubscriptionRepository.findOne({
-              where: { id: dto.merchantSubscriptionId },
-            });
-          if (!merchantSubscription) {
-            ErrorHandler.merchantSubscriptionNotFound();
-          }
-        }
-        if (dto.applicationId) {
-          application = await this.applicationRepository.findOne({
-            where: { id: dto.applicationId },
+    if (dto.merchantSubscriptionId || dto.applicationId) {
+      if (dto.merchantSubscriptionId) {
+        merchantSubscription =
+          await this.merchantSubscriptionRepository.findOne({
+            where: { id: dto.merchantSubscriptionId },
           });
-          if (!application) {
-            ErrorHandler.applicationNotFound();
-          }
+        if (!merchantSubscription) {
+          ErrorHandler.merchantSubscriptionNotFound();
         }
       }
-
-      const subscriptionApplication =
-        this.subscriptionApplicationRepository.create({
-          merchantSubscription: merchantSubscription,
-          application: application,
-          status: dto.status,
-        } as Partial<SubscriptionApplication>);
-
-      const savedApplication =
-        await this.subscriptionApplicationRepository.save(
-          subscriptionApplication,
-        );
-
-      return {
-        statusCode: 201,
-        message: 'Subscription-Application created successfully',
-        data: savedApplication,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
+      if (dto.applicationId) {
+        application = await this.applicationRepository.findOne({
+          where: { id: dto.applicationId },
+        });
+        if (!application) {
+          ErrorHandler.applicationNotFound();
+        }
+      }
     }
+
+    const subscriptionApplication =
+      this.subscriptionApplicationRepository.create({
+        merchantSubscription: merchantSubscription,
+        application: application,
+        status: dto.status,
+      } as Partial<SubscriptionApplication>);
+
+    const savedApplication = await this.subscriptionApplicationRepository.save(
+      subscriptionApplication,
+    );
+
+    return {
+      statusCode: 201,
+      message: 'Subscription-Application created successfully',
+      data: savedApplication,
+    };
   }
   async findAll(): Promise<AllSubscriptionApplicationsResponseDto> {
     const subscriptionApplications =
       await this.subscriptionApplicationRepository.find({
+        where: { status: In(['active', 'inactive']) },
         relations: ['merchantSubscription', 'application'],
         select: {
           application: { id: true, name: true },
@@ -109,7 +105,7 @@ export class SubscriptionApplicationService {
     }
     const subscriptionApplication =
       await this.subscriptionApplicationRepository.findOne({
-        where: { subscriptionApplication: id },
+        where: { id, status: In(['active', 'inactive']) },
         relations: ['merchantSubscription', 'application'],
       });
     if (!subscriptionApplication) {
@@ -130,32 +126,28 @@ export class SubscriptionApplicationService {
         'Subscription Application ID must be a positive integer',
       );
     }
-    try {
-      const subscriptionApplication =
-        await this.subscriptionApplicationRepository.findOne({
-          where: { subscriptionApplication: id },
-        });
-      if (!subscriptionApplication) {
-        ErrorHandler.subscriptionApplicationNotFound();
-      }
-
-      if (dto.status !== undefined) {
-        subscriptionApplication.status = dto.status;
-      }
-
-      const updatedApplication =
-        await this.subscriptionApplicationRepository.save(
-          subscriptionApplication,
-        );
-
-      return {
-        statusCode: 200,
-        message: `Subscription Application with ID ${id} updated successfully`,
-        data: updatedApplication,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
+    const subscriptionApplication =
+      await this.subscriptionApplicationRepository.findOne({
+        where: { id: id },
+      });
+    if (!subscriptionApplication) {
+      ErrorHandler.subscriptionApplicationNotFound();
     }
+
+    if (dto.status !== undefined) {
+      subscriptionApplication.status = dto.status;
+    }
+
+    const updatedApplication =
+      await this.subscriptionApplicationRepository.save(
+        subscriptionApplication,
+      );
+
+    return {
+      statusCode: 200,
+      message: `Subscription Application with ID ${id} updated successfully`,
+      data: updatedApplication,
+    };
   }
   async remove(id: number): Promise<OneSubscriptionApplicationResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
@@ -163,26 +155,20 @@ export class SubscriptionApplicationService {
         'Subscription Application ID must be a positive integer',
       );
     }
-    try {
-      const subscriptionApplication =
-        await this.subscriptionApplicationRepository.findOne({
-          where: { subscriptionApplication: id },
-        });
-      if (!subscriptionApplication) {
-        ErrorHandler.subscriptionApplicationNotFound();
-      }
-
-      await this.subscriptionApplicationRepository.remove(
-        subscriptionApplication,
-      );
-
-      return {
-        statusCode: 200,
-        message: `Subscription Application with ID ${id} deleted successfully`,
-        data: subscriptionApplication,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
+    const subscriptionApplication =
+      await this.subscriptionApplicationRepository.findOne({
+        where: { id: id },
+      });
+    if (!subscriptionApplication) {
+      ErrorHandler.subscriptionApplicationNotFound();
     }
+    subscriptionApplication.status = 'deleted';
+    await this.subscriptionApplicationRepository.save(subscriptionApplication);
+
+    return {
+      statusCode: 200,
+      message: `Subscription Application with ID ${id} deleted successfully`,
+      data: subscriptionApplication,
+    };
   }
 }

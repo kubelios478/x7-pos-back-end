@@ -14,11 +14,10 @@ import {
 export class SubscriptionApplication {
   @ApiProperty({
     example: 1,
-    description:
-      'Unique identifier of the Merchant Subscription related to this Subscription-Application',
+    description: 'Unique identifier of the Subscription-Application',
   })
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
-  subscriptionApplication: number;
+  id: number;
 
   @ApiProperty({
     example: 'MyMerchantSubscription',

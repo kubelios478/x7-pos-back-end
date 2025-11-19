@@ -44,6 +44,8 @@ export enum ErrorMessage {
   SUBSCRIPTION_PLAN_NOT_FOUND = 'Subscription Plan not found',
   SUBSCRIPTION_APPLICATION_NOT_FOUND = 'Subscription Application not found',
   FEATURE_NOT_FOUND = 'Feature not found',
+  PLAN_FEATURE_NOT_FOUND = 'Plan Feature not found',
+  SUBSCRIPTION_PAYMENT_NOT_FOUND = 'Subscription Payment not Found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',

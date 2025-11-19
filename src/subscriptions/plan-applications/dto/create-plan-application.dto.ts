@@ -6,6 +6,7 @@ import {
   IsOptional,
   MaxLength,
   IsNotEmpty,
+  IsIn,
 } from 'class-validator';
 
 export class CreatePlanApplicationDto {
@@ -38,4 +39,10 @@ export class CreatePlanApplicationDto {
   @IsNotEmpty()
   @MaxLength(50)
   limits?: string;
+
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['active', 'inactive'])
+  status: string;
 }
