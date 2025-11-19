@@ -45,8 +45,86 @@ export class PurchaseOrderItemController {
   ) {}
 
   @Post()
-  create(@Body() createPurchaseOrderItemDto: CreatePurchaseOrderItemDto) {
-    return this.purchaseOrderItemService.create(createPurchaseOrderItemDto);
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Create a new purchase order item',
+    description:
+      'Creates a new purchase order item for the authenticated merchant.',
+  })
+  @ApiOkResponse({
+    description: 'Purchase order item created successfully',
+    schema: {
+      example: {
+        id: 1,
+        purchaseOrderId: 1,
+        productId: 1,
+        variantId: null,
+        quantity: 5,
+        unitPrice: 10.5,
+        totalPrice: 52.5,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or business rule violation',
+    schema: {
+      examples: {
+        invalidData: {
+          summary: 'Invalid data provided',
+          value: {
+            statusCode: 400,
+            message: ['productId must be a number string'],
+            error: 'Bad Request',
+          },
+        },
+        purchaseOrderNotFound: {
+          summary: 'Purchase Order not found',
+          value: {
+            statusCode: 400,
+            message: 'Purchase Order with ID 999 not found',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'Internal Server Error',
+      },
+    },
+  })
+  async create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createPurchaseOrderItemDto: CreatePurchaseOrderItemDto,
+  ) {
+    return this.purchaseOrderItemService.create(
+      user,
+      createPurchaseOrderItemDto,
+    );
   }
 
   @Get()
@@ -254,23 +332,180 @@ export class PurchaseOrderItemController {
       },
     },
   })
-  findOne(@Param('id') id: string) {
-    return this.purchaseOrderItemService.findOne(+id);
+  findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    const merchantId = user.merchant.id;
+    return this.purchaseOrderItemService.findOne(+id, merchantId);
   }
 
   @Patch(':id')
-  update(
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Update a purchase order item by ID',
+    description:
+      'Updates an existing purchase order item by its ID for the authenticated merchant.',
+  })
+  @ApiOkResponse({
+    description: 'Purchase order item updated successfully',
+    schema: {
+      example: {
+        id: 1,
+        purchaseOrderId: 1,
+        productId: 1,
+        variantId: null,
+        quantity: 5,
+        unitPrice: 10.5,
+        totalPrice: 52.5,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Purchase order item not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Purchase Order Item with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data, ID format, or business rule violation',
+    schema: {
+      examples: {
+        invalidData: {
+          summary: 'Invalid data provided',
+          value: {
+            statusCode: 400,
+            message: ['quantity must be a number string'],
+            error: 'Bad Request',
+          },
+        },
+        invalidId: {
+          summary: 'Invalid ID format',
+          value: {
+            statusCode: 400,
+            message: 'Purchase Order Item ID incorrect',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'Internal Server Error',
+      },
+    },
+  })
+  async update(
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() updatePurchaseOrderItemDto: UpdatePurchaseOrderItemDto,
   ) {
     return this.purchaseOrderItemService.update(
+      user,
       +id,
       updatePurchaseOrderItemDto,
     );
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.purchaseOrderItemService.remove(+id);
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Delete a purchase order item by ID',
+    description:
+      'Deletes (marks as inactive) an existing purchase order item by its ID for the authenticated merchant.',
+  })
+  @ApiOkResponse({
+    description: 'Purchase order item deleted successfully',
+    schema: {
+      example: {
+        id: 1,
+        purchaseOrderId: 1,
+        productId: 1,
+        variantId: null,
+        quantity: 5,
+        unitPrice: 10.5,
+        totalPrice: 52.5,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Purchase order item not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Purchase Order Item with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid ID format or business rule violation',
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Purchase Order Item ID incorrect',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 500,
+        message: 'Internal server error',
+        error: 'Internal Server Error',
+      },
+    },
+  })
+  async remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.purchaseOrderItemService.remove(user, +id);
   }
 }

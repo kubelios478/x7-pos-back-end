@@ -32,6 +32,11 @@ export class CategoryService {
   ): Promise<OneCategoryResponse> {
     const { name, merchantId, parentId } = createCategoryDto;
 
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: merchantId },
+    });
+    if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
+
     if (merchantId !== user.merchant.id) ErrorHandler.differentMerchant();
 
     const existingCategory = await this.categoryRepo.findOne({
@@ -40,13 +45,6 @@ export class CategoryService {
 
     if (existingCategory)
       ErrorHandler.exists(ErrorMessage.CATEGORY_NAME_EXISTS);
-
-    if (merchantId) {
-      const merchant = await this.merchantRepo.findOne({
-        where: { id: merchantId },
-      });
-      if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
-    }
 
     if (parentId) {
       const parentCategory = await this.categoryRepo.findOne({
@@ -260,6 +258,7 @@ export class CategoryService {
       const parentCategory = await this.categoryRepo.findOneBy({
         id: parentId,
         isActive: true,
+        merchantId: category.merchantId,
       });
       if (!parentCategory) ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
     }
@@ -284,7 +283,6 @@ export class CategoryService {
       where: { id, isActive: true }, // Ensure the category is active
       relations: ['merchant', 'parent'],
     });
-    console.log(category);
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
     if (user.merchant.id !== category.merchantId) {

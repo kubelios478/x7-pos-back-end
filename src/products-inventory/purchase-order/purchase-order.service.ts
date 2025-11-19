@@ -15,6 +15,7 @@ import { ErrorMessage } from 'src/common/constants/error-messages';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Supplier } from '../suppliers/entities/supplier.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
+import { PurchaseOrderItem } from '../purchase-order-item/entities/purchase-order-item.entity';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -25,6 +26,8 @@ export class PurchaseOrderService {
     private readonly merchantRepository: Repository<Merchant>,
     @InjectRepository(Supplier)
     private readonly supplierRepository: Repository<Supplier>,
+    @InjectRepository(PurchaseOrderItem)
+    private readonly purchaseOrderItemRepository: Repository<PurchaseOrderItem>,
   ) {}
 
   async create(
@@ -38,11 +41,10 @@ export class PurchaseOrderService {
 
     const [merchant, supplier] = await Promise.all([
       this.merchantRepository.findOneBy({ id: merchantId }),
-      supplierId
-        ? this.supplierRepository.findOneBy({
-            id: supplierId,
-          })
-        : Promise.resolve(null),
+      this.supplierRepository.findOneBy({
+        id: supplierId,
+        merchantId,
+      }),
     ]);
 
     if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
@@ -250,6 +252,7 @@ export class PurchaseOrderService {
     if (supplierId && supplierId !== purchaseOrder.supplierId) {
       const supplier = await this.supplierRepository.findOneBy({
         id: supplierId,
+        merchantId: purchaseOrder.merchantId,
       });
       if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
     }
@@ -289,6 +292,16 @@ export class PurchaseOrderService {
     try {
       purchaseOrder.isActive = false;
       await this.purchaseOrderRepository.save(purchaseOrder);
+
+      const purchaseOrderItems = await this.purchaseOrderItemRepository.find({
+        where: { purchaseOrderId: id, isActive: true },
+      });
+
+      for (const item of purchaseOrderItems) {
+        item.isActive = false;
+        await this.purchaseOrderItemRepository.save(item);
+      }
+
       return this.findOne(id, undefined, 'Deleted');
     } catch (error) {
       console.log(error);

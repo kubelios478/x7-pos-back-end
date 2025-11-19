@@ -41,31 +41,27 @@ export class ProductsService {
 
     const [merchant, category, supplier] = await Promise.all([
       this.merchantRepository.findOneBy({ id: merchantId }),
-      categoryId
-        ? this.categoryRepository.findOneBy({ id: categoryId })
-        : Promise.resolve(null),
-      supplierId
-        ? this.supplierRepository.findOneBy({ id: supplierId })
-        : Promise.resolve(null),
+      this.categoryRepository.findOneBy({ id: categoryId, merchantId }),
+      this.supplierRepository.findOneBy({ id: supplierId, merchantId }),
     ]);
 
     if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
-    if (categoryId && !category)
-      ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
-    if (supplierId && !supplier)
-      ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
+    if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
+    if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 
     const existingProduct = await this.productRepository.findOne({
-      where: [{ name: name, isActive: true }],
+      where: [
+        { name: name, isActive: true },
+        { sku: sku, isActive: true },
+      ],
     });
 
-    if (existingProduct) ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
-
-    const existingSku = await this.productRepository.findOne({
-      where: [{ sku: sku, isActive: true }],
-    });
-
-    if (existingSku) ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
+    if (existingProduct) {
+      if (existingProduct.name === name)
+        ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
+      if (existingProduct.sku === sku)
+        ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
+    }
 
     try {
       const existingButIsNotActive = await this.productRepository.findOne({
@@ -110,8 +106,8 @@ export class ProductsService {
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.supplier', 'supplier')
-      .leftJoinAndSelect('supplier.merchant', 'merchant')
       .where('product.merchantId = :merchantId', { merchantId })
       .andWhere('product.isActive = :isActive', { isActive: true });
 
@@ -174,12 +170,6 @@ export class ProductsService {
                 id: product.supplier.id,
                 name: product.supplier.name,
                 contactInfo: product.supplier.contactInfo,
-                merchant: product.supplier.merchant
-                  ? {
-                      id: product.supplier.merchant.id,
-                      name: product.supplier.merchant.name,
-                    }
-                  : null,
               }
             : null,
         };
@@ -261,12 +251,6 @@ export class ProductsService {
             id: product.supplier.id,
             name: product.supplier.name,
             contactInfo: product.supplier.contactInfo,
-            merchant: product.supplier.merchant
-              ? {
-                  id: product.supplier.merchant.id,
-                  name: product.supplier.merchant.name,
-                }
-              : null,
           }
         : null,
     };
@@ -341,21 +325,24 @@ export class ProductsService {
     }
 
     if (name && name !== product.name) {
-      const existingProductByName = await this.productRepository.findOne({
-        where: { name },
+      const existingProductWithName = await this.productRepository.findOne({
+        where: { name, isActive: true },
       });
-
-      if (existingProductByName && existingProductByName.id !== id)
+      if (
+        existingProductWithName &&
+        existingProductWithName.id !== product.id
+      ) {
         ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
+      }
     }
 
     if (sku && sku !== product.sku) {
-      const existingSku = await this.productRepository.findOne({
-        where: { sku },
+      const existingProductWithSku = await this.productRepository.findOne({
+        where: { sku, isActive: true },
       });
-
-      if (existingSku && existingSku.id !== id)
+      if (existingProductWithSku && existingProductWithSku.id !== product.id) {
         ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
+      }
     }
 
     Object.assign(product, {

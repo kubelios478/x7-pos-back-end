@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreatePurchaseOrderItemDto } from './dto/create-purchase-order-item.dto';
@@ -7,14 +7,17 @@ import { PurchaseOrderItem } from './entities/purchase-order-item.entity';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { PurchaseOrder } from '../purchase-order/entities/purchase-order.entity';
-import { Product } from '../products/entities/product.entity';
-import { Variant } from '../variants/entities/variant.entity';
 import { GetPurchaseOrdersItemsQueryDto } from './dto/get-purchase-order-item-query.dto';
 import { AllPaginatedPurchaseOrdersItems } from './dto/all-paginated-purchase-order-item.dto';
 import {
   OnePurchaseOrderItemResponse,
   PurchaseOrderItemResponseDto,
 } from './dto/purchase-order-item-response.dto';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { ProductsService } from '../products/products.service';
+import { VariantsService } from '../variants/variants.service';
+import { Product } from '../products/entities/product.entity';
+import { Variant } from '../variants/entities/variant.entity';
 
 @Injectable()
 export class PurchaseOrderItemService {
@@ -27,54 +30,62 @@ export class PurchaseOrderItemService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    private readonly productsService: ProductsService,
+    private readonly variantsService: VariantsService,
   ) {}
 
   async create(
-    createPurchaseOrderItemDto: CreatePurchaseOrderItemDto,
-  ): Promise<PurchaseOrderItem> {
-    const { purchaseOrderId, productId, variantId, quantity, unitPrice } =
-      createPurchaseOrderItemDto;
+    user: AuthenticatedUser,
+    createPurchaseOrderDto: CreatePurchaseOrderItemDto,
+  ): Promise<OnePurchaseOrderItemResponse> {
+    const { productId, variantId, purchaseOrderId, ...purchaseOrderItemData } =
+      createPurchaseOrderDto;
 
-    const purchaseOrder = await this.purchaseOrderRepository.findOneBy({
-      id: purchaseOrderId,
-      isActive: true,
-    });
+    const [product, variant, purchaseOrder] = await Promise.all([
+      this.productRepository.findOneBy({
+        id: productId,
+        merchantId: user.merchant.id,
+        isActive: true,
+      }),
+      this.variantRepository.findOneBy({
+        id: variantId,
+        productId,
+        product: { merchantId: user.merchant.id },
+        isActive: true,
+      }),
+      this.purchaseOrderRepository.findOneBy({
+        id: purchaseOrderId,
+        merchantId: user.merchant.id,
+        isActive: true,
+      }),
+    ]);
+
+    if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+
+    if (!variant) ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
+
     if (!purchaseOrder) {
       ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
     }
 
-    const product = await this.productRepository.findOneBy({
-      id: productId,
-      isActive: true,
-    });
-    if (!product) {
-      ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+    if (product.merchantId !== user.merchant.id) {
+      ErrorHandler.differentMerchant();
     }
-
-    let variant: Variant | null = null;
-    if (variantId) {
-      variant = await this.variantRepository.findOneBy({
-        id: variantId,
-        isActive: true,
-      });
-      if (!variant) {
-        ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
-      }
-    }
-
-    const totalPrice = quantity * unitPrice;
 
     try {
       const newPurchaseOrderItem = this.purchaseOrderItemRepository.create({
         purchaseOrderId,
         productId,
         variantId,
-        quantity,
-        unitPrice,
-        totalPrice,
+        totalPrice:
+          purchaseOrderItemData.unitPrice * purchaseOrderItemData.quantity,
+        ...purchaseOrderItemData,
       });
 
-      return await this.purchaseOrderItemRepository.save(newPurchaseOrderItem);
+      const savedPurchaseOrderItem =
+        await this.purchaseOrderItemRepository.save(newPurchaseOrderItem);
+
+      return this.findOne(savedPurchaseOrderItem.id, undefined, 'Created');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
       console.log(error);
@@ -155,7 +166,7 @@ export class PurchaseOrderItemService {
 
     return {
       statusCode: 200,
-      message: 'Purchase Orders retrieved successfully',
+      message: 'Purchase Orders Items retrieved successfully',
       data,
       page,
       limit,
@@ -176,14 +187,15 @@ export class PurchaseOrderItemService {
     }
     const whereCondition: {
       id: number;
-      merchantId?: number;
       isActive: boolean;
+      purchaseOrder?: { merchantId: number }; // Filter through purchaseOrder relation
     } = {
       id,
       isActive: createdUpdateDelete === 'Deleted' ? false : true,
     };
+
     if (merchantId !== undefined) {
-      whereCondition.merchantId = merchantId;
+      whereCondition.purchaseOrder = { merchantId };
     }
 
     const purchaseOrderItem = await this.purchaseOrderItemRepository.findOne({
@@ -262,82 +274,94 @@ export class PurchaseOrderItemService {
   }
 
   async update(
+    user: AuthenticatedUser,
     id: number,
     updatePurchaseOrderItemDto: UpdatePurchaseOrderItemDto,
-  ): Promise<PurchaseOrderItem> {
-    if (!id || id <= 0) {
-      ErrorHandler.invalidId('Purchase Order Item ID incorrect');
-    }
+  ): Promise<OnePurchaseOrderItemResponse> {
+    const { ...updateData } = updatePurchaseOrderItemDto;
 
     const purchaseOrderItem = await this.purchaseOrderItemRepository.findOneBy({
       id,
       isActive: true,
     });
-    if (!purchaseOrderItem) {
+
+    if (!purchaseOrderItem)
       ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_ITEM_NOT_FOUND);
+
+    const [product, variant, purchaseOrder] = await Promise.all([
+      this.productRepository.findOneBy({
+        id: updateData.productId,
+        merchantId: user.merchant.id,
+        isActive: true,
+      }),
+      this.variantRepository.findOneBy({
+        id: updateData.variantId,
+        productId: updateData.productId,
+        product: { merchantId: user.merchant.id },
+        isActive: true,
+      }),
+      this.purchaseOrderRepository.findOneBy({
+        id: updateData.purchaseOrderId,
+        merchantId: user.merchant.id,
+        isActive: true,
+      }),
+    ]);
+
+    if (!purchaseOrder) {
+      ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
+    }
+    if (!product) {
+      ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+    }
+    if (!variant) {
+      ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
 
-    // Check if quantity or unitPrice are being updated
-    const newQuantity =
-      updatePurchaseOrderItemDto.quantity !== undefined
-        ? updatePurchaseOrderItemDto.quantity
-        : purchaseOrderItem.quantity;
-    const newUnitPrice =
-      updatePurchaseOrderItemDto.unitPrice !== undefined
-        ? updatePurchaseOrderItemDto.unitPrice
-        : purchaseOrderItem.unitPrice;
-
-    // Recalculate totalPrice if quantity or unitPrice changed
-    let newTotalPrice = purchaseOrderItem.totalPrice;
-    if (
-      newQuantity !== purchaseOrderItem.quantity ||
-      newUnitPrice !== purchaseOrderItem.unitPrice
-    ) {
-      newTotalPrice = newQuantity * newUnitPrice;
-    }
-
-    // If totalPrice is provided in DTO, validate it against the calculated value
-    if (
-      updatePurchaseOrderItemDto.totalPrice !== undefined &&
-      Math.abs(updatePurchaseOrderItemDto.totalPrice - newTotalPrice) > 0.001
-    ) {
-      throw new BadRequestException(
-        `Total price (${updatePurchaseOrderItemDto.totalPrice}) does not match the calculated price (${newTotalPrice.toFixed(2)} = quantity * unit price).`,
-      );
+    if (product.merchantId !== user.merchant.id) {
+      ErrorHandler.differentMerchant();
     }
 
     Object.assign(purchaseOrderItem, {
-      ...updatePurchaseOrderItemDto,
-      totalPrice: newTotalPrice, // Always use the calculated or validated totalPrice
+      ...updateData,
+      totalPrice:
+        (updateData.unitPrice || purchaseOrderItem.unitPrice) *
+        (updateData.quantity || purchaseOrderItem.quantity),
     });
-
     try {
-      return await this.purchaseOrderItemRepository.save(purchaseOrderItem);
+      await this.purchaseOrderItemRepository.save(purchaseOrderItem);
+      return this.findOne(id, undefined, 'Updated');
     } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
       console.log(error);
+      ErrorHandler.handleDatabaseError(error);
     }
   }
 
-  async remove(id: number): Promise<void> {
-    if (!id || id <= 0) {
-      ErrorHandler.invalidId('Purchase Order Item ID incorrect');
-    }
-
-    const purchaseOrderItem = await this.purchaseOrderItemRepository.findOneBy({
-      id,
-      isActive: true,
+  async remove(
+    user: AuthenticatedUser,
+    id: number,
+  ): Promise<OnePurchaseOrderItemResponse> {
+    const purchaseOrderItem = await this.purchaseOrderItemRepository.findOne({
+      where: { id, isActive: true },
+      relations: ['purchaseOrder'],
     });
-    if (!purchaseOrderItem) {
+
+    if (!purchaseOrderItem)
       ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_ITEM_NOT_FOUND);
+
+    if (!purchaseOrderItem.purchaseOrder) {
+      ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
     }
 
-    purchaseOrderItem.isActive = false;
+    if (purchaseOrderItem.purchaseOrder.merchantId !== user.merchant.id)
+      ErrorHandler.differentMerchant();
+
     try {
-      await this.purchaseOrderItemRepository.save(purchaseOrderItem);
+      purchaseOrderItem.isActive = false;
+      await this.purchaseOrderItemRepository.save(purchaseOrderItem); // Corregir el repositorio
+      return this.findOne(id, undefined, 'Deleted');
     } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
       console.log(error);
+      ErrorHandler.handleDatabaseError(error);
     }
   }
 }

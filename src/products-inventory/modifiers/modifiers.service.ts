@@ -11,18 +11,19 @@ import { Modifier } from './entities/modifier.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductsService } from '../products/products.service';
-import { ProductsInventoryService } from '../products-inventory.service';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
+import { Product } from '../products/entities/product.entity';
 
 @Injectable()
 export class ModifiersService {
   constructor(
     @InjectRepository(Modifier)
     private readonly modifierRepository: Repository<Modifier>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
     private readonly productsService: ProductsService,
-    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
   async create(
@@ -31,13 +32,16 @@ export class ModifiersService {
   ): Promise<OneModifierResponse> {
     const { productId, ...modifierData } = createModifierDto;
 
-    const product = await this.productsService.findOne(productId);
+    const product = await this.productRepository.findOneBy({
+      id: productId,
+      merchantId: user.merchant.id,
+    });
 
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
     }
 
-    if (product.data.merchant?.id !== user.merchant.id) {
+    if (product.merchantId !== user.merchant.id) {
       ErrorHandler.differentMerchant();
     }
 
@@ -59,7 +63,7 @@ export class ModifiersService {
     } else {
       const newModifier = this.modifierRepository.create({
         ...modifierData,
-        productId: product.data.id,
+        productId: product.id,
       });
 
       const savedModifier = await this.modifierRepository.save(newModifier);
@@ -111,15 +115,13 @@ export class ModifiersService {
 
     // 7. Map to ModifierResponseDto
     const data: ModifierResponseDto[] = await Promise.all(
-      modifiers.map((modifier) => {
+      modifiers.map(async (modifier) => {
         const result: ModifierResponseDto = {
           id: modifier.id,
           name: modifier.name,
           priceDelta: modifier.priceDelta,
           product: modifier.product
-            ? this.productsInventoryService.mapProductToProductResponseDto(
-                modifier.product,
-              )
+            ? (await this.productsService.findOne(modifier.product.id)).data
             : null,
         };
         return result;
@@ -177,9 +179,7 @@ export class ModifiersService {
       name: modifier.name,
       priceDelta: modifier.priceDelta,
       product: modifier.product
-        ? this.productsInventoryService.mapProductToProductResponseDto(
-            modifier.product,
-          )
+        ? (await this.productsService.findOne(modifier.product.id)).data
         : null,
     };
 
