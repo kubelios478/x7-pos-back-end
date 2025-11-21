@@ -57,6 +57,12 @@ import { SubscriptionApplication } from './subscriptions/subscription-applicatio
 import { Item } from './products-inventory/stocks/items/entities/item.entity';
 import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
 import { FeatureEntity } from './subscriptions/features/entity/features.entity';
+import { CashDrawerHistoryModule } from './cash-drawer-history/cash-drawer-history.module';
+import { CashDrawerHistory } from './cash-drawer-history/entities/cash-drawer-history.entity';
+import { OrderItemModule } from './order-item/order-item.module';
+import { OrderItem } from './order-item/entities/order-item.entity';
+import { KitchenStationModule } from './kitchen-display-system/kitchen-station/kitchen-station.module';
+import { KitchenStation } from './kitchen-display-system/kitchen-station/entities/kitchen-station.entity';
 
 @Module({
   imports: [
@@ -107,6 +113,9 @@ import { FeatureEntity } from './subscriptions/features/entity/features.entity';
           Movement,
           Collaborator,
           Shift,
+          CashDrawerHistory,
+          OrderItem,
+          KitchenStation,
         ],
         synchronize: true,
       }),
@@ -151,6 +160,9 @@ import { FeatureEntity } from './subscriptions/features/entity/features.entity';
 
     OrdersModule,
     FeaturesModule,
+    CashDrawerHistoryModule,
+    OrderItemModule,
+    KitchenStationModule,
   ],
 })
 export class AppModule {}

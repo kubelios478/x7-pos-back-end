@@ -116,10 +116,11 @@ export class CashDrawersService {
     cashDrawer.merchant_id = authenticatedUserMerchantId;
     cashDrawer.shift_id = createCashDrawerDto.shiftId;
     cashDrawer.opening_balance = createCashDrawerDto.openingBalance;
+    cashDrawer.current_balance = createCashDrawerDto.openingBalance; // Initialize current_balance with opening_balance
     cashDrawer.closing_balance = createCashDrawerDto.closingBalance || null;
     cashDrawer.opened_by = createCashDrawerDto.openedBy;
     cashDrawer.closed_by = createCashDrawerDto.closedBy || null;
-    cashDrawer.status = providedClosingBalance && providedClosedBy ? CashDrawerStatus.CLOSED : CashDrawerStatus.OPEN;
+    cashDrawer.status = providedClosingBalance && providedClosedBy ? CashDrawerStatus.CLOSE : CashDrawerStatus.OPEN;
 
     const savedCashDrawer = await this.cashDrawerRepository.save(cashDrawer);
     console.log('Cash drawer created successfully:', savedCashDrawer.id);
@@ -177,26 +178,54 @@ export class CashDrawersService {
     // Build where conditions
     const whereConditions: any = {
       merchant_id: authenticatedUserMerchantId,
-      status: query.status || CashDrawerStatus.OPEN, // Default to OPEN, exclude DELETED unless explicitly requested
     };
 
     if (query.shiftId) {
+      // Validate shift exists and belongs to merchant
+      const shift = await this.shiftRepository.findOne({
+        where: { id: query.shiftId },
+        relations: ['merchant'],
+      });
+      if (!shift) {
+        throw new NotFoundException(`Shift with ID ${query.shiftId} not found`);
+      }
+      if (shift.merchant.id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException('Shift does not belong to your merchant');
+      }
       whereConditions.shift_id = query.shiftId;
     }
 
     if (query.openedBy) {
+      // Validate collaborator exists and belongs to merchant
+      const collaborator = await this.collaboratorRepository.findOne({
+        where: { id: query.openedBy },
+      });
+      if (!collaborator) {
+        throw new NotFoundException(`Collaborator with ID ${query.openedBy} not found`);
+      }
+      if (collaborator.merchant_id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException('Collaborator does not belong to your merchant');
+      }
       whereConditions.opened_by = query.openedBy;
     }
 
     if (query.closedBy) {
+      // Validate collaborator exists and belongs to merchant
+      const collaborator = await this.collaboratorRepository.findOne({
+        where: { id: query.closedBy },
+      });
+      if (!collaborator) {
+        throw new NotFoundException(`Collaborator with ID ${query.closedBy} not found`);
+      }
+      if (collaborator.merchant_id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException('Collaborator does not belong to your merchant');
+      }
       whereConditions.closed_by = query.closedBy;
     }
 
-    // If status is explicitly provided, use it; otherwise exclude DELETED
+    // If status is explicitly provided, use it; otherwise show all cash drawers
     if (query.status !== undefined) {
       whereConditions.status = query.status;
-    } else {
-      whereConditions.status = CashDrawerStatus.OPEN; // Only show OPEN by default
     }
 
     if (query.createdDate) {
@@ -268,11 +297,11 @@ export class CashDrawersService {
       throw new ForbiddenException('You must be associated with a merchant to access cash drawers');
     }
 
-    // Find cash drawer
+    // Find cash drawer (show all cash drawers regardless of status)
     const cashDrawer = await this.cashDrawerRepository.findOne({
       where: { 
         id,
-        status: CashDrawerStatus.OPEN, // Only find non-deleted cash drawers
+        merchant_id: authenticatedUserMerchantId,
       },
       relations: ['merchant', 'shift', 'shift.merchant', 'openedByCollaborator', 'closedByCollaborator'],
     });
@@ -404,9 +433,9 @@ export class CashDrawersService {
     if (updateCashDrawerDto.openedBy !== undefined) updateData.opened_by = updateCashDrawerDto.openedBy;
     if (updateCashDrawerDto.closedBy !== undefined) updateData.closed_by = updateCashDrawerDto.closedBy;
 
-    // If both closing fields provided, set status to CLOSED automatically
+    // If both closing fields provided, set status to CLOSE automatically
     if (providedClosingBalanceU && providedClosedByU) {
-      updateData.status = CashDrawerStatus.CLOSED;
+      updateData.status = CashDrawerStatus.CLOSE;
     }
 
     await this.cashDrawerRepository.update(id, updateData);
@@ -448,13 +477,12 @@ export class CashDrawersService {
     const existingCashDrawer = await this.cashDrawerRepository.findOne({
       where: { 
         id,
-        status: CashDrawerStatus.OPEN, // Only find non-deleted cash drawers
       },
       relations: ['merchant', 'shift', 'shift.merchant', 'openedByCollaborator', 'closedByCollaborator'],
     });
 
     if (!existingCashDrawer) {
-      console.log('Cash drawer not found or already deleted:', id);
+      console.log('Cash drawer not found:', id);
       throw new NotFoundException('Cash drawer not found');
     }
 
@@ -464,14 +492,8 @@ export class CashDrawersService {
       throw new ForbiddenException('You can only delete cash drawers from your merchant');
     }
 
-    // Check if already deleted
-    if (existingCashDrawer.status === CashDrawerStatus.DELETED) {
-      console.log('Cash drawer already deleted:', id);
-      throw new ConflictException('Cash drawer is already deleted');
-    }
-
-    // Perform logical deletion
-    await this.cashDrawerRepository.update(id, { status: CashDrawerStatus.DELETED });
+    // Perform physical deletion (or you can implement soft delete with a different field)
+    await this.cashDrawerRepository.remove(existingCashDrawer);
     console.log('Cash drawer deleted successfully (logical deletion):', id);
 
     return {
@@ -485,6 +507,7 @@ export class CashDrawersService {
     return {
       id: cashDrawer.id,
       openingBalance: cashDrawer.opening_balance,
+      currentBalance: cashDrawer.current_balance,
       closingBalance: cashDrawer.closing_balance,
       createdAt: cashDrawer.created_at,
       updatedAt: cashDrawer.updated_at,

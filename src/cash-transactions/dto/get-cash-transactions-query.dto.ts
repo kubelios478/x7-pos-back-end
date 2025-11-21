@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsNumber, IsOptional, IsPositive, IsString, Min } from 'class-validator';
-import { CashTransactionStatus, CashTransactionType } from '../entities/cash-transaction.entity';
+import { CashTransactionStatus } from '../constants/cash-transaction-status.enum';
+import { CashTransactionType } from '../constants/cash-transaction-type.enum';
 
 export enum CashTransactionSortBy {
   CREATED_AT = 'createdAt',

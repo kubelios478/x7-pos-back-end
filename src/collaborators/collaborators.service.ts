@@ -4,7 +4,7 @@ import { Repository, EntityManager } from 'typeorm';
 import { Collaborator } from './entities/collaborator.entity';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
-import { CollaboratorResponseDto } from './dto/collaborator-response.dto';
+import { CollaboratorResponseDto, OneCollaboratorResponseDto } from './dto/collaborator-response.dto';
 import { GetCollaboratorsQueryDto } from './dto/get-collaborators-query.dto';
 import { PaginatedCollaboratorsResponseDto } from './dto/paginated-collaborators-response.dto';
 import { User } from '../users/entities/user.entity';
@@ -23,7 +23,7 @@ export class CollaboratorsService {
     private readonly entityManager: EntityManager,
   ) { }
 
-  async create(dto: CreateCollaboratorDto, authenticatedUserMerchantId: number): Promise<CollaboratorResponseDto> {
+  async create(dto: CreateCollaboratorDto, authenticatedUserMerchantId: number): Promise<OneCollaboratorResponseDto> {
     console.log('=== COLLABORATOR CREATE DEBUG ===');
     console.log('Create DTO:', dto);
     console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
@@ -97,26 +97,27 @@ export class CollaboratorsService {
     console.log('✅ Collaborator created successfully');
 
     // 8. Return response with merchant and user information (without dates)
-    const response: CollaboratorResponseDto = {
-      id: savedCollaborator.id,
-      user_id: savedCollaborator.user_id,
-      merchant_id: savedCollaborator.merchant_id,
-      name: savedCollaborator.name,
-      role: savedCollaborator.role,
-      status: savedCollaborator.status,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name
-      },
-      user: {
-        id: user.id,
-        firstname: user.username || '',
-        lastname: user.email || ''
+    return {
+      statusCode: 201,
+      message: 'Collaborator created successfully',
+      data: {
+        id: savedCollaborator.id,
+        user_id: savedCollaborator.user_id,
+        merchant_id: savedCollaborator.merchant_id,
+        name: savedCollaborator.name,
+        role: savedCollaborator.role,
+        status: savedCollaborator.status,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name
+        },
+        user: {
+          id: user.id,
+          firstname: user.username || '',
+          lastname: user.email || ''
+        }
       }
     };
-
-    console.log('✅ SUCCESS: Returning collaborator response:', response);
-    return response;
   }
 
   async findAll(query: GetCollaboratorsQueryDto, authenticatedUserMerchantId: number): Promise<PaginatedCollaboratorsResponseDto> {
@@ -194,17 +195,21 @@ export class CollaboratorsService {
     console.log('Page:', page, 'of', totalPages);
 
     return {
+      statusCode: 200,
+      message: 'Collaborators retrieved successfully',
       data,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNext,
-      hasPrev
+      paginationMeta: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext,
+        hasPrev
+      }
     };
   }
 
-  async findOne(id: number, authenticatedUserMerchantId: number): Promise<CollaboratorResponseDto> {
+  async findOne(id: number, authenticatedUserMerchantId: number): Promise<OneCollaboratorResponseDto> {
     console.log('=== COLLABORATOR GET ONE DEBUG ===');
     console.log('Collaborator ID to get:', id);
     console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
@@ -287,29 +292,30 @@ export class CollaboratorsService {
     });
 
     // 7. Return response with merchant and user information (without dates)
-    const response: CollaboratorResponseDto = {
-      id: collaborator.id,
-      user_id: collaborator.user_id,
-      merchant_id: collaborator.merchant_id,
-      name: collaborator.name,
-      role: collaborator.role,
-      status: collaborator.status,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name
-      },
-      user: {
-        id: user.id,
-        firstname: user.username || '',
-        lastname: user.email || ''
+    return {
+      statusCode: 200,
+      message: 'Collaborator retrieved successfully',
+      data: {
+        id: collaborator.id,
+        user_id: collaborator.user_id,
+        merchant_id: collaborator.merchant_id,
+        name: collaborator.name,
+        role: collaborator.role,
+        status: collaborator.status,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name
+        },
+        user: {
+          id: user.id,
+          firstname: user.username || '',
+          lastname: user.email || ''
+        }
       }
     };
-
-    console.log('✅ SUCCESS: Returning collaborator response:', response);
-    return response;
   }
 
-  async update(id: number, dto: UpdateCollaboratorDto, authenticatedUserMerchantId: number): Promise<CollaboratorResponseDto> {
+  async update(id: number, dto: UpdateCollaboratorDto, authenticatedUserMerchantId: number): Promise<OneCollaboratorResponseDto> {
     console.log('=== COLLABORATOR UPDATE DEBUG ===');
     console.log('Collaborator ID to update:', id);
     console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
@@ -458,29 +464,30 @@ export class CollaboratorsService {
     }
 
     // 13. Return response with merchant and user information (without dates)
-    const response: CollaboratorResponseDto = {
-      id: updatedCollaborator.id,
-      user_id: updatedCollaborator.user_id,
-      merchant_id: updatedCollaborator.merchant_id,
-      name: updatedCollaborator.name,
-      role: updatedCollaborator.role,
-      status: updatedCollaborator.status,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name
-      },
-      user: {
-        id: user.id,
-        firstname: user.username || '',
-        lastname: user.email || ''
+    return {
+      statusCode: 200,
+      message: 'Collaborator updated successfully',
+      data: {
+        id: updatedCollaborator.id,
+        user_id: updatedCollaborator.user_id,
+        merchant_id: updatedCollaborator.merchant_id,
+        name: updatedCollaborator.name,
+        role: updatedCollaborator.role,
+        status: updatedCollaborator.status,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name
+        },
+        user: {
+          id: user.id,
+          firstname: user.username || '',
+          lastname: user.email || ''
+        }
       }
     };
-
-    console.log('✅ SUCCESS: Returning updated collaborator response:', response);
-    return response;
   }
 
-  async remove(id: number, authenticatedUserMerchantId: number): Promise<CollaboratorResponseDto> {
+  async remove(id: number, authenticatedUserMerchantId: number): Promise<OneCollaboratorResponseDto> {
     console.log('=== COLLABORATOR DELETE DEBUG ===');
     console.log('Collaborator ID to delete:', id);
     console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
@@ -584,26 +591,27 @@ export class CollaboratorsService {
     console.log('✅ Collaborator soft deleted successfully');
 
     // 10. Return response with merchant and user information (without dates)
-    const response: CollaboratorResponseDto = {
-      id: updatedCollaborator.id,
-      user_id: updatedCollaborator.user_id,
-      merchant_id: updatedCollaborator.merchant_id,
-      name: updatedCollaborator.name,
-      role: updatedCollaborator.role,
-      status: updatedCollaborator.status,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name
-      },
-      user: {
-        id: user.id,
-        firstname: user.username || '',
-        lastname: user.email || ''
+    return {
+      statusCode: 200,
+      message: 'Collaborator deleted successfully',
+      data: {
+        id: updatedCollaborator.id,
+        user_id: updatedCollaborator.user_id,
+        merchant_id: updatedCollaborator.merchant_id,
+        name: updatedCollaborator.name,
+        role: updatedCollaborator.role,
+        status: updatedCollaborator.status,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name
+        },
+        user: {
+          id: user.id,
+          firstname: user.username || '',
+          lastname: user.email || ''
+        }
       }
     };
-
-    console.log('✅ SUCCESS: Returning deleted collaborator response:', response);
-    return response;
   }
 }
 
