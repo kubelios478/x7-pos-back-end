@@ -12,6 +12,8 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Item } from 'src/products-inventory/stocks/items/entities/item.entity';
+import { PurchaseOrderItem } from 'src/products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 
 @Entity({ name: 'product' })
 export class Product {
@@ -75,7 +77,6 @@ export class Product {
   @JoinColumn({ name: 'supplierId' })
   supplier: Supplier;
 
-  //@ApiProperty({ example: true, description: 'Product active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
@@ -84,4 +85,13 @@ export class Product {
 
   @OneToMany(() => Modifier, (modifier) => modifier.product)
   modifiers: Modifier[];
+
+  @OneToMany(() => Item, (item) => item.product)
+  items: Item[];
+
+  @OneToMany(
+    () => PurchaseOrderItem,
+    (purchaseOrderItem) => purchaseOrderItem.product,
+  )
+  purchaseOrderItems: PurchaseOrderItem[];
 }

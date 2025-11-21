@@ -4,10 +4,11 @@ import { ModifiersController } from './modifiers.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Modifier } from './entities/modifier.entity';
 import { ProductsInventoryModule } from '../products-inventory.module';
+import { Product } from '../products/entities/product.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Modifier]),
+    TypeOrmModule.forFeature([Modifier, Product]),
     forwardRef(() => ProductsInventoryModule),
   ],
   controllers: [ModifiersController],

@@ -101,7 +101,8 @@ export class TableAssignmentsService {
     }
 
     // 5. Validate business rules
-    const assignedAtDate = new Date(dto.assignedAt);
+    const assignedAtDate = new Date();
+
     const releasedAtDate = dto.releasedAt ? new Date(dto.releasedAt) : null;
 
     if (releasedAtDate && releasedAtDate <= assignedAtDate) {

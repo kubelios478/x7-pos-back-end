@@ -12,6 +12,7 @@ import { ShiftRole } from '../constants/shift-role.enum';
 import { ShiftStatus } from '../constants/shift-status.enum';
 import { ShiftAssignment } from '../../shift-assignments/entities/shift-assignment.entity';
 import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
+import { CashDrawer } from '../../cash-drawers/entities/cash-drawer.entity';
 
 @Entity()
 export class Shift {
@@ -88,4 +89,13 @@ export class Shift {
   })
   @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.shift)
   tableAssignments: TableAssignment[];
+
+  @ApiProperty({
+    type: () => CashDrawer,
+    isArray: true,
+    required: false,
+    description: 'List of cash drawers for this shift',
+  })
+  @OneToMany(() => CashDrawer, (cashDrawer) => cashDrawer.shift)
+  cashDrawers: CashDrawer[];
 }

@@ -6,10 +6,11 @@ import { Category } from './entities/category.entity';
 import { Repository } from 'typeorm';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import {
-  AllCategoryResponse,
   CategoryResponseDto,
   OneCategoryResponse,
 } from './dto/category-response.dto';
+import { GetCategoriesQueryDto } from './dto/get-categories-query.dto';
+import { AllPaginatedCategories } from './dto/all-paginated-categories.dto';
 import { ProductsInventoryService } from '../products-inventory.service';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
@@ -31,6 +32,11 @@ export class CategoryService {
   ): Promise<OneCategoryResponse> {
     const { name, merchantId, parentId } = createCategoryDto;
 
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: merchantId },
+    });
+    if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
+
     if (merchantId !== user.merchant.id) ErrorHandler.differentMerchant();
 
     const existingCategory = await this.categoryRepo.findOne({
@@ -39,13 +45,6 @@ export class CategoryService {
 
     if (existingCategory)
       ErrorHandler.exists(ErrorMessage.CATEGORY_NAME_EXISTS);
-
-    if (merchantId) {
-      const merchant = await this.merchantRepo.findOne({
-        where: { id: merchantId },
-      });
-      if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
-    }
 
     if (parentId) {
       const parentCategory = await this.categoryRepo.findOne({
@@ -61,7 +60,7 @@ export class CategoryService {
       if (existingButIsNotActive) {
         existingButIsNotActive.isActive = true;
         await this.categoryRepo.save(existingButIsNotActive);
-        return this.findOne(existingButIsNotActive.id, undefined, 'created');
+        return this.findOne(existingButIsNotActive.id, undefined, 'Created');
       } else {
         const newCategory = this.categoryRepo.create({
           name,
@@ -72,17 +71,51 @@ export class CategoryService {
         return this.findOne(savedCategory.id, undefined, 'Created');
       }
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
+      console.log(error);
     }
   }
 
-  async findAll(merchantId: number): Promise<AllCategoryResponse> {
-    const categories = await this.categoryRepo.find({
-      where: { merchantId, isActive: true }, // Filter by isActive
-      relations: ['merchant'],
-    });
-    const categoryResponseDtos: CategoryResponseDto[] = await Promise.all(
+  async findAll(
+    query: GetCategoriesQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedCategories> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.categoryRepo
+      .createQueryBuilder('category')
+      .leftJoinAndSelect('category.merchant', 'merchant')
+      .where('category.merchantId = :merchantId', { merchantId })
+      .andWhere('category.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(category.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const categories = await queryBuilder
+      .orderBy('category.name', 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to CategoryResponseDto (with parent categories)
+    const data: CategoryResponseDto[] = await Promise.all(
       categories.map(async (category) => {
         const result: CategoryResponseDto = {
           id: category.id,
@@ -103,10 +136,17 @@ export class CategoryService {
         return result;
       }),
     );
+
     return {
       statusCode: 200,
       message: 'Categories retrieved successfully',
-      data: categoryResponseDtos,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
@@ -119,11 +159,14 @@ export class CategoryService {
       ErrorHandler.invalidId('Category ID id incorrect');
     }
 
-    const whereCondition: { id: number; merchantId?: number; isActive: true } =
-      {
-        id,
-        isActive: true, // Filter by isActive
-      };
+    const whereCondition: {
+      id: number;
+      merchantId?: number;
+      isActive: boolean;
+    } = {
+      id,
+      isActive: createdUpdateDelete === 'Deleted' ? false : true,
+    };
     if (merchantId !== undefined) {
       whereCondition.merchantId = merchantId;
     }
@@ -134,7 +177,7 @@ export class CategoryService {
     });
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
-    const result: CategoryResponseDto = {
+    const dataForResponse: CategoryResponseDto = {
       id: category.id,
       name: category.name,
       merchant: category.merchant
@@ -145,37 +188,42 @@ export class CategoryService {
         : null,
     };
     if (category.parentId) {
-      result.parents =
+      dataForResponse.parents =
         await this.productsInventoryService.findParentCategories(id);
     }
 
     let response: OneCategoryResponse;
-    if (createdUpdateDelete === 'Created') {
-      response = {
-        statusCode: 201,
-        message: `Category ${createdUpdateDelete} successfully`,
-        data: result,
-      };
-    } else if (createdUpdateDelete === 'Updated') {
-      response = {
-        statusCode: 201,
-        message: `Category ${createdUpdateDelete} successfully`,
-        data: result,
-      };
-    } else if (createdUpdateDelete === 'Deleted') {
-      response = {
-        statusCode: 201,
-        message: `Category ${createdUpdateDelete} successfully`,
-        data: result,
-      };
-    } else {
-      response = {
-        statusCode: 200,
-        message: 'Category retrieved successfully',
-        data: result,
-      };
-    }
 
+    switch (createdUpdateDelete) {
+      case 'Created':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: dataForResponse,
+        };
+        break;
+      case 'Updated':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: dataForResponse,
+        };
+        break;
+      case 'Deleted':
+        response = {
+          statusCode: 201,
+          message: `Category ${createdUpdateDelete} successfully`,
+          data: dataForResponse,
+        };
+        break;
+      default:
+        response = {
+          statusCode: 200,
+          message: 'Category retrieved successfully',
+          data: dataForResponse,
+        };
+        break;
+    }
     return response;
   }
 
@@ -196,30 +244,34 @@ export class CategoryService {
     )
       ErrorHandler.changedMerchant();
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { merchantId, ...updateData } = updateCategoryDto;
-    const { name, parentId } = updateData;
+    const { name, parentId, ...restOfUpdateData } = updateCategoryDto;
 
-    if (name && name !== category.name) {
+    if (name !== undefined && name !== category.name) {
       const existingCategory = await this.categoryRepo.findOne({
         where: { name, merchantId: category.merchantId, isActive: true },
       });
       if (existingCategory)
         ErrorHandler.exists(ErrorMessage.CATEGORY_NAME_EXISTS);
-
-      if (parentId) {
-        const parentCategory = await this.categoryRepo.findOneBy({
-          id: parentId,
-          isActive: true,
-        });
-        if (!parentCategory)
-          ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
-      }
-
-      Object.assign(category, updateData);
-      await this.categoryRepo.save(category);
     }
-    return this.findOne(id, undefined, 'Updated');
+
+    if (parentId !== undefined) {
+      const parentCategory = await this.categoryRepo.findOneBy({
+        id: parentId,
+        isActive: true,
+        merchantId: category.merchantId,
+      });
+      if (!parentCategory) ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
+    }
+
+    Object.assign(category, { name, parentId, ...restOfUpdateData });
+
+    try {
+      await this.categoryRepo.save(category);
+      return this.findOne(id, undefined, 'Updated');
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+      console.log(error);
+    }
   }
 
   async remove(
@@ -231,29 +283,32 @@ export class CategoryService {
       where: { id, isActive: true }, // Ensure the category is active
       relations: ['merchant', 'parent'],
     });
-
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
     if (user.merchant.id !== category.merchantId) {
       ErrorHandler.differentMerchant();
     }
 
-    const hideRecursive = async (categoryId: number): Promise<void> => {
-      const subCategories = await this.categoryRepo.find({
-        where: { parentId: categoryId, isActive: true }, // Only hide active subcategories
-      });
+    try {
+      const hideRecursive = async (categoryId: number): Promise<void> => {
+        const subCategories = await this.categoryRepo.find({
+          where: { parentId: categoryId, isActive: true }, // Only hide active subcategories
+        });
 
-      for (const sub of subCategories) {
-        await hideRecursive(sub.id);
-        sub.isActive = false;
-        await this.categoryRepo.save(sub);
-      }
-    };
+        for (const sub of subCategories) {
+          await hideRecursive(sub.id);
+          sub.isActive = false;
+          await this.categoryRepo.save(sub);
+        }
+      };
 
-    await hideRecursive(category.id);
-    category.isActive = false;
-    await this.categoryRepo.save(category);
-
-    return this.findOne(id, undefined, 'Deleted');
+      await hideRecursive(category.id);
+      category.isActive = false;
+      await this.categoryRepo.save(category);
+      return this.findOne(id, undefined, 'Deleted');
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+      console.log(error);
+    }
   }
 }

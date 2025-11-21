@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 import { ProductResponseDto } from 'src/products-inventory/products/dto/product-response.dto';
 
 export class ModifierResponseDto {
@@ -17,4 +18,9 @@ export class ModifierResponseDto {
     description: 'Associated product details',
   })
   product: ProductResponseDto | null;
+}
+
+export class OneModifierResponse extends SuccessResponse {
+  @ApiProperty()
+  data: ModifierResponseDto;
 }

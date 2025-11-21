@@ -30,6 +30,7 @@ import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
 import { Collaborator } from './collaborators/entities/collaborator.entity';
+import { Location } from './products-inventory/stocks/locations/entities/location.entity';
 
 import { Shift } from './shifts/entities/shift.entity';
 import { ShiftsModule } from './shifts/shifts.module';
@@ -37,18 +38,32 @@ import { Product } from './products-inventory/products/entities/product.entity';
 import { Supplier } from './products-inventory/suppliers/entities/supplier.entity';
 import { ShiftAssignment } from './shift-assignments/entities/shift-assignment.entity';
 import { TableAssignment } from './table-assignments/entities/table-assignment.entity';
+import { CashDrawersModule } from './cash-drawers/cash-drawers.module';
+import { CashDrawer } from './cash-drawers/entities/cash-drawer.entity';
+import { CashTransaction } from './cash-transactions/entities/cash-transaction.entity';
+import { Receipt } from './receipts/entities/receipt.entity';
+import { Order } from './orders/entities/order.entity';
+
 import { Variant } from './products-inventory/variants/entities/variant.entity';
 import { Modifier } from './products-inventory/modifiers/entities/modifier.entity';
 import { SubscriptionPlan } from './subscriptions/subscription-plan/entity/subscription-plan.entity';
 import { MerchantSubscription } from './subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
+import { CashTransactionsModule } from './cash-transactions/cash-transactions.module';
+import { ReceiptsModule } from './receipts/receipts.module';
 import { SubscriptionApplication } from './subscriptions/subscription-application/entity/subscription-application.entity';
+import { Item } from './products-inventory/stocks/items/entities/item.entity';
+import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
 import { FeatureEntity } from './subscriptions/features/entity/features.entity';
 import { PlanFeaturesModule } from './subscriptions/plan-features/plan-features.module';
 import { PlanFeature } from './subscriptions/plan-features/entity/plan-features.entity';
 import { SubscriptionPaymentsModule } from './subscriptions/subscription-payments/subscription-payments.module';
 import { SubscriptionPayment } from './subscriptions/subscription-payments/entity/subscription-payments.entity';
+import { PurchaseOrderModule } from './products-inventory/purchase-order/purchase-order.module';
+import { PurchaseOrderItemModule } from './products-inventory/purchase-order-item/purchase-order-item.module';
+import { PurchaseOrder } from './products-inventory/purchase-order/entities/purchase-order.entity';
+import { PurchaseOrderItem } from './products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 
 @Module({
   imports: [
@@ -76,6 +91,15 @@ import { SubscriptionPayment } from './subscriptions/subscription-payments/entit
           Shift,
           ShiftAssignment,
           TableAssignment,
+          CashDrawer,
+          CashTransaction,
+          Receipt,
+          Order,
+          Product,
+          Supplier,
+          MerchantSubscription,
+          ApplicationEntity,
+          PlanApplication,
           MerchantSubscription,
           ApplicationEntity,
           PlanApplication,
@@ -87,6 +111,11 @@ import { SubscriptionPayment } from './subscriptions/subscription-payments/entit
           Supplier,
           Variant,
           Modifier,
+          Location,
+          Item,
+          Movement,
+          PurchaseOrder,
+          PurchaseOrderItem,
           Collaborator,
           Shift,
         ],
@@ -100,26 +129,26 @@ import { SubscriptionPayment } from './subscriptions/subscription-payments/entit
     MerchantsModule,
     UsersModule,
     CustomersModule,
-
     TablesModule,
     CollaboratorsModule,
     ShiftsModule,
     ShiftAssignmentsModule,
     TableAssignmentsModule,
-
     ProductsInventoryModule,
-
     SubscriptionsModule,
     MerchantSubscriptionModule,
-
     ApplicationsModule,
     CollaboratorsModule,
     ShiftsModule,
-
     PlanApplicationsModule,
-
     SubscriptionApplicationModule,
-
+    TableAssignmentsModule,
+    CashDrawersModule,
+    PlanApplicationsModule,
+    CashTransactionsModule,
+    ReceiptsModule,
+    PurchaseOrderModule,
+    PurchaseOrderItemModule,
     FeaturesModule,
 
     PlanFeaturesModule,

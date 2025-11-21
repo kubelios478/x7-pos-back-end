@@ -5,8 +5,11 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Item } from 'src/products-inventory/stocks/items/entities/item.entity';
+import { PurchaseOrderItem } from 'src/products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 
 @Entity({ name: 'variant' })
 export class Variant {
@@ -40,7 +43,15 @@ export class Variant {
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  //@ApiProperty({ example: true, description: 'Variant active status' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @OneToMany(() => Item, (item) => item.variant)
+  items: Item[];
+
+  @OneToMany(
+    () => PurchaseOrderItem,
+    (purchaseOrderItem) => purchaseOrderItem.variant,
+  )
+  purchaseOrderItems: PurchaseOrderItem[];
 }
