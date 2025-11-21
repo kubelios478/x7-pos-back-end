@@ -4,12 +4,11 @@ import { Repository, In } from 'typeorm';
 import { ApplicationEntity } from './entity/application-entity';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  AllApplicationResponseDto,
-  OneApplicationResponseDto,
-} from './dto/application-response.dto';
+import { OneApplicationResponseDto } from './dto/application-response.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
+import { QueryApplicationDto } from './dto/query-application.dto';
+import { PaginatedApplicationResponseDto } from './dto/paginated-application-response.dto';
 
 @Injectable()
 export class ApplicationsService {
@@ -35,14 +34,47 @@ export class ApplicationsService {
     };
   }
 
-  async findAll(): Promise<AllApplicationResponseDto> {
-    const applications = await this.applicationRepo.find({
-      where: { status: In(['active', 'inactive']) },
-    });
+  async findAll(
+    query: QueryApplicationDto,
+  ): Promise<PaginatedApplicationResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.applicationRepo.createQueryBuilder('application');
+
+    if (status) {
+      qb.andWhere('application.status = :status', { status });
+    } else {
+      qb.andWhere('application.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.orderBy(`application.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return {
       statusCode: 200,
       message: 'Applications retrieved successfully',
-      data: applications,
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
   async findOne(id: number): Promise<OneApplicationResponseDto> {

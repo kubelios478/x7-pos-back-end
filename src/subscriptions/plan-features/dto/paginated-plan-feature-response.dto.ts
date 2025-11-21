@@ -1,0 +1,28 @@
+//src/subscriptions/plan-features/dto/paginated-plan-feature-response.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from 'src/common/dtos/success-response.dto';
+import { PlanFeatureResponseDto } from './plan-feature-response.dto';
+
+export class PaginatedPlanFeatureResponseDto extends SuccessResponse {
+  @ApiProperty({
+    description: 'List of Plan Application',
+    type: [PlanFeatureResponseDto],
+  })
+  data: PlanFeatureResponseDto[];
+
+  @ApiProperty({
+    description: 'Pagination info',
+    example: {
+      total: 42,
+      page: 1,
+      limit: 10,
+      totalPages: 5,
+    },
+  })
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}

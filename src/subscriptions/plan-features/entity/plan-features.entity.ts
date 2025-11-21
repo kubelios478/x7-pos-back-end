@@ -17,7 +17,7 @@ export class PlanFeature {
     description: 'Unique identifier of the Plan Features',
   })
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
-  planFeature: number;
+  id: number;
 
   @ApiProperty({
     example: 'MySubscriptionPlan',

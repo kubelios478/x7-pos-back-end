@@ -10,13 +10,12 @@ import {
   BadRequestException,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import { SubscriptionPlanService } from './subscription-plan.service';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
-import {
-  AllSubscriptionPlanResponseDto,
-  OneSubscriptionPlanResponseDto,
-} from './dto/subscription-plan-response.dto';
+import { OneSubscriptionPlanResponseDto } from './dto/subscription-plan-response.dto';
+import { QuerySubscriptionPlanDto } from './dto/query-subscription-plan.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { SubscriptionPlan } from './entity/subscription-plan.entity';
 import {
@@ -39,6 +38,7 @@ import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { PaginatedSubscriptionPlanResponseDto } from './dto/paginated-subscription-plan-response.dto';
 
 @ApiTags('Subscription Plans')
 @Controller('subscription-plan')
@@ -129,30 +129,13 @@ export class SubscriptionPlanController {
   @Scopes(Scope.ADMIN_PORTAL)
   @ApiOperation({
     summary: 'Get all Subscription Plans',
+    description: 'Endpoint for get ALL of the Subscription Plans.',
   })
   @ApiOkResponse({
-    description: 'List of all Subscription Plans',
-    schema: {
-      example: [
-        {
-          id: 1,
-          name: 'Basic Plan',
-          description: 'Acceso limitado',
-          price: 9.99,
-          billingCycle: 'monthly',
-          status: 'active',
-        },
-        {
-          id: 2,
-          name: 'Pro Plan',
-          description: 'Acceso completo',
-          price: 29.99,
-          billingCycle: 'monthly',
-          status: 'active',
-        },
-      ],
-    },
+    description: 'Paginated list of subscription plans',
+    type: PaginatedSubscriptionPlanResponseDto,
   })
+  @ApiBadRequestResponse({ description: 'Invalid query parameters' })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized. Authentication required',
     schema: {
@@ -183,8 +166,10 @@ export class SubscriptionPlanController {
       },
     },
   })
-  async findAll(): Promise<AllSubscriptionPlanResponseDto> {
-    return this.subscriptionPlanService.findAll();
+  async findAll(
+    @Query() query: QuerySubscriptionPlanDto,
+  ): Promise<PaginatedSubscriptionPlanResponseDto> {
+    return this.subscriptionPlanService.findAll(query);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN)
