@@ -11,7 +11,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Variant } from './entities/variant.entity';
 import { ProductsService } from '../products/products.service';
-import { ProductsInventoryService } from '../products-inventory.service';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
@@ -22,7 +21,6 @@ export class VariantsService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly productsService: ProductsService,
-    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
   async create(
@@ -119,16 +117,14 @@ export class VariantsService {
 
     // 7. Map to VariantResponseDto
     const data: VariantResponseDto[] = await Promise.all(
-      variants.map((variant) => {
+      variants.map(async (variant) => {
         const result: VariantResponseDto = {
           id: variant.id,
           name: variant.name,
           price: variant.price,
           sku: variant.sku,
           product: variant.product
-            ? this.productsInventoryService.mapProductToProductResponseDto(
-                variant.product,
-              )
+            ? (await this.productsService.findOne(variant.product.id)).data
             : null,
         };
         return result;
@@ -185,9 +181,7 @@ export class VariantsService {
       price: variant.price,
       sku: variant.sku,
       product: variant.product
-        ? this.productsInventoryService.mapProductToProductResponseDto(
-            variant.product,
-          )
+        ? (await this.productsService.findOne(variant.product.id)).data
         : null,
     };
 

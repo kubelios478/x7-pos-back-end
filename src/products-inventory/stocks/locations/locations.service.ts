@@ -28,33 +28,42 @@ export class LocationsService {
     user: AuthenticatedUser,
     createLocationDto: CreateLocationDto,
   ): Promise<OneLocationResponse> {
-    const { ...location } = createLocationDto;
+    const { name, address, merchantId } = createLocationDto;
 
-    if (location.merchantId !== user.merchant.id) {
-      console.log('error');
+    if (merchantId !== user.merchant.id) {
       ErrorHandler.differentMerchant();
     }
 
     const existingLocation = await this.locationRepository.findOne({
-      where: {
-        ...location,
-        isActive: true,
-      },
+      where: [
+        {
+          name,
+          isActive: true,
+        },
+        {
+          address,
+          isActive: true,
+        },
+      ],
     });
 
-    if (existingLocation)
-      ErrorHandler.exists(ErrorMessage.LOCATION_NAME_EXISTS);
-
-    if (location.merchantId) {
-      const merchant = await this.merchantRepo.findOne({
-        where: { id: location.merchantId },
-      });
-      if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
+    if (existingLocation) {
+      if (existingLocation.name === name) {
+        ErrorHandler.exists(ErrorMessage.LOCATION_NAME_EXISTS);
+      }
+      if (existingLocation.address === address) {
+        ErrorHandler.exists(ErrorMessage.LOCATION_ADDRESS_EXISTS);
+      }
     }
+
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: merchantId },
+    });
+    if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
 
     try {
       const existingButIsNotActive = await this.locationRepository.findOne({
-        where: { ...location, isActive: false },
+        where: { name, address, merchantId, isActive: false },
       });
 
       if (existingButIsNotActive) {
@@ -63,7 +72,9 @@ export class LocationsService {
         return this.findOne(existingButIsNotActive.id, undefined, 'Created');
       } else {
         const newLocation = this.locationRepository.create({
-          ...location,
+          name,
+          address,
+          merchantId,
         });
         const savedLocation = await this.locationRepository.save(newLocation);
         return this.findOne(savedLocation.id, undefined, 'Created');
@@ -188,7 +199,7 @@ export class LocationsService {
       case 'Created':
         response = {
           statusCode: 201,
-          message: `Category ${createdUpdateDelete} successfully`,
+          message: `Location ${createdUpdateDelete} successfully`,
           data: dataForResponse,
         };
         break;
@@ -222,6 +233,7 @@ export class LocationsService {
     id: number,
     updateLocationDto: UpdateLocationDto,
   ): Promise<OneLocationResponse> {
+    const { name, address, merchantId } = updateLocationDto;
     const location = await this.locationRepository.findOneBy({
       id,
       isActive: true,
@@ -237,17 +249,29 @@ export class LocationsService {
     )
       ErrorHandler.changedMerchant();
 
-    const { name, address, ...restOfUpdateData } = updateLocationDto;
+    const existingLocation = await this.locationRepository.findOne({
+      where: [
+        {
+          name,
+          isActive: true,
+        },
+        {
+          address,
+          isActive: true,
+        },
+      ],
+    });
 
-    if (name !== undefined && name !== location.name) {
-      const existingLocation = await this.locationRepository.findOne({
-        where: { name, merchantId: location.merchantId, isActive: true },
-      });
-      if (existingLocation)
+    if (existingLocation) {
+      if (existingLocation.name === name) {
         ErrorHandler.exists(ErrorMessage.LOCATION_NAME_EXISTS);
+      }
+      if (existingLocation.address === address) {
+        ErrorHandler.exists(ErrorMessage.LOCATION_ADDRESS_EXISTS);
+      }
     }
 
-    Object.assign(location, { name, address, ...restOfUpdateData });
+    Object.assign(location, { name, address, merchantId });
 
     try {
       await this.locationRepository.save(location);
@@ -267,10 +291,6 @@ export class LocationsService {
       isActive: true,
     });
     if (!location) ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
-
-    if (user.merchant.id !== location.merchantId) {
-      ErrorHandler.differentMerchant();
-    }
 
     location.isActive = false;
 

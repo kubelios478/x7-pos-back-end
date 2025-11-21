@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, Min, Max } from 'class-validator';
+import { IsOptional, IsNumber, Min, Max, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -28,12 +28,10 @@ export class GetMovementsQueryDto {
   limit?: number = 10;
 
   @ApiPropertyOptional({
-    example: 1,
-    description: 'Filter movements by item ID',
+    example: 'Item 1',
+    description: 'Filter movements by item',
   })
   @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(1)
-  itemId?: number;
+  @IsString()
+  itemName?: string;
 }

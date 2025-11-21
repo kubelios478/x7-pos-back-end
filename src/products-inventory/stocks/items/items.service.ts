@@ -37,23 +37,27 @@ export class ItemsService {
     const { productId, locationId, variantId, currentQty } = createItemDto;
     const merchantId = user.merchant.id;
 
-    const product = await this.productRepository.findOne({
-      where: { id: productId, merchantId },
-    });
+    const [product, variant, location] = await Promise.all([
+      this.productRepository.findOneBy({
+        id: productId,
+        isActive: true,
+      }),
+      this.variantRepository.findOneBy({
+        id: variantId,
+        isActive: true,
+      }),
+      this.locationRepository.findOneBy({
+        id: locationId,
+        isActive: true,
+      }),
+    ]);
+
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
     }
-
-    const location = await this.locationRepository.findOne({
-      where: { id: locationId, merchantId },
-    });
     if (!location) {
       ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
     }
-
-    const variant = await this.variantRepository.findOne({
-      where: { id: variantId, productId: product.id },
-    });
     if (!variant) {
       ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
@@ -70,7 +74,6 @@ export class ItemsService {
       if (existingItem.isActive) {
         ErrorHandler.exists(ErrorMessage.ITEM_NAME_EXISTS);
       } else {
-        // Si el item existe pero está inactivo, lo activamos
         existingItem.isActive = true;
         const activatedItem = await this.itemRepository.save(existingItem);
         return this.findOne(activatedItem.id, merchantId, 'Created');
@@ -82,7 +85,6 @@ export class ItemsService {
       product,
       location,
       variant,
-      isActive: true,
     });
 
     const savedItem = await this.itemRepository.save(newItem);
@@ -112,6 +114,12 @@ export class ItemsService {
     if (query.productName) {
       queryBuilder.andWhere('LOWER(product.name) LIKE LOWER(:productName)', {
         productName: `%${query.productName}%`,
+      });
+    }
+
+    if (query.variantName) {
+      queryBuilder.andWhere('LOWER(variant.name) LIKE LOWER(:variantName)', {
+        variantName: `%${query.variantName}%`,
       });
     }
 
@@ -178,7 +186,7 @@ export class ItemsService {
     createdUpdateDelete?: string,
   ): Promise<OneItemResponse> {
     if (!id || id <= 0) {
-      ErrorHandler.invalidId('Product ID id incorrect');
+      ErrorHandler.invalidId('Item ID id incorrect');
     }
     const whereCondition: {
       id: number;
@@ -285,35 +293,35 @@ export class ItemsService {
       ErrorHandler.notFound(ErrorMessage.ITEM_NOT_FOUND);
     }
 
-    if (productId) {
-      const product = await this.productRepository.findOne({
-        where: { id: productId, merchantId },
-      });
-      if (!product) {
-        ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
-      }
-      item.product = product;
+    const [product, variant, location] = await Promise.all([
+      this.productRepository.findOneBy({
+        id: productId,
+        isActive: true,
+      }),
+      this.variantRepository.findOneBy({
+        id: variantId,
+        productId: productId,
+        isActive: true,
+      }),
+      this.locationRepository.findOneBy({
+        id: locationId,
+        isActive: true,
+      }),
+    ]);
+
+    if (!product) {
+      ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+    }
+    if (!location) {
+      ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
+    }
+    if (!variant) {
+      ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
 
-    if (locationId) {
-      const location = await this.locationRepository.findOne({
-        where: { id: locationId, merchantId },
-      });
-      if (!location) {
-        ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
-      }
-      item.location = location;
-    }
-
-    if (variantId) {
-      const variant = await this.variantRepository.findOne({
-        where: { id: variantId, productId: item.product.id },
-      });
-      if (!variant) {
-        ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
-      }
-      item.variant = variant;
-    }
+    item.product = product;
+    item.location = location;
+    item.variant = variant;
 
     if (currentQty) {
       item.currentQty = currentQty;
