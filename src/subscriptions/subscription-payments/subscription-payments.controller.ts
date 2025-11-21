@@ -10,6 +10,7 @@ import {
   BadRequestException,
   Patch,
   Delete,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -31,12 +32,11 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { SubscriptionPayment } from './entity/subscription-payments.entity';
 import { CreateSubscriptionPaymentDto } from './dto/create-subscription-payments.dto';
-import {
-  ALlSubscriptionPaymentsResponseDto,
-  OneSubscriptionPaymentResponseDto,
-} from './dto/subscription-payments-response.dto';
+import { OneSubscriptionPaymentResponseDto } from './dto/subscription-payments-response.dto';
 import { SubscriptionPaymentsService } from './subscription-payments.service';
 import { UpdateSubscriptionPaymentDto } from './dto/update-subscription-payment.dto';
+import { PaginatedSubscriptionPaymentResponseDto } from './dto/paginated-subscription-payment-response.dto';
+import { QuerySubscriptionPaymentDto } from './dto/query-subscription-payment.dto';
 
 @ApiTags('Subscription Payments')
 @Controller('subscription-payments')
@@ -123,8 +123,8 @@ export class SubscriptionPaymentsController {
     description: 'Retrieve a list of all Subscription Payments.',
   })
   @ApiOkResponse({
-    description: 'List of Subscription Payments retrieved successfully',
-    type: [SubscriptionPayment],
+    description: 'Paginated list of merchant subscriptions',
+    type: PaginatedSubscriptionPaymentResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized: Missing or invalid authentication token',
@@ -156,8 +156,10 @@ export class SubscriptionPaymentsController {
       },
     },
   })
-  async findAll(): Promise<ALlSubscriptionPaymentsResponseDto> {
-    return this.subscriptionPaymentService.findAll();
+  async findAll(
+    @Query() query: QuerySubscriptionPaymentDto,
+  ): Promise<PaginatedSubscriptionPaymentResponseDto> {
+    return this.subscriptionPaymentService.findAll(query);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

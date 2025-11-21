@@ -4,12 +4,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FeatureEntity } from './entity/features.entity';
 import { Repository, In } from 'typeorm';
 import { CreateFeatureDto } from './dto/create-feature.dto';
-import {
-  AllFeatureResponseDto,
-  OneFeatureResponseDto,
-} from './dto/feature-response.dto';
+import { OneFeatureResponseDto } from './dto/feature-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { UpdateFeatureDto } from './dto/update-feature.dto';
+import { QueryFeatureDto } from './dto/query-feature.dto';
+import { PaginatedFeatureResponseDto } from './dto/paginated-feature-response.dto';
 
 @Injectable()
 export class FeaturesService {
@@ -34,14 +33,45 @@ export class FeaturesService {
       data: createdFeature,
     };
   }
-  async findAll(): Promise<AllFeatureResponseDto> {
-    const features = await this.featureRepo.find({
-      where: { status: In(['active', 'inactive']) },
-    });
+  async findAll(query: QueryFeatureDto): Promise<PaginatedFeatureResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.featureRepo.createQueryBuilder('feature');
+
+    if (status) {
+      qb.andWhere('feature.status = :status', { status });
+    } else {
+      qb.andWhere('feature.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.orderBy(`feature.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return {
       statusCode: 200,
       message: 'Features retrieved successfully',
-      data: features,
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
   async findOne(id: number): Promise<OneFeatureResponseDto> {

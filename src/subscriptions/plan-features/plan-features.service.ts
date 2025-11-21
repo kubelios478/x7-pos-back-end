@@ -7,11 +7,13 @@ import { FeatureEntity } from '../features/entity/features.entity';
 import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
 import { CreatePlanFeatureDto } from './dto/create-plan-feature.dto';
 import {
-  AllPlanFeatureResponseDto,
+  PlanFeatureResponseDto,
   OnePlanFeatureResponseDto,
 } from './dto/plan-feature-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { UpdatePlanFeatureDto } from './dto/update-plan-features.dto';
+import { QueryPlanFeatureDto } from './dto/query-plan-feature.dto';
+import { PaginatedPlanFeatureResponseDto } from './dto/paginated-plan-feature-response.dto';
 
 @Injectable()
 export class PlanFeaturesService {
@@ -73,21 +75,79 @@ export class PlanFeaturesService {
       data: savedPlanFeature,
     };
   }
-  async findAll(): Promise<AllPlanFeatureResponseDto> {
-    const planFeatures = await this.planFeatureRepo.find({
-      where: { status: In(['active', 'inactive']) },
-      relations: ['feature', 'subscriptionPlan'],
-      select: {
-        feature: { id: true, name: true },
-        subscriptionPlan: { id: true, name: true },
-        limit_value: true,
-        status: true,
-      },
+  async findAll(
+    query: QueryPlanFeatureDto,
+  ): Promise<PaginatedPlanFeatureResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.planFeatureRepo
+      .createQueryBuilder('planFeature')
+      .leftJoin('planFeature.subscriptionPlan', 'subscriptionPlan')
+      .leftJoin('planFeature.feature', 'feature')
+      .select([
+        'planFeature',
+        'subscriptionPlan.id',
+        'subscriptionPlan.name',
+        'subscriptionPlan.status',
+        'feature.id',
+        'feature.name',
+        'feature.status',
+      ]);
+
+    if (status) {
+      qb.andWhere('planFeature.status = :status', { status });
+    } else {
+      qb.andWhere('planFeature.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.andWhere('planFeature.status != :deleted', {
+      deleted: 'deleted',
     });
+
+    qb.orderBy(`planFeature.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
+    const mapped: PlanFeatureResponseDto[] = data.map((item) => ({
+      id: item.id,
+      limit_value: Number(item.limit_value),
+      status: item.status,
+
+      subscriptionPlanId: {
+        id: item.subscriptionPlan.id,
+        name: item.subscriptionPlan.name,
+      },
+
+      featureId: {
+        id: item.feature.id,
+        name: item.feature.name,
+      },
+    }));
+
     return {
       statusCode: 200,
-      message: 'Plan Features retrieved successfully',
-      data: planFeatures,
+      message: 'Plan Application retrieved successfully',
+      data: mapped,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
   async findOne(id: number): Promise<OnePlanFeatureResponseDto> {
@@ -95,7 +155,7 @@ export class PlanFeaturesService {
       ErrorHandler.invalidId('Plan Feature ID must be a positive integer');
     }
     const planFeatures = await this.planFeatureRepo.findOne({
-      where: { planFeature: id },
+      where: { id: id },
       relations: ['feature', 'subscriptionPlan'],
     });
     if (!planFeatures) {
@@ -115,7 +175,7 @@ export class PlanFeaturesService {
       ErrorHandler.invalidId('Plan Feature ID must be a positive integer');
     }
     const planFeature = await this.planFeatureRepo.findOne({
-      where: { planFeature: id, status: In(['active', 'inactive']) },
+      where: { id: id, status: In(['active', 'inactive']) },
     });
     if (!planFeature) {
       ErrorHandler.planFeatureNotFound();
@@ -136,7 +196,7 @@ export class PlanFeaturesService {
       ErrorHandler.invalidId('Plan Feature ID must be a positive integer');
     }
     const planFeature = await this.planFeatureRepo.findOne({
-      where: { planFeature: id },
+      where: { id: id },
     });
     if (!planFeature) {
       ErrorHandler.planFeatureNotFound();

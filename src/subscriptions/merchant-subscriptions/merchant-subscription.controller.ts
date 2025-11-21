@@ -10,11 +10,11 @@ import {
   UseGuards,
   Param,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { MerchantSubscriptionService } from './merchant-subscription.service';
 import { CreateMerchantSubscriptionDto } from './dtos/create-merchant-subscription.dto';
 import {
-  AllMerchantSubscriptionSummaryDto,
   MerchantSubscriptionSummaryDto,
   OneMerchantSubscriptionSummaryDto,
 } from './dtos/merchant-subscription-summary.dto';
@@ -23,7 +23,6 @@ import {
   ApiNotFoundResponse,
   ApiOperation,
   ApiBearerAuth,
-  ApiResponse,
   ApiBody,
   ApiParam,
   ApiCreatedResponse,
@@ -40,6 +39,8 @@ import { UserRole } from 'src/users/constants/role.enum';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { Scope } from 'src/users/constants/scope.enum';
 import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscription.dto';
+import { PaginatedMerchantSuscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
+import { QueryMerchantSubscriptionDto } from './dtos/query-merchant-subscription.dto';
 
 @ApiTags('Merchant Subscriptions')
 @ApiBearerAuth()
@@ -148,33 +149,9 @@ export class MerchantSubscriptionController {
     summary: 'Get All Merchant Subscriptions',
     description: 'Endpoint for get ALL of the Merchant Subscription.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'List all of the Merchant Subscriptions',
-    type: [MerchantSubscriptionSummaryDto],
-  })
-  @ApiOperation({
-    summary: 'Get all Merchant Subscriptions',
-    description:
-      'Retrieve a list of all Merchant Subscriptions, including related merchant and plan data.',
-  })
   @ApiOkResponse({
-    description: 'List of Merchant Subscriptions retrieved successfully',
-    type: [MerchantSubscriptionSummaryDto],
-    schema: {
-      example: [
-        {
-          id: 1,
-          merchant: { id: 5, name: 'Acme Corp' },
-          plan: { id: 2, name: 'Gold Plan' },
-          startDate: '2025-10-01T00:00:00.000Z',
-          endDate: '2026-10-01T00:00:00.000Z',
-          renewalDate: '2026-09-25T00:00:00.000Z',
-          status: 'active',
-          paymentMethod: 'credit_card',
-        },
-      ],
-    },
+    description: 'Paginated list of merchant subscriptions',
+    type: PaginatedMerchantSuscriptionResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized. Authentication required',
@@ -206,8 +183,10 @@ export class MerchantSubscriptionController {
       },
     },
   })
-  async findAll(): Promise<AllMerchantSubscriptionSummaryDto> {
-    return this.merchantSubscriptionService.findAll();
+  async findAll(
+    @Query() query: QueryMerchantSubscriptionDto,
+  ): Promise<PaginatedMerchantSuscriptionResponseDto> {
+    return this.merchantSubscriptionService.findAll(query);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

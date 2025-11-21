@@ -6,11 +6,13 @@ import { Repository, In } from 'typeorm';
 import { SubscriptionPayment } from './entity/subscription-payments.entity';
 import { CreateSubscriptionPaymentDto } from './dto/create-subscription-payments.dto';
 import {
-  ALlSubscriptionPaymentsResponseDto,
+  SubscriptionPaymentResponseDto,
   OneSubscriptionPaymentResponseDto,
 } from './dto/subscription-payments-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { UpdateSubscriptionPaymentDto } from './dto/update-subscription-payment.dto';
+import { QuerySubscriptionPaymentDto } from './dto/query-subscription-payment.dto';
+import { PaginatedSubscriptionPaymentResponseDto } from './dto/paginated-subscription-payment-response.dto';
 
 @Injectable()
 export class SubscriptionPaymentsService {
@@ -64,23 +66,73 @@ export class SubscriptionPaymentsService {
       data: savedSubscriptionPayment,
     };
   }
-  async findAll(): Promise<ALlSubscriptionPaymentsResponseDto> {
-    const subscriptionPayments = await this.subscriptionPaymentRepo.find({
-      where: { status: In(['active', 'inactive']) },
-      relations: ['merchantSubscription'],
-      select: {
-        merchantSubscription: { id: true, plan: true },
-        amount: true,
-        currency: true,
-        status: true,
-        paymentDate: true,
-        paymentMethod: true,
-      },
+  async findAll(
+    query: QuerySubscriptionPaymentDto,
+  ): Promise<PaginatedSubscriptionPaymentResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.subscriptionPaymentRepo
+      .createQueryBuilder('subscriptionPayment')
+      .leftJoin(
+        'subscriptionPayment.merchantSubscription',
+        'merchantSubscription',
+      )
+      .select([
+        'subscriptionPayment',
+        'merchantSubscription.id',
+        'merchantSubscription.status',
+        'merchantSubscription.merchant',
+        'merchantSubscription.plan',
+      ]);
+
+    if (status) {
+      qb.andWhere('subscriptionPayment.status = :status', { status });
+    } else {
+      qb.andWhere('subscriptionPayment.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.andWhere('subscriptionPayment.status != :deleted', {
+      deleted: 'deleted',
     });
+
+    qb.orderBy(`subscriptionPayment.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
+    const mapped: SubscriptionPaymentResponseDto[] = data.map((item) => ({
+      id: item.id,
+      merchantSubscriptionId: item.merchantSubscription.id,
+      amount: Number(item.amount),
+      currency: item.currency,
+      status: item.status,
+      paymentDate: item.paymentDate,
+      paymentMethod: item.paymentMethod,
+    }));
+
     return {
       statusCode: 200,
-      message: 'Subscription Payments retrieved successfully',
-      data: subscriptionPayments,
+      message: 'Subscription Payment retrieved successfully',
+      data: mapped,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
   async findOne(id: number): Promise<OneSubscriptionPaymentResponseDto> {

@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Delete,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -33,12 +34,13 @@ import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
 import { CreateFeatureDto } from './dto/create-feature.dto';
 import {
-  AllFeatureResponseDto,
   FeatureResponseDto,
   OneFeatureResponseDto,
 } from './dto/feature-response.dto';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UpdateFeatureDto } from './dto/update-feature.dto';
+import { PaginatedFeatureResponseDto } from './dto/paginated-feature-response.dto';
+import { QueryFeatureDto } from './dto/query-feature.dto';
 
 @ApiTags('Features')
 @Controller('features')
@@ -143,26 +145,12 @@ export class FeaturesController {
     Scope.MERCHANT_WEB,
   )
   @ApiOperation({
-    summary: 'Get All of the Features',
-    description:
-      'Endpoint to retrieve all Features, Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
+    summary: 'Get all of the Features',
+    description: 'Endpoint to retrieve all Applications.',
   })
   @ApiOkResponse({
-    description: 'Features retrieved successfully',
-    schema: {
-      example: {
-        statusCode: 200,
-        message: 'Features retrieved succesfully',
-        data: [
-          {
-            id: 1,
-            name: 'Advanced Analytics',
-            description: 'Provides advanced data analytics capabilities',
-            Unit: 'unit 1',
-          },
-        ],
-      },
-    },
+    description: 'Applications retrieved successfully',
+    type: PaginatedFeatureResponseDto,
   })
   @ApiForbiddenResponse({
     description: 'Forbidden. Insufficient role.',
@@ -194,8 +182,10 @@ export class FeaturesController {
       },
     },
   })
-  async findAll(): Promise<AllFeatureResponseDto> {
-    return this.featuresService.findAll();
+  async findAll(
+    @Query() query: QueryFeatureDto,
+  ): Promise<PaginatedFeatureResponseDto> {
+    return this.featuresService.findAll(query);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

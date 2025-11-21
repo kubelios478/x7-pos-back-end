@@ -4,14 +4,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { PlanApplication } from './entity/plan-applications.entity';
 import { CreatePlanApplicationDto } from './dto/create-plan-application.dto';
-import {
-  AllPlanApplicationsResponseDto,
-  OnePlanApplicationResponseDto,
-} from './dto/summary-plan-applications.dto';
+import { OnePlanApplicationResponseDto } from './dto/summary-plan-applications.dto';
 import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
 import { ApplicationEntity } from '../applications/entity/application-entity';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { UpdatePlanApplicationDto } from './dto/update-plan-application.dto';
+import { QueryPlanApplicationDto } from './dto/query-plan-application.dto';
+import { PaginatedPlanApplicationResponseDto } from './dto/paginated-plan-application-response.dto';
 
 @Injectable()
 export class PlanApplicationsService {
@@ -75,24 +74,79 @@ export class PlanApplicationsService {
     };
   }
 
-  async findAll(): Promise<AllPlanApplicationsResponseDto> {
-    const planApps = await this.planApplicationRepository.find({
-      where: { status: In(['active', 'inactive']) },
-      select: {
-        subscriptionPlan: {
-          id: true,
-          name: true,
-        },
-        application: {
-          id: true,
-          name: true,
-        },
-      },
+  async findAll(
+    query: QueryPlanApplicationDto,
+  ): Promise<PaginatedPlanApplicationResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.planApplicationRepository
+      .createQueryBuilder('planApplication')
+      .leftJoin('planApplication.subscriptionPlan', 'subscriptionPlan')
+      .leftJoin('planApplication.application', 'application')
+      .select([
+        'planApplication',
+        'subscriptionPlan.id',
+        'subscriptionPlan.name',
+        'subscriptionPlan.status',
+        'application.id',
+        'application.name',
+        'application.status',
+      ]);
+
+    if (status) {
+      qb.andWhere('planApplication.status = :status', { status });
+    } else {
+      qb.andWhere('planApplication.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.andWhere('planApplication.status != :deleted', {
+      deleted: 'deleted',
     });
+
+    qb.orderBy(`planApplication.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
+    const mapped = data.map((item) => ({
+      id: item.id,
+      limits: item.limits,
+      status: item.status,
+
+      subscriptionplan: {
+        id: item.subscriptionPlan.id,
+        name: item.subscriptionPlan.name,
+      },
+
+      application: {
+        id: item.application.id,
+        name: item.application.name,
+      },
+    }));
+
     return {
       statusCode: 200,
-      message: 'Plan Applications retrieved successfully',
-      data: planApps,
+      message: 'Plan Application retrieved successfully',
+      data: mapped,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 

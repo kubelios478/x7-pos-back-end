@@ -4,10 +4,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { SubscriptionPlan } from './entity/subscription-plan.entity';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
-import {
-  AllSubscriptionPlanResponseDto,
-  OneSubscriptionPlanResponseDto,
-} from './dto/subscription-plan-response.dto';
+import { OneSubscriptionPlanResponseDto } from './dto/subscription-plan-response.dto';
+import { QuerySubscriptionPlanDto } from './dto/query-subscription-plan.dto';
+import { PaginatedSubscriptionPlanResponseDto } from './dto/paginated-subscription-plan-response.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 
@@ -38,16 +37,50 @@ export class SubscriptionPlanService {
     };
   }
 
-  async findAll(): Promise<AllSubscriptionPlanResponseDto> {
-    const plans = await this.subscriptionPlanRepo.find({
-      where: { status: In(['active', 'inactive']) },
-    });
+  async findAll(
+    query: QuerySubscriptionPlanDto,
+  ): Promise<PaginatedSubscriptionPlanResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.subscriptionPlanRepo.createQueryBuilder('plan');
+
+    if (status) {
+      qb.andWhere('plan.status = :status', { status });
+    } else {
+      qb.andWhere('plan.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.orderBy(`plan.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return {
       statusCode: 200,
       message: 'Subscription Plans retrieved successfully',
-      data: plans,
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
+
   async findOne(id: number): Promise<OneSubscriptionPlanResponseDto> {
     if (!id || isNaN(Number(id))) {
       ErrorHandler.invalidId();
