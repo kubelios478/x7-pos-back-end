@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
-  AllProductsResponse,
   OneProductResponse,
   ProductResponseDto,
 } from './dto/product-response.dto';
+import { GetProductsQueryDto } from './dto/get-products-query.dto';
+import { AllPaginatedProducts } from './dto/all-paginated-purchase-orders.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
@@ -40,31 +41,27 @@ export class ProductsService {
 
     const [merchant, category, supplier] = await Promise.all([
       this.merchantRepository.findOneBy({ id: merchantId }),
-      categoryId
-        ? this.categoryRepository.findOneBy({ id: categoryId })
-        : Promise.resolve(null),
-      supplierId
-        ? this.supplierRepository.findOneBy({ id: supplierId })
-        : Promise.resolve(null),
+      this.categoryRepository.findOneBy({ id: categoryId, merchantId }),
+      this.supplierRepository.findOneBy({ id: supplierId, merchantId }),
     ]);
 
     if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
-    if (categoryId && !category)
-      ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
-    if (supplierId && !supplier)
-      ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
+    if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
+    if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 
     const existingProduct = await this.productRepository.findOne({
-      where: [{ name: name, isActive: true }],
+      where: [
+        { name: name, isActive: true },
+        { sku: sku, isActive: true },
+      ],
     });
 
-    if (existingProduct) ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
-
-    const existingSku = await this.productRepository.findOne({
-      where: [{ sku: sku, isActive: true }],
-    });
-
-    if (existingSku) ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
+    if (existingProduct) {
+      if (existingProduct.name === name)
+        ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
+      if (existingProduct.sku === sku)
+        ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
+    }
 
     try {
       const existingButIsNotActive = await this.productRepository.findOne({
@@ -95,13 +92,55 @@ export class ProductsService {
     }
   }
 
-  async findAll(merchantId: number): Promise<AllProductsResponse> {
-    const products = await this.productRepository.find({
-      where: { merchantId, isActive: true },
-      relations: ['merchant', 'category', 'category.parent', 'supplier'],
-    });
+  async findAll(
+    query: GetProductsQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedProducts> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
 
-    const productsResponseDtos: ProductResponseDto[] = await Promise.all(
+    // 4. Build query with filters
+    const queryBuilder = this.productRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.merchant', 'merchant')
+      .leftJoinAndSelect('product.category', 'category')
+      .leftJoinAndSelect('category.parent', 'parentCategory')
+      .leftJoinAndSelect('product.supplier', 'supplier')
+      .where('product.merchantId = :merchantId', { merchantId })
+      .andWhere('product.isActive = :isActive', { isActive: true });
+
+    // 5. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(product.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    if (query.category) {
+      queryBuilder.andWhere('LOWER(category.name) LIKE LOWER(:categoryName)', {
+        categoryName: `%${query.category}%`,
+      });
+    }
+
+    // 6. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 7. Apply pagination and sorting
+    const products = await queryBuilder
+      .orderBy('product.name', 'ASC')
+      .skip(skip)
+      .take(limit)
+      .getMany();
+
+    // 8. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 9. Map to ProductResponseDto
+    const data: ProductResponseDto[] = await Promise.all(
       products.map((product) => {
         const result: ProductResponseDto = {
           id: product.id,
@@ -137,10 +176,17 @@ export class ProductsService {
         return result;
       }),
     );
+
     return {
       statusCode: 200,
       message: 'Products retrieved successfully',
-      data: productsResponseDtos,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
@@ -166,7 +212,13 @@ export class ProductsService {
 
     const product = await this.productRepository.findOne({
       where: whereCondition,
-      relations: ['merchant', 'category', 'category.parent', 'supplier'],
+      relations: [
+        'merchant',
+        'category',
+        'category.parent',
+        'supplier',
+        'supplier.merchant',
+      ],
     });
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
@@ -273,21 +325,24 @@ export class ProductsService {
     }
 
     if (name && name !== product.name) {
-      const existingProductByName = await this.productRepository.findOne({
-        where: { name },
+      const existingProductWithName = await this.productRepository.findOne({
+        where: { name, isActive: true },
       });
-
-      if (existingProductByName && existingProductByName.id !== id)
+      if (
+        existingProductWithName &&
+        existingProductWithName.id !== product.id
+      ) {
         ErrorHandler.exists(ErrorMessage.PRODUCT_NAME_EXISTS);
+      }
     }
 
     if (sku && sku !== product.sku) {
-      const existingSku = await this.productRepository.findOne({
-        where: { sku },
+      const existingProductWithSku = await this.productRepository.findOne({
+        where: { sku, isActive: true },
       });
-
-      if (existingSku && existingSku.id !== id)
+      if (existingProductWithSku && existingProductWithSku.id !== product.id) {
         ErrorHandler.exists(ErrorMessage.PRODUCT_SKU_EXISTS);
+      }
     }
 
     Object.assign(product, {

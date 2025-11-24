@@ -1,13 +1,12 @@
 // src/subscriptions/subscription-plan/subscription-plan.service.ts
 import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { SubscriptionPlan } from './entity/subscription-plan.entity';
 import { CreateSubscriptionPlanDto } from './dto/create-subscription-plan.dto';
-import {
-  AllSubscriptionPlanResponseDto,
-  OneSubscriptionPlanResponseDto,
-} from './dto/subscription-plan-response.dto';
+import { OneSubscriptionPlanResponseDto } from './dto/subscription-plan-response.dto';
+import { QuerySubscriptionPlanDto } from './dto/query-subscription-plan.dto';
+import { PaginatedSubscriptionPlanResponseDto } from './dto/paginated-subscription-plan-response.dto';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 
@@ -29,33 +28,66 @@ export class SubscriptionPlanService {
         `Subscription Plan with name "${dto.name}" already exists`,
       );
     }
-    try {
-      const subscriptionPlan = this.subscriptionPlanRepo.create(dto);
-      const createdPlan =
-        await this.subscriptionPlanRepo.save(subscriptionPlan);
-      return {
-        statusCode: 201,
-        message: 'Subscription Plan created successfully',
-        data: createdPlan,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const subscriptionPlan = this.subscriptionPlanRepo.create(dto);
+    const createdPlan = await this.subscriptionPlanRepo.save(subscriptionPlan);
+    return {
+      statusCode: 201,
+      message: 'Subscription Plan created successfully',
+      data: createdPlan,
+    };
   }
 
-  async findAll(): Promise<AllSubscriptionPlanResponseDto> {
-    const plans = await this.subscriptionPlanRepo.find();
+  async findAll(
+    query: QuerySubscriptionPlanDto,
+  ): Promise<PaginatedSubscriptionPlanResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.subscriptionPlanRepo.createQueryBuilder('plan');
+
+    if (status) {
+      qb.andWhere('plan.status = :status', { status });
+    } else {
+      qb.andWhere('plan.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.orderBy(`plan.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return {
       statusCode: 200,
       message: 'Subscription Plans retrieved successfully',
-      data: plans,
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
+
   async findOne(id: number): Promise<OneSubscriptionPlanResponseDto> {
     if (!id || isNaN(Number(id))) {
       ErrorHandler.invalidId();
     }
-    const plan = await this.subscriptionPlanRepo.findOne({ where: { id } });
+    const plan = await this.subscriptionPlanRepo.findOne({
+      where: { id, status: In(['active', 'inactive']) },
+    });
     if (!plan) {
       ErrorHandler.subscriptionPlanNotFound();
     }
@@ -78,16 +110,12 @@ export class SubscriptionPlanService {
       ErrorHandler.subscriptionPlanNotFound();
     }
     Object.assign(plan, dto);
-    try {
-      const updatedPlan = await this.subscriptionPlanRepo.save(plan);
-      return {
-        statusCode: 200,
-        message: 'Subscription Plan updated successfully',
-        data: updatedPlan,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const updatedPlan = await this.subscriptionPlanRepo.save(plan);
+    return {
+      statusCode: 200,
+      message: 'Subscription Plan updated successfully',
+      data: updatedPlan,
+    };
   }
   async remove(id: number): Promise<OneSubscriptionPlanResponseDto> {
     if (!id || isNaN(Number(id))) {
@@ -97,15 +125,12 @@ export class SubscriptionPlanService {
     if (!plan) {
       ErrorHandler.subscriptionPlanNotFound();
     }
-    try {
-      await this.subscriptionPlanRepo.remove(plan);
-      return {
-        statusCode: 200,
-        message: 'Subscription Plan deleted successfully',
-        data: plan,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    plan.status = 'deleted';
+    await this.subscriptionPlanRepo.save(plan);
+    return {
+      statusCode: 200,
+      message: `Subscription with ID ${id} deleted successfully`,
+      data: plan,
+    };
   }
 }

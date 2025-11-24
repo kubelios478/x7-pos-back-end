@@ -1,15 +1,14 @@
 //src/subscriptions/applications/applications.service.ts
 import { Injectable, ConflictException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ApplicationEntity } from './entity/application-entity';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  AllApplicationResponseDto,
-  OneApplicationResponseDto,
-} from './dto/application-response.dto';
+import { OneApplicationResponseDto } from './dto/application-response.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
+import { QueryApplicationDto } from './dto/query-application.dto';
+import { PaginatedApplicationResponseDto } from './dto/paginated-application-response.dto';
 
 @Injectable()
 export class ApplicationsService {
@@ -26,24 +25,56 @@ export class ApplicationsService {
         `Application with name "${dto.name}" already exists`,
       );
     }
-    try {
-      const application = this.applicationRepo.create(dto);
-      const createdApplication = await this.applicationRepo.save(application);
-      return {
-        statusCode: 201,
-        message: 'Application created successfully',
-        data: createdApplication,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const application = this.applicationRepo.create(dto);
+    const createdApplication = await this.applicationRepo.save(application);
+    return {
+      statusCode: 201,
+      message: 'Application created successfully',
+      data: createdApplication,
+    };
   }
-  async findAll(): Promise<AllApplicationResponseDto> {
-    const applications = await this.applicationRepo.find();
+
+  async findAll(
+    query: QueryApplicationDto,
+  ): Promise<PaginatedApplicationResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.applicationRepo.createQueryBuilder('application');
+
+    if (status) {
+      qb.andWhere('application.status = :status', { status });
+    } else {
+      qb.andWhere('application.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.orderBy(`application.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return {
       statusCode: 200,
       message: 'Applications retrieved successfully',
-      data: applications,
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
   async findOne(id: number): Promise<OneApplicationResponseDto> {
@@ -52,7 +83,9 @@ export class ApplicationsService {
       ErrorHandler.invalidId('Application ID must be a positive number');
     }
 
-    const application = await this.applicationRepo.findOne({ where: { id } });
+    const application = await this.applicationRepo.findOne({
+      where: { id, status: In(['active', 'inactive']) },
+    });
 
     if (!application) {
       ErrorHandler.applicationNotFound();
@@ -80,16 +113,12 @@ export class ApplicationsService {
 
     Object.assign(application, dto);
 
-    try {
-      const updatedApplication = await this.applicationRepo.save(application);
-      return {
-        statusCode: 200,
-        message: 'Application updated successfully',
-        data: updatedApplication,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const updatedApplication = await this.applicationRepo.save(application);
+    return {
+      statusCode: 200,
+      message: 'Application updated successfully',
+      data: updatedApplication,
+    };
   }
   async remove(id: number): Promise<OneApplicationResponseDto> {
     // Validate ID parameter
@@ -102,16 +131,12 @@ export class ApplicationsService {
     if (!application) {
       ErrorHandler.applicationNotFound();
     }
-
-    try {
-      await this.applicationRepo.remove(application);
-      return {
-        statusCode: 200,
-        message: 'Application deleted successfully',
-        data: application,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    application.status = 'deleted';
+    await this.applicationRepo.save(application);
+    return {
+      statusCode: 200,
+      message: `Application with ID ${id} deleted successfully`,
+      data: application,
+    };
   }
 }

@@ -71,8 +71,7 @@ export class TableAssignmentsController {
         value: {
           shiftId: 1,
           tableId: 5,
-          collaboratorId: 3,
-          assignedAt: '2024-01-15T08:00:00Z'
+          collaboratorId: 3
         }
       },
       withRelease: {
@@ -81,7 +80,6 @@ export class TableAssignmentsController {
           shiftId: 1,
           tableId: 5,
           collaboratorId: 3,
-          assignedAt: '2024-01-15T08:00:00Z',
           releasedAt: '2024-01-15T16:00:00Z'
         }
       }

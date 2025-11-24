@@ -2,14 +2,13 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FeatureEntity } from './entity/features.entity';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { CreateFeatureDto } from './dto/create-feature.dto';
-import {
-  AllFeatureResponseDto,
-  OneFeatureResponseDto,
-} from './dto/feature-response.dto';
+import { OneFeatureResponseDto } from './dto/feature-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { UpdateFeatureDto } from './dto/update-feature.dto';
+import { QueryFeatureDto } from './dto/query-feature.dto';
+import { PaginatedFeatureResponseDto } from './dto/paginated-feature-response.dto';
 
 @Injectable()
 export class FeaturesService {
@@ -26,24 +25,53 @@ export class FeaturesService {
         `Feature with name "${dto.name}" already exists`,
       );
     }
-    try {
-      const feature = this.featureRepo.create(dto);
-      const createdFeature = await this.featureRepo.save(feature);
-      return {
-        statusCode: 201,
-        message: 'Feature created successfully',
-        data: createdFeature,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const feature = this.featureRepo.create(dto);
+    const createdFeature = await this.featureRepo.save(feature);
+    return {
+      statusCode: 201,
+      message: 'Feature created successfully',
+      data: createdFeature,
+    };
   }
-  async findAll(): Promise<AllFeatureResponseDto> {
-    const features = await this.featureRepo.find();
+  async findAll(query: QueryFeatureDto): Promise<PaginatedFeatureResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.featureRepo.createQueryBuilder('feature');
+
+    if (status) {
+      qb.andWhere('feature.status = :status', { status });
+    } else {
+      qb.andWhere('feature.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      });
+    }
+
+    qb.orderBy(`feature.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return {
       statusCode: 200,
       message: 'Features retrieved successfully',
-      data: features,
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
   async findOne(id: number): Promise<OneFeatureResponseDto> {
@@ -51,7 +79,9 @@ export class FeaturesService {
       ErrorHandler.invalidId('Feature ID must be a positive number');
     }
 
-    const feature = await this.featureRepo.findOne({ where: { id } });
+    const feature = await this.featureRepo.findOne({
+      where: { id, status: In(['active', 'inactive']) },
+    });
 
     if (!feature) {
       ErrorHandler.featureNotFound();
@@ -79,16 +109,12 @@ export class FeaturesService {
 
     Object.assign(feature, dto);
 
-    try {
-      const updatedFeature = await this.featureRepo.save(feature);
-      return {
-        statusCode: 200,
-        message: 'Feature updated successfully',
-        data: updatedFeature,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    const updatedFeature = await this.featureRepo.save(feature);
+    return {
+      statusCode: 200,
+      message: 'Feature updated successfully',
+      data: updatedFeature,
+    };
   }
   async remove(id: number): Promise<OneFeatureResponseDto> {
     // Validate ID parameter
@@ -99,18 +125,14 @@ export class FeaturesService {
     const feature = await this.featureRepo.findOne({ where: { id } });
 
     if (!feature) {
-      ErrorHandler.applicationNotFound();
+      ErrorHandler.featureNotFound();
     }
-
-    try {
-      await this.featureRepo.remove(feature);
-      return {
-        statusCode: 200,
-        message: 'Feature deleted successfully',
-        data: feature,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
+    feature.status = 'deleted';
+    await this.featureRepo.save(feature);
+    return {
+      statusCode: 200,
+      message: 'Feature deleted successfully',
+      data: feature,
+    };
   }
 }

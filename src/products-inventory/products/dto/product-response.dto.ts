@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MerchantResponseDto } from 'src/merchants/dtos/merchant-response.dto';
 import { CategoryLittleResponseDto } from '../../category/dto/category-response.dto';
-import { SupplierResponseDto } from 'src/products-inventory/suppliers/dto/supplier-response.dto';
+import { SupplierLittleResponseDto } from 'src/products-inventory/suppliers/dto/supplier-response.dto';
 import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 
 export class ProductResponseDto {
@@ -32,11 +32,11 @@ export class ProductResponseDto {
   category: CategoryLittleResponseDto | null;
 
   @ApiProperty({
-    type: () => SupplierResponseDto,
+    type: () => SupplierLittleResponseDto,
     nullable: true,
     description: 'Associated supplier details',
   })
-  supplier: SupplierResponseDto | null;
+  supplier: SupplierLittleResponseDto | null;
 }
 
 export class ProductLittleResponseDto {
@@ -50,8 +50,4 @@ export class ProductLittleResponseDto {
 export class OneProductResponse extends SuccessResponse {
   @ApiProperty()
   data: ProductResponseDto;
-}
-export class AllProductsResponse extends SuccessResponse {
-  @ApiProperty()
-  data: ProductResponseDto[];
 }

@@ -20,6 +20,8 @@ import { Supplier } from 'src/products-inventory/suppliers/entities/supplier.ent
 import { Shift } from 'src/shifts/entities/shift.entity';
 import { ShiftAssignment } from 'src/shift-assignments/entities/shift-assignment.entity';
 import { TableAssignment } from 'src/table-assignments/entities/table-assignment.entity';
+import { CashDrawer } from 'src/cash-drawers/entities/cash-drawer.entity';
+import { Order } from 'src/orders/entities/order.entity';
 
 @Entity()
 export class Merchant {
@@ -187,4 +189,22 @@ export class Merchant {
   })
   @OneToMany(() => TableAssignment, (tableAssignment) => tableAssignment.shift)
   tableAssignments: TableAssignment[];
+
+  @ApiProperty({
+    type: () => CashDrawer,
+    isArray: true,
+    required: false,
+    description: 'List of cash drawers associated with the merchant',
+  })
+  @OneToMany(() => CashDrawer, (cashDrawer) => cashDrawer.merchant)
+  cashDrawers: CashDrawer[];
+
+  @ApiProperty({
+    type: () => Order,
+    isArray: true,
+    required: false,
+    description: 'List of orders associated with the merchant',
+  })
+  @OneToMany(() => Order, (order) => order.merchant)
+  orders: Order[];
 }

@@ -7,14 +7,30 @@ export class SubscriptionApplicationResponseDto {
   @ApiProperty()
   id: number;
 
-  @ApiProperty({ example: { id: 1, name: 'Application' } })
-  applicationId: { id: number; name: string };
-
-  @ApiProperty({ example: { id: 1, name: 'Subscription Plan' } })
-  merchantSubscriptionId: { id: number; name: string };
-
-  @ApiProperty({ example: 'active' })
+  @ApiProperty()
   status: string;
+
+  @ApiProperty({
+    example: {
+      id: 1,
+      merchant: { id: 5, name: 'Merchant A' },
+      subscriptionPlan: { id: 3, name: 'Plan Gold' },
+    },
+  })
+  merchantSubscription: {
+    id: number;
+    merchant: any;
+    subscriptionPlan: any;
+  };
+
+  @ApiProperty({
+    example: { id: 10, name: 'Application X' },
+  })
+  application: {
+    id: number;
+    name: string;
+    status: string;
+  };
 }
 
 export class OneSubscriptionApplicationResponseDto extends SuccessResponse {

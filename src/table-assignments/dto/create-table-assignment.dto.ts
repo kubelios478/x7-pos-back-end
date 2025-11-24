@@ -27,14 +27,6 @@ export class CreateTableAssignmentDto {
   collaboratorId: number;
 
   @ApiProperty({ 
-    example: '2024-01-15T08:00:00Z', 
-    description: 'Timestamp when the table was assigned' 
-  })
-  @IsDateString()
-  @IsNotEmpty()
-  assignedAt: string;
-
-  @ApiProperty({ 
     example: '2024-01-15T16:00:00Z', 
     description: 'Timestamp when the table was released',
     required: false

@@ -8,6 +8,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Patch,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -22,10 +23,13 @@ import {
   ApiParam,
   ApiResponse,
   ApiUnauthorizedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { GetCategoriesQueryDto } from './dto/get-categories-query.dto';
+import { AllPaginatedCategories } from './dto/all-paginated-categories.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
@@ -89,10 +93,109 @@ export class CategoryController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get all categories' })
-  @ApiOkResponse({ description: 'List of all categories', type: [Category] })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'No categories found' })
+  @ApiOperation({
+    summary: 'Get all categories with pagination and filters',
+    description:
+      'Retrieves a paginated list of categories with optional filters. Users can only see categories from their own merchant. Supports filtering by name.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination (minimum 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page (1-100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'name',
+    required: false,
+    type: String,
+    description: 'Filter categories by name',
+    example: 'Beverages',
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of categories retrieved successfully',
+    type: AllPaginatedCategories,
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            name: 'Beverages',
+            description: 'Drinks and refreshments',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+            },
+          },
+          {
+            id: 2,
+            name: 'Appetizers',
+            description: 'Starters and small dishes',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+            },
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 25,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Merchant not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid query parameters or business rule violation',
+    schema: {
+      examples: {
+        invalidPage: {
+          summary: 'Invalid page number',
+          value: {
+            statusCode: 400,
+            message: 'page must not be less than 1',
+            error: 'Bad Request',
+          },
+        },
+        invalidLimit: {
+          summary: 'Invalid limit',
+          value: {
+            statusCode: 400,
+            message: 'limit must not be greater than 100',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -105,9 +208,12 @@ export class CategoryController {
       },
     },
   })
-  findAll(@CurrentUser() user: AuthenticatedUser) {
+  async findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetCategoriesQueryDto,
+  ): Promise<AllPaginatedCategories> {
     const merchantId = user.merchant.id;
-    return this.categoryService.findAll(merchantId);
+    return this.categoryService.findAll(query, merchantId);
   }
 
   @Get(':id')
