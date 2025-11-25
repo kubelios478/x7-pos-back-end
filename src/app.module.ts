@@ -63,6 +63,8 @@ import { OrderItemModule } from './order-item/order-item.module';
 import { OrderItem } from './order-item/entities/order-item.entity';
 import { KitchenStationModule } from './kitchen-display-system/kitchen-station/kitchen-station.module';
 import { KitchenStation } from './kitchen-display-system/kitchen-station/entities/kitchen-station.entity';
+import { OnlineStoresModule } from './online-ordering-system/online-stores/online-stores.module';
+import { OnlineStore } from './online-ordering-system/online-stores/entities/online-store.entity';
 
 @Module({
   imports: [
@@ -116,6 +118,7 @@ import { KitchenStation } from './kitchen-display-system/kitchen-station/entitie
           CashDrawerHistory,
           OrderItem,
           KitchenStation,
+          OnlineStore,
         ],
         synchronize: true,
       }),
@@ -163,6 +166,7 @@ import { KitchenStation } from './kitchen-display-system/kitchen-station/entitie
     CashDrawerHistoryModule,
     OrderItemModule,
     KitchenStationModule,
+    OnlineStoresModule,
   ],
 })
 export class AppModule {}
