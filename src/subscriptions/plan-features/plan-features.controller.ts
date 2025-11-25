@@ -10,6 +10,7 @@ import {
   BadRequestException,
   Patch,
   Delete,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -28,15 +29,15 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { PlanFeature } from './entity/plan-features.entity';
 import { CreatePlanFeatureDto } from './dto/create-plan-feature.dto';
-import {
-  AllPlanFeatureResponseDto,
-  OnePlanFeatureResponseDto,
-} from './dto/plan-feature-response.dto';
+import { OnePlanFeatureResponseDto } from './dto/plan-feature-response.dto';
 import { UserRole } from 'src/users/constants/role.enum';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Scope } from 'src/users/constants/scope.enum';
 import { UpdatePlanFeatureDto } from './dto/update-plan-features.dto';
+import { PaginatedFeatureResponseDto } from '../features/dto/paginated-feature-response.dto';
+import { QueryPlanFeatureDto } from './dto/query-plan-feature.dto';
+import { PaginatedPlanFeatureResponseDto } from './dto/paginated-plan-feature-response.dto';
 
 @ApiTags('Plan Features')
 @Controller('plan-features')
@@ -122,7 +123,7 @@ export class PlanFeaturesController {
   })
   @ApiOkResponse({
     description: 'List of Plan Features retrieved successfully',
-    type: [PlanFeature],
+    type: PaginatedFeatureResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized: Missing or invalid authentication token',
@@ -154,8 +155,10 @@ export class PlanFeaturesController {
       },
     },
   })
-  async findAll(): Promise<AllPlanFeatureResponseDto> {
-    return this.planFeatureService.findAll();
+  async findAll(
+    @Query() query: QueryPlanFeatureDto,
+  ): Promise<PaginatedPlanFeatureResponseDto> {
+    return this.planFeatureService.findAll(query);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

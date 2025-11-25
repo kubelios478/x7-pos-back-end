@@ -10,6 +10,7 @@ import {
   Get,
   BadRequestException,
   Delete,
+  Query,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -17,7 +18,6 @@ import {
   ApiForbiddenResponse,
   ApiOperation,
   ApiTags,
-  ApiResponse,
   ApiOkResponse,
   ApiInternalServerErrorResponse,
   ApiParam,
@@ -34,10 +34,11 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CreatePlanApplicationDto } from './dto/create-plan-application.dto';
 import {
   OnePlanApplicationResponseDto,
-  AllPlanApplicationsResponseDto,
   PlanApplicationSummaryDto,
 } from './dto/summary-plan-applications.dto';
 import { UpdatePlanApplicationDto } from './dto/update-plan-application.dto';
+import { PaginatedPlanApplicationResponseDto } from './dto/paginated-plan-application-response.dto';
+import { QueryPlanApplicationDto } from './dto/query-plan-application.dto';
 
 @ApiTags('Plan Applications')
 @Controller('plan-applications')
@@ -121,24 +122,9 @@ export class PlanApplicationsController {
     description:
       'Retrieve a list of all Plan Applications, including related application and plan data.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'List all of the Plan Applications',
-    type: [PlanApplicationSummaryDto],
-  })
   @ApiOkResponse({
-    description: 'List of Plan Applications retrieved successfully',
-    type: [PlanApplicationSummaryDto],
-    schema: {
-      example: [
-        {
-          id: 1,
-          application: { id: 5, name: 'NewApplication' },
-          plan: { id: 2, name: 'Gold Plan' },
-          limits: { description: 'This are the limits' },
-        },
-      ],
-    },
+    description: 'Paginated list of merchant subscriptions',
+    type: PaginatedPlanApplicationResponseDto,
   })
   @ApiForbiddenResponse({
     description: 'Forbidden: Insufficient role or permissions',
@@ -170,8 +156,10 @@ export class PlanApplicationsController {
       },
     },
   })
-  async findAll(): Promise<AllPlanApplicationsResponseDto> {
-    return this.planAppService.findAll();
+  async findAll(
+    @Query() query: QueryPlanApplicationDto,
+  ): Promise<PaginatedPlanApplicationResponseDto> {
+    return this.planAppService.findAll(query);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

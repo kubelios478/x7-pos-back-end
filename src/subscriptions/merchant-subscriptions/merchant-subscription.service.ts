@@ -6,12 +6,11 @@ import { MerchantSubscription } from './entities/merchant-subscription.entity';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
 import { CreateMerchantSubscriptionDto } from './dtos/create-merchant-subscription.dto';
-import {
-  AllMerchantSubscriptionSummaryDto,
-  OneMerchantSubscriptionSummaryDto,
-} from './dtos/merchant-subscription-summary.dto';
+import { OneMerchantSubscriptionSummaryDto } from './dtos/merchant-subscription-summary.dto';
 import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscription.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
+import { QueryMerchantSubscriptionDto } from './dtos/query-merchant-subscription.dto';
+import { PaginatedMerchantSuscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
 
 @Injectable()
 export class MerchantSubscriptionService {
@@ -77,26 +76,62 @@ export class MerchantSubscriptionService {
       data: savedMerchantSubscription,
     };
   }
-  async findAll(): Promise<AllMerchantSubscriptionSummaryDto> {
-    const merchantSubscriptions =
-      await this.merchantSubscriptionRepository.find({
-        where: { status: In(['active', 'inactive']) },
-        relations: ['merchant', 'plan'],
-        select: {
-          merchant: {
-            id: true,
-            name: true,
-          },
-          plan: {
-            id: true,
-            name: true,
-          },
-        },
+  async findAll(
+    query: QueryMerchantSubscriptionDto,
+  ): Promise<PaginatedMerchantSuscriptionResponseDto> {
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      sortBy = 'id',
+      sortOrder = 'DESC',
+    } = query;
+
+    if (page < 1 || limit < 1) {
+      ErrorHandler.invalidInput('Page and limit must be positive integers');
+    }
+
+    const qb = this.merchantSubscriptionRepository
+      .createQueryBuilder('merchantSubscription')
+      .leftJoin('merchantSubscription.plan', 'plan')
+      .leftJoin('merchantSubscription.merchant', 'merchant')
+      .select([
+        'merchantSubscription',
+        'plan.id',
+        'plan.name',
+        'plan.status',
+        'merchant.id',
+        'merchant.name',
+      ]);
+
+    if (status) {
+      qb.andWhere('merchantSubscription.status = :status', { status });
+    } else {
+      qb.andWhere('merchantSubscription.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
       });
+    }
+
+    qb.andWhere('merchantSubscription.status != :deleted', {
+      deleted: 'deleted',
+    });
+
+    qb.orderBy(`merchantSubscription.${sortBy}`, sortOrder);
+
+    qb.skip((page - 1) * limit).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+
     return {
       statusCode: 200,
-      message: 'Merchant Subscriptions retrieved successfully',
-      data: merchantSubscriptions,
+      message: 'Merchant Subscription retrieved successfully',
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
   async findOne(id: number): Promise<OneMerchantSubscriptionSummaryDto> {
