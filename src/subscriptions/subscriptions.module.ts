@@ -6,6 +6,9 @@ import { MerchantSubscriptionModule } from './merchant-subscriptions/merchant-su
 import { ApplicationsModule } from './applications/applications.module';
 import { PlanApplicationsModule } from './plan-applications/plan-applications.module';
 import { SubscriptionApplicationModule } from './subscription-application/subscription-application.module';
+import { FeaturesModule } from './features/features.module';
+import { PlanFeaturesModule } from './plan-features/plan-features.module';
+import { SubscriptionPaymentsModule } from './subscription-payments/subscription-payments.module';
 
 @Module({
   controllers: [SubscriptionsController],
@@ -17,6 +20,9 @@ import { SubscriptionApplicationModule } from './subscription-application/subscr
     ApplicationsModule,
     PlanApplicationsModule,
     SubscriptionApplicationModule,
+    FeaturesModule,
+    PlanFeaturesModule,
+    SubscriptionPaymentsModule,
   ],
 })
 export class SubscriptionsModule {}

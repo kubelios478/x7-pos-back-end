@@ -35,8 +35,3 @@ export class OneVariantResponse extends SuccessResponse {
   @ApiProperty()
   data: VariantResponseDto;
 }
-
-export class AllVariantsResponse extends SuccessResponse {
-  @ApiProperty({ type: () => [VariantResponseDto] })
-  data: VariantResponseDto[];
-}

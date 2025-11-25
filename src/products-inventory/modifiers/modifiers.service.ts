@@ -2,26 +2,28 @@ import { Injectable } from '@nestjs/common';
 import { CreateModifierDto } from './dto/create-modifier.dto';
 import { UpdateModifierDto } from './dto/update-modifier.dto';
 import {
-  AllModifiersResponse,
   ModifierResponseDto,
   OneModifierResponse,
 } from './dto/modifier-response.dto';
+import { GetModifiersQueryDto } from './dto/get-modifiers-query.dto';
+import { AllPaginatedModifiers } from './dto/all-paginated-modifiers.dto';
 import { Modifier } from './entities/modifier.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductsService } from '../products/products.service';
-import { ProductsInventoryService } from '../products-inventory.service';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
+import { Product } from '../products/entities/product.entity';
 
 @Injectable()
 export class ModifiersService {
   constructor(
     @InjectRepository(Modifier)
     private readonly modifierRepository: Repository<Modifier>,
+    @InjectRepository(Product)
+    private readonly productRepository: Repository<Product>,
     private readonly productsService: ProductsService,
-    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
   async create(
@@ -30,13 +32,16 @@ export class ModifiersService {
   ): Promise<OneModifierResponse> {
     const { productId, ...modifierData } = createModifierDto;
 
-    const product = await this.productsService.findOne(productId);
+    const product = await this.productRepository.findOneBy({
+      id: productId,
+      merchantId: user.merchant.id,
+    });
 
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
     }
 
-    if (product.data.merchant?.id !== user.merchant.id) {
+    if (product.merchantId !== user.merchant.id) {
       ErrorHandler.differentMerchant();
     }
 
@@ -58,7 +63,7 @@ export class ModifiersService {
     } else {
       const newModifier = this.modifierRepository.create({
         ...modifierData,
-        productId: product.data.id,
+        productId: product.id,
       });
 
       const savedModifier = await this.modifierRepository.save(newModifier);
@@ -67,27 +72,56 @@ export class ModifiersService {
     }
   }
 
-  async findAll(merchantId: number): Promise<AllModifiersResponse> {
-    const modifiers = await this.modifierRepository
+  async findAll(
+    query: GetModifiersQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedModifiers> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.modifierRepository
       .createQueryBuilder('modifier')
       .leftJoinAndSelect('modifier.product', 'product')
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
       .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('modifier.isActive = :isActive', { isActive: true })
+      .andWhere('modifier.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(modifier.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const modifiers = await queryBuilder
+      .orderBy('modifier.name', 'ASC')
+      .skip(skip)
+      .take(limit)
       .getMany();
 
-    const modifiersResponse: ModifierResponseDto[] = await Promise.all(
-      modifiers.map((modifier) => {
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to ModifierResponseDto
+    const data: ModifierResponseDto[] = await Promise.all(
+      modifiers.map(async (modifier) => {
         const result: ModifierResponseDto = {
           id: modifier.id,
           name: modifier.name,
           priceDelta: modifier.priceDelta,
           product: modifier.product
-            ? this.productsInventoryService.mapProductToProductResponseDto(
-                modifier.product,
-              )
+            ? (await this.productsService.findOne(modifier.product.id)).data
             : null,
         };
         return result;
@@ -97,7 +131,13 @@ export class ModifiersService {
     return {
       statusCode: 200,
       message: 'Modifiers retrieved successfully',
-      data: modifiersResponse,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
@@ -139,9 +179,7 @@ export class ModifiersService {
       name: modifier.name,
       priceDelta: modifier.priceDelta,
       product: modifier.product
-        ? this.productsInventoryService.mapProductToProductResponseDto(
-            modifier.product,
-          )
+        ? (await this.productsService.findOne(modifier.product.id)).data
         : null,
     };
 

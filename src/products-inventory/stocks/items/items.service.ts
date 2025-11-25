@@ -4,11 +4,9 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
 import { Repository } from 'typeorm';
-import {
-  AllItemsResponse,
-  ItemResponseDto,
-  OneItemResponse,
-} from './dto/item-response.dto';
+import { ItemResponseDto, OneItemResponse } from './dto/item-response.dto';
+import { GetItemsQueryDto } from './dto/get-items-query.dto';
+import { AllPaginatedItems } from './dto/all-paginated-items.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
@@ -39,23 +37,27 @@ export class ItemsService {
     const { productId, locationId, variantId, currentQty } = createItemDto;
     const merchantId = user.merchant.id;
 
-    const product = await this.productRepository.findOne({
-      where: { id: productId, merchantId },
-    });
+    const [product, variant, location] = await Promise.all([
+      this.productRepository.findOneBy({
+        id: productId,
+        isActive: true,
+      }),
+      this.variantRepository.findOneBy({
+        id: variantId,
+        isActive: true,
+      }),
+      this.locationRepository.findOneBy({
+        id: locationId,
+        isActive: true,
+      }),
+    ]);
+
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
     }
-
-    const location = await this.locationRepository.findOne({
-      where: { id: locationId, merchantId },
-    });
     if (!location) {
       ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
     }
-
-    const variant = await this.variantRepository.findOne({
-      where: { id: variantId, productId: product.id },
-    });
     if (!variant) {
       ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
@@ -72,7 +74,6 @@ export class ItemsService {
       if (existingItem.isActive) {
         ErrorHandler.exists(ErrorMessage.ITEM_NAME_EXISTS);
       } else {
-        // Si el item existe pero está inactivo, lo activamos
         existingItem.isActive = true;
         const activatedItem = await this.itemRepository.save(existingItem);
         return this.findOne(activatedItem.id, merchantId, 'Created');
@@ -84,7 +85,6 @@ export class ItemsService {
       product,
       location,
       variant,
-      isActive: true,
     });
 
     const savedItem = await this.itemRepository.save(newItem);
@@ -92,17 +92,54 @@ export class ItemsService {
     return this.findOne(savedItem.id, merchantId, 'Created');
   }
 
-  async findAll(merchantId: number): Promise<AllItemsResponse> {
-    const items = await this.itemRepository
+  async findAll(
+    query: GetItemsQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedItems> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.itemRepository
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.product', 'product')
       .leftJoinAndSelect('item.variant', 'variant')
       .leftJoinAndSelect('item.location', 'location')
       .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('item.isActive = :isActive', { isActive: true })
+      .andWhere('item.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.productName) {
+      queryBuilder.andWhere('LOWER(product.name) LIKE LOWER(:productName)', {
+        productName: `%${query.productName}%`,
+      });
+    }
+
+    if (query.variantName) {
+      queryBuilder.andWhere('LOWER(variant.name) LIKE LOWER(:variantName)', {
+        variantName: `%${query.variantName}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const items = await queryBuilder
+      .orderBy('product.name', 'ASC')
+      .skip(skip)
+      .take(limit)
       .getMany();
 
-    const itemsResponse: ItemResponseDto[] = await Promise.all(
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to ItemResponseDto
+    const data: ItemResponseDto[] = await Promise.all(
       items.map((item) => {
         const result: ItemResponseDto = {
           id: item.id,
@@ -133,7 +170,13 @@ export class ItemsService {
     return {
       statusCode: 200,
       message: 'Items retrieved successfully',
-      data: itemsResponse,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
@@ -143,7 +186,7 @@ export class ItemsService {
     createdUpdateDelete?: string,
   ): Promise<OneItemResponse> {
     if (!id || id <= 0) {
-      ErrorHandler.invalidId('Product ID id incorrect');
+      ErrorHandler.invalidId('Item ID id incorrect');
     }
     const whereCondition: {
       id: number;
@@ -250,35 +293,35 @@ export class ItemsService {
       ErrorHandler.notFound(ErrorMessage.ITEM_NOT_FOUND);
     }
 
-    if (productId) {
-      const product = await this.productRepository.findOne({
-        where: { id: productId, merchantId },
-      });
-      if (!product) {
-        ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
-      }
-      item.product = product;
+    const [product, variant, location] = await Promise.all([
+      this.productRepository.findOneBy({
+        id: productId,
+        isActive: true,
+      }),
+      this.variantRepository.findOneBy({
+        id: variantId,
+        productId: productId,
+        isActive: true,
+      }),
+      this.locationRepository.findOneBy({
+        id: locationId,
+        isActive: true,
+      }),
+    ]);
+
+    if (!product) {
+      ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+    }
+    if (!location) {
+      ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
+    }
+    if (!variant) {
+      ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
 
-    if (locationId) {
-      const location = await this.locationRepository.findOne({
-        where: { id: locationId, merchantId },
-      });
-      if (!location) {
-        ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
-      }
-      item.location = location;
-    }
-
-    if (variantId) {
-      const variant = await this.variantRepository.findOne({
-        where: { id: variantId, productId: item.product.id },
-      });
-      if (!variant) {
-        ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
-      }
-      item.variant = variant;
-    }
+    item.product = product;
+    item.location = location;
+    item.variant = variant;
 
     if (currentQty) {
       item.currentQty = currentQty;

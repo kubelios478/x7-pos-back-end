@@ -52,7 +52,6 @@ import { ApplicationEntity } from './subscriptions/applications/entity/applicati
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
 import { CashTransactionsModule } from './cash-transactions/cash-transactions.module';
 import { ReceiptsModule } from './receipts/receipts.module';
-import { OrdersModule } from './orders/orders.module';
 import { SubscriptionApplication } from './subscriptions/subscription-application/entity/subscription-application.entity';
 import { Item } from './products-inventory/stocks/items/entities/item.entity';
 import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
@@ -65,6 +64,14 @@ import { KitchenStationModule } from './kitchen-display-system/kitchen-station/k
 import { KitchenStation } from './kitchen-display-system/kitchen-station/entities/kitchen-station.entity';
 import { OnlineStoresModule } from './online-ordering-system/online-stores/online-stores.module';
 import { OnlineStore } from './online-ordering-system/online-stores/entities/online-store.entity';
+import { PlanFeaturesModule } from './subscriptions/plan-features/plan-features.module';
+import { PlanFeature } from './subscriptions/plan-features/entity/plan-features.entity';
+import { SubscriptionPaymentsModule } from './subscriptions/subscription-payments/subscription-payments.module';
+import { SubscriptionPayment } from './subscriptions/subscription-payments/entity/subscription-payments.entity';
+import { PurchaseOrderModule } from './products-inventory/purchase-order/purchase-order.module';
+import { PurchaseOrderItemModule } from './products-inventory/purchase-order-item/purchase-order-item.module';
+import { PurchaseOrder } from './products-inventory/purchase-order/entities/purchase-order.entity';
+import { PurchaseOrderItem } from './products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 
 @Module({
   imports: [
@@ -106,6 +113,8 @@ import { OnlineStore } from './online-ordering-system/online-stores/entities/onl
           PlanApplication,
           SubscriptionApplication,
           FeatureEntity,
+          PlanFeature,
+          SubscriptionPayment,
           Product,
           Supplier,
           Variant,
@@ -113,6 +122,8 @@ import { OnlineStore } from './online-ordering-system/online-stores/entities/onl
           Location,
           Item,
           Movement,
+          PurchaseOrder,
+          PurchaseOrderItem,
           Collaborator,
           Shift,
           CashDrawerHistory,
@@ -130,43 +141,35 @@ import { OnlineStore } from './online-ordering-system/online-stores/entities/onl
     MerchantsModule,
     UsersModule,
     CustomersModule,
-
     TablesModule,
     CollaboratorsModule,
     ShiftsModule,
     ShiftAssignmentsModule,
     TableAssignmentsModule,
-
     ProductsInventoryModule,
-
     SubscriptionsModule,
     MerchantSubscriptionModule,
-
     ApplicationsModule,
     CollaboratorsModule,
     ShiftsModule,
-
-
     PlanApplicationsModule,
-
     SubscriptionApplicationModule,
-
     TableAssignmentsModule,
-
     CashDrawersModule,
-
     PlanApplicationsModule,
-
     CashTransactionsModule,
-
     ReceiptsModule,
-
-    OrdersModule,
+    PurchaseOrderModule,
+    PurchaseOrderItemModule,
     FeaturesModule,
     CashDrawerHistoryModule,
     OrderItemModule,
     KitchenStationModule,
     OnlineStoresModule,
+
+    PlanFeaturesModule,
+
+    SubscriptionPaymentsModule,
   ],
 })
 export class AppModule {}

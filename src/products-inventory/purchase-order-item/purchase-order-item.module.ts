@@ -1,0 +1,32 @@
+import { forwardRef, Module } from '@nestjs/common';
+import { PurchaseOrderItemService } from './purchase-order-item.service';
+import { PurchaseOrderItemController } from './purchase-order-item.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { PurchaseOrder } from '../purchase-order/entities/purchase-order.entity';
+import { Product } from '../products/entities/product.entity';
+import { Variant } from '../variants/entities/variant.entity';
+import { Supplier } from '../suppliers/entities/supplier.entity';
+import { Merchant } from 'src/merchants/entities/merchant.entity';
+import { PurchaseOrderItem } from './entities/purchase-order-item.entity';
+import { ProductsModule } from '../products/products.module';
+import { VariantsModule } from '../variants/variants.module';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      PurchaseOrderItem,
+      PurchaseOrder,
+      Product,
+      Variant,
+      Supplier,
+      Merchant,
+    ]),
+    forwardRef(() => PurchaseOrderItemModule),
+    forwardRef(() => ProductsModule),
+    forwardRef(() => VariantsModule),
+  ],
+  controllers: [PurchaseOrderItemController],
+  providers: [PurchaseOrderItemService],
+  exports: [PurchaseOrderItemService],
+})
+export class PurchaseOrderItemModule {}

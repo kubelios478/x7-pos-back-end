@@ -10,12 +10,12 @@ import {
   Delete,
   ParseIntPipe,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import {
-  AllApplicationResponseDto,
   ApplicationResponseDto,
   OneApplicationResponseDto,
 } from './dto/application-response.dto';
@@ -39,6 +39,8 @@ import { UserRole } from 'src/users/constants/role.enum';
 import { Scope } from 'src/users/constants/scope.enum';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { PaginatedApplicationResponseDto } from './dto/paginated-application-response.dto';
+import { QueryApplicationDto } from './dto/query-application.dto';
 
 @ApiTags('Applications')
 @Controller('applications')
@@ -146,27 +148,13 @@ export class ApplicationsController {
   )
   @ApiOperation({
     summary: 'Get all of the Applications',
-    description:
-      'Endpoint to retrieve all Applications. Requires PORTAL_ADMIN or MERCHANT_ADMIN role with appropriate scopes.',
+    description: 'Endpoint to retrieve all Applications.',
   })
   @ApiOkResponse({
     description: 'Applications retrieved successfully',
-    schema: {
-      example: {
-        statusCode: 200,
-        message: 'Applications retrieved successfully',
-        data: [
-          {
-            id: 1,
-            name: 'Sample Application',
-            description: 'This is a sample Application',
-            category: 'utilities',
-            status: 'active',
-          },
-        ],
-      },
-    },
+    type: PaginatedApplicationResponseDto,
   })
+  @ApiBadRequestResponse({ description: 'Invalid query parameters' })
   @ApiForbiddenResponse({
     description: 'Forbidden. Insufficient role.',
     schema: {
@@ -197,8 +185,10 @@ export class ApplicationsController {
       },
     },
   })
-  async findAll(): Promise<AllApplicationResponseDto> {
-    return this.appService.findAll();
+  async findAll(
+    @Query() query: QueryApplicationDto,
+  ): Promise<PaginatedApplicationResponseDto> {
+    return this.appService.findAll(query);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

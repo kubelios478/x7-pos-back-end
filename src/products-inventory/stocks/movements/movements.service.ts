@@ -5,10 +5,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Movement } from './entities/movement.entity';
 import {
-  AllMovementsResponse,
   MovementResponseDto,
   OneMovementResponse,
 } from './dto/movement-response.dto';
+import { GetMovementsQueryDto } from './dto/get-movements-query.dto';
+import { AllPaginatedMovements } from './dto/all-paginated-movements.dto';
 import { ItemLittleResponseDto } from '../items/dto/item-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
@@ -56,16 +57,47 @@ export class MovementsService {
     return this.findOne(savedMovement.id, merchantId, 'Created');
   }
 
-  async findAll(merchantId: number): Promise<AllMovementsResponse> {
-    const movements = await this.movementRepository
+  async findAll(
+    query: GetMovementsQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedMovements> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.movementRepository
       .createQueryBuilder('movement')
       .leftJoinAndSelect('movement.item', 'item')
       .leftJoinAndSelect('item.product', 'product')
       .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('movement.isActive = :isActive', { isActive: true })
+      .andWhere('movement.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.itemName) {
+      queryBuilder.andWhere('LOWER(item.name) LIKE LOWER(:itemName)', {
+        itemName: `%${query.itemName}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const movements = await queryBuilder
+      .orderBy('movement.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
       .getMany();
 
-    const movementsResponse: MovementResponseDto[] = await Promise.all(
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to MovementResponseDto
+    const data: MovementResponseDto[] = await Promise.all(
       movements.map((movement) => {
         const result: MovementResponseDto = {
           id: movement.id,
@@ -78,7 +110,6 @@ export class MovementsService {
           quantity: movement.quantity,
           type: movement.type,
           reference: movement.reference,
-          isActive: movement.isActive,
           createdAt: movement.createdAt,
         };
         return result;
@@ -88,7 +119,13 @@ export class MovementsService {
     return {
       statusCode: 200,
       message: 'Movements retrieved successfully',
-      data: movementsResponse,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
@@ -140,7 +177,6 @@ export class MovementsService {
       quantity: movement.quantity,
       type: movement.type,
       reference: movement.reference,
-      isActive: movement.isActive,
       createdAt: movement.createdAt,
     };
 

@@ -44,8 +44,3 @@ export class OneItemResponse extends SuccessResponse {
   @ApiProperty()
   data: ItemResponseDto;
 }
-
-export class AllItemsResponse extends SuccessResponse {
-  @ApiProperty({ type: [ItemResponseDto] })
-  data: ItemResponseDto[];
-}

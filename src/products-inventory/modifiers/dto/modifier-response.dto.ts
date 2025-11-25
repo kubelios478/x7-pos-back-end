@@ -24,7 +24,3 @@ export class OneModifierResponse extends SuccessResponse {
   @ApiProperty()
   data: ModifierResponseDto;
 }
-export class AllModifiersResponse extends SuccessResponse {
-  @ApiProperty()
-  data: ModifierResponseDto[];
-}

@@ -8,10 +8,13 @@ import {
   Delete,
   UseGuards,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { ModifiersService } from './modifiers.service';
 import { CreateModifierDto } from './dto/create-modifier.dto';
 import { UpdateModifierDto } from './dto/update-modifier.dto';
+import { GetModifiersQueryDto } from './dto/get-modifiers-query.dto';
+import { AllPaginatedModifiers } from './dto/all-paginated-modifiers.dto';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -23,6 +26,7 @@ import {
   ApiParam,
   ApiResponse,
   ApiUnauthorizedResponse,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -86,10 +90,109 @@ export class ModifiersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get all Modifiers' })
-  @ApiOkResponse({ description: 'List of all Modifiers', type: [Modifier] })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'No Modifiers found' })
+  @ApiOperation({
+    summary: 'Get all modifiers with pagination and filters',
+    description:
+      'Retrieves a paginated list of modifiers with optional filters. Users can only see modifiers from their own merchant. Supports filtering by name.',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination (minimum 1)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page (1-100)',
+    example: 10,
+  })
+  @ApiQuery({
+    name: 'name',
+    required: false,
+    type: String,
+    description: 'Filter modifiers by name',
+    example: 'Extra Cheese',
+  })
+  @ApiOkResponse({
+    description: 'Paginated list of modifiers retrieved successfully',
+    type: AllPaginatedModifiers,
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            name: 'Extra Cheese',
+            priceDelta: 1.5,
+            product: {
+              id: 1,
+              name: 'Pizza',
+            },
+          },
+          {
+            id: 2,
+            name: 'Add Bacon',
+            priceDelta: 2.0,
+            product: {
+              id: 2,
+              name: 'Burger',
+            },
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 25,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Merchant not found',
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant with ID 999 not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid query parameters or business rule violation',
+    schema: {
+      examples: {
+        invalidPage: {
+          summary: 'Invalid page number',
+          value: {
+            statusCode: 400,
+            message: 'page must not be less than 1',
+            error: 'Bad Request',
+          },
+        },
+        invalidLimit: {
+          summary: 'Invalid limit',
+          value: {
+            statusCode: 400,
+            message: 'limit must not be greater than 100',
+            error: 'Bad Request',
+          },
+        },
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -102,9 +205,12 @@ export class ModifiersController {
       },
     },
   })
-  findAll(@CurrentUser() user: AuthenticatedUser) {
+  async findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetModifiersQueryDto,
+  ): Promise<AllPaginatedModifiers> {
     const merchantId = user.merchant.id;
-    return this.modifiersService.findAll(merchantId);
+    return this.modifiersService.findAll(query, merchantId);
   }
 
   @Get(':id')

@@ -64,7 +64,6 @@ export class Item {
   @JoinColumn({ name: 'locationId' })
   location: Location;
 
-  @ApiProperty({ example: true, description: 'Indica si el item está activo' })
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

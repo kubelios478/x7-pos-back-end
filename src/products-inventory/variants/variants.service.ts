@@ -2,15 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { UpdateVariantDto } from './dto/update-variant.dto';
 import {
-  AllVariantsResponse,
   OneVariantResponse,
   VariantResponseDto,
 } from './dto/variant-response.dto';
+import { GetVariantsQueryDto } from './dto/get-variants-query.dto';
+import { AllPaginatedVariants } from './dto/all-paginated-variants.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Variant } from './entities/variant.entity';
 import { ProductsService } from '../products/products.service';
-import { ProductsInventoryService } from '../products-inventory.service';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
@@ -21,7 +21,6 @@ export class VariantsService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly productsService: ProductsService,
-    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
   async create(
@@ -75,28 +74,57 @@ export class VariantsService {
     }
   }
 
-  async findAll(merchantId: number): Promise<AllVariantsResponse> {
-    const variants = await this.variantRepository
+  async findAll(
+    query: GetVariantsQueryDto,
+    merchantId: number,
+  ): Promise<AllPaginatedVariants> {
+    // 1. Configure pagination
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. Build query with filters
+    const queryBuilder = this.variantRepository
       .createQueryBuilder('variant')
       .leftJoinAndSelect('variant.product', 'product')
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
       .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('variant.isActive = :isActive', { isActive: true })
+      .andWhere('variant.isActive = :isActive', { isActive: true });
+
+    // 3. Apply optional filters
+    if (query.name) {
+      queryBuilder.andWhere('LOWER(variant.name) LIKE LOWER(:name)', {
+        name: `%${query.name}%`,
+      });
+    }
+
+    // 4. Get total records
+    const total = await queryBuilder.getCount();
+
+    // 5. Apply pagination and sorting
+    const variants = await queryBuilder
+      .orderBy('variant.name', 'ASC')
+      .skip(skip)
+      .take(limit)
       .getMany();
 
-    const variantsResponse: VariantResponseDto[] = await Promise.all(
-      variants.map((variant) => {
+    // 6. Calculate pagination metadata
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    // 7. Map to VariantResponseDto
+    const data: VariantResponseDto[] = await Promise.all(
+      variants.map(async (variant) => {
         const result: VariantResponseDto = {
           id: variant.id,
           name: variant.name,
           price: variant.price,
           sku: variant.sku,
           product: variant.product
-            ? this.productsInventoryService.mapProductToProductResponseDto(
-                variant.product,
-              )
+            ? (await this.productsService.findOne(variant.product.id)).data
             : null,
         };
         return result;
@@ -106,7 +134,13 @@ export class VariantsService {
     return {
       statusCode: 200,
       message: 'Variants retrieved successfully',
-      data: variantsResponse,
+      data,
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
     };
   }
 
@@ -147,9 +181,7 @@ export class VariantsService {
       price: variant.price,
       sku: variant.sku,
       product: variant.product
-        ? this.productsInventoryService.mapProductToProductResponseDto(
-            variant.product,
-          )
+        ? (await this.productsService.findOne(variant.product.id)).data
         : null,
     };
 
