@@ -17,7 +17,7 @@ import {
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
-import { TableResponseDto } from './dto/table-response.dto';
+import { TableResponseDto, OneTableResponseDto } from './dto/table-response.dto';
 import { GetTablesQueryDto } from './dto/get-tables-query.dto';
 import { PaginatedTablesResponseDto } from './dto/paginated-tables-response.dto';
 import {
@@ -66,7 +66,7 @@ export class TablesController {
   })
   @ApiCreatedResponse({
     description: 'Table created successfully',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -159,7 +159,7 @@ export class TablesController {
       }
     }
   })
-  async create(@Body() dto: CreateTableDto, @Request() req: any): Promise<TableResponseDto> {
+  async create(@Body() dto: CreateTableDto, @Request() req: any): Promise<OneTableResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     
@@ -353,7 +353,7 @@ export class TablesController {
   })
   @ApiOkResponse({ 
     description: 'Table found successfully',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -424,7 +424,7 @@ export class TablesController {
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     console.log('=== CONTROLLER GET ONE DEBUG ===');
     console.log('Request user object:', JSON.stringify(req.user, null, 2));
     console.log('req.user?.merchant:', req.user?.merchant);
@@ -465,7 +465,7 @@ export class TablesController {
   })
   @ApiOkResponse({ 
     description: 'Table updated successfully',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -584,7 +584,7 @@ export class TablesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTableDto,
     @Request() req: any,
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     
@@ -616,7 +616,7 @@ export class TablesController {
   })
   @ApiOkResponse({ 
     description: 'Table deleted successfully (soft delete)',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -710,7 +710,7 @@ export class TablesController {
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     console.log('=== CONTROLLER DELETE DEBUG ===');
     console.log('Request user object:', JSON.stringify(req.user, null, 2));
     console.log('req.user?.merchant:', req.user?.merchant);

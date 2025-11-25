@@ -22,7 +22,7 @@ import { CashTransaction } from '../../cash-transactions/entities/cash-transacti
 import { Receipt } from '../../receipts/entities/receipt.entity';
 
 @Entity('orders')
-@Index(['merchant_id', 'business_status', 'created_at'])
+@Index(['merchant_id', 'status', 'created_at'])
 export class Order {
   @ApiProperty({ example: 1, description: 'Unique identifier of the Order' })
   @PrimaryGeneratedColumn()
@@ -69,20 +69,20 @@ export class Order {
   subscription: MerchantSubscription;
 
   @ApiProperty({ 
-    example: OrderBusinessStatus.PENDING, 
-    enum: OrderBusinessStatus,
-    description: 'Business status of the Order (pending, in_progress, completed, cancelled)' 
-  })
-  @Column({ type: 'varchar', length: 50, name: 'business_status' })
-  business_status: OrderBusinessStatus;
-
-  @ApiProperty({ 
     example: OrderType.DINE_IN, 
     enum: OrderType,
     description: 'Type of the Order (dine_in, take_out, delivery)' 
   })
   @Column({ type: 'varchar', length: 50 })
   type: OrderType;
+
+  @ApiProperty({ 
+    example: OrderBusinessStatus.PENDING, 
+    enum: OrderBusinessStatus,
+    description: 'Status of the Order (pending, in_progress, completed, cancelled)' 
+  })
+  @Column({ type: 'varchar', length: 50 })
+  status: OrderBusinessStatus;
 
   @ApiProperty({ example: 1, description: 'Identifier of the Customer associated with the Order' })
   @Column({ name: 'customer_id' })
@@ -99,8 +99,8 @@ export class Order {
     enum: OrderStatus,
     description: 'Logical status for deletion (active, deleted)' 
   })
-  @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.ACTIVE })
-  status: OrderStatus;
+  @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.ACTIVE, name: 'logical_status' })
+  logical_status: OrderStatus;
 
   @ApiProperty({ example: '2024-01-15T08:00:00Z', description: 'Creation timestamp of the Order' })
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
@@ -140,14 +140,14 @@ Table Order {
   table_id BIGSERIAL [ref: > Table.id]
   collaborator_id BIGSERIAL [ref: > Collaborator.id] // mesero que tomó la orden
   subscription_id BIGSERIAL [ref: > merchants_subscriptions.id]
-  business_status VARCHAR(50) // pending, in_progress, completed, cancelled
+  status VARCHAR(50) // pending, in_progress, completed, cancelled
   type VARCHAR(50) // dine_in, take_out, delivery
   created_at TIMESTAMP
   closed_at TIMESTAMP
   customer_id BIGSERIAL [ref: > Customer.id]
-  status OrderStatus // ACTIVE, DELETED (for logical deletion)
+  logical_status OrderStatus // ACTIVE, DELETED (for logical deletion)
   Indexes {
-    (merchant_id, business_status, created_at)
+    (merchant_id, status, created_at)
   }
 }
 */

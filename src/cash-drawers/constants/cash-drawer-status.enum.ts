@@ -1,7 +1,7 @@
 export enum CashDrawerStatus {
-  OPEN = 'OPEN',
-  CLOSED = 'CLOSED',
-  DELETED = 'DELETED',
+  OPEN = 'Open',
+  CLOSE = 'Close',
+  PAUSE = 'Pause',
 }
 
 

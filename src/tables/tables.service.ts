@@ -10,7 +10,7 @@ import { Repository, EntityManager } from 'typeorm';
 import { Table } from './entities/table.entity';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
-import { TableResponseDto } from './dto/table-response.dto';
+import { TableResponseDto, OneTableResponseDto } from './dto/table-response.dto';
 import { GetTablesQueryDto } from './dto/get-tables-query.dto';
 import { PaginatedTablesResponseDto } from './dto/paginated-tables-response.dto';
 import { Merchant } from '../merchants/entities/merchant.entity';
@@ -28,7 +28,7 @@ export class TablesService {
   async create(
     dto: CreateTableDto,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     // 1. Validate that the authenticated user has merchant_id
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
@@ -87,15 +87,19 @@ export class TablesService {
 
     // 7. Return response with merchant information (without dates)
     return {
-      id: savedTable.id,
-      merchant_id: savedTable.merchant_id,
-      number: savedTable.number,
-      capacity: savedTable.capacity,
-      status: savedTable.status,
-      location: savedTable.location,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name,
+      statusCode: 201,
+      message: 'Table created successfully',
+      data: {
+        id: savedTable.id,
+        merchant_id: savedTable.merchant_id,
+        number: savedTable.number,
+        capacity: savedTable.capacity,
+        status: savedTable.status,
+        location: savedTable.location,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name,
+        },
       },
     };
   }
@@ -190,20 +194,24 @@ export class TablesService {
     }));
 
     return {
+      statusCode: 200,
+      message: 'Tables retrieved successfully',
       data,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNext,
-      hasPrev,
+      paginationMeta: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext,
+        hasPrev,
+      },
     };
   }
 
   async findOne(
     id: number,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     console.log('=== TABLE GET ONE DEBUG ===');
     console.log('Table ID to get:', id);
     console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
@@ -311,28 +319,29 @@ export class TablesService {
     });
 
     // 7. Return response with merchant information (without dates)
-    const response = {
-      id: table.id,
-      merchant_id: table.merchant_id,
-      number: table.number,
-      capacity: table.capacity,
-      status: table.status,
-      location: table.location,
-      merchant: {
-        id: table.merchant.id,
-        name: table.merchant.name,
+    return {
+      statusCode: 200,
+      message: 'Table retrieved successfully',
+      data: {
+        id: table.id,
+        merchant_id: table.merchant_id,
+        number: table.number,
+        capacity: table.capacity,
+        status: table.status,
+        location: table.location,
+        merchant: {
+          id: table.merchant.id,
+          name: table.merchant.name,
+        },
       },
     };
-
-    console.log('✅ SUCCESS: Returning table response:', response);
-    return response;
   }
 
   async update(
     id: number,
     dto: UpdateTableDto,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     console.log('=== TABLE UPDATE DEBUG ===');
     console.log('Table ID to update:', id);
     console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
@@ -507,27 +516,28 @@ export class TablesService {
     console.log('✅ Table updated successfully');
 
     // 12. Return response with merchant information (without dates)
-    const response = {
-      id: updatedTable.id,
-      merchant_id: table.merchant_id, // Use table.merchant_id directly
-      number: updatedTable.number,
-      capacity: updatedTable.capacity,
-      status: updatedTable.status,
-      location: updatedTable.location,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name,
+    return {
+      statusCode: 200,
+      message: 'Table updated successfully',
+      data: {
+        id: updatedTable.id,
+        merchant_id: table.merchant_id, // Use table.merchant_id directly
+        number: updatedTable.number,
+        capacity: updatedTable.capacity,
+        status: updatedTable.status,
+        location: updatedTable.location,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name,
+        },
       },
     };
-
-    console.log('✅ SUCCESS: Returning updated table response:', response);
-    return response;
   }
 
   async remove(
     id: number,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     console.log('=== TABLE DELETE DEBUG ===');
     console.log('Table ID to delete:', id);
     console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
@@ -633,15 +643,19 @@ export class TablesService {
 
     // 10. Return response with merchant information (without dates)
     return {
-      id: updatedTable.id,
-      merchant_id: table.merchant_id,
-      number: updatedTable.number,
-      capacity: updatedTable.capacity,
-      status: updatedTable.status,
-      location: updatedTable.location,
-      merchant: {
-        id: table.merchant.id,
-        name: table.merchant.name,
+      statusCode: 200,
+      message: 'Table deleted successfully',
+      data: {
+        id: updatedTable.id,
+        merchant_id: table.merchant_id,
+        number: updatedTable.number,
+        capacity: updatedTable.capacity,
+        status: updatedTable.status,
+        location: updatedTable.location,
+        merchant: {
+          id: table.merchant.id,
+          name: table.merchant.name,
+        },
       },
     };
   }

@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, IsNotEmpty, IsPositive, Min, IsEnum, IsOptional, IsString } from 'class-validator';
-import { CashTransactionType } from '../entities/cash-transaction.entity';
+import { CashTransactionType } from '../constants/cash-transaction-type.enum';
 
 export class CreateCashTransactionDto {
   @ApiProperty({ example: 10, description: 'Cash drawer ID' })
@@ -9,11 +9,11 @@ export class CreateCashTransactionDto {
   @IsPositive()
   cashDrawerId: number;
 
-  @ApiProperty({ example: 200, description: 'Order ID associated to the transaction' })
+  @ApiProperty({ example: 200, description: 'Order ID associated to the transaction', required: false })
   @IsNumber()
-  @IsNotEmpty()
+  @IsOptional()
   @IsPositive()
-  orderId: number;
+  orderId?: number;
 
   @ApiProperty({ example: 'sale', enum: CashTransactionType, description: 'Transaction type' })
   @IsEnum(CashTransactionType)

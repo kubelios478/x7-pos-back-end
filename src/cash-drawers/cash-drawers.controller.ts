@@ -35,6 +35,7 @@ import { UpdateCashDrawerDto } from './dto/update-cash-drawer.dto';
 import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';
 import { CashDrawerResponseDto, OneCashDrawerResponseDto, AllCashDrawersResponseDto } from './dto/cash-drawer-response.dto';
 import { PaginatedCashDrawersResponseDto } from './dto/paginated-cash-drawers-response.dto';
+import { CashDrawerStatus } from './constants/cash-drawer-status.enum';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -71,10 +72,11 @@ export class CashDrawersController {
       data: {
         id: 1,
         openingBalance: 100.00,
+        currentBalance: 100.00,
         closingBalance: null,
         createdAt: '2023-10-01T12:00:00Z',
         updatedAt: '2023-10-01T12:00:00Z',
-        status: 'OPEN',
+        status: 'Open',
         merchant: {
           id: 1,
           name: 'Restaurant ABC',
@@ -163,10 +165,11 @@ export class CashDrawersController {
         {
           id: 1,
           openingBalance: 100.00,
+          currentBalance: 150.50,
           closingBalance: 150.50,
           createdAt: '2023-10-01T12:00:00Z',
           updatedAt: '2023-10-01T12:00:00Z',
-          status: 'CLOSED',
+          status: 'Close',
           merchant: {
             id: 1,
             name: 'Restaurant ABC',
@@ -228,7 +231,7 @@ export class CashDrawersController {
   @ApiQuery({ name: 'shiftId', required: false, type: Number, description: 'Filter by shift ID' })
   @ApiQuery({ name: 'openedBy', required: false, type: Number, description: 'Filter by collaborator who opened the drawer' })
   @ApiQuery({ name: 'closedBy', required: false, type: Number, description: 'Filter by collaborator who closed the drawer' })
-  @ApiQuery({ name: 'status', required: false, enum: ['OPEN', 'CLOSED', 'DELETED'], description: 'Filter by cash drawer status' })
+  @ApiQuery({ name: 'status', required: false, enum: CashDrawerStatus, description: 'Filter by cash drawer status (Open, Close, Pause)' })
   @ApiQuery({ name: 'createdDate', required: false, type: String, description: 'Filter by creation date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 10, max: 100)' })
@@ -260,10 +263,11 @@ export class CashDrawersController {
       data: {
         id: 1,
         openingBalance: 100.00,
+        currentBalance: 150.50,
         closingBalance: 150.50,
         createdAt: '2023-10-01T12:00:00Z',
         updatedAt: '2023-10-01T12:00:00Z',
-        status: 'CLOSED',
+        status: 'Close',
         merchant: {
           id: 1,
           name: 'Restaurant ABC',
@@ -347,9 +351,11 @@ export class CashDrawersController {
       data: {
         id: 1,
         openingBalance: 100.00,
+        currentBalance: 175.25,
         closingBalance: 175.25,
         createdAt: '2023-10-01T12:00:00Z',
         updatedAt: '2023-10-01T14:30:00Z',
+        status: 'Close',
         merchant: {
           id: 1,
           name: 'Restaurant ABC',
@@ -441,10 +447,11 @@ export class CashDrawersController {
       data: {
         id: 1,
         openingBalance: 100.00,
+        currentBalance: 150.50,
         closingBalance: 150.50,
         createdAt: '2023-10-01T12:00:00Z',
         updatedAt: '2023-10-01T12:00:00Z',
-        status: 'CLOSED',
+        status: 'Close',
         merchant: {
           id: 1,
           name: 'Restaurant ABC',
