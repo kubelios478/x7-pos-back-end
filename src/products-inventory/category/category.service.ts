@@ -12,7 +12,6 @@ import {
 import { GetCategoriesQueryDto } from './dto/get-categories-query.dto';
 import { AllPaginatedCategories } from './dto/all-paginated-categories.dto';
 import { ProductsInventoryService } from '../products-inventory.service';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 
@@ -27,10 +26,10 @@ export class CategoryService {
   ) {}
 
   async create(
-    user: AuthenticatedUser,
+    merchant_id: number,
     createCategoryDto: CreateCategoryDto,
   ): Promise<OneCategoryResponse> {
-    const { name, merchantId = user.merchant.id, parentId } = createCategoryDto;
+    const { name, merchantId = merchant_id, parentId } = createCategoryDto;
 
     const [existingCategory, parentCategory] = await Promise.all([
       this.categoryRepo.findOneBy({ name, merchantId, isActive: true }),
@@ -125,12 +124,8 @@ export class CategoryService {
               }
             : null,
         };
-        if (category.parentId) {
-          result.parents =
-            await this.productsInventoryService.findParentCategories(
-              category.id,
-            );
-        }
+        result.parents =
+          await this.productsInventoryService.findParentCategories(category.id);
         return result;
       }),
     );
@@ -185,10 +180,8 @@ export class CategoryService {
           }
         : null,
     };
-    if (category.parentId) {
-      dataForResponse.parents =
-        await this.productsInventoryService.findParentCategories(id);
-    }
+    dataForResponse.parents =
+      await this.productsInventoryService.findParentCategories(id);
 
     let response: OneCategoryResponse;
 
@@ -226,7 +219,7 @@ export class CategoryService {
   }
 
   async update(
-    user: AuthenticatedUser,
+    merchant_id: number,
     id: number,
     updateCategoryDto: UpdateCategoryDto,
   ): Promise<OneCategoryResponse> {
@@ -234,12 +227,12 @@ export class CategoryService {
 
     const { name, merchantId, parentId } = updateCategoryDto;
 
-    if (merchantId !== undefined && user.merchant.id !== merchantId)
+    if (merchantId !== undefined && merchant_id !== merchantId)
       ErrorHandler.differentMerchant();
 
     const category = await this.categoryRepo.findOneBy({
       id,
-      merchantId: user.merchant.id,
+      merchantId: merchant_id,
       isActive: true,
     });
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
@@ -275,10 +268,7 @@ export class CategoryService {
     }
   }
 
-  async remove(
-    user: AuthenticatedUser,
-    id: number,
-  ): Promise<OneCategoryResponse> {
+  async remove(merchant_id: number, id: number): Promise<OneCategoryResponse> {
     if (!id || id <= 0) ErrorHandler.invalidId('Category ID id incorrect');
 
     // Find the main category
@@ -288,7 +278,7 @@ export class CategoryService {
     });
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
-    if (user.merchant.id !== category.merchantId) {
+    if (merchant_id !== category.merchantId) {
       ErrorHandler.differentMerchant();
     }
 
