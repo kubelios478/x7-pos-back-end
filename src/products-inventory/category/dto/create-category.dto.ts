@@ -8,7 +8,7 @@ export class CreateCategoryDto {
   name: string;
 
   @IsNumber()
-  @ApiProperty({ example: 123, description: 'Category of the Merchant' })
+  //@ApiProperty({ example: 123, description: 'Category of the Merchant' })
   merchantId: number;
 
   @IsOptional()

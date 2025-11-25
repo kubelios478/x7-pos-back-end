@@ -30,27 +30,25 @@ export class CategoryService {
     user: AuthenticatedUser,
     createCategoryDto: CreateCategoryDto,
   ): Promise<OneCategoryResponse> {
-    const { name, merchantId, parentId } = createCategoryDto;
+    const { name, merchantId = user.merchant.id, parentId } = createCategoryDto;
 
-    const merchant = await this.merchantRepo.findOne({
-      where: { id: merchantId },
-    });
-    if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
+    const [existingCategory, parentCategory] = await Promise.all([
+      this.categoryRepo.findOneBy({ name, merchantId, isActive: true }),
+      parentId
+        ? this.categoryRepo.findOneBy({
+            id: parentId,
+            merchantId,
+            isActive: true,
+          })
+        : Promise.resolve(null),
+    ]);
 
-    if (merchantId !== user.merchant.id) ErrorHandler.differentMerchant();
-
-    const existingCategory = await this.categoryRepo.findOne({
-      where: { name, merchantId, isActive: true },
-    });
-
-    if (existingCategory)
+    if (!existingCategory) {
       ErrorHandler.exists(ErrorMessage.CATEGORY_NAME_EXISTS);
+    }
 
-    if (parentId) {
-      const parentCategory = await this.categoryRepo.findOne({
-        where: { id: parentId, merchantId: user.merchant.id, isActive: true },
-      });
-      if (!parentCategory) ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
+    if (parentId && !parentCategory) {
+      ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
     }
     try {
       const existingButIsNotActive = await this.categoryRepo.findOne({
@@ -232,19 +230,22 @@ export class CategoryService {
     id: number,
     updateCategoryDto: UpdateCategoryDto,
   ): Promise<OneCategoryResponse> {
-    const category = await this.categoryRepo.findOneBy({ id, isActive: true });
-    if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
+    if (!id || id <= 0) ErrorHandler.invalidId('Category ID id incorrect');
 
-    if (user.merchant.id !== category.merchantId)
+    const { name, merchantId, parentId } = updateCategoryDto;
+
+    if (merchantId !== undefined && user.merchant.id !== merchantId)
       ErrorHandler.differentMerchant();
 
-    if (
-      updateCategoryDto.merchantId !== undefined &&
-      updateCategoryDto.merchantId !== category.merchantId
-    )
-      ErrorHandler.changedMerchant();
+    const category = await this.categoryRepo.findOneBy({
+      id,
+      merchantId: user.merchant.id,
+      isActive: true,
+    });
+    if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
-    const { name, parentId, ...restOfUpdateData } = updateCategoryDto;
+    if (merchantId !== undefined && merchantId !== category.merchantId)
+      ErrorHandler.changedMerchant();
 
     if (name !== undefined && name !== category.name) {
       const existingCategory = await this.categoryRepo.findOne({
@@ -254,7 +255,7 @@ export class CategoryService {
         ErrorHandler.exists(ErrorMessage.CATEGORY_NAME_EXISTS);
     }
 
-    if (parentId !== undefined) {
+    if (parentId !== undefined || parentId !== category.parentId) {
       const parentCategory = await this.categoryRepo.findOneBy({
         id: parentId,
         isActive: true,
@@ -263,7 +264,7 @@ export class CategoryService {
       if (!parentCategory) ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
     }
 
-    Object.assign(category, { name, parentId, ...restOfUpdateData });
+    Object.assign(category, { name, merchantId, parentId });
 
     try {
       await this.categoryRepo.save(category);
@@ -278,6 +279,8 @@ export class CategoryService {
     user: AuthenticatedUser,
     id: number,
   ): Promise<OneCategoryResponse> {
+    if (!id || id <= 0) ErrorHandler.invalidId('Category ID id incorrect');
+
     // Find the main category
     const category = await this.categoryRepo.findOne({
       where: { id, isActive: true }, // Ensure the category is active
