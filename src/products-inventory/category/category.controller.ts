@@ -312,7 +312,7 @@ export class CategoryController {
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
     const merchantId = user.merchant.id;
-    return this.categoryService.update(merchantId, id, updateCategoryDto);
+    return this.categoryService.update(id, merchantId, updateCategoryDto);
   }
 
   @Delete(':id')
@@ -359,6 +359,6 @@ export class CategoryController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     const merchantId = user.merchant.id;
-    return this.categoryService.remove(merchantId, id);
+    return this.categoryService.remove(id, merchantId);
   }
 }
