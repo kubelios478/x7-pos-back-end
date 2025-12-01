@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from '../../common/dtos/success-response.dto';
 
 export class MerchantInfoDto {
   @ApiProperty({ example: 1, description: 'Merchant ID' })
@@ -29,4 +30,9 @@ export class TableResponseDto {
 
   @ApiProperty({ type: MerchantInfoDto, description: 'Basic merchant information' })
   merchant: MerchantInfoDto;
+}
+
+export class OneTableResponseDto extends SuccessResponse {
+  @ApiProperty({ type: TableResponseDto })
+  data: TableResponseDto;
 }

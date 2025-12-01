@@ -103,11 +103,11 @@ export class OrdersService {
     order.table_id = dto.tableId;
     order.collaborator_id = dto.collaboratorId;
     order.subscription_id = dto.subscriptionId;
-    order.business_status = dto.businessStatus;
+    order.status = dto.businessStatus;
     order.type = dto.type;
     order.customer_id = dto.customerId;
     order.closed_at = closedAt;
-    order.status = OrderStatus.ACTIVE;
+    order.logical_status = OrderStatus.ACTIVE;
 
     const saved = await this.orderRepo.save(order);
 
@@ -148,7 +148,7 @@ export class OrdersService {
     // Build where clause
     const where: any = {
       merchant_id: authenticatedUserMerchantId,
-      status: OrderStatus.ACTIVE,
+      logical_status: OrderStatus.ACTIVE,
     };
 
     if (query.tableId) {
@@ -188,7 +188,7 @@ export class OrdersService {
     }
 
     if (query.businessStatus) {
-      where.business_status = query.businessStatus;
+      where.status = query.businessStatus;
     }
 
     if (query.type) {
@@ -196,7 +196,7 @@ export class OrdersService {
     }
 
     if (query.status) {
-      where.status = query.status;
+      where.logical_status = query.status;
     }
 
     if (query.createdDate) {
@@ -213,9 +213,9 @@ export class OrdersService {
       const map: Record<OrderSortBy, string> = {
         [OrderSortBy.CREATED_AT]: 'created_at',
         [OrderSortBy.CLOSED_AT]: 'closed_at',
-        [OrderSortBy.BUSINESS_STATUS]: 'business_status',
+        [OrderSortBy.BUSINESS_STATUS]: 'status',
         [OrderSortBy.TYPE]: 'type',
-        [OrderSortBy.STATUS]: 'status',
+        [OrderSortBy.STATUS]: 'logical_status',
       };
       order[map[query.sortBy]] = query.sortOrder || 'DESC';
     } else {
@@ -258,7 +258,7 @@ export class OrdersService {
     }
 
     const row = await this.orderRepo.findOne({
-      where: { id, status: OrderStatus.ACTIVE },
+      where: { id, logical_status: OrderStatus.ACTIVE },
     });
 
     if (!row) {
@@ -286,7 +286,7 @@ export class OrdersService {
     }
 
     const existing = await this.orderRepo.findOne({
-      where: { id, status: OrderStatus.ACTIVE },
+      where: { id, logical_status: OrderStatus.ACTIVE },
     });
 
     if (!existing) {
@@ -338,7 +338,7 @@ export class OrdersService {
 
     if (dto.businessStatus !== undefined) {
       // Validated by class-validator in DTO
-      updateData.business_status = dto.businessStatus;
+      updateData.status = dto.businessStatus;
     }
 
     if (dto.type !== undefined) {
@@ -392,7 +392,7 @@ export class OrdersService {
     }
 
     const existing = await this.orderRepo.findOne({
-      where: { id, status: OrderStatus.ACTIVE },
+      where: { id, logical_status: OrderStatus.ACTIVE },
     });
 
     if (!existing) {
@@ -404,7 +404,7 @@ export class OrdersService {
       throw new ForbiddenException('You can only delete orders from your merchant');
     }
 
-    await this.orderRepo.update(id, { status: OrderStatus.DELETED });
+    await this.orderRepo.update(id, { logical_status: OrderStatus.DELETED });
 
     return {
       statusCode: 200,
@@ -420,10 +420,10 @@ export class OrdersService {
       tableId: row.table_id,
       collaboratorId: row.collaborator_id,
       subscriptionId: row.subscription_id,
-      businessStatus: row.business_status,
+      businessStatus: row.status,
       type: row.type,
       customerId: row.customer_id,
-      status: row.status,
+      status: row.logical_status,
       createdAt: row.created_at,
       closedAt: row.closed_at,
       updatedAt: row.updated_at,

@@ -18,27 +18,47 @@ export class ValidationExceptionFilter implements ExceptionFilter {
     // Handle class-validator validation errors
     if (
       typeof exceptionResponse === 'object' &&
-      'message' in exceptionResponse &&
-      Array.isArray(exceptionResponse.message)
+      exceptionResponse !== null &&
+      'message' in exceptionResponse
     ) {
-      const validationErrors = exceptionResponse.message;
+      if (Array.isArray(exceptionResponse.message)) {
+        // Multiple validation errors
+        const validationErrors = exceptionResponse.message;
 
+        response.status(status).json({
+          statusCode: status,
+          message: 'Validation failed',
+          errors: validationErrors,
+          timestamp: new Date().toISOString(),
+        });
+      } else if (typeof exceptionResponse.message === 'string') {
+        // Single validation error message
+        response.status(status).json({
+          statusCode: status,
+          message: exceptionResponse.message,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // Fallback for other object types
+        response.status(status).json({
+          statusCode: status,
+          message: 'Bad Request',
+          errors: exceptionResponse,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } else if (typeof exceptionResponse === 'string') {
+      // Handle string error messages
       response.status(status).json({
         statusCode: status,
-        message: 'Validation failed',
-        errors: validationErrors,
+        message: exceptionResponse,
         timestamp: new Date().toISOString(),
       });
     } else {
-      // Handle other BadRequestExceptions
-      const message =
-        typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : 'Bad Request';
-
+      // Fallback for unknown error types
       response.status(status).json({
         statusCode: status,
-        message,
+        message: 'Bad Request',
         timestamp: new Date().toISOString(),
       });
     }

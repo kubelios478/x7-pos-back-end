@@ -6,6 +6,7 @@ import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { GetReceiptsQueryDto, ReceiptSortBy } from './dto/get-receipts-query.dto';
 import { Receipt } from './entities/receipt.entity';
 import { ReceiptStatus } from './constants/receipt-status.enum';
+import { Order } from '../orders/entities/order.entity';
 import { OneReceiptResponseDto, PaginatedReceiptsResponseDto, ReceiptResponseDto } from './dto/receipt-response.dto';
 
 @Injectable()
@@ -13,6 +14,8 @@ export class ReceiptsService {
   constructor(
     @InjectRepository(Receipt)
     private readonly receiptRepo: Repository<Receipt>,
+    @InjectRepository(Order)
+    private readonly orderRepo: Repository<Order>,
   ) {}
 
   async create(dto: CreateReceiptDto, authenticatedUserMerchantId: number): Promise<OneReceiptResponseDto> {
@@ -39,15 +42,13 @@ export class ReceiptsService {
     }
 
     // 3. Validate existence of related entities (NotFoundException 404)
-    // TODO: Validate that Order exists when Order entity is available
-    // Example:
-    // const order = await this.orderRepo.findOne({ where: { id: dto.orderId } });
-    // if (!order) {
-    //   throw new NotFoundException(`Order with ID ${dto.orderId} not found`);
-    // }
-    // if (order.merchant_id !== authenticatedUserMerchantId) {
-    //   throw new ForbiddenException('Order does not belong to your merchant');
-    // }
+    const order = await this.orderRepo.findOne({ where: { id: dto.orderId } });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${dto.orderId} not found`);
+    }
+    if (order.merchant_id !== authenticatedUserMerchantId) {
+      throw new ForbiddenException('Order does not belong to your merchant');
+    }
 
     // 4. Validate uniqueness of unique fields (ConflictException 409)
     // Business rule: An order cannot have duplicate receipts of the same type
@@ -113,6 +114,18 @@ export class ReceiptsService {
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
+    // Validate orderId if provided
+    if (query.orderId) {
+      const order = await this.orderRepo.findOne({ where: { id: query.orderId } });
+      if (!order) {
+        throw new NotFoundException(`Order with ID ${query.orderId} not found`);
+      }
+      if (order.merchant_id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException('Order does not belong to your merchant');
+      }
+    }
+
+    // Build where clause - filter by merchant through order
     const where: any = { status: ReceiptStatus.ACTIVE };
     if (query.orderId) {
       where.order_id = query.orderId;
@@ -134,6 +147,37 @@ export class ReceiptsService {
       order[map[query.sortBy]] = query.sortOrder || 'DESC';
     } else {
       order.created_at = 'DESC';
+    }
+
+    // If orderId is not provided, filter by all merchant's orders
+    if (!query.orderId) {
+      const merchantOrders = await this.orderRepo.find({
+        where: { merchant_id: authenticatedUserMerchantId },
+        select: ['id'],
+      });
+      const merchantOrderIds = merchantOrders.map(o => o.id);
+
+      // If no orders exist, return empty result
+      if (merchantOrderIds.length === 0) {
+        return {
+          statusCode: 200,
+          message: 'Receipts retrieved successfully',
+          data: [],
+          paginationMeta: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false,
+          },
+        };
+      }
+
+      // Add filter to only include receipts from merchant's orders
+      where.order_id = merchantOrderIds.length === 1 
+        ? merchantOrderIds[0]
+        : merchantOrderIds;
     }
 
     const [rows, total] = await this.receiptRepo.findAndCount({
@@ -174,6 +218,15 @@ export class ReceiptsService {
       throw new NotFoundException('Receipt not found');
     }
 
+    // Ensure ownership via order
+    const order = await this.orderRepo.findOne({ where: { id: row.order_id } });
+    if (!order) {
+      throw new NotFoundException('Order associated with receipt not found');
+    }
+    if (order.merchant_id !== authenticatedUserMerchantId) {
+      throw new ForbiddenException('You can only access receipts from your merchant');
+    }
+
     return {
       statusCode: 200,
       message: 'Receipt retrieved successfully',
@@ -197,10 +250,27 @@ export class ReceiptsService {
       throw new NotFoundException('Receipt not found');
     }
 
+    // Ensure ownership via order
+    const existingOrder = await this.orderRepo.findOne({ where: { id: existing.order_id } });
+    if (!existingOrder) {
+      throw new NotFoundException('Order associated with receipt not found');
+    }
+    if (existingOrder.merchant_id !== authenticatedUserMerchantId) {
+      throw new ForbiddenException('You can only update receipts from your merchant');
+    }
+
     const updateData: any = {};
     if (dto.orderId !== undefined) {
       if (dto.orderId <= 0) {
         throw new BadRequestException('Invalid order ID');
+      }
+      // Validate new order exists and belongs to user merchant
+      const newOrder = await this.orderRepo.findOne({ where: { id: dto.orderId } });
+      if (!newOrder) {
+        throw new NotFoundException(`Order with ID ${dto.orderId} not found`);
+      }
+      if (newOrder.merchant_id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException('Order does not belong to your merchant');
       }
       updateData.order_id = dto.orderId;
     }
@@ -247,6 +317,15 @@ export class ReceiptsService {
 
     if (!existing) {
       throw new NotFoundException('Receipt not found');
+    }
+
+    // Ensure ownership via order
+    const order = await this.orderRepo.findOne({ where: { id: existing.order_id } });
+    if (!order) {
+      throw new NotFoundException('Order associated with receipt not found');
+    }
+    if (order.merchant_id !== authenticatedUserMerchantId) {
+      throw new ForbiddenException('You can only delete receipts from your merchant');
     }
 
     await this.receiptRepo.update(id, { status: ReceiptStatus.DELETED });

@@ -56,6 +56,14 @@ import { SubscriptionApplication } from './subscriptions/subscription-applicatio
 import { Item } from './products-inventory/stocks/items/entities/item.entity';
 import { Movement } from './products-inventory/stocks/movements/entities/movement.entity';
 import { FeatureEntity } from './subscriptions/features/entity/features.entity';
+import { CashDrawerHistoryModule } from './cash-drawer-history/cash-drawer-history.module';
+import { CashDrawerHistory } from './cash-drawer-history/entities/cash-drawer-history.entity';
+import { OrderItemModule } from './order-item/order-item.module';
+import { OrderItem } from './order-item/entities/order-item.entity';
+import { KitchenStationModule } from './kitchen-display-system/kitchen-station/kitchen-station.module';
+import { KitchenStation } from './kitchen-display-system/kitchen-station/entities/kitchen-station.entity';
+import { OnlineStoresModule } from './online-ordering-system/online-stores/online-stores.module';
+import { OnlineStore } from './online-ordering-system/online-stores/entities/online-store.entity';
 import { PlanFeaturesModule } from './subscriptions/plan-features/plan-features.module';
 import { PlanFeature } from './subscriptions/plan-features/entity/plan-features.entity';
 import { SubscriptionPaymentsModule } from './subscriptions/subscription-payments/subscription-payments.module';
@@ -118,6 +126,10 @@ import { PurchaseOrderItem } from './products-inventory/purchase-order-item/enti
           PurchaseOrderItem,
           Collaborator,
           Shift,
+          CashDrawerHistory,
+          OrderItem,
+          KitchenStation,
+          OnlineStore,
         ],
         synchronize: true,
       }),
@@ -150,6 +162,10 @@ import { PurchaseOrderItem } from './products-inventory/purchase-order-item/enti
     PurchaseOrderModule,
     PurchaseOrderItemModule,
     FeaturesModule,
+    CashDrawerHistoryModule,
+    OrderItemModule,
+    KitchenStationModule,
+    OnlineStoresModule,
 
     PlanFeaturesModule,
 

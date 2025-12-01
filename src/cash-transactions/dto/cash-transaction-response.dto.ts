@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { SuccessResponse } from '../../common/dtos/success-response.dto';
-import { CashTransactionStatus, CashTransactionType } from '../entities/cash-transaction.entity';
+import { CashTransactionStatus } from '../constants/cash-transaction-status.enum';
+import { CashTransactionType } from '../constants/cash-transaction-type.enum';
 
 export class CashTransactionResponseDto {
   @ApiProperty({ example: 1 })
@@ -9,8 +10,8 @@ export class CashTransactionResponseDto {
   @ApiProperty({ example: 10 })
   cashDrawerId: number;
 
-  @ApiProperty({ example: 200 })
-  orderId: number;
+  @ApiProperty({ example: 200, nullable: true })
+  orderId: number | null;
 
   @ApiProperty({ example: 'sale', enum: CashTransactionType })
   type: CashTransactionType;
