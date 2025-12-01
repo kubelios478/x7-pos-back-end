@@ -39,13 +39,13 @@ export enum ErrorMessage {
   PURCHASE_ORDER_ITEM_NOT_FOUND = 'Purchase Order Item not found',
   MOVEMENT_NOT_FOUND = 'Movement not found',
   APPLICATION_NOT_FOUND = 'Application not found',
-  MERCHANT_SUBSCRIPTION_NOT_FOUND = 'Merchant subscription not found',
+  MERCHANT_SUBSCRIPTION_NOT_FOUND = 'Merchant Subscription not found',
   PLAN_APPLICATION_NOT_FOUND = 'Plan Application not found',
   SUBSCRIPTION_PLAN_NOT_FOUND = 'Subscription Plan not found',
   SUBSCRIPTION_APPLICATION_NOT_FOUND = 'Subscription Application not found',
   FEATURE_NOT_FOUND = 'Feature not found',
   PLAN_FEATURE_NOT_FOUND = 'Plan Feature not found',
-  SUBSCRIPTION_PAYMENT_NOT_FOUND = 'Subscription Payment not Found',
+  SUBSCRIPTION_PAYMENT_NOT_FOUND = 'Subscription Payment not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',

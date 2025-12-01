@@ -221,7 +221,7 @@ export class MerchantSubscriptionService {
     await this.merchantSubscriptionRepository.save(merchantSubscription);
     return {
       statusCode: 200,
-      message: `Merchant-Subscription with ID ${id} deleted successfully`,
+      message: 'Merchant Subscription removed successfully',
       data: merchantSubscription,
     };
   }
