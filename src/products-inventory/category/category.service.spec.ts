@@ -400,16 +400,16 @@ describe('CategoryService', () => {
     it('should throw BadRequestException if Category ID is invalid', async () => {
       await expect(
         async () => await service.findOne(0, mockMerchant.id),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
 
       await expect(
         async () => await service.findOne(-1, mockMerchant.id),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
 
       await expect(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         async () => await service.findOne(null as any, mockMerchant.id),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
     });
   });
 
@@ -552,12 +552,12 @@ describe('CategoryService', () => {
       await expect(
         async () =>
           await service.update(0, mockMerchant.id, mockUpdateCategoryDto),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
 
       await expect(
         async () =>
           await service.update(-1, mockMerchant.id, mockUpdateCategoryDto),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
 
       await expect(
         async () =>
@@ -567,7 +567,7 @@ describe('CategoryService', () => {
             mockMerchant.id,
             mockUpdateCategoryDto,
           ),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
     });
   });
 
@@ -752,16 +752,16 @@ describe('CategoryService', () => {
     it('should throw BadRequestException if Category ID is invalid', async () => {
       await expect(
         async () => await service.remove(0, mockMerchant.id),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
 
       await expect(
         async () => await service.remove(-1, mockMerchant.id),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
 
       await expect(
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         async () => await service.remove(null as any, mockMerchant.id),
-      ).rejects.toThrow('Category ID id incorrect');
+      ).rejects.toThrow('Category ID is incorrect');
     });
   });
 });

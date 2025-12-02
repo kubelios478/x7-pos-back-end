@@ -152,7 +152,7 @@ export class CategoryService {
     createdUpdateDelete?: string,
   ): Promise<OneCategoryResponse> {
     if (!id || id <= 0) {
-      ErrorHandler.invalidId('Category ID id incorrect');
+      ErrorHandler.invalidId('Category ID is incorrect');
     }
 
     const whereCondition: {
@@ -224,7 +224,7 @@ export class CategoryService {
     merchant_id: number,
     updateCategoryDto: UpdateCategoryDto,
   ): Promise<OneCategoryResponse> {
-    if (!id || id <= 0) ErrorHandler.invalidId('Category ID id incorrect');
+    if (!id || id <= 0) ErrorHandler.invalidId('Category ID is incorrect');
 
     const { name, parentId } = updateCategoryDto;
 
@@ -267,7 +267,7 @@ export class CategoryService {
   }
 
   async remove(id: number, merchant_id: number): Promise<OneCategoryResponse> {
-    if (!id || id <= 0) ErrorHandler.invalidId('Category ID id incorrect');
+    if (!id || id <= 0) ErrorHandler.invalidId('Category ID is incorrect');
 
     // Find the main category
     const category = await this.categoryRepo.findOne({
