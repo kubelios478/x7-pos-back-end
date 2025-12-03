@@ -557,6 +557,7 @@ describe('ModifiersService', () => {
         where: {
           name: mockUpdateModifierDto.name,
           product: { merchantId: merchantId },
+          isActive: true,
         },
       });
       expect(modifierRepository.save).toHaveBeenCalledWith(updatedModifier);
@@ -641,6 +642,7 @@ describe('ModifiersService', () => {
         where: {
           name: dtoWithExistingName.name,
           product: { merchantId: merchantId },
+          isActive: true,
         },
       });
       expect(modifierRepository.save).not.toHaveBeenCalled();

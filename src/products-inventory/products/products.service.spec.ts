@@ -392,10 +392,12 @@ describe('ProductsService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenCalledWith({
         id: mockCreateProductDto.categoryId,
         merchantId: mockMerchant.id,
+        isActive: true,
       });
       expect(supplierRepo.findOneBy).toHaveBeenCalledWith({
         id: mockCreateProductDto.supplierId,
         merchantId: mockMerchant.id,
+        isActive: true,
       });
 
       expect(productRepo.findOne).toHaveBeenCalledWith({

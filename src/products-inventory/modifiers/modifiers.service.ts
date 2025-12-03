@@ -257,6 +257,7 @@ export class ModifiersService {
         where: {
           name: modifierData.name,
           product: { merchantId: merchant_id },
+          isActive: true,
         },
       });
 

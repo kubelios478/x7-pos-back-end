@@ -264,7 +264,11 @@ export class VariantsService {
 
     if (variantData.name && variantData.name !== variant.name) {
       const existingVariantName = await this.variantRepository.findOne({
-        where: { name: variantData.name, product: { merchantId: merchant_id } },
+        where: {
+          name: variantData.name,
+          isActive: true,
+          product: { merchantId: merchant_id },
+        },
       });
 
       if (existingVariantName && existingVariantName.id !== id) {
@@ -274,7 +278,11 @@ export class VariantsService {
 
     if (variantData.sku && variantData.sku !== variant.sku) {
       const existingVariantSku = await this.variantRepository.findOne({
-        where: { sku: variantData.sku, product: { merchantId: merchant_id } },
+        where: {
+          sku: variantData.sku,
+          isActive: true,
+          product: { merchantId: merchant_id },
+        },
       });
 
       if (existingVariantSku && existingVariantSku.id !== id) {

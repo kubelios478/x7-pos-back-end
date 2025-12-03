@@ -43,10 +43,12 @@ export class ProductsService {
       this.categoryRepository.findOneBy({
         id: categoryId,
         merchantId: merchant_id,
+        isActive: true,
       }),
       this.supplierRepository.findOneBy({
         id: supplierId,
         merchantId: merchant_id,
+        isActive: true,
       }),
     ]);
 
@@ -316,6 +318,7 @@ export class ProductsService {
       const category = await this.categoryRepository.findOneBy({
         id: categoryId,
         merchantId: merchant_id,
+        isActive: true,
       });
       if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
     }
@@ -323,6 +326,7 @@ export class ProductsService {
       const supplier = await this.supplierRepository.findOneBy({
         id: supplierId,
         merchantId: merchant_id,
+        isActive: true,
       });
       if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
     }
