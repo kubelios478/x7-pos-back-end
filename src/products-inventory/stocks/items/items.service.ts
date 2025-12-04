@@ -14,6 +14,8 @@ import { Variant } from 'src/products-inventory/variants/entities/variant.entity
 import { ProductLittleResponseDto } from 'src/products-inventory/products/dto/product-response.dto';
 import { LocationLittleResponseDto } from '../locations/dto/location-response.dto';
 import { VariantLittleResponseDto } from 'src/products-inventory/variants/dto/variant-response.dto';
+import { MovementsService } from 'src/products-inventory/stocks/movements/movements.service';
+import { MovementsStatus } from 'src/products-inventory/stocks/movements/constants/movements-status';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 
 @Injectable()
@@ -27,6 +29,7 @@ export class ItemsService {
     private readonly locationRepository: Repository<Location>,
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    private readonly movementsService: MovementsService,
   ) {}
 
   async create(
@@ -281,7 +284,7 @@ export class ItemsService {
     const merchantId = merchant_id;
     const { productId, locationId, variantId, currentQty } = updateItemDto;
 
-    const item = await this.itemRepository
+    const existingItem = await this.itemRepository
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.product', 'product')
       .leftJoinAndSelect('item.location', 'location')
@@ -291,9 +294,11 @@ export class ItemsService {
       .andWhere('item.isActive = :isActive', { isActive: true })
       .getOne();
 
-    if (!item) {
+    if (!existingItem) {
       ErrorHandler.notFound(ErrorMessage.ITEM_NOT_FOUND);
     }
+
+    const oldLocation = existingItem.location;
 
     const [product, variant, location] = await Promise.all([
       this.productRepository.findOneBy({
@@ -324,15 +329,35 @@ export class ItemsService {
       ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
 
-    item.product = product;
-    item.location = location;
-    item.variant = variant;
+    existingItem.product = product;
+    existingItem.location = location;
+    existingItem.variant = variant;
 
     if (currentQty) {
-      item.currentQty = currentQty;
+      existingItem.currentQty = currentQty;
     }
 
-    const updatedItem = await this.itemRepository.save(item);
+    const updatedItem = await this.itemRepository.save(existingItem);
+
+    if (oldLocation.id !== updatedItem.location.id) {
+      // Create an OUT movement from the old location
+      await this.movementsService.create(merchantId, {
+        stockItemId: updatedItem.id,
+        quantity: updatedItem.currentQty,
+        type: MovementsStatus.OUT,
+        reference: `Movement between locations: Exit from ${oldLocation.name}`,
+        reason: 'Transfer between stock locations',
+      });
+
+      // Create an IN movement to the new location
+      await this.movementsService.create(merchantId, {
+        stockItemId: updatedItem.id,
+        quantity: updatedItem.currentQty,
+        type: MovementsStatus.IN,
+        reference: `Movement between locations: Entry to ${updatedItem.location.name}`,
+        reason: 'Transfer between stock locations',
+      });
+    }
 
     return this.findOne(updatedItem.id, merchantId, 'Updated');
   }
