@@ -7,7 +7,6 @@ import { Repository } from 'typeorm';
 import { ItemResponseDto, OneItemResponse } from './dto/item-response.dto';
 import { GetItemsQueryDto } from './dto/get-items-query.dto';
 import { AllPaginatedItems } from './dto/all-paginated-items.dto';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
 import { Location } from 'src/products-inventory/stocks/locations/entities/location.entity';
@@ -31,24 +30,27 @@ export class ItemsService {
   ) {}
 
   async create(
-    user: AuthenticatedUser,
+    merchant_id: number,
     createItemDto: CreateItemDto,
   ): Promise<OneItemResponse> {
     const { productId, locationId, variantId, currentQty } = createItemDto;
-    const merchantId = user.merchant.id;
+    const merchantId = merchant_id;
 
     const [product, variant, location] = await Promise.all([
       this.productRepository.findOneBy({
         id: productId,
         isActive: true,
+        merchantId: merchant_id,
       }),
       this.variantRepository.findOneBy({
         id: variantId,
         isActive: true,
+        product: { id: productId, merchantId: merchant_id },
       }),
       this.locationRepository.findOneBy({
         id: locationId,
         isActive: true,
+        merchantId: merchant_id,
       }),
     ]);
 
@@ -272,11 +274,11 @@ export class ItemsService {
   }
 
   async update(
-    user: AuthenticatedUser,
     id: number,
+    merchant_id: number,
     updateItemDto: UpdateItemDto,
   ): Promise<OneItemResponse> {
-    const merchantId = user.merchant.id;
+    const merchantId = merchant_id;
     const { productId, locationId, variantId, currentQty } = updateItemDto;
 
     const item = await this.itemRepository
@@ -297,15 +299,18 @@ export class ItemsService {
       this.productRepository.findOneBy({
         id: productId,
         isActive: true,
+        merchantId: merchant_id,
       }),
       this.variantRepository.findOneBy({
         id: variantId,
         productId: productId,
         isActive: true,
+        product: { id: productId, merchantId: merchant_id },
       }),
       this.locationRepository.findOneBy({
         id: locationId,
         isActive: true,
+        merchantId: merchant_id,
       }),
     ]);
 
@@ -332,8 +337,8 @@ export class ItemsService {
     return this.findOne(updatedItem.id, merchantId, 'Updated');
   }
 
-  async remove(user: AuthenticatedUser, id: number): Promise<OneItemResponse> {
-    const merchantId = user.merchant.id;
+  async remove(id: number, merchant_id: number): Promise<OneItemResponse> {
+    const merchantId = merchant_id;
 
     const item = await this.itemRepository
       .createQueryBuilder('item')

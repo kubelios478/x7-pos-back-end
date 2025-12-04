@@ -81,7 +81,8 @@ export class MovementsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() createMovementDto: CreateMovementDto,
   ): Promise<OneMovementResponse> {
-    return this.movementsService.create(user, createMovementDto);
+    const merchantId = user.merchant.id;
+    return this.movementsService.create(merchantId, createMovementDto);
   }
 
   @Get()
@@ -308,7 +309,8 @@ export class MovementsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateMovementDto: UpdateMovementDto,
   ): Promise<OneMovementResponse> {
-    return this.movementsService.update(user, id, updateMovementDto);
+    const merchantId = user.merchant.id;
+    return this.movementsService.update(id, merchantId, updateMovementDto);
   }
 
   @Delete(':id')
@@ -354,6 +356,7 @@ export class MovementsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<OneMovementResponse> {
-    return this.movementsService.remove(user, id);
+    const merchantId = user.merchant.id;
+    return this.movementsService.remove(id, merchantId);
   }
 }

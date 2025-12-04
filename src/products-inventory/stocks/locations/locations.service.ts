@@ -6,7 +6,6 @@ import { UpdateLocationDto } from './dto/update-location.dto';
 import { GetLocationsQueryDto } from './dto/get-locations-query.dto';
 import { AllPaginatedLocations } from './dto/all-paginated-locations.dto';
 import { Location } from './entities/location.entity';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { Merchant } from 'src/merchants/entities/merchant.entity';
@@ -25,23 +24,21 @@ export class LocationsService {
   ) {}
 
   async create(
-    user: AuthenticatedUser,
+    merchant_id: number,
     createLocationDto: CreateLocationDto,
   ): Promise<OneLocationResponse> {
-    const { name, address, merchantId } = createLocationDto;
-
-    if (merchantId !== user.merchant.id) {
-      ErrorHandler.differentMerchant();
-    }
+    const { name, address } = createLocationDto;
 
     const existingLocation = await this.locationRepository.findOne({
       where: [
         {
           name,
+          merchantId: merchant_id,
           isActive: true,
         },
         {
           address,
+          merchantId: merchant_id,
           isActive: true,
         },
       ],
@@ -56,31 +53,25 @@ export class LocationsService {
       }
     }
 
-    const merchant = await this.merchantRepo.findOne({
-      where: { id: merchantId },
-    });
-    if (!merchant) ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
-
     try {
       const existingButIsNotActive = await this.locationRepository.findOne({
-        where: { name, address, merchantId, isActive: false },
+        where: { name, address, merchantId: merchant_id, isActive: false },
       });
 
       if (existingButIsNotActive) {
         existingButIsNotActive.isActive = true;
         await this.locationRepository.save(existingButIsNotActive);
-        return this.findOne(existingButIsNotActive.id, undefined, 'Created');
+        return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
       } else {
         const newLocation = this.locationRepository.create({
           name,
           address,
-          merchantId,
+          merchantId: merchant_id,
         });
         const savedLocation = await this.locationRepository.save(newLocation);
-        return this.findOne(savedLocation.id, undefined, 'Created');
+        return this.findOne(savedLocation.id, merchant_id, 'Created');
       }
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
     }
   }
@@ -229,34 +220,28 @@ export class LocationsService {
   }
 
   async update(
-    user: AuthenticatedUser,
     id: number,
+    merchant_id: number,
     updateLocationDto: UpdateLocationDto,
   ): Promise<OneLocationResponse> {
-    const { name, address, merchantId } = updateLocationDto;
+    const { name, address } = updateLocationDto;
     const location = await this.locationRepository.findOneBy({
       id,
       isActive: true,
+      merchantId: merchant_id,
     });
     if (!location) ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
-
-    if (user.merchant.id !== location.merchantId)
-      ErrorHandler.differentMerchant();
-
-    if (
-      updateLocationDto.merchantId !== undefined &&
-      updateLocationDto.merchantId !== location.merchantId
-    )
-      ErrorHandler.changedMerchant();
 
     const existingLocation = await this.locationRepository.findOne({
       where: [
         {
           name,
+          merchantId: merchant_id,
           isActive: true,
         },
         {
           address,
+          merchantId: merchant_id,
           isActive: true,
         },
       ],
@@ -271,24 +256,22 @@ export class LocationsService {
       }
     }
 
-    Object.assign(location, { name, address, merchantId });
+    Object.assign(location, { name, address });
 
     try {
       await this.locationRepository.save(location);
-      return this.findOne(id, undefined, 'Updated');
+      return this.findOne(id, merchant_id, 'Updated');
     } catch (error) {
       console.log(error);
       ErrorHandler.handleDatabaseError(error);
     }
   }
 
-  async remove(
-    user: AuthenticatedUser,
-    id: number,
-  ): Promise<OneLocationResponse> {
+  async remove(id: number, merchant_id: number): Promise<OneLocationResponse> {
     const location = await this.locationRepository.findOneBy({
       id,
       isActive: true,
+      merchantId: merchant_id,
     });
     if (!location) ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
 
@@ -296,7 +279,7 @@ export class LocationsService {
 
     try {
       await this.locationRepository.save(location);
-      return this.findOne(id, undefined, 'Deleted');
+      return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
       console.log(error);
       ErrorHandler.handleDatabaseError(error);

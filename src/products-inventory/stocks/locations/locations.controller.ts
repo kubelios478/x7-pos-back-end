@@ -81,7 +81,8 @@ export class LocationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() createLocationDto: CreateLocationDto,
   ): Promise<OneLocationResponse> {
-    return this.locationsService.create(user, createLocationDto);
+    const merchantId = user.merchant.id;
+    return this.locationsService.create(merchantId, createLocationDto);
   }
 
   @Get()
@@ -310,7 +311,8 @@ export class LocationsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateLocationDto: UpdateLocationDto,
   ): Promise<OneLocationResponse> {
-    return this.locationsService.update(user, id, updateLocationDto);
+    const merchantId = user.merchant.id;
+    return this.locationsService.update(id, merchantId, updateLocationDto);
   }
 
   @Delete(':id')
@@ -356,6 +358,7 @@ export class LocationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<OneLocationResponse> {
-    return this.locationsService.remove(user, id);
+    const merchantId = user.merchant.id;
+    return this.locationsService.remove(id, merchantId);
   }
 }

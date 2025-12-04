@@ -81,7 +81,8 @@ export class ItemsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() createItemDto: CreateItemDto,
   ): Promise<OneItemResponse> {
-    return this.itemsService.create(user, createItemDto);
+    const merchantId = user.merchant.id;
+    return this.itemsService.create(merchantId, createItemDto);
   }
 
   @Get()
@@ -313,7 +314,8 @@ export class ItemsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateItemDto: UpdateItemDto,
   ): Promise<OneItemResponse> {
-    return this.itemsService.update(user, id, updateItemDto);
+    const merchantId = user.merchant.id;
+    return this.itemsService.update(id, merchantId, updateItemDto);
   }
 
   @Delete(':id')
@@ -359,6 +361,7 @@ export class ItemsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<OneItemResponse> {
-    return this.itemsService.remove(user, id);
+    const merchantId = user.merchant.id;
+    return this.itemsService.remove(id, merchantId);
   }
 }
