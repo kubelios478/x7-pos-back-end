@@ -20,11 +20,9 @@ export class KitchenStationService {
   ) {}
 
   async create(createKitchenStationDto: CreateKitchenStationDto, authenticatedUserMerchantId: number): Promise<OneKitchenStationResponseDto> {
-    console.log('Creating kitchen station:', { createKitchenStationDto, authenticatedUserMerchantId });
 
     // Validate user permissions - must be associated with a merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to create kitchen stations');
     }
 
@@ -34,7 +32,6 @@ export class KitchenStationService {
     });
 
     if (!merchant) {
-      console.log('Merchant not found:', authenticatedUserMerchantId);
       throw new NotFoundException('Merchant not found');
     }
 
@@ -64,7 +61,6 @@ export class KitchenStationService {
     kitchenStation.status = KitchenStationStatus.ACTIVE;
 
     const savedKitchenStation = await this.kitchenStationRepository.save(kitchenStation);
-    console.log('Kitchen station created successfully:', savedKitchenStation.id);
 
     // Fetch the complete kitchen station with relations
     const completeKitchenStation = await this.kitchenStationRepository.findOne({
@@ -84,22 +80,18 @@ export class KitchenStationService {
   }
 
   async findAll(query: GetKitchenStationQueryDto, authenticatedUserMerchantId: number): Promise<PaginatedKitchenStationResponseDto> {
-    console.log('Finding all kitchen stations:', { query, authenticatedUserMerchantId });
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to access kitchen stations');
     }
 
     // Validate pagination parameters
     if (query.page && query.page < 1) {
-      console.log('Invalid page number:', query.page);
       throw new BadRequestException('Page number must be greater than 0');
     }
 
     if (query.limit && (query.limit < 1 || query.limit > 100)) {
-      console.log('Invalid limit:', query.limit);
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -107,7 +99,6 @@ export class KitchenStationService {
     if (query.createdDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(query.createdDate)) {
-        console.log('Invalid date format:', query.createdDate);
         throw new BadRequestException('Created date must be in YYYY-MM-DD format');
       }
     }
@@ -154,7 +145,6 @@ export class KitchenStationService {
       orderConditions.created_at = 'DESC';
     }
 
-    console.log('Query conditions:', { whereConditions, orderConditions, skip, limit });
 
     // Execute query
     const [kitchenStations, total] = await this.kitchenStationRepository.findAndCount({
@@ -165,7 +155,6 @@ export class KitchenStationService {
       take: limit,
     });
 
-    console.log('Query results:', { count: kitchenStations.length, total });
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
@@ -190,17 +179,14 @@ export class KitchenStationService {
   }
 
   async findOne(id: number, authenticatedUserMerchantId: number): Promise<OneKitchenStationResponseDto> {
-    console.log('Finding kitchen station:', { id, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid kitchen station ID:', id);
       throw new BadRequestException('Kitchen station ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to access kitchen stations');
     }
 
@@ -215,11 +201,9 @@ export class KitchenStationService {
     });
 
     if (!kitchenStation) {
-      console.log('Kitchen station not found:', id);
       throw new NotFoundException('Kitchen station not found');
     }
 
-    console.log('Kitchen station found successfully:', id);
 
     return {
       statusCode: 200,
@@ -229,17 +213,14 @@ export class KitchenStationService {
   }
 
   async update(id: number, updateKitchenStationDto: UpdateKitchenStationDto, authenticatedUserMerchantId: number): Promise<OneKitchenStationResponseDto> {
-    console.log('Updating kitchen station:', { id, updateKitchenStationDto, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid kitchen station ID:', id);
       throw new BadRequestException('Kitchen station ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to update kitchen stations');
     }
 
@@ -254,7 +235,6 @@ export class KitchenStationService {
     });
 
     if (!existingKitchenStation) {
-      console.log('Kitchen station not found:', id);
       throw new NotFoundException('Kitchen station not found');
     }
 
@@ -283,7 +263,6 @@ export class KitchenStationService {
     if (updateKitchenStationDto.isActive !== undefined) updateData.is_active = updateKitchenStationDto.isActive;
 
     await this.kitchenStationRepository.update(id, updateData);
-    console.log('Kitchen station updated successfully:', id);
 
     // Fetch updated kitchen station
     const updatedKitchenStation = await this.kitchenStationRepository.findOne({
@@ -303,17 +282,14 @@ export class KitchenStationService {
   }
 
   async remove(id: number, authenticatedUserMerchantId: number): Promise<OneKitchenStationResponseDto> {
-    console.log('Removing kitchen station:', { id, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid kitchen station ID:', id);
       throw new BadRequestException('Kitchen station ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to delete kitchen stations');
     }
 
@@ -328,7 +304,6 @@ export class KitchenStationService {
     });
 
     if (!existingKitchenStation) {
-      console.log('Kitchen station not found:', id);
       throw new NotFoundException('Kitchen station not found');
     }
 
@@ -340,7 +315,6 @@ export class KitchenStationService {
     // Perform logical deletion
     existingKitchenStation.status = KitchenStationStatus.DELETED;
     await this.kitchenStationRepository.save(existingKitchenStation);
-    console.log('Kitchen station deleted successfully (logical deletion):', id);
 
     return {
       statusCode: 200,

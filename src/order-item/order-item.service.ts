@@ -30,11 +30,10 @@ export class OrderItemService {
   ) {}
 
   async create(createOrderItemDto: CreateOrderItemDto, authenticatedUserMerchantId: number): Promise<OneOrderItemResponseDto> {
-    console.log('Creating order item:', { createOrderItemDto, authenticatedUserMerchantId });
+
 
     // Validate user permissions - must be associated with a merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to create order items');
     }
 
@@ -45,13 +44,11 @@ export class OrderItemService {
     });
 
     if (!order) {
-      console.log('Order not found:', createOrderItemDto.orderId);
       throw new NotFoundException('Order not found');
     }
 
     if (order.merchant_id !== authenticatedUserMerchantId) {
-      console.log('Order does not belong to merchant:', { orderMerchantId: order.merchant_id, authenticatedUserMerchantId });
-      throw new ForbiddenException('You can only create order items for orders belonging to your merchant');
+  throw new ForbiddenException('You can only create order items for orders belonging to your merchant');
     }
 
     if (order.logical_status !== OrderStatus.ACTIVE) {
@@ -65,12 +62,10 @@ export class OrderItemService {
     });
 
     if (!product) {
-      console.log('Product not found:', createOrderItemDto.productId);
       throw new NotFoundException('Product not found');
     }
 
     if (product.merchantId !== authenticatedUserMerchantId) {
-      console.log('Product does not belong to merchant:', { productMerchantId: product.merchantId, authenticatedUserMerchantId });
       throw new ForbiddenException('You can only use products from your merchant');
     }
 
@@ -82,12 +77,10 @@ export class OrderItemService {
       });
 
       if (!variant) {
-        console.log('Variant not found:', createOrderItemDto.variantId);
         throw new NotFoundException('Variant not found');
       }
 
       if (variant.product.merchantId !== authenticatedUserMerchantId) {
-        console.log('Variant does not belong to merchant:', { variantMerchantId: variant.product.merchantId, authenticatedUserMerchantId });
         throw new ForbiddenException('You can only use variants from your merchant');
       }
 
@@ -104,12 +97,10 @@ export class OrderItemService {
       });
 
       if (!modifier) {
-        console.log('Modifier not found:', createOrderItemDto.modifierId);
         throw new NotFoundException('Modifier not found');
       }
 
       if (modifier.product.merchantId !== authenticatedUserMerchantId) {
-        console.log('Modifier does not belong to merchant:', { modifierMerchantId: modifier.product.merchantId, authenticatedUserMerchantId });
         throw new ForbiddenException('You can only use modifiers from your merchant');
       }
 
@@ -147,7 +138,6 @@ export class OrderItemService {
     orderItem.status = OrderItemStatus.ACTIVE;
 
     const savedOrderItem = await this.orderItemRepository.save(orderItem);
-    console.log('Order item created successfully:', savedOrderItem.id);
 
     // Fetch the complete order item with relations
     const completeOrderItem = await this.orderItemRepository.findOne({
@@ -167,22 +157,18 @@ export class OrderItemService {
   }
 
   async findAll(query: GetOrderItemQueryDto, authenticatedUserMerchantId: number): Promise<PaginatedOrderItemResponseDto> {
-    console.log('Finding all order items:', { query, authenticatedUserMerchantId });
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to access order items');
     }
 
     // Validate pagination parameters
     if (query.page && query.page < 1) {
-      console.log('Invalid page number:', query.page);
       throw new BadRequestException('Page number must be greater than 0');
     }
 
     if (query.limit && (query.limit < 1 || query.limit > 100)) {
-      console.log('Invalid limit:', query.limit);
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -190,7 +176,6 @@ export class OrderItemService {
     if (query.createdDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(query.createdDate)) {
-        console.log('Invalid date format:', query.createdDate);
         throw new BadRequestException('Created date must be in YYYY-MM-DD format');
       }
     }
@@ -289,8 +274,6 @@ export class OrderItemService {
       orderConditions.created_at = 'DESC';
     }
 
-    console.log('Query conditions:', { whereConditions, orderConditions, skip, limit });
-
     // Execute query
     const [orderItems, total] = await this.orderItemRepository.findAndCount({
       where: whereConditions,
@@ -299,8 +282,6 @@ export class OrderItemService {
       skip,
       take: limit,
     });
-
-    console.log('Query results:', { count: orderItems.length, total });
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
@@ -325,17 +306,14 @@ export class OrderItemService {
   }
 
   async findOne(id: number, authenticatedUserMerchantId: number): Promise<OneOrderItemResponseDto> {
-    console.log('Finding order item:', { id, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid order item ID:', id);
       throw new BadRequestException('Order item ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to access order items');
     }
 
@@ -349,17 +327,13 @@ export class OrderItemService {
     });
 
     if (!orderItem) {
-      console.log('Order item not found:', id);
       throw new NotFoundException('Order item not found');
     }
 
     // Validate merchant ownership through order
     if (orderItem.order.merchant_id !== authenticatedUserMerchantId) {
-      console.log('Order item does not belong to merchant:', { orderMerchantId: orderItem.order.merchant_id, authenticatedUserMerchantId });
       throw new ForbiddenException('You can only access order items from your merchant');
     }
-
-    console.log('Order item found successfully:', id);
 
     return {
       statusCode: 200,
@@ -369,17 +343,14 @@ export class OrderItemService {
   }
 
   async update(id: number, updateOrderItemDto: UpdateOrderItemDto, authenticatedUserMerchantId: number): Promise<OneOrderItemResponseDto> {
-    console.log('Updating order item:', { id, updateOrderItemDto, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid order item ID:', id);
       throw new BadRequestException('Order item ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to update order items');
     }
 
@@ -393,13 +364,11 @@ export class OrderItemService {
     });
 
     if (!existingOrderItem) {
-      console.log('Order item not found:', id);
       throw new NotFoundException('Order item not found');
     }
 
     // Validate merchant ownership
     if (existingOrderItem.order.merchant_id !== authenticatedUserMerchantId) {
-      console.log('Order item does not belong to merchant:', { orderMerchantId: existingOrderItem.order.merchant_id, authenticatedUserMerchantId });
       throw new ForbiddenException('You can only update order items from your merchant');
     }
 
@@ -411,12 +380,10 @@ export class OrderItemService {
       });
 
       if (!order) {
-        console.log('Order not found:', updateOrderItemDto.orderId);
         throw new NotFoundException('Order not found');
       }
 
       if (order.merchant_id !== authenticatedUserMerchantId) {
-        console.log('Order does not belong to merchant:', { orderMerchantId: order.merchant_id, authenticatedUserMerchantId });
         throw new ForbiddenException('You can only assign orders from your merchant');
       }
     }
@@ -429,12 +396,10 @@ export class OrderItemService {
       });
 
       if (!product) {
-        console.log('Product not found:', updateOrderItemDto.productId);
         throw new NotFoundException('Product not found');
       }
 
       if (product.merchantId !== authenticatedUserMerchantId) {
-        console.log('Product does not belong to merchant:', { productMerchantId: product.merchantId, authenticatedUserMerchantId });
         throw new ForbiddenException('You can only use products from your merchant');
       }
     }
@@ -450,12 +415,10 @@ export class OrderItemService {
         });
 
         if (!variant) {
-          console.log('Variant not found:', updateOrderItemDto.variantId);
           throw new NotFoundException('Variant not found');
         }
 
         if (variant.product.merchantId !== authenticatedUserMerchantId) {
-          console.log('Variant does not belong to merchant:', { variantMerchantId: variant.product.merchantId, authenticatedUserMerchantId });
           throw new ForbiddenException('You can only use variants from your merchant');
         }
 
@@ -477,12 +440,10 @@ export class OrderItemService {
         });
 
         if (!modifier) {
-          console.log('Modifier not found:', updateOrderItemDto.modifierId);
           throw new NotFoundException('Modifier not found');
         }
 
         if (modifier.product.merchantId !== authenticatedUserMerchantId) {
-          console.log('Modifier does not belong to merchant:', { modifierMerchantId: modifier.product.merchantId, authenticatedUserMerchantId });
           throw new ForbiddenException('You can only use modifiers from your merchant');
         }
 
@@ -516,7 +477,6 @@ export class OrderItemService {
     if (updateOrderItemDto.notes !== undefined) updateData.notes = updateOrderItemDto.notes || null;
 
     await this.orderItemRepository.update(id, updateData);
-    console.log('Order item updated successfully:', id);
 
     // Fetch updated order item
     const updatedOrderItem = await this.orderItemRepository.findOne({
@@ -536,17 +496,14 @@ export class OrderItemService {
   }
 
   async remove(id: number, authenticatedUserMerchantId: number): Promise<OneOrderItemResponseDto> {
-    console.log('Removing order item:', { id, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid order item ID:', id);
       throw new BadRequestException('Order item ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to delete order items');
     }
 
@@ -560,13 +517,11 @@ export class OrderItemService {
     });
 
     if (!existingOrderItem) {
-      console.log('Order item not found:', id);
       throw new NotFoundException('Order item not found');
     }
 
     // Validate merchant ownership
     if (existingOrderItem.order.merchant_id !== authenticatedUserMerchantId) {
-      console.log('Order item does not belong to merchant:', { orderMerchantId: existingOrderItem.order.merchant_id, authenticatedUserMerchantId });
       throw new ForbiddenException('You can only delete order items from your merchant');
     }
 
@@ -578,7 +533,6 @@ export class OrderItemService {
     // Perform logical deletion
     existingOrderItem.status = OrderItemStatus.DELETED;
     await this.orderItemRepository.save(existingOrderItem);
-    console.log('Order item deleted successfully (logical deletion):', id);
 
     return {
       statusCode: 200,
