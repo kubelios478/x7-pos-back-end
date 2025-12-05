@@ -19,7 +19,7 @@ describe('SubscriptionPaymentController', () => {
 
   const mockSubscriptionPayment = {
     id: 1,
-    merchantSubscriptionId: mockMerchantSubscription,
+    merchantSubscription: mockMerchantSubscription,
     amount: 190000,
     currency: 'Pesos Chilenos',
     status: 'active',
