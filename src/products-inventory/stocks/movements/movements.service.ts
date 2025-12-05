@@ -32,6 +32,14 @@ export class MovementsService {
       createMovementDto;
     const merchantId = merchant_id;
 
+    if (!stockItemId || stockItemId <= 0) {
+      ErrorHandler.invalidId(ErrorMessage.ITEM_ID_INCORRECT);
+    }
+
+    if (quantity <= 0) {
+      ErrorHandler.invalidId(ErrorMessage.MOVEMENT_QUANTITY_INVALID);
+    }
+
     const item = await this.itemRepository
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.product', 'product')
@@ -145,7 +153,7 @@ export class MovementsService {
     createdUpdateDelete?: string,
   ): Promise<OneMovementResponse> {
     if (!id || id <= 0) {
-      ErrorHandler.invalidId(ErrorMessage.INVALID_ID);
+      ErrorHandler.invalidId('Movement ID is incorrect');
     }
 
     const whereCondition: {
@@ -161,17 +169,23 @@ export class MovementsService {
       whereCondition.merchantId = merchantId;
     }
 
-    const movement = await this.movementRepository
+    const movementQueryBuilder = this.movementRepository
       .createQueryBuilder('movement')
       .leftJoinAndSelect('movement.item', 'item')
       .leftJoinAndSelect('item.product', 'product') // Join product through item
       .leftJoinAndSelect('movement.merchant', 'merchant')
       .where('movement.id = :id', { id })
-      .andWhere('product.merchantId = :merchantId', { merchantId })
       .andWhere('movement.isActive = :isActive', {
         isActive: whereCondition.isActive,
-      })
-      .getOne();
+      });
+
+    if (merchantId !== undefined) {
+      movementQueryBuilder.andWhere('product.merchantId = :merchantId', {
+        merchantId,
+      });
+    }
+
+    const movement = await movementQueryBuilder.getOne();
 
     if (!movement) {
       ErrorHandler.notFound(ErrorMessage.MOVEMENT_NOT_FOUND); // Need to add MOVEMENT_NOT_FOUND to error-messages.ts
@@ -238,6 +252,9 @@ export class MovementsService {
     merchant_id: number,
     updateMovementDto: UpdateMovementDto,
   ): Promise<OneMovementResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Movement ID is incorrect');
+    }
     const merchantId = merchant_id;
     const { stockItemId, quantity, type, reference, reason } =
       updateMovementDto;
@@ -293,6 +310,9 @@ export class MovementsService {
   }
 
   async remove(id: number, merchant_id: number): Promise<OneMovementResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Movement ID is incorrect');
+    }
     const merchantId = merchant_id;
 
     const movement = await this.movementRepository

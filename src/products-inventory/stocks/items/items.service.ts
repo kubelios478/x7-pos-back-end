@@ -77,7 +77,7 @@ export class ItemsService {
 
     if (existingItem) {
       if (existingItem.isActive) {
-        ErrorHandler.exists(ErrorMessage.ITEM_NAME_EXISTS);
+        ErrorHandler.exists(ErrorMessage.ITEM_EXISTS);
       } else {
         existingItem.isActive = true;
         const activatedItem = await this.itemRepository.save(existingItem);
@@ -191,7 +191,7 @@ export class ItemsService {
     createdUpdateDelete?: string,
   ): Promise<OneItemResponse> {
     if (!id || id <= 0) {
-      ErrorHandler.invalidId('Item ID id incorrect');
+      ErrorHandler.invalidId('Item ID is incorrect');
     }
     const whereCondition: {
       id: number;
@@ -281,6 +281,9 @@ export class ItemsService {
     merchant_id: number,
     updateItemDto: UpdateItemDto,
   ): Promise<OneItemResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Item ID is incorrect');
+    }
     const merchantId = merchant_id;
     const { productId, locationId, variantId, currentQty } = updateItemDto;
 
@@ -363,6 +366,9 @@ export class ItemsService {
   }
 
   async remove(id: number, merchant_id: number): Promise<OneItemResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Item ID is incorrect');
+    }
     const merchantId = merchant_id;
 
     const item = await this.itemRepository

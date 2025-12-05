@@ -151,7 +151,7 @@ export class LocationsService {
     createdUpdateDelete?: string,
   ): Promise<OneLocationResponse> {
     if (!id || id <= 0) {
-      ErrorHandler.invalidId('Location ID id incorrect');
+      ErrorHandler.invalidId('Location ID is incorrect');
     }
 
     const whereCondition: {
@@ -224,6 +224,9 @@ export class LocationsService {
     merchant_id: number,
     updateLocationDto: UpdateLocationDto,
   ): Promise<OneLocationResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Location ID is incorrect');
+    }
     const { name, address } = updateLocationDto;
     const location = await this.locationRepository.findOneBy({
       id,
@@ -247,7 +250,7 @@ export class LocationsService {
       ],
     });
 
-    if (existingLocation) {
+    if (existingLocation && existingLocation.id !== id) {
       if (existingLocation.name === name) {
         ErrorHandler.exists(ErrorMessage.LOCATION_NAME_EXISTS);
       }
@@ -262,12 +265,14 @@ export class LocationsService {
       await this.locationRepository.save(location);
       return this.findOne(id, merchant_id, 'Updated');
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
     }
   }
 
   async remove(id: number, merchant_id: number): Promise<OneLocationResponse> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Location ID is incorrect');
+    }
     const location = await this.locationRepository.findOneBy({
       id,
       isActive: true,
@@ -281,7 +286,6 @@ export class LocationsService {
       await this.locationRepository.save(location);
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
     }
   }
