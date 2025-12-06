@@ -104,7 +104,6 @@ describe('KitchenStationController', () => {
       displayMode: KitchenDisplayMode.AUTO,
       displayOrder: 1,
       printerName: 'Kitchen Printer 1',
-      isActive: true,
     };
 
     it('should create a new kitchen station successfully', async () => {

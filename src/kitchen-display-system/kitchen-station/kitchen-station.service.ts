@@ -57,7 +57,7 @@ export class KitchenStationService {
     kitchenStation.display_mode = createKitchenStationDto.displayMode;
     kitchenStation.display_order = createKitchenStationDto.displayOrder;
     kitchenStation.printer_name = createKitchenStationDto.printerName || null;
-    kitchenStation.is_active = createKitchenStationDto.isActive !== undefined ? createKitchenStationDto.isActive : true;
+    kitchenStation.is_active = true; // Always set to true on creation
     kitchenStation.status = KitchenStationStatus.ACTIVE;
 
     const savedKitchenStation = await this.kitchenStationRepository.save(kitchenStation);
