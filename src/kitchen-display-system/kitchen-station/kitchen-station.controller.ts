@@ -97,7 +97,6 @@ export class KitchenStationController {
           displayMode: 'AUTO',
           displayOrder: 1,
           printerName: 'Kitchen Printer 1',
-          isActive: true,
         }
       },
       example2: {
@@ -107,7 +106,6 @@ export class KitchenStationController {
           stationType: 'COLD',
           displayMode: 'MANUAL',
           displayOrder: 2,
-          isActive: true,
         }
       }
     }

@@ -95,7 +95,6 @@ export class OnlineStoresController {
         summary: 'Create online store',
         value: {
           subdomain: 'my-store',
-          isActive: true,
           theme: 'default',
           currency: 'USD',
           timezone: 'America/New_York',
@@ -105,7 +104,6 @@ export class OnlineStoresController {
         summary: 'Create online store with custom theme',
         value: {
           subdomain: 'restaurant-abc',
-          isActive: true,
           theme: 'modern',
           currency: 'EUR',
           timezone: 'Europe/Madrid',
