@@ -290,8 +290,9 @@ describe('SubscriptionPaymentsService', () => {
       expect(saveSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           id: 1,
-          merchantSubscriptionId: { id: 1 },
+          merchantSubscription: { id: 1 },
           amount: 190000,
+          currency: 'Pesos Chilenos',
           paymentDate: new Date('2025-01-01'),
           paymentMethod: 'Banco de Chile',
           status: 'inactive',
