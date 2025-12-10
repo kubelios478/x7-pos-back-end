@@ -48,6 +48,9 @@ export class CashDrawerResponseDto {
   @ApiProperty({ example: 100.00, description: 'Opening balance amount' })
   openingBalance: number;
 
+  @ApiProperty({ example: 125.50, description: 'Current balance amount' })
+  currentBalance: number;
+
   @ApiProperty({ example: 150.50, description: 'Closing balance amount', nullable: true })
   closingBalance: number | null;
 

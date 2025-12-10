@@ -140,27 +140,20 @@ export class TableAssignmentsService {
   }
 
   async findAll(query: GetTableAssignmentsQueryDto, authenticatedUserMerchantId: number): Promise<PaginatedTableAssignmentsResponseDto> {
-    console.log('🔍 [TableAssignments] Starting findAll operation');
-    console.log('📊 [TableAssignments] Query parameters:', JSON.stringify(query, null, 2));
-    console.log('🏢 [TableAssignments] Authenticated user merchant ID:', authenticatedUserMerchantId);
 
     // 1. Validate user permissions - User must be associated with a merchant
     if (!authenticatedUserMerchantId) {
-      console.log('❌ [TableAssignments] User not associated with a merchant');
-      throw new ForbiddenException('User must be associated with a merchant to view table assignments');
+     throw new ForbiddenException('User must be associated with a merchant to view table assignments');
     }
 
     // 2. Validate filters and pagination parameters
-    console.log('🔧 [TableAssignments] Validating filters and pagination...');
-    
+   
     // Validate pagination parameters
     if (query.page && (query.page < 1 || !Number.isInteger(query.page))) {
-      console.log('❌ [TableAssignments] Invalid page parameter:', query.page);
-      throw new BadRequestException('Page must be a positive integer');
+     throw new BadRequestException('Page must be a positive integer');
     }
     
     if (query.limit && (query.limit < 1 || query.limit > 100 || !Number.isInteger(query.limit))) {
-      console.log('❌ [TableAssignments] Invalid limit parameter:', query.limit);
       throw new BadRequestException('Limit must be a positive integer between 1 and 100');
     }
 
@@ -168,13 +161,11 @@ export class TableAssignmentsService {
     if (query.assignedDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(query.assignedDate)) {
-        console.log('❌ [TableAssignments] Invalid date format:', query.assignedDate);
         throw new BadRequestException('Assigned date must be in YYYY-MM-DD format');
       }
     }
 
     // 3. Validate that filtered entities belong to the authenticated user's merchant
-    console.log('🔍 [TableAssignments] Validating entity ownership...');
     
     // Validate shift ownership if filtering by shiftId
     if (query.shiftId) {
@@ -184,20 +175,12 @@ export class TableAssignmentsService {
       });
       
       if (!shift) {
-        console.log('❌ [TableAssignments] Shift not found:', query.shiftId);
         throw new BadRequestException('Shift not found');
       }
       
       if (shift.merchantId !== authenticatedUserMerchantId) {
-        console.log('❌ [TableAssignments] Shift belongs to different merchant:', {
-          shiftId: query.shiftId,
-          shiftMerchantId: shift.merchantId,
-          authenticatedMerchantId: authenticatedUserMerchantId
-        });
         throw new ForbiddenException('Cannot access shifts from different merchants');
       }
-      
-      console.log('✅ [TableAssignments] Shift ownership validated:', query.shiftId);
     }
 
     // Validate table ownership if filtering by tableId
@@ -208,20 +191,12 @@ export class TableAssignmentsService {
       });
       
       if (!table) {
-        console.log('❌ [TableAssignments] Table not found:', query.tableId);
         throw new BadRequestException('Table not found');
       }
       
       if (table.merchant_id !== authenticatedUserMerchantId) {
-        console.log('❌ [TableAssignments] Table belongs to different merchant:', {
-          tableId: query.tableId,
-          tableMerchantId: table.merchant_id,
-          authenticatedMerchantId: authenticatedUserMerchantId
-        });
         throw new ForbiddenException('Cannot access tables from different merchants');
       }
-      
-      console.log('✅ [TableAssignments] Table ownership validated:', query.tableId);
     }
 
     // Validate collaborator ownership if filtering by collaboratorId
@@ -232,42 +207,30 @@ export class TableAssignmentsService {
       });
       
       if (!collaborator) {
-        console.log('❌ [TableAssignments] Collaborator not found:', query.collaboratorId);
         throw new BadRequestException('Collaborator not found');
       }
       
       if (collaborator.merchant_id !== authenticatedUserMerchantId) {
-        console.log('❌ [TableAssignments] Collaborator belongs to different merchant:', {
-          collaboratorId: query.collaboratorId,
-          collaboratorMerchantId: collaborator.merchant_id,
-          authenticatedMerchantId: authenticatedUserMerchantId
-        });
         throw new ForbiddenException('Cannot access collaborators from different merchants');
       }
-      
-      console.log('✅ [TableAssignments] Collaborator ownership validated:', query.collaboratorId);
     }
 
     // 4. Build where conditions
     const whereConditions: any = {};
-    console.log('🔧 [TableAssignments] Building where conditions...');
 
     // Filter by shift ID
     if (query.shiftId) {
       whereConditions.shiftId = query.shiftId;
-      console.log('📅 [TableAssignments] Filtering by shift ID:', query.shiftId);
     }
 
     // Filter by table ID
     if (query.tableId) {
       whereConditions.tableId = query.tableId;
-      console.log('🪑 [TableAssignments] Filtering by table ID:', query.tableId);
     }
 
     // Filter by collaborator ID
     if (query.collaboratorId) {
       whereConditions.collaboratorId = query.collaboratorId;
-      console.log('👤 [TableAssignments] Filtering by collaborator ID:', query.collaboratorId);
     }
 
     // Filter by assigned date
@@ -278,30 +241,21 @@ export class TableAssignmentsService {
       endOfDay.setHours(23, 59, 59, 999);
       
       whereConditions.assignedAt = Between(startOfDay, endOfDay);
-      console.log('📅 [TableAssignments] Filtering by assigned date:', {
-        assignedDate: query.assignedDate,
-        startOfDay: startOfDay.toISOString(),
-        endOfDay: endOfDay.toISOString()
-      });
     }
 
-    console.log('🎯 [TableAssignments] Final where conditions:', JSON.stringify(whereConditions, null, 2));
 
     // 5. Pagination
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
-    console.log('📄 [TableAssignments] Pagination settings:', { page, limit, skip });
 
     // 6. Sorting
     const sortBy = query.sortBy || 'assignedAt';
     const sortOrder = query.sortOrder || 'DESC';
     const orderConditions: any = {};
     orderConditions[sortBy] = sortOrder;
-    console.log('🔄 [TableAssignments] Sorting settings:', { sortBy, sortOrder });
 
     // 7. Get assignments with relations
-    console.log('🔍 [TableAssignments] Executing database query...');
     const startTime = Date.now();
     
     const [assignments, total] = await this.tableAssignmentRepo.findAndCount({
@@ -313,14 +267,8 @@ export class TableAssignmentsService {
     });
 
     const queryTime = Date.now() - startTime;
-    console.log('⏱️ [TableAssignments] Database query completed in', queryTime, 'ms');
-    console.log('📊 [TableAssignments] Raw results:', { 
-      assignmentsCount: assignments.length, 
-      totalCount: total 
-    });
 
     // 8. Filter assignments by merchant (only show assignments from the authenticated user's merchant)
-    console.log('🔍 [TableAssignments] Filtering assignments by merchant...');
     const filteredAssignments = assignments.filter(assignment => {
       const shiftBelongsToMerchant = assignment.shift?.merchantId === authenticatedUserMerchantId;
       const tableBelongsToMerchant = assignment.table?.merchant_id === authenticatedUserMerchantId;
@@ -329,33 +277,14 @@ export class TableAssignmentsService {
       const belongsToMerchant = shiftBelongsToMerchant && tableBelongsToMerchant && collaboratorBelongsToMerchant;
       
       if (!belongsToMerchant) {
-        console.log('⚠️ [TableAssignments] Assignment filtered out - merchant mismatch:', {
-          assignmentId: assignment.id,
-          shiftMerchantId: assignment.shift?.merchantId,
-          tableMerchantId: assignment.table?.merchant_id,
-          collaboratorMerchantId: assignment.collaborator?.merchant_id,
-          authenticatedMerchantId: authenticatedUserMerchantId,
-          reasons: {
-            shiftMatch: shiftBelongsToMerchant,
-            tableMatch: tableBelongsToMerchant,
-            collaboratorMatch: collaboratorBelongsToMerchant
-          }
-        });
+        throw new ForbiddenException('Cannot access table assignments from different merchants');
       }
       return belongsToMerchant;
     });
 
-    console.log('✅ [TableAssignments] Filtered assignments count:', filteredAssignments.length);
 
     // 9. Format response
-    console.log('🎨 [TableAssignments] Formatting response data...');
     const formattedAssignments = filteredAssignments.map((assignment, index) => {
-      console.log(`📝 [TableAssignments] Formatting assignment ${index + 1}/${filteredAssignments.length}:`, {
-        id: assignment.id,
-        shiftId: assignment.shiftId,
-        tableId: assignment.tableId,
-        collaboratorId: assignment.collaboratorId
-      });
       
       return this.formatTableAssignmentResponse(
         assignment, 
@@ -378,8 +307,6 @@ export class TableAssignmentsService {
       hasPrev
     };
 
-    console.log('📊 [TableAssignments] Final pagination meta:', paginationMeta);
-    console.log('✅ [TableAssignments] findAll operation completed successfully');
 
     return {
       statusCode: 200,

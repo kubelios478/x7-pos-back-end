@@ -3,18 +3,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { CashDrawer } from '../../cash-drawers/entities/cash-drawer.entity';
 import { Collaborator } from '../../collaborators/entities/collaborator.entity';
 import { Order } from '../../orders/entities/order.entity';
-
-export enum CashTransactionType {
-  SALE = 'sale',
-  REFUND = 'refund',
-  WITHDRAWAL = 'withdrawal',
-  DEPOSIT = 'deposit',
-}
-
-export enum CashTransactionStatus {
-  ACTIVE = 'active',
-  DELETED = 'deleted',
-}
+import { CashTransactionType } from '../constants/cash-transaction-type.enum';
+import { CashTransactionStatus } from '../constants/cash-transaction-status.enum';
 
 @Entity('cash_transactions')
 export class CashTransaction {
@@ -26,9 +16,9 @@ export class CashTransaction {
   @Column({ type: 'int', name: 'cash_drawer_id' })
   cash_drawer_id: number;
 
-  @ApiProperty({ example: 200, description: 'Order ID associated to the transaction' })
-  @Column({ type: 'int', name: 'order_id' })
-  order_id: number;
+  @ApiProperty({ example: 200, description: 'Order ID associated to the transaction', required: false, nullable: true })
+  @Column({ type: 'int', name: 'order_id', nullable: true })
+  order_id: number | null;
 
   @ApiProperty({ example: 'sale', enum: CashTransactionType, description: 'Transaction type' })
   @Column({ type: 'enum', enum: CashTransactionType })

@@ -10,7 +10,7 @@ import { Repository, EntityManager } from 'typeorm';
 import { Table } from './entities/table.entity';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
-import { TableResponseDto } from './dto/table-response.dto';
+import { TableResponseDto, OneTableResponseDto } from './dto/table-response.dto';
 import { GetTablesQueryDto } from './dto/get-tables-query.dto';
 import { PaginatedTablesResponseDto } from './dto/paginated-tables-response.dto';
 import { Merchant } from '../merchants/entities/merchant.entity';
@@ -28,7 +28,7 @@ export class TablesService {
   async create(
     dto: CreateTableDto,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     // 1. Validate that the authenticated user has merchant_id
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
@@ -87,15 +87,19 @@ export class TablesService {
 
     // 7. Return response with merchant information (without dates)
     return {
-      id: savedTable.id,
-      merchant_id: savedTable.merchant_id,
-      number: savedTable.number,
-      capacity: savedTable.capacity,
-      status: savedTable.status,
-      location: savedTable.location,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name,
+      statusCode: 201,
+      message: 'Table created successfully',
+      data: {
+        id: savedTable.id,
+        merchant_id: savedTable.merchant_id,
+        number: savedTable.number,
+        capacity: savedTable.capacity,
+        status: savedTable.status,
+        location: savedTable.location,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name,
+        },
       },
     };
   }
@@ -190,31 +194,27 @@ export class TablesService {
     }));
 
     return {
+      statusCode: 200,
+      message: 'Tables retrieved successfully',
       data,
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNext,
-      hasPrev,
+      paginationMeta: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext,
+        hasPrev,
+      },
     };
   }
 
   async findOne(
     id: number,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
-    console.log('=== TABLE GET ONE DEBUG ===');
-    console.log('Table ID to get:', id);
-    console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
-    console.log(
-      'Type of authenticatedUserMerchantId:',
-      typeof authenticatedUserMerchantId,
-    );
-
+  ): Promise<OneTableResponseDto> {
+    
     // 1. Validate that the authenticated user has merchant_id
     if (!authenticatedUserMerchantId) {
-      console.log('❌ VALIDATION FAILED: No merchant_id in authenticated user');
       throw new ForbiddenException(
         'User must be associated with a merchant to view tables',
       );
@@ -222,127 +222,66 @@ export class TablesService {
 
     // 2. Validate that the ID is valid
     if (!id || id <= 0) {
-      console.log('❌ VALIDATION FAILED: Invalid table ID');
       throw new BadRequestException('Invalid table ID');
     }
 
     // 3. Search for the table
-    console.log('🔍 Searching for table with ID:', id);
     const table = await this.tableRepo.findOne({
       where: { id },
       relations: ['merchant'],
     });
 
     if (!table) {
-      console.log('❌ VALIDATION FAILED: Table not found');
       throw new NotFoundException(`Table ${id} not found`);
     }
 
     // 4. Validate that the user can only see tables from their own merchant
-    console.log('🔍 COMPARISON DEBUG:');
-    console.log('table.merchant:', table.merchant);
-    console.log('table.merchant.id:', table.merchant?.id);
-    console.log('table.merchant.id type:', typeof table.merchant?.id);
-    console.log('authenticatedUserMerchantId:', authenticatedUserMerchantId);
-    console.log(
-      'authenticatedUserMerchantId type:',
-      typeof authenticatedUserMerchantId,
-    );
-    console.log(
-      'Are they equal?',
-      table.merchant?.id === authenticatedUserMerchantId,
-    );
-    console.log(
-      'Are they equal (Number)?',
-      Number(table.merchant?.id) === Number(authenticatedUserMerchantId),
-    );
-    console.log('table.merchant.id:', table.merchant.id);
     if (table.merchant.id !== authenticatedUserMerchantId) {
-      console.log(
-        '❌ VALIDATION FAILED: User trying to view table from different merchant',
-      );
-      console.log('Table belongs to merchant ID:', table.merchant.id);
-      console.log('User belongs to merchant ID:', authenticatedUserMerchantId);
       throw new ForbiddenException(
         'You can only view tables from your own merchant',
       );
     }
 
-    console.log('✅ Table found:', {
-      table,
-    });
-    console.log('Table merchant value:', table.merchant);
-    console.log('Table merchant type:', typeof table.merchant);
-    console.log('Table merchant.id value:', table.merchant?.id);
-    console.log('Table merchant.id type:', typeof table.merchant?.id);
-    console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
-    console.log(
-      'Authenticated user merchant_id type:',
-      typeof authenticatedUserMerchantId,
-    );
-    console.log(
-      'Are they equal?',
-      table.merchant?.id === authenticatedUserMerchantId,
-    );
-    console.log(
-      'Are they equal (Number)?',
-      Number(table.merchant?.id) === Number(authenticatedUserMerchantId),
-    );
+    
 
     // 4. Validate that the merchant exists (we already know that table.merchant = authenticatedUserMerchantId)
-    console.log(
-      '🔍 Searching for merchant with ID:',
-      authenticatedUserMerchantId,
-    );
     const merchant = await this.merchantRepo.findOne({
       where: { id: authenticatedUserMerchantId },
     });
 
     if (!merchant) {
-      console.log('❌ VALIDATION FAILED: Merchant not found');
       throw new NotFoundException(
         `Merchant with ID ${authenticatedUserMerchantId} not found`,
       );
     }
 
-    console.log('✅ Merchant found:', {
-      id: merchant.id,
-      name: merchant.name,
-    });
-
     // 7. Return response with merchant information (without dates)
-    const response = {
-      id: table.id,
-      merchant_id: table.merchant_id,
-      number: table.number,
-      capacity: table.capacity,
-      status: table.status,
-      location: table.location,
-      merchant: {
-        id: table.merchant.id,
-        name: table.merchant.name,
+    return {
+      statusCode: 200,
+      message: 'Table retrieved successfully',
+      data: {
+        id: table.id,
+        merchant_id: table.merchant_id,
+        number: table.number,
+        capacity: table.capacity,
+        status: table.status,
+        location: table.location,
+        merchant: {
+          id: table.merchant.id,
+          name: table.merchant.name,
+        },
       },
     };
-
-    console.log('✅ SUCCESS: Returning table response:', response);
-    return response;
   }
 
   async update(
     id: number,
     dto: UpdateTableDto,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
-    console.log('=== TABLE UPDATE DEBUG ===');
-    console.log('Table ID to update:', id);
-    console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
-    console.log('Update DTO:', dto);
-    console.log('DTO type:', typeof dto);
-    console.log('DTO keys:', dto ? Object.keys(dto) : 'N/A');
-
+  ): Promise<OneTableResponseDto> {
+    
     // 0. Validate that the DTO exists and is not empty
     if (!dto || (typeof dto === 'object' && Object.keys(dto).length === 0)) {
-      console.log('❌ VALIDATION FAILED: DTO is undefined or empty');
       throw new BadRequestException('Update data is required');
     }
 
@@ -351,7 +290,6 @@ export class TablesService {
     const hasValidField = validFields.some((field) => dto[field] !== undefined);
 
     if (!hasValidField) {
-      console.log('❌ VALIDATION FAILED: No valid fields provided');
       throw new BadRequestException(
         'At least one field must be provided for update',
       );
@@ -359,7 +297,6 @@ export class TablesService {
 
     // 1. Validate that the authenticated user has merchant_id (User permissions)
     if (!authenticatedUserMerchantId) {
-      console.log('❌ VALIDATION FAILED: No merchant_id in authenticated user');
       throw new ForbiddenException(
         'User must be associated with a merchant to update tables',
       );
@@ -367,39 +304,22 @@ export class TablesService {
 
     // 2. Validate that the ID is valid (Validate that the id parameter is valid)
     if (!id || id <= 0 || !Number.isInteger(id)) {
-      console.log('❌ VALIDATION FAILED: Invalid table ID');
       throw new BadRequestException('Invalid table ID');
     }
 
     // 3. Search for the existing table (Validate the existence of the record)
-    console.log('🔍 Searching for table with ID:', id);
     const table = await this.tableRepo.findOne({
       where: { id },
       relations: ['merchant'],
     });
 
     if (!table) {
-      console.log('❌ VALIDATION FAILED: Table not found');
       throw new NotFoundException(`Table ${id} not found`);
     }
 
-    console.log('✅ Table found:', {
-      id: table.id,
-      number: table.number,
-      merchant_id: table.merchant_id,
-      merchant: table.merchant,
-      status: table.status,
-      capacity: table.capacity,
-      location: table.location,
-    });
 
     // 4. Validate that the user can only modify tables of their own merchant (User permissions)
     if (table.merchant.id !== authenticatedUserMerchantId) {
-      console.log(
-        '❌ VALIDATION FAILED: User trying to update table from different merchant',
-      );
-      console.log('Table belongs to merchant:', table.merchant.id);
-      console.log('User belongs to merchant:', authenticatedUserMerchantId);
       throw new ForbiddenException(
         'You can only update tables from your own merchant',
       );
@@ -411,7 +331,6 @@ export class TablesService {
     // 6. Validate fields and types (Validate allowed fields and types)
     if (dto.capacity !== undefined) {
       if (!Number.isInteger(dto.capacity) || dto.capacity <= 0) {
-        console.log('❌ VALIDATION FAILED: Invalid capacity value');
         throw new BadRequestException(
           'Table capacity must be a positive integer',
         );
@@ -420,21 +339,18 @@ export class TablesService {
 
     if (dto.status !== undefined) {
       if (typeof dto.status !== 'string' || dto.status.trim() === '') {
-        console.log('❌ VALIDATION FAILED: Invalid status value');
         throw new BadRequestException('Status must be a non-empty string');
       }
     }
 
     if (dto.location !== undefined) {
       if (typeof dto.location !== 'string' || dto.location.trim() === '') {
-        console.log('❌ VALIDATION FAILED: Invalid location value');
         throw new BadRequestException('Location must be a non-empty string');
       }
     }
 
     if (dto.number !== undefined) {
       if (typeof dto.number !== 'string' || dto.number.trim() === '') {
-        console.log('❌ VALIDATION FAILED: Invalid number value');
         throw new BadRequestException(
           'Table number must be a non-empty string',
         );
@@ -443,7 +359,6 @@ export class TablesService {
 
     // 7. Validate uniqueness if updating the number field
     if (dto.number !== undefined && dto.number !== table.number) {
-      console.log('🔍 Checking uniqueness for number:', dto.number);
       const existingTable = await this.tableRepo
         .createQueryBuilder('table')
         .leftJoin('table.merchant', 'merchant')
@@ -454,7 +369,6 @@ export class TablesService {
         .getOne();
 
       if (existingTable && existingTable.id !== id) {
-        console.log('❌ VALIDATION FAILED: Table number already exists');
         throw new ConflictException(
           `Table number '${dto.number}' already exists for your merchant`,
         );
@@ -462,22 +376,16 @@ export class TablesService {
     }
 
     // 8. Validate that the merchant exists (Validate the existence of related entities)
-    console.log('🔍 Validating merchant existence for ID:', table.merchant.id);
     const merchant = await this.merchantRepo.findOne({
       where: { id: table.merchant.id },
     });
     if (!merchant) {
-      console.log('❌ VALIDATION FAILED: Merchant not found');
       throw new NotFoundException(
         `Merchant with ID ${table.merchant.id} not found`,
       );
     }
 
-    console.log('✅ Merchant found:', {
-      id: merchant.id,
-      name: merchant.name,
-    });
-
+    
     // 9. Prepare data for update
     const updateData: Partial<{
       number: string;
@@ -490,11 +398,9 @@ export class TablesService {
     if (dto.status !== undefined) updateData.status = dto.status.trim();
     if (dto.location !== undefined) updateData.location = dto.location.trim();
 
-    console.log('📝 Update data:', updateData);
-
+    
     // 10. Verify that there is at least one field to update
     if (Object.keys(updateData).length === 0) {
-      console.log('❌ VALIDATION FAILED: No fields to update');
       throw new BadRequestException(
         'At least one field must be provided for update',
       );
@@ -504,41 +410,33 @@ export class TablesService {
     Object.assign(table, updateData);
     const updatedTable = await this.tableRepo.save(table);
 
-    console.log('✅ Table updated successfully');
-
+    
     // 12. Return response with merchant information (without dates)
-    const response = {
-      id: updatedTable.id,
-      merchant_id: table.merchant_id, // Use table.merchant_id directly
-      number: updatedTable.number,
-      capacity: updatedTable.capacity,
-      status: updatedTable.status,
-      location: updatedTable.location,
-      merchant: {
-        id: merchant.id,
-        name: merchant.name,
+    return {
+      statusCode: 200,
+      message: 'Table updated successfully',
+      data: {
+        id: updatedTable.id,
+        merchant_id: table.merchant_id, // Use table.merchant_id directly
+        number: updatedTable.number,
+        capacity: updatedTable.capacity,
+        status: updatedTable.status,
+        location: updatedTable.location,
+        merchant: {
+          id: merchant.id,
+          name: merchant.name,
+        },
       },
     };
-
-    console.log('✅ SUCCESS: Returning updated table response:', response);
-    return response;
   }
 
   async remove(
     id: number,
     authenticatedUserMerchantId: number,
-  ): Promise<TableResponseDto> {
-    console.log('=== TABLE DELETE DEBUG ===');
-    console.log('Table ID to delete:', id);
-    console.log('Authenticated user merchant_id:', authenticatedUserMerchantId);
-    console.log(
-      'Type of authenticatedUserMerchantId:',
-      typeof authenticatedUserMerchantId,
-    );
-
+  ): Promise<OneTableResponseDto> {
+    
     // 1. Validate that the authenticated user has merchant_id
     if (!authenticatedUserMerchantId) {
-      console.log('❌ VALIDATION FAILED: No merchant_id in authenticated user');
       throw new ForbiddenException(
         'User must be associated with a merchant to delete tables',
       );
@@ -546,65 +444,27 @@ export class TablesService {
 
     // 2. Validate that the ID is valid
     if (!id || id <= 0) {
-      console.log('❌ VALIDATION FAILED: Invalid table ID');
       throw new BadRequestException('Invalid table ID');
     }
 
     // 3. Find the table
-    console.log('🔍 Searching for table with ID:', id);
     const table = await this.tableRepo.findOne({
       where: { id },
       relations: ['merchant'],
     });
 
     if (!table) {
-      console.log('❌ VALIDATION FAILED: Table not found');
       throw new NotFoundException(`Table ${id} not found`);
     }
 
     // 4. Validate that the user can only delete tables of their own merchant
     if (table.merchant.id !== authenticatedUserMerchantId) {
-      console.log(
-        '❌ VALIDATION FAILED: User trying to delete table from different merchant',
-      );
-      console.log('Table belongs to merchant:', table.merchant.id);
-      console.log('User belongs to merchant:', authenticatedUserMerchantId);
       throw new ForbiddenException(
         'You can only delete tables from your own merchant',
       );
     }
 
-    console.log('✅ DELETE: Table found:', {
-      table,
-    });
-    console.log('DELETE: Table merchant_id value:', table.merchant);
-    console.log('DELETE: Table merchant_id type:', typeof table.merchant);
-    console.log('DELETE: Table merchant_id.id value:', table.merchant?.id);
-    console.log(
-      'DELETE: Table merchant_id.id type:',
-      typeof table.merchant?.id,
-    );
-    console.log(
-      'DELETE: Authenticated user merchant_id:',
-      authenticatedUserMerchantId,
-    );
-    console.log(
-      'DELETE: Authenticated user merchant_id type:',
-      typeof authenticatedUserMerchantId,
-    );
-    console.log(
-      'DELETE: Are they equal?',
-      table.merchant?.id === authenticatedUserMerchantId,
-    );
-    console.log(
-      'DELETE: Are they equal (Number)?',
-      Number(table.merchant?.id) === Number(authenticatedUserMerchantId),
-    );
-
-    console.log(
-      '✅ VALIDATION PASSED: User deleting table from their own merchant',
-    );
-
+      
     // 6. Validate that the table is not already deleted
     if (table.status === 'deleted') {
       throw new ConflictException('Table is already deleted');
@@ -633,15 +493,19 @@ export class TablesService {
 
     // 10. Return response with merchant information (without dates)
     return {
-      id: updatedTable.id,
-      merchant_id: table.merchant_id,
-      number: updatedTable.number,
-      capacity: updatedTable.capacity,
-      status: updatedTable.status,
-      location: updatedTable.location,
-      merchant: {
-        id: table.merchant.id,
-        name: table.merchant.name,
+      statusCode: 200,
+      message: 'Table deleted successfully',
+      data: {
+        id: updatedTable.id,
+        merchant_id: table.merchant_id,
+        number: updatedTable.number,
+        capacity: updatedTable.capacity,
+        status: updatedTable.status,
+        location: updatedTable.location,
+        merchant: {
+          id: table.merchant.id,
+          name: table.merchant.name,
+        },
       },
     };
   }

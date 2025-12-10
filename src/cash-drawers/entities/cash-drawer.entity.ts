@@ -61,6 +61,13 @@ export class CashDrawer {
   opening_balance: number;
 
   @ApiProperty({
+    example: 125.50,
+    description: 'Current balance amount in the cash drawer',
+  })
+  @Column({ type: 'decimal', precision: 12, scale: 2 })
+  current_balance: number;
+
+  @ApiProperty({
     example: 150.50,
     description: 'Closing balance amount in the cash drawer',
     nullable: true,
@@ -110,8 +117,8 @@ export class CashDrawer {
     description: 'Current status of the cash drawer',
   })
   @Column({
-    type: 'enum',
-    enum: CashDrawerStatus,
+    type: 'varchar',
+    length: 50,
     default: CashDrawerStatus.OPEN,
   })
   status: CashDrawerStatus;

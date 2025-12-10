@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from '../../common/dtos/success-response.dto';
 import { ShiftRole } from '../constants/shift-role.enum';
 import { CollaboratorStatus } from '../constants/collaborator-status.enum';
 
@@ -54,4 +55,9 @@ export class CollaboratorResponseDto {
     firstname: string;
     lastname: string;
   };
+}
+
+export class OneCollaboratorResponseDto extends SuccessResponse {
+  @ApiProperty({ type: CollaboratorResponseDto })
+  data: CollaboratorResponseDto;
 }

@@ -33,7 +33,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { Collaborator } from './entities/collaborator.entity';
-import { CollaboratorResponseDto } from './dto/collaborator-response.dto';
+import { CollaboratorResponseDto, OneCollaboratorResponseDto } from './dto/collaborator-response.dto';
 import { GetCollaboratorsQueryDto } from './dto/get-collaborators-query.dto';
 import { PaginatedCollaboratorsResponseDto } from './dto/paginated-collaborators-response.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -66,7 +66,7 @@ export class CollaboratorsController {
   })
   @ApiCreatedResponse({
     description: 'Collaborator created successfully',
-    type: CollaboratorResponseDto,
+    type: OneCollaboratorResponseDto,
     schema: {
       example: {
         id: 1,
@@ -192,7 +192,7 @@ export class CollaboratorsController {
   async create(
     @Body() dto: CreateCollaboratorDto,
     @Request() req: any,
-  ): Promise<CollaboratorResponseDto> {
+  ): Promise<OneCollaboratorResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     
@@ -346,7 +346,7 @@ export class CollaboratorsController {
   @ApiParam({ name: 'id', type: Number, description: 'Collaborator ID' })
   @ApiOkResponse({ 
     description: 'Collaborator found successfully',
-    type: CollaboratorResponseDto
+    type: OneCollaboratorResponseDto
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden - You can only view collaborators from your own merchant' })
@@ -355,7 +355,7 @@ export class CollaboratorsController {
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any,
-  ): Promise<CollaboratorResponseDto> {
+  ): Promise<OneCollaboratorResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     
@@ -383,7 +383,7 @@ export class CollaboratorsController {
   })
   @ApiOkResponse({ 
     description: 'Collaborator updated successfully', 
-    type: CollaboratorResponseDto,
+    type: OneCollaboratorResponseDto,
     schema: {
       example: {
         id: 1,
@@ -503,7 +503,7 @@ export class CollaboratorsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCollaboratorDto,
     @Request() req: any,
-  ): Promise<CollaboratorResponseDto> {
+  ): Promise<OneCollaboratorResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     
@@ -526,7 +526,7 @@ export class CollaboratorsController {
   @ApiParam({ name: 'id', type: Number, description: 'Collaborator ID to delete' })
   @ApiOkResponse({ 
     description: 'Collaborator soft deleted successfully',
-    type: CollaboratorResponseDto
+    type: OneCollaboratorResponseDto
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden - You can only delete collaborators from your own merchant' })
@@ -536,7 +536,7 @@ export class CollaboratorsController {
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any,
-  ): Promise<CollaboratorResponseDto> {
+  ): Promise<OneCollaboratorResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     

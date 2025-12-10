@@ -17,7 +17,7 @@ import {
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
-import { TableResponseDto } from './dto/table-response.dto';
+import { TableResponseDto, OneTableResponseDto } from './dto/table-response.dto';
 import { GetTablesQueryDto } from './dto/get-tables-query.dto';
 import { PaginatedTablesResponseDto } from './dto/paginated-tables-response.dto';
 import {
@@ -66,7 +66,7 @@ export class TablesController {
   })
   @ApiCreatedResponse({
     description: 'Table created successfully',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -159,7 +159,7 @@ export class TablesController {
       }
     }
   })
-  async create(@Body() dto: CreateTableDto, @Request() req: any): Promise<TableResponseDto> {
+  async create(@Body() dto: CreateTableDto, @Request() req: any): Promise<OneTableResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     
@@ -353,7 +353,7 @@ export class TablesController {
   })
   @ApiOkResponse({ 
     description: 'Table found successfully',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -424,24 +424,16 @@ export class TablesController {
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any
-  ): Promise<TableResponseDto> {
-    console.log('=== CONTROLLER GET ONE DEBUG ===');
-    console.log('Request user object:', JSON.stringify(req.user, null, 2));
-    console.log('req.user?.merchant:', req.user?.merchant);
-    console.log('req.user?.merchant?.id:', req.user?.merchant?.id);
+  ): Promise<OneTableResponseDto> {
     
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
-    console.log('Extracted merchant_id:', authenticatedUserMerchantId);
-    console.log('Type of extracted merchant_id:', typeof authenticatedUserMerchantId);
 
     // Validar que el usuario tiene merchant_id
     if (!authenticatedUserMerchantId) {
-      console.log('❌ CONTROLLER VALIDATION FAILED: No merchant_id found');
       throw new ForbiddenException('User must be associated with a merchant to view tables');
     }
 
-    console.log('✅ CONTROLLER VALIDATION PASSED: Merchant_id found, calling service');
     return this.tableService.findOne(id, authenticatedUserMerchantId);
   }
 
@@ -465,7 +457,7 @@ export class TablesController {
   })
   @ApiOkResponse({ 
     description: 'Table updated successfully',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -584,7 +576,7 @@ export class TablesController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTableDto,
     @Request() req: any,
-  ): Promise<TableResponseDto> {
+  ): Promise<OneTableResponseDto> {
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     
@@ -616,7 +608,7 @@ export class TablesController {
   })
   @ApiOkResponse({ 
     description: 'Table deleted successfully (soft delete)',
-    type: TableResponseDto,
+    type: OneTableResponseDto,
     schema: {
       example: {
         id: 1,
@@ -710,26 +702,18 @@ export class TablesController {
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any
-  ): Promise<TableResponseDto> {
-    console.log('=== CONTROLLER DELETE DEBUG ===');
-    console.log('Request user object:', JSON.stringify(req.user, null, 2));
-    console.log('req.user?.merchant:', req.user?.merchant);
-    console.log('req.user?.merchant?.id:', req.user?.merchant?.id);
+  ): Promise<OneTableResponseDto> {
 
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
 
-    console.log('Extracted merchant_id:', authenticatedUserMerchantId);
-    console.log('Type of extracted merchant_id:', typeof authenticatedUserMerchantId);
-
+ 
     // Validar que el usuario tiene merchant_id
     if (!authenticatedUserMerchantId) {
-      console.log('❌ CONTROLLER VALIDATION FAILED: No merchant_id found in request');
-      throw new ForbiddenException('User must be associated with a merchant to delete tables');
+     throw new ForbiddenException('User must be associated with a merchant to delete tables');
     }
 
-    console.log('✅ CONTROLLER VALIDATION PASSED: Merchant_id found, calling service');
-
+  
     return this.tableService.remove(id, authenticatedUserMerchantId);
   }
 }
