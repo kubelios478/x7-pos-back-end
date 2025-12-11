@@ -3,6 +3,8 @@ export enum ErrorMessage {
   // 400 Bad Request
   INVALID_INPUT = 'Invalid input data provided',
   INVALID_ID = 'Invalid ID parameter',
+  ITEM_ID_INCORRECT = 'Item ID is incorrect',
+  MOVEMENT_QUANTITY_INVALID = 'Movement quantity must be a positive number',
   INVALID_FORMAT = 'Invalid data format',
   MISSING_REQUIRED_FIELD = 'Required field is missing',
   INVALID_EMAIL_FORMAT = 'Invalid email format',
@@ -60,7 +62,7 @@ export enum ErrorMessage {
   SUPPLIER_NAME_EXISTS = 'Supplier name already exists',
   LOCATION_NAME_EXISTS = 'Location name already exists',
   LOCATION_ADDRESS_EXISTS = 'Location Address already exists',
-  ITEM_NAME_EXISTS = 'Item name already exists',
+  ITEM_EXISTS = 'Item already exists',
   MOVEMENT_NAME_EXISTS = 'Movement name already exists',
   MODIFIER_NAME_EXISTS = 'Modifier name already exists',
   RUT_ALREADY_EXISTS = 'RUT is already registered',
