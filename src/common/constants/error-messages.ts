@@ -48,6 +48,7 @@ export enum ErrorMessage {
   FEATURE_NOT_FOUND = 'Feature not found',
   PLAN_FEATURE_NOT_FOUND = 'Plan Feature not found',
   SUBSCRIPTION_PAYMENT_NOT_FOUND = 'Subscription Payment not found',
+  LOYALTY_PROGRAM_NOT_FOUND = 'Loyalty Program not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',
@@ -67,6 +68,7 @@ export enum ErrorMessage {
   MODIFIER_NAME_EXISTS = 'Modifier name already exists',
   RUT_ALREADY_EXISTS = 'RUT is already registered',
   DUPLICATE_RESOURCE = 'Resource already exists',
+  LOYALTY_PROGRAM_NAME_EXISTS = 'Loyalty Program name already exists',
 
   // 422 Unprocessable Entity
   VALIDATION_FAILED = 'Validation failed',

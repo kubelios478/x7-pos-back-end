@@ -74,6 +74,8 @@ import { PurchaseOrder } from './products-inventory/purchase-order/entities/purc
 import { PurchaseOrderItem } from './products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 import { OnlineMenuModule } from './online-ordering-system/online-menu/online-menu.module';
 import { OnlineMenu } from './online-ordering-system/online-menu/entities/online-menu.entity';
+import { LoyaltyModule } from './loyalty/loyalty.module';
+import { LoyaltyProgram } from './loyalty/loyalty-programs/entities/loyalty-program.entity';
 
 @Module({
   imports: [
@@ -133,6 +135,7 @@ import { OnlineMenu } from './online-ordering-system/online-menu/entities/online
           KitchenStation,
           OnlineStore,
           OnlineMenu,
+          LoyaltyProgram,
         ],
         synchronize: true,
       }),
@@ -175,6 +178,8 @@ import { OnlineMenu } from './online-ordering-system/online-menu/entities/online
     SubscriptionPaymentsModule,
 
     OnlineMenuModule,
+
+    LoyaltyModule,
   ],
 })
 export class AppModule {}
