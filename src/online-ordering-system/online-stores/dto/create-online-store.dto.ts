@@ -14,15 +14,6 @@ export class CreateOnlineStoreDto {
   })
   subdomain: string;
 
-  @ApiPropertyOptional({
-    example: true,
-    description: 'Whether the online store is active',
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-
   @ApiProperty({
     example: 'default',
     description: 'Theme of the online store',

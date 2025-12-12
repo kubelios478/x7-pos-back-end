@@ -20,11 +20,9 @@ export class OnlineStoresService {
   ) {}
 
   async create(createOnlineStoreDto: CreateOnlineStoreDto, authenticatedUserMerchantId: number): Promise<OneOnlineStoreResponseDto> {
-    console.log('Creating online store:', { createOnlineStoreDto, authenticatedUserMerchantId });
 
     // Validate user permissions - must be associated with a merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to create online stores');
     }
 
@@ -34,7 +32,6 @@ export class OnlineStoresService {
     });
 
     if (!merchant) {
-      console.log('Merchant not found:', authenticatedUserMerchantId);
       throw new NotFoundException('Merchant not found');
     }
 
@@ -91,14 +88,13 @@ export class OnlineStoresService {
     const onlineStore = new OnlineStore();
     onlineStore.merchant_id = authenticatedUserMerchantId;
     onlineStore.subdomain = createOnlineStoreDto.subdomain.toLowerCase().trim();
-    onlineStore.is_active = createOnlineStoreDto.isActive !== undefined ? createOnlineStoreDto.isActive : true;
+    onlineStore.is_active = true; // Always set to true when creating
     onlineStore.theme = createOnlineStoreDto.theme.trim();
     onlineStore.currency = createOnlineStoreDto.currency.trim().toUpperCase();
     onlineStore.timezone = createOnlineStoreDto.timezone.trim();
     onlineStore.status = OnlineStoreStatus.ACTIVE;
 
     const savedOnlineStore = await this.onlineStoreRepository.save(onlineStore);
-    console.log('Online store created successfully:', savedOnlineStore.id);
 
     // Fetch the complete online store with relations
     const completeOnlineStore = await this.onlineStoreRepository.findOne({
@@ -118,22 +114,18 @@ export class OnlineStoresService {
   }
 
   async findAll(query: GetOnlineStoreQueryDto, authenticatedUserMerchantId: number): Promise<PaginatedOnlineStoreResponseDto> {
-    console.log('Finding all online stores:', { query, authenticatedUserMerchantId });
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to access online stores');
     }
 
     // Validate pagination parameters
     if (query.page && query.page < 1) {
-      console.log('Invalid page number:', query.page);
       throw new BadRequestException('Page number must be greater than 0');
     }
 
     if (query.limit && (query.limit < 1 || query.limit > 100)) {
-      console.log('Invalid limit:', query.limit);
       throw new BadRequestException('Limit must be between 1 and 100');
     }
 
@@ -141,7 +133,6 @@ export class OnlineStoresService {
     if (query.createdDate) {
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(query.createdDate)) {
-        console.log('Invalid date format:', query.createdDate);
         throw new BadRequestException('Created date must be in YYYY-MM-DD format');
       }
     }
@@ -191,7 +182,6 @@ export class OnlineStoresService {
       orderConditions.created_at = 'DESC';
     }
 
-    console.log('Query conditions:', { whereConditions, orderConditions, skip, limit });
 
     // Execute query
     const [onlineStores, total] = await this.onlineStoreRepository.findAndCount({
@@ -202,7 +192,6 @@ export class OnlineStoresService {
       take: limit,
     });
 
-    console.log('Query results:', { count: onlineStores.length, total });
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
@@ -227,17 +216,14 @@ export class OnlineStoresService {
   }
 
   async findOne(id: number, authenticatedUserMerchantId: number): Promise<OneOnlineStoreResponseDto> {
-    console.log('Finding online store:', { id, authenticatedUserMerchantId });
 
     // Validate ID
-    if (!id || id <= 0) {
-      console.log('Invalid online store ID:', id);
+      if (!id || id <= 0) {
       throw new BadRequestException('Online store ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to access online stores');
     }
 
@@ -252,11 +238,8 @@ export class OnlineStoresService {
     });
 
     if (!onlineStore) {
-      console.log('Online store not found:', id);
       throw new NotFoundException('Online store not found');
     }
-
-    console.log('Online store found successfully:', id);
 
     return {
       statusCode: 200,
@@ -266,17 +249,14 @@ export class OnlineStoresService {
   }
 
   async update(id: number, updateOnlineStoreDto: UpdateOnlineStoreDto, authenticatedUserMerchantId: number): Promise<OneOnlineStoreResponseDto> {
-    console.log('Updating online store:', { id, updateOnlineStoreDto, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid online store ID:', id);
       throw new BadRequestException('Online store ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to update online stores');
     }
 
@@ -291,7 +271,6 @@ export class OnlineStoresService {
     });
 
     if (!existingOnlineStore) {
-      console.log('Online store not found:', id);
       throw new NotFoundException('Online store not found');
     }
 
@@ -359,7 +338,6 @@ export class OnlineStoresService {
     if (updateOnlineStoreDto.timezone !== undefined) updateData.timezone = updateOnlineStoreDto.timezone.trim();
 
     await this.onlineStoreRepository.update(id, updateData);
-    console.log('Online store updated successfully:', id);
 
     // Fetch updated online store
     const updatedOnlineStore = await this.onlineStoreRepository.findOne({
@@ -379,17 +357,14 @@ export class OnlineStoresService {
   }
 
   async remove(id: number, authenticatedUserMerchantId: number): Promise<OneOnlineStoreResponseDto> {
-    console.log('Removing online store:', { id, authenticatedUserMerchantId });
 
     // Validate ID
     if (!id || id <= 0) {
-      console.log('Invalid online store ID:', id);
       throw new BadRequestException('Online store ID must be a valid positive number');
     }
 
     // Validate user has merchant
     if (!authenticatedUserMerchantId) {
-      console.log('User does not have merchant ID');
       throw new ForbiddenException('You must be associated with a merchant to delete online stores');
     }
 
@@ -404,7 +379,6 @@ export class OnlineStoresService {
     });
 
     if (!existingOnlineStore) {
-      console.log('Online store not found:', id);
       throw new NotFoundException('Online store not found');
     }
 
@@ -416,7 +390,6 @@ export class OnlineStoresService {
     // Perform logical deletion
     existingOnlineStore.status = OnlineStoreStatus.DELETED;
     await this.onlineStoreRepository.save(existingOnlineStore);
-    console.log('Online store deleted successfully (logical deletion):', id);
 
     return {
       statusCode: 200,

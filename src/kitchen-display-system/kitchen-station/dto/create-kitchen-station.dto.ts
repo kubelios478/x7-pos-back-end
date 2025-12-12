@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsNumber, IsBoolean, IsOptional, MaxLength, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsNumber, IsOptional, MaxLength, Min } from 'class-validator';
 import { KitchenStationType } from '../constants/kitchen-station-type.enum';
 import { KitchenDisplayMode } from '../constants/kitchen-display-mode.enum';
 
@@ -48,13 +48,4 @@ export class CreateKitchenStationDto {
   @IsString()
   @MaxLength(100)
   printerName?: string;
-
-  @ApiPropertyOptional({
-    example: true,
-    description: 'Whether the kitchen station is active',
-    default: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
 }

@@ -31,9 +31,7 @@ export class OrdersService {
   ) {}
 
   async create(dto: CreateOrderDto, authenticatedUserMerchantId: number): Promise<OneOrderResponseDto> {
-    console.log('=== OrdersService.create ===');
-    console.log('DTO:', JSON.stringify(dto, null, 2));
-    console.log('Authenticated user merchant ID:', authenticatedUserMerchantId);
+
 
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
@@ -111,7 +109,6 @@ export class OrdersService {
 
     const saved = await this.orderRepo.save(order);
 
-    console.log('Order created successfully:', saved.id);
 
     return {
       statusCode: 201,
@@ -121,9 +118,7 @@ export class OrdersService {
   }
 
   async findAll(query: GetOrdersQueryDto, authenticatedUserMerchantId: number): Promise<PaginatedOrdersResponseDto> {
-    console.log('=== OrdersService.findAll ===');
-    console.log('Query:', JSON.stringify(query, null, 2));
-    console.log('Authenticated user merchant ID:', authenticatedUserMerchantId);
+
 
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
@@ -222,8 +217,6 @@ export class OrdersService {
       order.created_at = 'DESC';
     }
 
-    console.log('Where clause:', JSON.stringify(where, null, 2));
-    console.log('Order clause:', JSON.stringify(order, null, 2));
 
     const [rows, total] = await this.orderRepo.findAndCount({
       where,
@@ -232,7 +225,6 @@ export class OrdersService {
       take: limit,
     });
 
-    console.log(`Found ${total} orders, returning ${rows.length} on page ${page}`);
 
     return {
       statusCode: 200,

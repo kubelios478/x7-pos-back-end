@@ -425,23 +425,15 @@ export class TablesController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any
   ): Promise<OneTableResponseDto> {
-    console.log('=== CONTROLLER GET ONE DEBUG ===');
-    console.log('Request user object:', JSON.stringify(req.user, null, 2));
-    console.log('req.user?.merchant:', req.user?.merchant);
-    console.log('req.user?.merchant?.id:', req.user?.merchant?.id);
     
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
-    console.log('Extracted merchant_id:', authenticatedUserMerchantId);
-    console.log('Type of extracted merchant_id:', typeof authenticatedUserMerchantId);
 
     // Validar que el usuario tiene merchant_id
     if (!authenticatedUserMerchantId) {
-      console.log('❌ CONTROLLER VALIDATION FAILED: No merchant_id found');
       throw new ForbiddenException('User must be associated with a merchant to view tables');
     }
 
-    console.log('✅ CONTROLLER VALIDATION PASSED: Merchant_id found, calling service');
     return this.tableService.findOne(id, authenticatedUserMerchantId);
   }
 
@@ -711,25 +703,17 @@ export class TablesController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req: any
   ): Promise<OneTableResponseDto> {
-    console.log('=== CONTROLLER DELETE DEBUG ===');
-    console.log('Request user object:', JSON.stringify(req.user, null, 2));
-    console.log('req.user?.merchant:', req.user?.merchant);
-    console.log('req.user?.merchant?.id:', req.user?.merchant?.id);
 
     // Obtener el merchant_id del usuario autenticado
     const authenticatedUserMerchantId = req.user?.merchant?.id;
 
-    console.log('Extracted merchant_id:', authenticatedUserMerchantId);
-    console.log('Type of extracted merchant_id:', typeof authenticatedUserMerchantId);
-
+ 
     // Validar que el usuario tiene merchant_id
     if (!authenticatedUserMerchantId) {
-      console.log('❌ CONTROLLER VALIDATION FAILED: No merchant_id found in request');
-      throw new ForbiddenException('User must be associated with a merchant to delete tables');
+     throw new ForbiddenException('User must be associated with a merchant to delete tables');
     }
 
-    console.log('✅ CONTROLLER VALIDATION PASSED: Merchant_id found, calling service');
-
+  
     return this.tableService.remove(id, authenticatedUserMerchantId);
   }
 }
