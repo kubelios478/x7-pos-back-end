@@ -72,6 +72,9 @@ import { PurchaseOrderModule } from './products-inventory/purchase-order/purchas
 import { PurchaseOrderItemModule } from './products-inventory/purchase-order-item/purchase-order-item.module';
 import { PurchaseOrder } from './products-inventory/purchase-order/entities/purchase-order.entity';
 import { PurchaseOrderItem } from './products-inventory/purchase-order-item/entities/purchase-order-item.entity';
+import { QrCodeModule } from './qr-code/qr-code.module';
+import { QrMenuModule } from './qr-code/qr-menu/qr-menu.module';
+import { QRMenu } from './qr-code/qr-menu/entity/qr-menu.entity';
 
 @Module({
   imports: [
@@ -130,6 +133,7 @@ import { PurchaseOrderItem } from './products-inventory/purchase-order-item/enti
           OrderItem,
           KitchenStation,
           OnlineStore,
+          QRMenu,
         ],
         synchronize: true,
       }),
@@ -170,6 +174,10 @@ import { PurchaseOrderItem } from './products-inventory/purchase-order-item/enti
     PlanFeaturesModule,
 
     SubscriptionPaymentsModule,
+
+    QrCodeModule,
+
+    QrMenuModule,
   ],
 })
 export class AppModule {}
