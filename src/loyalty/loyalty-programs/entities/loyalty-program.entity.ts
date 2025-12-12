@@ -6,9 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../../merchants/entities/merchant.entity'; // Assuming this path
+import { LoyaltyTier } from '../../loyalty-tier/entities/loyalty-tier.entity'; // Added LoyaltyTier import
 
 @Entity('loyalty_programs')
 export class LoyaltyProgram {
@@ -75,4 +77,7 @@ export class LoyaltyProgram {
   })
   @UpdateDateColumn()
   updated_at: Date;
+
+  @OneToMany(() => LoyaltyTier, (loyaltyTier) => loyaltyTier.loyaltyProgram)
+  loyaltyTiers: LoyaltyTier[];
 }

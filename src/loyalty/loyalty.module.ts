@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { LoyaltyService } from './loyalty.service';
 import { LoyaltyController } from './loyalty.controller';
 import { LoyaltyProgramsModule } from './loyalty-programs/loyalty-programs.module';
+import { LoyaltyTierModule } from './loyalty-tier/loyalty-tier.module';
 
 @Module({
   controllers: [LoyaltyController],
   providers: [LoyaltyService],
-  imports: [LoyaltyProgramsModule],
+  imports: [LoyaltyProgramsModule, LoyaltyTierModule],
 })
 export class LoyaltyModule {}
