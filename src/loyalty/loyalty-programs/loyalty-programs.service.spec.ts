@@ -380,7 +380,7 @@ describe('LoyaltyProgramsService', () => {
         name: mockUpdateDto.name,
         description: mockUpdateDto.description,
       });
-      expect(result.statusCode).toBe(200);
+      expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Loyalty Program Updated successfully');
       expect(result.data.name).toBe(updatedProgram.name);
     });
@@ -506,7 +506,7 @@ describe('LoyaltyProgramsService', () => {
       });
       expect(programToDelete.is_active).toBe(false);
       expect(loyaltyProgramRepo.save).toHaveBeenCalledWith(programToDelete);
-      expect(result.statusCode).toBe(200);
+      expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Loyalty Program Deleted successfully');
       expect(result.data.is_active).toBe(false);
     });

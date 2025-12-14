@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
-  UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { LoyaltyProgram } from '../../loyalty-programs/entities/loyalty-program.entity';
@@ -79,11 +78,4 @@ export class LoyaltyTier {
   })
   @CreateDateColumn()
   created_at: Date;
-
-  @ApiProperty({
-    example: '2023-01-01T12:00:00Z',
-    description: 'Timestamp of when the loyalty tier was last updated',
-  })
-  @UpdateDateColumn()
-  updated_at: Date;
 }

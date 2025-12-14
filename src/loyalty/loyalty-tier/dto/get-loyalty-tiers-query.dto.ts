@@ -11,7 +11,7 @@ import {
 import { Type } from 'class-transformer';
 import { LoyaltyTierBenefit } from '../constants/loyalty-tier-benefit.enum';
 
-export class GetLoyaltyTiersDto {
+export class GetLoyaltyTiersQueryDto {
   @ApiPropertyOptional({
     description: 'Filter by loyalty program ID',
     type: Number,

@@ -9,6 +9,7 @@ export enum ErrorMessage {
   MISSING_REQUIRED_FIELD = 'Required field is missing',
   INVALID_EMAIL_FORMAT = 'Invalid email format',
   INVALID_PASSWORD_FORMAT = 'Password must be at least 8 characters long',
+  LOYALTY_PROGRAM_ID_CANNOT_BE_MODIFIED = 'Loyalty Program ID cannot be modified',
 
   // 401 Unauthorized
   UNAUTHORIZED = 'Authentication required',

@@ -39,7 +39,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import { GetLoyaltyTiersDto } from './dto/get-loyalty-tiers-query.dto';
+import { GetLoyaltyTiersQueryDto } from './dto/get-loyalty-tiers-query.dto';
 import { AllPaginatedLoyaltyTierDto } from './dto/all-paginated-loyalty-tier.dto';
 
 @ApiExtraModels(ErrorResponse)
@@ -107,7 +107,7 @@ export class LoyaltyTierController {
   })
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() query: GetLoyaltyTiersDto,
+    @Query() query: GetLoyaltyTiersQueryDto,
   ): Promise<AllPaginatedLoyaltyTierDto> {
     const merchantId = user.merchant.id;
     return this.loyaltyTierService.findAll(query, merchantId);

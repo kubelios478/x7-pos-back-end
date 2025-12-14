@@ -77,6 +77,7 @@ import { OnlineMenu } from './online-ordering-system/online-menu/entities/online
 import { LoyaltyModule } from './loyalty/loyalty.module';
 import { LoyaltyProgram } from './loyalty/loyalty-programs/entities/loyalty-program.entity';
 import { LoyaltyTier } from './loyalty/loyalty-tier/entities/loyalty-tier.entity';
+import { LoyaltyCustomer } from './loyalty/loyalty-customer/entities/loyalty-customer.entity';
 
 @Module({
   imports: [
@@ -138,6 +139,7 @@ import { LoyaltyTier } from './loyalty/loyalty-tier/entities/loyalty-tier.entity
           OnlineMenu,
           LoyaltyProgram,
           LoyaltyTier,
+          LoyaltyCustomer,
         ],
         synchronize: true,
       }),

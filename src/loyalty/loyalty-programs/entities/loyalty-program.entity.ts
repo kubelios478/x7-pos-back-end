@@ -11,6 +11,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../../merchants/entities/merchant.entity'; // Assuming this path
 import { LoyaltyTier } from '../../loyalty-tier/entities/loyalty-tier.entity'; // Added LoyaltyTier import
+import { LoyaltyCustomer } from 'src/loyalty/loyalty-customer/entities/loyalty-customer.entity';
 
 @Entity('loyalty_programs')
 export class LoyaltyProgram {
@@ -80,4 +81,10 @@ export class LoyaltyProgram {
 
   @OneToMany(() => LoyaltyTier, (loyaltyTier) => loyaltyTier.loyaltyProgram)
   loyaltyTiers: LoyaltyTier[];
+
+  @OneToMany(
+    () => LoyaltyCustomer,
+    (loyaltyCustomer) => loyaltyCustomer.loyaltyProgram,
+  )
+  loyaltyCustomer: LoyaltyCustomer[];
 }

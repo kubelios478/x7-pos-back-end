@@ -11,7 +11,7 @@ import {
   LoyaltyTierResponseDto,
   OneLoyaltyTierResponse,
 } from './dto/loyalty-tier-response.dto';
-import { GetLoyaltyTiersDto } from './dto/get-loyalty-tiers-query.dto';
+import { GetLoyaltyTiersQueryDto } from './dto/get-loyalty-tiers-query.dto';
 import { AllPaginatedLoyaltyTierDto } from './dto/all-paginated-loyalty-tier.dto';
 
 @Injectable()
@@ -43,6 +43,7 @@ export class LoyaltyTierService {
     const existingLoyaltyTier = await this.loyaltyTierRepo.findOneBy({
       name,
       loyalty_program_id,
+      loyaltyProgram: { merchantId: merchant_id },
       is_active: true,
     });
 
@@ -75,7 +76,7 @@ export class LoyaltyTierService {
   }
 
   async findAll(
-    query: GetLoyaltyTiersDto,
+    query: GetLoyaltyTiersQueryDto,
     merchantId: number,
   ): Promise<AllPaginatedLoyaltyTierDto> {
     const page = query.page || 1;
@@ -139,7 +140,6 @@ export class LoyaltyTierService {
       multiplier: tier.multiplier,
       benefits: tier.benefits,
       created_at: tier.created_at,
-      updated_at: tier.updated_at,
       loyaltyProgram: tier.loyaltyProgram
         ? {
             id: tier.loyaltyProgram.id,
@@ -150,7 +150,7 @@ export class LoyaltyTierService {
 
     return {
       statusCode: 200,
-      message: 'Loyalty tiers retrieved successfully',
+      message: 'Loyalty Tiers retrieved successfully',
       data,
       page,
       limit,
@@ -200,7 +200,6 @@ export class LoyaltyTierService {
       multiplier: loyaltyTier.multiplier,
       benefits: loyaltyTier.benefits,
       created_at: loyaltyTier.created_at,
-      updated_at: loyaltyTier.updated_at,
       loyaltyProgram: loyaltyTier.loyaltyProgram
         ? {
             id: loyaltyTier.loyaltyProgram.id,
@@ -253,14 +252,14 @@ export class LoyaltyTierService {
       ErrorHandler.invalidId('Loyalty Tier ID is incorrect');
     }
 
-    const loyaltyTier = await this.loyaltyTierRepo.findOne({
-      where: {
-        id,
-        is_active: true,
-        loyaltyProgram: { merchantId: merchant_id },
-      },
-      relations: ['loyaltyProgram'],
-    });
+    const queryBuilder = this.loyaltyTierRepo
+      .createQueryBuilder('loyaltyTier')
+      .leftJoinAndSelect('loyaltyTier.loyaltyProgram', 'loyaltyProgram')
+      .where('loyaltyTier.id = :id', { id })
+      .andWhere('loyaltyProgram.merchantId = :merchant_id', { merchant_id })
+      .andWhere('loyaltyTier.is_active = :is_active', { is_active: true });
+
+    const loyaltyTier = await queryBuilder.getOne();
 
     if (!loyaltyTier) {
       ErrorHandler.notFound(ErrorMessage.LOYALTY_TIER_NOT_FOUND);
@@ -268,19 +267,30 @@ export class LoyaltyTierService {
 
     const { name } = updateLoyaltyTierDto;
 
-    if (name !== undefined && name !== loyaltyTier.name) {
+    if (name && name !== loyaltyTier.name) {
       const existingLoyaltyTier = await this.loyaltyTierRepo.findOne({
         where: {
           name,
           loyalty_program_id: loyaltyTier.loyalty_program_id,
           is_active: true,
+          loyaltyProgram: { merchantId: merchant_id },
         },
+        relations: ['loyaltyProgram'],
       });
-      if (existingLoyaltyTier) {
+
+      if (existingLoyaltyTier && existingLoyaltyTier.id !== id) {
         ErrorHandler.exists(ErrorMessage.LOYALTY_TIER_NAME_EXISTS);
       }
     }
 
+    if (
+      updateLoyaltyTierDto.loyalty_program_id &&
+      updateLoyaltyTierDto.loyalty_program_id !== loyaltyTier.loyalty_program_id
+    ) {
+      ErrorHandler.forbidden(
+        ErrorMessage.LOYALTY_PROGRAM_ID_CANNOT_BE_MODIFIED,
+      );
+    }
     Object.assign(loyaltyTier, updateLoyaltyTierDto);
 
     try {

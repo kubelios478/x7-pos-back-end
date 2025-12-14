@@ -51,12 +51,6 @@ export class LoyaltyTierResponseDto {
   created_at: Date;
 
   @ApiProperty({
-    example: '2023-01-01T12:00:00Z',
-    description: 'Timestamp of when the loyalty tier was last updated',
-  })
-  updated_at: Date;
-
-  @ApiProperty({
     type: () => LoyaltyProgramLittleResponseDto,
     description: 'Loyalty program associated with the tier',
     nullable: true,
