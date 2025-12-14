@@ -70,6 +70,9 @@ export class LoyaltyTier {
   @Column({ type: 'simple-json', nullable: true })
   benefits: LoyaltyTierBenefit[];
 
+  @Column({ default: true })
+  is_active: boolean;
+
   @ApiProperty({
     example: '2023-01-01T12:00:00Z',
     description: 'Timestamp of when the loyalty tier was created',

@@ -1,7 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { LoyaltyProgram } from '../../loyalty-programs/entities/loyalty-program.entity';
-import { LoyaltyTierBenefit } from '../constants/loyalty-tier-benefit.enum';
 import { SuccessResponse } from '../../../common/dtos/success-response.dto';
+import { ApiProperty } from '@nestjs/swagger';
+import { LoyaltyProgramLittleResponseDto } from '../../loyalty-programs/dto/loyalty-program-response.dto';
+import { LoyaltyTierBenefit } from '../constants/loyalty-tier-benefit.enum';
 
 export class LoyaltyTierResponseDto {
   @ApiProperty({
@@ -9,18 +9,6 @@ export class LoyaltyTierResponseDto {
     description: 'Unique identifier for the loyalty tier',
   })
   id: number;
-
-  @ApiProperty({
-    example: 1,
-    description: 'Loyalty program ID associated with the tier',
-  })
-  loyalty_program_id: number;
-
-  @ApiProperty({
-    type: () => LoyaltyProgram,
-    description: 'Loyalty program associated with the tier',
-  })
-  loyaltyProgram: LoyaltyProgram;
 
   @ApiProperty({
     example: 'Silver Tier',
@@ -51,7 +39,7 @@ export class LoyaltyTierResponseDto {
     type: [String],
     enum: LoyaltyTierBenefit,
     example: [LoyaltyTierBenefit.DISCOUNT, LoyaltyTierBenefit.FREE_DELIVERY],
-    description: 'Array of benefits for this tier',
+    description: 'JSON array of benefits for this tier',
     nullable: true,
   })
   benefits: LoyaltyTierBenefit[];
@@ -67,6 +55,13 @@ export class LoyaltyTierResponseDto {
     description: 'Timestamp of when the loyalty tier was last updated',
   })
   updated_at: Date;
+
+  @ApiProperty({
+    type: () => LoyaltyProgramLittleResponseDto,
+    description: 'Loyalty program associated with the tier',
+    nullable: true,
+  })
+  loyaltyProgram: LoyaltyProgramLittleResponseDto | null;
 }
 
 export class OneLoyaltyTierResponse extends SuccessResponse {

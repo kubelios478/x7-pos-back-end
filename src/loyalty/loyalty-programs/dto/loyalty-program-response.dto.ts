@@ -60,6 +60,20 @@ export class LoyaltyProgramResponseDto {
   merchant: MerchantLittleResponseDto | null;
 }
 
+export class LoyaltyProgramLittleResponseDto {
+  @ApiProperty({
+    example: 1,
+    description: 'Unique identifier for the loyalty program',
+  })
+  id: number;
+
+  @ApiProperty({
+    example: 'Gold Program',
+    description: 'Name of the loyalty program',
+  })
+  name: string;
+}
+
 export class OneLoyaltyProgramResponse extends SuccessResponse {
   @ApiProperty({
     type: () => LoyaltyProgramResponseDto,
