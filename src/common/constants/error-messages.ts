@@ -48,6 +48,7 @@ export enum ErrorMessage {
   FEATURE_NOT_FOUND = 'Feature not found',
   PLAN_FEATURE_NOT_FOUND = 'Plan Feature not found',
   SUBSCRIPTION_PAYMENT_NOT_FOUND = 'Subscription Payment not found',
+  QR_MENU_NOT_FOUND = 'QR Menu not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',
