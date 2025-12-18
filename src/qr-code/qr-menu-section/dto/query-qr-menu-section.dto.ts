@@ -1,9 +1,9 @@
-//src/qr-code/qr-menu/dto/query-qr-menu.dto.ts
+//src/qr-code/qr-menu-section/dto/query-qr-menu-section.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class QueryQRMenuDto {
+export class QueryQRMenuSectionDto {
   @ApiPropertyOptional({
     description: 'Filter by status',
     enum: ['active', 'inactive', 'deleted'],

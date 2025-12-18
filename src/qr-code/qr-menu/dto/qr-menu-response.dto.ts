@@ -8,10 +8,10 @@ export class QRMenuResponseDto {
   @ApiProperty({ example: 1 })
   id: number;
 
-  @ApiProperty({ example: 'Basic Plan' })
+  @ApiProperty({ example: 'QR Menu Dessert' })
   name: string;
 
-  @ApiProperty({ example: 'Unlimited Acces' })
+  @ApiProperty({ example: 'All kind of dessert' })
   description: string;
 
   @ApiProperty({ example: { id: 1, name: 'Merchant A' } })
