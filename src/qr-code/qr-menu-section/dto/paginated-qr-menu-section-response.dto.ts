@@ -1,14 +1,14 @@
-//src/qr-code/qr-menu/dto/paginated-qr-menu-response.dto.ts
+//src/qr-code/qr-menu-section/dto/paginated-qr-menu-section-response.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import { SuccessResponse } from 'src/common/dtos/success-response.dto';
-import { QRMenuResponseDto } from './qr-menu-response.dto';
+import { QRMenuSectionResponseDto } from './qr-menu-section-response.dto';
 
-export class PaginatedQRMenuResponseDto extends SuccessResponse {
+export class PaginatedQRMenuSectionResponseDto extends SuccessResponse {
   @ApiProperty({
     description: 'List of QR Menus',
-    type: [QRMenuResponseDto],
+    type: [QRMenuSectionResponseDto],
   })
-  data: QRMenuResponseDto[];
+  data: QRMenuSectionResponseDto[];
 
   @ApiProperty({
     description: 'Pagination info',

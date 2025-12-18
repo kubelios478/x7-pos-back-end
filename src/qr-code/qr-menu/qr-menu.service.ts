@@ -7,7 +7,7 @@ import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { CreateQRMenuDto } from './dto/create-qr-menu.dto';
 import { OneQRMenuResponseDto } from './dto/qr-menu-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
-import { QueryQRMenunDto } from './dto/query-qr-menu.dto';
+import { QueryQRMenuDto } from './dto/query-qr-menu.dto';
 import { PaginatedQRMenuResponseDto } from './dto/paginated-qr-menu-response.dto';
 import { UpdateQRMenuDto } from './dto/update-qr-menu.dto';
 
@@ -53,7 +53,7 @@ export class QrMenuService {
       data: savedQRMenu,
     };
   }
-  async findAll(query: QueryQRMenunDto): Promise<PaginatedQRMenuResponseDto> {
+  async findAll(query: QueryQRMenuDto): Promise<PaginatedQRMenuResponseDto> {
     const {
       status,
       page = 1,

@@ -4,7 +4,7 @@ import { IsNotEmpty, IsNumber, IsString, IsIn, IsEnum } from 'class-validator';
 import { QRMenuType } from 'src/qr-code/constants/qr-menu-type.enum';
 
 export class CreateQRMenuDto {
-  @ApiProperty({ example: 'First QR' })
+  @ApiProperty({ example: 'Merchant' })
   @IsNumber()
   @IsNotEmpty()
   merchant: number;
