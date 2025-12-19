@@ -1,14 +1,14 @@
-//src/subscriptions/merchant-subscriptions/dtos/paginated-merchant-subscription.dto.ts
+//src/qr-code/qr-menu-section/dto/paginated-qr-menu-section-response.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import { SuccessResponse } from 'src/common/dtos/success-response.dto';
-import { MerchantSubscriptionSummaryDto } from './merchant-subscription-summary.dto';
+import { QRMenuSectionResponseDto } from './qr-menu-section-response.dto';
 
-export class PaginatedMerchantSuscriptionResponseDto extends SuccessResponse {
+export class PaginatedQRMenuSectionResponseDto extends SuccessResponse {
   @ApiProperty({
-    description: 'List of merchant subscriptions',
-    type: [MerchantSubscriptionSummaryDto],
+    description: 'List of QR Menus',
+    type: [QRMenuSectionResponseDto],
   })
-  data: MerchantSubscriptionSummaryDto[];
+  data: QRMenuSectionResponseDto[];
 
   @ApiProperty({
     description: 'Pagination info',

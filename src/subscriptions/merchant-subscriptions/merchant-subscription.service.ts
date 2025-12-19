@@ -46,7 +46,7 @@ export class MerchantSubscriptionService {
           where: { id: dto.merchantId },
         });
         if (!merchant) {
-          ErrorHandler.merchantSubscriptionNotFound();
+          ErrorHandler.differentMerchant();
         }
       }
       if (dto.planId) {

@@ -53,6 +53,8 @@ export enum ErrorMessage {
   LOYALTY_PROGRAM_NOT_FOUND = 'Loyalty Program not found',
   LOYALTY_TIER_NOT_FOUND = 'Loyalty Tier not found',
   LOYALTY_CUSTOMER_NOT_FOUND = 'Loyalty Customer not found',
+  QR_MENU_NOT_FOUND = 'QR Menu not found',
+  QR_MENU_SECTION_NOT_FOUND = 'QR Menu Section not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',
