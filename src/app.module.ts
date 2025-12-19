@@ -72,6 +72,9 @@ import { PurchaseOrderModule } from './products-inventory/purchase-order/purchas
 import { PurchaseOrderItemModule } from './products-inventory/purchase-order-item/purchase-order-item.module';
 import { PurchaseOrder } from './products-inventory/purchase-order/entities/purchase-order.entity';
 import { PurchaseOrderItem } from './products-inventory/purchase-order-item/entities/purchase-order-item.entity';
+import { QrCodeModule } from './qr-code/qr-code.module';
+import { QrMenuModule } from './qr-code/qr-menu/qr-menu.module';
+import { QRMenu } from './qr-code/qr-menu/entity/qr-menu.entity';
 import { OnlineMenuModule } from './online-ordering-system/online-menu/online-menu.module';
 import { OnlineMenu } from './online-ordering-system/online-menu/entities/online-menu.entity';
 import { OnlineMenuCategoryModule } from './online-ordering-system/online-menu-category/online-menu-category.module';
@@ -82,6 +85,8 @@ import { OnlineOrderModule } from './online-ordering-system/online-order/online-
 import { OnlineOrder } from './online-ordering-system/online-order/entities/online-order.entity';
 import { OnlineOrderItemModule } from './online-ordering-system/online-order-item/online-order-item.module';
 import { OnlineOrderItem } from './online-ordering-system/online-order-item/entities/online-order-item.entity';
+import { QRMenuSection } from './qr-code/qr-menu-section/entity/qr-menu-section.entity';
+import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.module';
 
 @Module({
   imports: [
@@ -140,6 +145,8 @@ import { OnlineOrderItem } from './online-ordering-system/online-order-item/enti
           OrderItem,
           KitchenStation,
           OnlineStore,
+          QRMenu,
+          QRMenuSection,
           OnlineMenu,
           OnlineMenuCategory,
           OnlineMenuItem,
@@ -186,6 +193,9 @@ import { OnlineOrderItem } from './online-ordering-system/online-order-item/enti
 
     SubscriptionPaymentsModule,
 
+    QrCodeModule,
+
+    QrMenuModule,
     OnlineMenuModule,
 
     OnlineMenuCategoryModule,
@@ -195,6 +205,7 @@ import { OnlineOrderItem } from './online-ordering-system/online-order-item/enti
     OnlineOrderModule,
 
     OnlineOrderItemModule,
+    QrMenuSectionModule,
   ],
 })
 export class AppModule {}
