@@ -111,7 +111,8 @@ export class OnlineOrderItemController {
     },
   })
   async create(@Body() createOnlineOrderItemDto: CreateOnlineOrderItemDto, @Request() req: any) {
-    return this.onlineOrderItemService.create(createOnlineOrderItemDto, req.user.merchantId);
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.onlineOrderItemService.create(createOnlineOrderItemDto, authenticatedUserMerchantId);
   }
 
   @Get()
@@ -188,7 +189,8 @@ export class OnlineOrderItemController {
     description: 'Sort order (ASC or DESC)',
   })
   async findAll(@Query() query: GetOnlineOrderItemQueryDto, @Request() req: any) {
-    return this.onlineOrderItemService.findAll(query, req.user.merchantId);
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.onlineOrderItemService.findAll(query, authenticatedUserMerchantId);
   }
 
   @Get(':id')
@@ -227,7 +229,8 @@ export class OnlineOrderItemController {
     example: 1,
   })
   async findOne(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    return this.onlineOrderItemService.findOne(id, req.user.merchantId);
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.onlineOrderItemService.findOne(id, authenticatedUserMerchantId);
   }
 
   @Put(':id')
@@ -298,7 +301,8 @@ export class OnlineOrderItemController {
     @Body() updateOnlineOrderItemDto: UpdateOnlineOrderItemDto,
     @Request() req: any,
   ) {
-    return this.onlineOrderItemService.update(id, updateOnlineOrderItemDto, req.user.merchantId);
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.onlineOrderItemService.update(id, updateOnlineOrderItemDto, authenticatedUserMerchantId);
   }
 
   @Delete(':id')
@@ -342,6 +346,7 @@ export class OnlineOrderItemController {
     example: 1,
   })
   async remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
-    return this.onlineOrderItemService.remove(id, req.user.merchantId);
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.onlineOrderItemService.remove(id, authenticatedUserMerchantId);
   }
 }

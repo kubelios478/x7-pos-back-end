@@ -27,7 +27,9 @@ describe('OnlineOrderItemController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
-    merchantId: 1,
+    merchant: {
+      id: 1,
+    },
   };
 
   const mockRequest = {
@@ -122,7 +124,7 @@ describe('OnlineOrderItemController', () => {
 
       const result = await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchantId);
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
       expect(result).toEqual(mockOnlineOrderItemResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Online order item created successfully');
@@ -136,7 +138,7 @@ describe('OnlineOrderItemController', () => {
       await expect(controller.create(createDto, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchantId);
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
     });
   });
 
@@ -152,7 +154,7 @@ describe('OnlineOrderItemController', () => {
 
       const result = await controller.findAll(query, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchantId);
+      expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
       expect(result).toEqual(mockPaginatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.data).toHaveLength(1);
@@ -166,7 +168,7 @@ describe('OnlineOrderItemController', () => {
       await expect(controller.findAll(query, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchantId);
+      expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
     });
 
     it('should pass query parameters correctly', async () => {
@@ -181,7 +183,7 @@ describe('OnlineOrderItemController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchantId);
+      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
     });
   });
 
@@ -192,7 +194,7 @@ describe('OnlineOrderItemController', () => {
 
       const result = await controller.findOne(1, mockRequest);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchantId);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
       expect(result).toEqual(mockOnlineOrderItemResponse);
       expect(result.statusCode).toBe(201);
       expect(result.data.id).toBe(1);
@@ -206,7 +208,7 @@ describe('OnlineOrderItemController', () => {
       await expect(controller.findOne(1, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchantId);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
     });
   });
 
@@ -232,7 +234,7 @@ describe('OnlineOrderItemController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchantId);
+      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Online order item updated successfully');
@@ -246,7 +248,7 @@ describe('OnlineOrderItemController', () => {
       await expect(controller.update(1, updateDto, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchantId);
+      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
     });
   });
 
@@ -262,7 +264,7 @@ describe('OnlineOrderItemController', () => {
 
       const result = await controller.remove(1, mockRequest);
 
-      expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchantId);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
       expect(result).toEqual(deletedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Online order item deleted successfully');
@@ -276,7 +278,7 @@ describe('OnlineOrderItemController', () => {
       await expect(controller.remove(1, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchantId);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
     });
   });
 });
