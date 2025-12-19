@@ -36,14 +36,17 @@ export class LoyaltyCustomerService {
     const { loyalty_program_id, loyalty_tier_id, customer_id } =
       createLoyaltyCustomerDto;
 
-    const loyaltyProgram = await this.loyaltyProgramRepo.findOneBy({
-      id: loyalty_program_id,
-      merchantId: merchant_id,
-      is_active: true,
+    const loyaltyProgram = await this.loyaltyProgramRepo.findOne({
+      where: {
+        id: loyalty_program_id,
+        merchantId: merchant_id,
+        is_active: true,
+      },
     });
     if (!loyaltyProgram) {
       ErrorHandler.notFound(ErrorMessage.LOYALTY_PROGRAM_NOT_FOUND);
     }
+
     const loyaltyTier = await this.loyaltyTierRepo.findOneBy({
       id: loyalty_tier_id,
       loyaltyProgram: { merchantId: merchant_id },
@@ -324,10 +327,12 @@ export class LoyaltyCustomerService {
       ErrorHandler.notFound(ErrorMessage.LOYALTY_CUSTOMER_NOT_FOUND);
     }
 
-    const loyaltyProgram = await this.loyaltyProgramRepo.findOneBy({
-      id: loyalty_program_id,
-      merchantId: merchant_id,
-      is_active: true,
+    const loyaltyProgram = await this.loyaltyProgramRepo.findOne({
+      where: {
+        id: loyalty_program_id,
+        merchantId: merchant_id,
+        is_active: true,
+      },
     });
     if (!loyaltyProgram) {
       ErrorHandler.notFound(ErrorMessage.LOYALTY_PROGRAM_NOT_FOUND);
