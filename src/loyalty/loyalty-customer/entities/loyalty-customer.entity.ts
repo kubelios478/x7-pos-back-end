@@ -61,13 +61,12 @@ export class LoyaltyCustomer {
     description: 'ID of the loyalty tier the customer belongs to',
     nullable: true,
   })
-  @Column({ type: 'bigint', name: 'tier_id', nullable: true })
-  tierId: number;
+  @Column({ type: 'bigint', name: 'loyalty_tier_id', nullable: true })
+  loyaltyTierId: number;
 
   @ManyToOne(() => LoyaltyTier)
-  @JoinColumn({ name: 'tier_id' })
-  tier: LoyaltyTier;
-
+  @JoinColumn({ name: 'loyalty_tier_id' })
+  loyaltyTier: LoyaltyTier;
   @Column({ default: true })
   is_active: boolean;
 

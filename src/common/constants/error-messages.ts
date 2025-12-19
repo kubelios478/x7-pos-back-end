@@ -29,6 +29,7 @@ export enum ErrorMessage {
   USER_NOT_FOUND = 'User not found',
   COMPANY_NOT_FOUND = 'Company not found',
   MERCHANT_NOT_FOUND = 'Merchant not found',
+  CUSTOMER_NOT_FOUND = 'Customer not found',
   RESOURCE_NOT_FOUND = 'Requested resource not found',
   CATEGORY_NOT_FOUND = 'Category not found',
   PARENT_NOT_FOUND = 'Parent not found',
@@ -51,6 +52,7 @@ export enum ErrorMessage {
   SUBSCRIPTION_PAYMENT_NOT_FOUND = 'Subscription Payment not found',
   LOYALTY_PROGRAM_NOT_FOUND = 'Loyalty Program not found',
   LOYALTY_TIER_NOT_FOUND = 'Loyalty Tier not found',
+  LOYALTY_CUSTOMER_NOT_FOUND = 'Loyalty Customer not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',
@@ -72,6 +74,7 @@ export enum ErrorMessage {
   DUPLICATE_RESOURCE = 'Resource already exists',
   LOYALTY_PROGRAM_NAME_EXISTS = 'Loyalty Program name already exists',
   LOYALTY_TIER_NAME_EXISTS = 'Loyalty Tier name already exists',
+  LOYALTY_CUSTOMER_EXISTS = 'Loyalty Customer already exists',
 
   // 422 Unprocessable Entity
   VALIDATION_FAILED = 'Validation failed',
