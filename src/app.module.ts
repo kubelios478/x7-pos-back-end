@@ -185,8 +185,11 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
     OnlineStoresModule,
     PlanFeaturesModule,
     SubscriptionPaymentsModule,
+    QrCodeModule,
 
+    QrMenuModule,
     OnlineMenuModule,
+    LoyaltyModule,
   ],
 })
 export class AppModule {}
