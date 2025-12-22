@@ -77,6 +77,10 @@ import { QrMenuModule } from './qr-code/qr-menu/qr-menu.module';
 import { QRMenu } from './qr-code/qr-menu/entity/qr-menu.entity';
 import { OnlineMenuModule } from './online-ordering-system/online-menu/online-menu.module';
 import { OnlineMenu } from './online-ordering-system/online-menu/entities/online-menu.entity';
+import { LoyaltyModule } from './loyalty/loyalty.module';
+import { LoyaltyProgram } from './loyalty/loyalty-programs/entities/loyalty-program.entity';
+import { LoyaltyTier } from './loyalty/loyalty-tier/entities/loyalty-tier.entity';
+import { LoyaltyCustomer } from './loyalty/loyalty-customer/entities/loyalty-customer.entity';
 import { OnlineMenuCategoryModule } from './online-ordering-system/online-menu-category/online-menu-category.module';
 import { OnlineMenuCategory } from './online-ordering-system/online-menu-category/entities/online-menu-category.entity';
 import { OnlineMenuItemModule } from './online-ordering-system/online-menu-item/online-menu-item.module';
@@ -148,6 +152,9 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
           QRMenu,
           QRMenuSection,
           OnlineMenu,
+          LoyaltyProgram,
+          LoyaltyTier,
+          LoyaltyCustomer,
           OnlineMenuCategory,
           OnlineMenuItem,
           OnlineOrder,
@@ -188,15 +195,13 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
     OrderItemModule,
     KitchenStationModule,
     OnlineStoresModule,
-
     PlanFeaturesModule,
-
     SubscriptionPaymentsModule,
-
     QrCodeModule,
 
     QrMenuModule,
     OnlineMenuModule,
+    LoyaltyModule,
 
     OnlineMenuCategoryModule,
 
