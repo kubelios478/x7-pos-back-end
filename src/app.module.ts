@@ -77,6 +77,14 @@ import { QrMenuModule } from './qr-code/qr-menu/qr-menu.module';
 import { QRMenu } from './qr-code/qr-menu/entity/qr-menu.entity';
 import { OnlineMenuModule } from './online-ordering-system/online-menu/online-menu.module';
 import { OnlineMenu } from './online-ordering-system/online-menu/entities/online-menu.entity';
+import { OnlineMenuCategoryModule } from './online-ordering-system/online-menu-category/online-menu-category.module';
+import { OnlineMenuCategory } from './online-ordering-system/online-menu-category/entities/online-menu-category.entity';
+import { OnlineMenuItemModule } from './online-ordering-system/online-menu-item/online-menu-item.module';
+import { OnlineMenuItem } from './online-ordering-system/online-menu-item/entities/online-menu-item.entity';
+import { OnlineOrderModule } from './online-ordering-system/online-order/online-order.module';
+import { OnlineOrder } from './online-ordering-system/online-order/entities/online-order.entity';
+import { OnlineOrderItemModule } from './online-ordering-system/online-order-item/online-order-item.module';
+import { OnlineOrderItem } from './online-ordering-system/online-order-item/entities/online-order-item.entity';
 import { QRMenuSection } from './qr-code/qr-menu-section/entity/qr-menu-section.entity';
 import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.module';
 
@@ -140,6 +148,10 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
           QRMenu,
           QRMenuSection,
           OnlineMenu,
+          OnlineMenuCategory,
+          OnlineMenuItem,
+          OnlineOrder,
+          OnlineOrderItem,
         ],
         synchronize: true,
       }),
@@ -185,6 +197,14 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
 
     QrMenuModule,
     OnlineMenuModule,
+
+    OnlineMenuCategoryModule,
+
+    OnlineMenuItemModule,
+
+    OnlineOrderModule,
+
+    OnlineOrderItemModule,
     QrMenuSectionModule,
   ],
 })
