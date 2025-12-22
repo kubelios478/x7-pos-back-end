@@ -81,6 +81,14 @@ import { LoyaltyModule } from './loyalty/loyalty.module';
 import { LoyaltyProgram } from './loyalty/loyalty-programs/entities/loyalty-program.entity';
 import { LoyaltyTier } from './loyalty/loyalty-tier/entities/loyalty-tier.entity';
 import { LoyaltyCustomer } from './loyalty/loyalty-customer/entities/loyalty-customer.entity';
+import { OnlineMenuCategoryModule } from './online-ordering-system/online-menu-category/online-menu-category.module';
+import { OnlineMenuCategory } from './online-ordering-system/online-menu-category/entities/online-menu-category.entity';
+import { OnlineMenuItemModule } from './online-ordering-system/online-menu-item/online-menu-item.module';
+import { OnlineMenuItem } from './online-ordering-system/online-menu-item/entities/online-menu-item.entity';
+import { OnlineOrderModule } from './online-ordering-system/online-order/online-order.module';
+import { OnlineOrder } from './online-ordering-system/online-order/entities/online-order.entity';
+import { OnlineOrderItemModule } from './online-ordering-system/online-order-item/online-order-item.module';
+import { OnlineOrderItem } from './online-ordering-system/online-order-item/entities/online-order-item.entity';
 import { QRMenuSection } from './qr-code/qr-menu-section/entity/qr-menu-section.entity';
 import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.module';
 
@@ -147,6 +155,10 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
           LoyaltyProgram,
           LoyaltyTier,
           LoyaltyCustomer,
+          OnlineMenuCategory,
+          OnlineMenuItem,
+          OnlineOrder,
+          OnlineOrderItem,
         ],
         synchronize: true,
       }),
@@ -190,6 +202,15 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
     QrMenuModule,
     OnlineMenuModule,
     LoyaltyModule,
+
+    OnlineMenuCategoryModule,
+
+    OnlineMenuItemModule,
+
+    OnlineOrderModule,
+
+    OnlineOrderItemModule,
+    QrMenuSectionModule,
   ],
 })
 export class AppModule {}
