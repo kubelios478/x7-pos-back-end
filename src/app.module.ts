@@ -79,6 +79,8 @@ import { OnlineMenuModule } from './online-ordering-system/online-menu/online-me
 import { OnlineMenu } from './online-ordering-system/online-menu/entities/online-menu.entity';
 import { QRMenuSection } from './qr-code/qr-menu-section/entity/qr-menu-section.entity';
 import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.module';
+import { QRMenuItem } from './qr-code/qr-menu-item/entity/qr-menu-item.entity';
+import { QrMenuItemModule } from './qr-code/qr-menu-item/qr-menu-item.module';
 
 @Module({
   imports: [
@@ -140,6 +142,7 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
           QRMenu,
           QRMenuSection,
           OnlineMenu,
+          QRMenuItem,
         ],
         synchronize: true,
       }),
@@ -186,6 +189,7 @@ import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.m
     QrMenuModule,
     OnlineMenuModule,
     QrMenuSectionModule,
+    QrMenuItemModule,
   ],
 })
 export class AppModule {}

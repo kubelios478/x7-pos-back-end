@@ -50,6 +50,7 @@ export enum ErrorMessage {
   SUBSCRIPTION_PAYMENT_NOT_FOUND = 'Subscription Payment not found',
   QR_MENU_NOT_FOUND = 'QR Menu not found',
   QR_MENU_SECTION_NOT_FOUND = 'QR Menu Section not found',
+  QR_MENU_ITEM_NOT_FOUND = 'QR Menu Item not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',
