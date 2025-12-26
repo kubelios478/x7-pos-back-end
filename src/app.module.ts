@@ -77,6 +77,18 @@ import { QrMenuModule } from './qr-code/qr-menu/qr-menu.module';
 import { QRMenu } from './qr-code/qr-menu/entity/qr-menu.entity';
 import { OnlineMenuModule } from './online-ordering-system/online-menu/online-menu.module';
 import { OnlineMenu } from './online-ordering-system/online-menu/entities/online-menu.entity';
+import { LoyaltyModule } from './loyalty/loyalty.module';
+import { LoyaltyProgram } from './loyalty/loyalty-programs/entities/loyalty-program.entity';
+import { LoyaltyTier } from './loyalty/loyalty-tier/entities/loyalty-tier.entity';
+import { LoyaltyCustomer } from './loyalty/loyalty-customer/entities/loyalty-customer.entity';
+import { OnlineMenuCategoryModule } from './online-ordering-system/online-menu-category/online-menu-category.module';
+import { OnlineMenuCategory } from './online-ordering-system/online-menu-category/entities/online-menu-category.entity';
+import { OnlineMenuItemModule } from './online-ordering-system/online-menu-item/online-menu-item.module';
+import { OnlineMenuItem } from './online-ordering-system/online-menu-item/entities/online-menu-item.entity';
+import { OnlineOrderModule } from './online-ordering-system/online-order/online-order.module';
+import { OnlineOrder } from './online-ordering-system/online-order/entities/online-order.entity';
+import { OnlineOrderItemModule } from './online-ordering-system/online-order-item/online-order-item.module';
+import { OnlineOrderItem } from './online-ordering-system/online-order-item/entities/online-order-item.entity';
 import { QRMenuSection } from './qr-code/qr-menu-section/entity/qr-menu-section.entity';
 import { QrMenuSectionModule } from './qr-code/qr-menu-section/qr-menu-section.module';
 import { QRMenuItem } from './qr-code/qr-menu-item/entity/qr-menu-item.entity';
@@ -143,6 +155,13 @@ import { QrMenuItemModule } from './qr-code/qr-menu-item/qr-menu-item.module';
           QRMenuSection,
           OnlineMenu,
           QRMenuItem,
+          LoyaltyProgram,
+          LoyaltyTier,
+          LoyaltyCustomer,
+          OnlineMenuCategory,
+          OnlineMenuItem,
+          OnlineOrder,
+          OnlineOrderItem,
         ],
         synchronize: true,
       }),
@@ -179,15 +198,21 @@ import { QrMenuItemModule } from './qr-code/qr-menu-item/qr-menu-item.module';
     OrderItemModule,
     KitchenStationModule,
     OnlineStoresModule,
-
     PlanFeaturesModule,
-
     SubscriptionPaymentsModule,
-
     QrCodeModule,
 
     QrMenuModule,
     OnlineMenuModule,
+    LoyaltyModule,
+
+    OnlineMenuCategoryModule,
+
+    OnlineMenuItemModule,
+
+    OnlineOrderModule,
+
+    OnlineOrderItemModule,
     QrMenuSectionModule,
     QrMenuItemModule,
   ],
