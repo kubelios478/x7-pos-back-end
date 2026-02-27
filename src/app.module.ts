@@ -107,6 +107,8 @@ import { QRMenuItem } from './qr-code/qr-menu-item/entity/qr-menu-item.entity';
 import { QRMenuItemModule } from './qr-code/qr-menu-item/qr-menu-item.module';
 import { QRLocation } from './qr-code/qr-location/entity/qr-location.entity';
 import { QRLocationModule } from './qr-code/qr-location/qr-location.module';
+import { QrOrderModule } from './qr-code/qr-order/qr-order.module';
+import { QROrder } from './qr-code/qr-order/entity/qr-order.entity';
 import { KitchenOrderItemModule } from './kitchen-display-system/kitchen-order-item/kitchen-order-item.module';
 import { KitchenOrderItem } from './kitchen-display-system/kitchen-order-item/entities/kitchen-order-item.entity';
 import { KitchenEventLogModule } from './kitchen-display-system/kitchen-event-log/kitchen-event-log.module';
@@ -127,6 +129,16 @@ import { MarketingAutomationsModule } from './marketing/marketing-automations/ma
 import { MarketingAutomation } from './marketing/marketing-automations/entities/marketing-automation.entity';
 import { MarketingAutomationActionsModule } from './marketing/marketing-automation-actions/marketing-automation-actions.module';
 import { MarketingAutomationAction } from './marketing/marketing-automation-actions/entities/marketing-automation-action.entity';
+import { MarketingMessageLogsModule } from './marketing/marketing-message-logs/marketing-message-logs.module';
+import { MarketingMessageLog } from './marketing/marketing-message-logs/entities/marketing-message-log.entity';
+import { TipsModule } from './tips/tips/tips.module';
+import { Tip } from './tips/tips/entities/tip.entity';
+import { TipAllocationsModule } from './tips/tip-allocations/tip-allocations.module';
+import { TipAllocation } from './tips/tip-allocations/entities/tip-allocation.entity';
+import { TipPoolsModule } from './tips/tip-pools/tip-pools.module';
+import { TipPool } from './tips/tip-pools/entities/tip-pool.entity';
+import { TipPoolMembersModule } from './tips/tip-pool-members/tip-pool-members.module';
+import { TipPoolMember } from './tips/tip-pool-members/entities/tip-pool-member.entity';
 
 @Module({
   imports: [
@@ -205,6 +217,7 @@ import { MarketingAutomationAction } from './marketing/marketing-automation-acti
           OnlineDeliveryInfo,
           OnlinePayment,
           QRLocation,
+          QROrder,
           MarketingCampaign,
           MarketingCampaignAudience,
           MarketingSegment,
@@ -213,6 +226,11 @@ import { MarketingAutomationAction } from './marketing/marketing-automation-acti
           MarketingCouponRedemption,
           MarketingAutomation,
           MarketingAutomationAction,
+          MarketingMessageLog,
+          Tip,
+          TipAllocation,
+          TipPool,
+          TipPoolMember,
         ],
         synchronize: true,
       }),
@@ -276,6 +294,7 @@ import { MarketingAutomationAction } from './marketing/marketing-automation-acti
     QRMenuSectionModule,
     QRMenuItemModule,
     QRLocationModule,
+    QrOrderModule,
     KitchenOrderItemModule,
     KitchenEventLogModule,
     MarketingCampaignModule,
@@ -286,6 +305,11 @@ import { MarketingAutomationAction } from './marketing/marketing-automation-acti
     MarketingCouponRedemptionsModule,
     MarketingAutomationsModule,
     MarketingAutomationActionsModule,
+    MarketingMessageLogsModule,
+    TipsModule,
+    TipAllocationsModule,
+    TipPoolsModule,
+    TipPoolMembersModule,
   ],
 })
 export class AppModule {}
