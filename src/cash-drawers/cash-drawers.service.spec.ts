@@ -9,7 +9,7 @@ import { NotFoundException, ForbiddenException, BadRequestException, ConflictExc
 import { CashDrawersService } from './cash-drawers.service';
 import { CashDrawer } from './entities/cash-drawer.entity';
 import { Shift } from '../shifts/entities/shift.entity';
-import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../hr/collaborators/entities/collaborator.entity';
 import { CreateCashDrawerDto } from './dto/create-cash-drawer.dto';
 import { UpdateCashDrawerDto } from './dto/update-cash-drawer.dto';
 import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';

@@ -10,7 +10,7 @@ import { Merchant } from '../../merchants/entities/merchant.entity';
 import { UserRole } from '../constants/role.enum';
 import { Scope } from '../constants/scope.enum';
 import { ApiProperty } from '@nestjs/swagger';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 
 @Entity('users')
 export class User {

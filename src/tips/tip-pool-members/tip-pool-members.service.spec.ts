@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TipPoolMembersService } from './tip-pool-members.service';
 import { TipPoolMember } from './entities/tip-pool-member.entity';
 import { TipPool } from '../tip-pools/entities/tip-pool.entity';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 import { CreateTipPoolMemberDto } from './dto/create-tip-pool-member.dto';
 import { TipPoolMemberRecordStatus } from './constants/tip-pool-member-record-status.enum';
 import { TipPoolRecordStatus } from '../tip-pools/constants/tip-pool-record-status.enum';

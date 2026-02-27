@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { CashDrawer } from '../../cash-drawers/entities/cash-drawer.entity';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 import { CashDrawerHistoryStatus } from '../constants/cash-drawer-history-status.enum';
 
 @Entity('cash_drawer_history')

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { SuccessResponse } from '../../common/dtos/success-response.dto';
+import { SuccessResponse } from '../../../common/dtos/success-response.dto';
 import { ShiftRole } from '../constants/shift-role.enum';
 import { CollaboratorStatus } from '../constants/collaborator-status.enum';
 

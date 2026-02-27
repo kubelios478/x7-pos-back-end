@@ -9,7 +9,7 @@ import { NotFoundException, ForbiddenException, BadRequestException, ConflictExc
 import { ShiftAssignmentsService } from './shift-assignments.service';
 import { ShiftAssignment } from './entities/shift-assignment.entity';
 import { Shift } from '../shifts/entities/shift.entity';
-import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../hr/collaborators/entities/collaborator.entity';
 import { CreateShiftAssignmentDto } from './dto/create-shift-assignment.dto';
 import { UpdateShiftAssignmentDto } from './dto/update-shift-assignment.dto';
 import { GetShiftAssignmentsQueryDto } from './dto/get-shift-assignments-query.dto';
