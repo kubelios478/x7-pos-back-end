@@ -17,7 +17,7 @@ import { MerchantSubscriptionModule } from './subscriptions/merchant-subscriptio
 import { ApplicationsModule } from './subscriptions/applications/applications.module';
 import { SubscriptionApplicationModule } from './subscriptions/subscription-application/subscription-application.module';
 import { FeaturesModule } from './subscriptions/features/features.module';
-
+import { HrModule } from './hr/hr.module';
 import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.module';
 import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
@@ -250,7 +250,7 @@ import { TimeEntry } from './hr/collaborator-time-entries/entities/time-entry.en
     UsersModule,
     CustomersModule,
     TablesModule,
-
+    HrModule,
     ShiftsModule,
     ShiftAssignmentsModule,
     TableAssignmentsModule,
