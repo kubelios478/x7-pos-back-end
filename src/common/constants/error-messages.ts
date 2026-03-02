@@ -54,12 +54,15 @@ export enum ErrorMessage {
   LOYALTY_TIER_NOT_FOUND = 'Loyalty Tier not found',
   LOYALTY_CUSTOMER_NOT_FOUND = 'Loyalty Customer not found',
   LOYALTY_REWARD_NOT_FOUND = 'Loyalty Reward not found',
+  LOYALTY_REWARDS_REDEMPTION_NOT_FOUND = 'Loyalty Rewards Redemption not found',
   LOYALTY_POINTS_TRANSACTION_NOT_FOUND = 'Loyalty Points Transaction not found',
   QR_MENU_NOT_FOUND = 'QR Menu not found',
   QR_MENU_SECTION_NOT_FOUND = 'QR Menu Section not found',
   QR_MENU_ITEM_NOT_FOUND = 'QR Menu Item not found',
   QR_LOCATION_NOT_FOUND = 'QR Location not found',
+  QR_ORDER_NOT_FOUND = 'QR Order not found',
   TABLE_NOT_FOUND = 'Table not found',
+  QR_ORDER_ITEM_NOT_FOUND = 'QR Order Item not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',
@@ -82,6 +85,7 @@ export enum ErrorMessage {
   LOYALTY_PROGRAM_NAME_EXISTS = 'Loyalty Program name already exists',
   LOYALTY_TIER_NAME_EXISTS = 'Loyalty Tier name already exists',
   LOYALTY_CUSTOMER_EXISTS = 'Loyalty Customer already exists',
+  LOYALTY_CUSTOMER_ALREADY_IN_PROGRAM = 'Customer is already enrolled in a loyalty program',
   LOYALTY_POINTS_TRANSACTION_EXISTS = 'Loyalty Points Transaction already exists',
   LOYALTY_REWARD_EXISTS = 'Loyalty Reward already exists',
 

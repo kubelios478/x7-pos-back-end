@@ -34,11 +34,12 @@ export class CreateLoyaltyTierDto {
     example: 1,
     description:
       'Level of the loyalty tier (e.g., 1 for base, 2 for next, etc.)',
+    required: false,
   })
   @IsInt()
   @Min(1)
-  @IsNotEmpty()
-  level: number;
+  @IsOptional()
+  level?: number;
 
   @ApiProperty({
     example: 100,

@@ -5,10 +5,12 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { LoyaltyProgram } from '../../loyalty-programs/entities/loyalty-program.entity';
 import { LoyaltyTierBenefit } from '../constants/loyalty-tier-benefit.enum';
+import { LoyaltyCustomer } from '../../loyalty-customer/entities/loyalty-customer.entity';
 
 @Entity('loyalty_tiers')
 export class LoyaltyTier {
@@ -23,7 +25,7 @@ export class LoyaltyTier {
     example: 1,
     description: 'Loyalty program ID associated with the tier',
   })
-  @Column({ type: 'bigint', name: 'loyalty_program_id' })
+  @Column({ type: 'int', name: 'loyalty_program_id' })
   loyalty_program_id: number;
 
   @ManyToOne(() => LoyaltyProgram)
@@ -42,7 +44,7 @@ export class LoyaltyTier {
     description:
       'Level of the loyalty tier (e.g., 1 for base, 2 for next, etc.)',
   })
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   level: number;
 
   @ApiProperty({
@@ -66,7 +68,7 @@ export class LoyaltyTier {
     description: 'JSON array of benefits for this tier',
     nullable: true,
   })
-  @Column({ type: 'simple-json', nullable: true })
+  @Column({ type: 'simple-array', nullable: true })
   benefits: LoyaltyTierBenefit[];
 
   @Column({ default: true })
@@ -78,4 +80,7 @@ export class LoyaltyTier {
   })
   @CreateDateColumn()
   created_at: Date;
+
+  @OneToMany(() => LoyaltyCustomer, (lc) => lc.loyaltyTier)
+  loyaltyCustomers: LoyaltyCustomer[];
 }

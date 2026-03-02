@@ -107,6 +107,8 @@ import { QRMenuItem } from './qr-code/qr-menu-item/entity/qr-menu-item.entity';
 import { QRMenuItemModule } from './qr-code/qr-menu-item/qr-menu-item.module';
 import { QRLocation } from './qr-code/qr-location/entity/qr-location.entity';
 import { QRLocationModule } from './qr-code/qr-location/qr-location.module';
+import { QrOrderModule } from './qr-code/qr-order/qr-order.module';
+import { QROrder } from './qr-code/qr-order/entity/qr-order.entity';
 import { KitchenOrderItemModule } from './kitchen-display-system/kitchen-order-item/kitchen-order-item.module';
 import { KitchenOrderItem } from './kitchen-display-system/kitchen-order-item/entities/kitchen-order-item.entity';
 import { KitchenEventLogModule } from './kitchen-display-system/kitchen-event-log/kitchen-event-log.module';
@@ -143,6 +145,10 @@ import { CashTipMovementsModule } from './tips/cash-tip-movements/cash-tip-movem
 import { CashTipMovement } from './tips/cash-tip-movements/entities/cash-tip-movement.entity';
 import { CollaboratorContract } from './hr/collaborator-contracts/entities/collaborator-contract.entity';
 import { TimeEntry } from './hr/collaborator-time-entries/entities/time-entry.entity';
+import { QROrderItemModule } from './qr-code/qr-order-item/qr-order-item.module';
+import { QROrderItem } from './qr-code/qr-order-item/entity/qr-order-item.entity';
+import { LoyaltyRewardsRedemtion } from './loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
+import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
 
 @Module({
   imports: [
@@ -214,6 +220,8 @@ import { TimeEntry } from './hr/collaborator-time-entries/entities/time-entry.en
           LoyaltyCustomer,
           LoyaltyPointTransaction,
           LoyaltyReward,
+          LoyaltyRewardsRedemtion,
+          LoyaltyCoupon,
           OnlineMenuCategory,
           OnlineMenuItem,
           OnlineOrder,
@@ -221,6 +229,8 @@ import { TimeEntry } from './hr/collaborator-time-entries/entities/time-entry.en
           OnlineDeliveryInfo,
           OnlinePayment,
           QRLocation,
+          QROrder,
+          QROrderItem,
           MarketingCampaign,
           MarketingCampaignAudience,
           MarketingSegment,
@@ -300,6 +310,7 @@ import { TimeEntry } from './hr/collaborator-time-entries/entities/time-entry.en
     QRMenuSectionModule,
     QRMenuItemModule,
     QRLocationModule,
+    QrOrderModule,
     KitchenOrderItemModule,
     KitchenEventLogModule,
     MarketingCampaignModule,
@@ -317,6 +328,7 @@ import { TimeEntry } from './hr/collaborator-time-entries/entities/time-entry.en
     TipPoolMembersModule,
     TipSettlementsModule,
     CashTipMovementsModule,
+    QROrderItemModule,
   ],
 })
 export class AppModule {}

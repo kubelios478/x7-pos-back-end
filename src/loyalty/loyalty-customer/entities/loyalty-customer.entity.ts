@@ -12,6 +12,8 @@ import { LoyaltyProgram } from '../../loyalty-programs/entities/loyalty-program.
 import { Customer } from '../../../customers/entities/customer.entity';
 import { LoyaltyTier } from '../../loyalty-tier/entities/loyalty-tier.entity';
 import { LoyaltyPointTransaction } from 'src/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
+import { LoyaltyRewardsRedemtion } from 'src/loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
+import { LoyaltyCoupon } from 'src/loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
 
 @Entity('loyalty_customers')
 export class LoyaltyCustomer {
@@ -26,7 +28,7 @@ export class LoyaltyCustomer {
     example: 1,
     description: 'ID of the loyalty program',
   })
-  @Column({ type: 'bigint', name: 'loyalty_program_id' })
+  @Column({ type: 'int', name: 'loyalty_program_id' })
   loyaltyProgramId: number;
 
   @ManyToOne(() => LoyaltyProgram)
@@ -37,7 +39,7 @@ export class LoyaltyCustomer {
     example: 1,
     description: 'ID of the customer',
   })
-  @Column({ type: 'bigint', name: 'customer_id' })
+  @Column({ type: 'int', name: 'customer_id' })
   customerId: number;
 
   @ManyToOne(() => Customer)
@@ -63,7 +65,7 @@ export class LoyaltyCustomer {
     description: 'ID of the loyalty tier the customer belongs to',
     nullable: true,
   })
-  @Column({ type: 'bigint', name: 'loyalty_tier_id', nullable: true })
+  @Column({ type: 'int', name: 'loyalty_tier_id', nullable: true })
   loyaltyTierId: number;
 
   @ManyToOne(() => LoyaltyTier)
@@ -84,4 +86,16 @@ export class LoyaltyCustomer {
     (loyaltyPointTransaction) => loyaltyPointTransaction.loyaltyCustomer,
   )
   loyaltyPointTransactions: LoyaltyPointTransaction[];
+
+  @OneToMany(
+    () => LoyaltyRewardsRedemtion,
+    (loyaltyRewardsRedemtion) => loyaltyRewardsRedemtion.loyaltyCustomer,
+  )
+  loyaltyRewardsRedemptions: LoyaltyRewardsRedemtion[];
+
+  @OneToMany(
+    () => LoyaltyCoupon,
+    (loyaltyCoupon) => loyaltyCoupon.loyaltyCustomer,
+  )
+  loyaltyCoupons: LoyaltyCoupon[];
 }

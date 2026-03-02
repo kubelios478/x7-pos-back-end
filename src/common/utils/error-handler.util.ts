@@ -16,6 +16,10 @@ export class ErrorHandler {
     throw new BadRequestException(message);
   }
 
+  static badRequest(message: string): never {
+    throw new BadRequestException(message);
+  }
+
   static invalidId(message: string = ErrorMessage.INVALID_ID): never {
     throw new BadRequestException(message);
   }
@@ -160,6 +164,28 @@ export class ErrorHandler {
   static qrLocationNotFound(
     message: string = ErrorMessage.QR_LOCATION_NOT_FOUND,
   ): never {
+    throw new NotFoundException(message);
+  }
+
+  static qrOrderNotFound(
+    message: string = ErrorMessage.QR_ORDER_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static qrOrderItemNotFound(
+    message: string = ErrorMessage.QR_ORDER_ITEM_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static customerNotFound(
+    message: string = ErrorMessage.CUSTOMER_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static orderNotFound(message: string = ErrorMessage.ORDER_NOT_FOUND): never {
     throw new NotFoundException(message);
   }
 

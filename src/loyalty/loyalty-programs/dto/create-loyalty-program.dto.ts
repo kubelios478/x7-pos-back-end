@@ -29,10 +29,6 @@ export class CreateLoyaltyProgramDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({
-    example: true,
-    description: 'Whether the loyalty program is active',
-  })
   @IsBoolean()
   @IsOptional()
   is_active?: boolean;
@@ -54,4 +50,5 @@ export class CreateLoyaltyProgramDto {
   @Min(0)
   @IsNotEmpty()
   min_points_to_redeem: number;
+
 }
