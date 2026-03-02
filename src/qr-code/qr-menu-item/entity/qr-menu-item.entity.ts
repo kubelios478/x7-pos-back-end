@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
-import { Product } from 'src/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { QRMenuSection } from 'src/qr-code/qr-menu-section/entity/qr-menu-section.entity';
 
 @Entity({ name: 'qr_menu_item' })

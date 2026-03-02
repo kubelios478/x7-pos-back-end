@@ -9,9 +9,9 @@ import { BadRequestException, ForbiddenException, NotFoundException, ConflictExc
 import { OrderItemService } from './order-item.service';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
-import { Product } from '../products-inventory/products/entities/product.entity';
-import { Variant } from '../products-inventory/variants/entities/variant.entity';
-import { Modifier } from '../products-inventory/modifiers/entities/modifier.entity';
+import { Product } from '../inventory/products-inventory/products/entities/product.entity';
+import { Variant } from '../inventory/products-inventory/variants/entities/variant.entity';
+import { Modifier } from '../inventory/products-inventory/modifiers/entities/modifier.entity';
 import { CreateOrderItemDto } from './dto/create-order-item.dto';
 import { UpdateOrderItemDto } from './dto/update-order-item.dto';
 import { GetOrderItemQueryDto, OrderItemSortBy } from './dto/get-order-item-query.dto';

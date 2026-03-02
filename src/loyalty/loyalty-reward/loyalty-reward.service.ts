@@ -13,7 +13,7 @@ import { LoyaltyReward } from './entities/loyalty-reward.entity';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { LoyaltyProgram } from '../loyalty-programs/entities/loyalty-program.entity';
-import { Product } from 'src/products-inventory/products/entities/product.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { LoyaltyRewardType } from './constants/loyalty-reward-type.enum';
 
 @Injectable()

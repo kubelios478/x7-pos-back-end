@@ -9,7 +9,7 @@ import { NotFoundException, ForbiddenException, BadRequestException } from '@nes
 import { OnlineMenuCategoryService } from './online-menu-category.service';
 import { OnlineMenuCategory } from './entities/online-menu-category.entity';
 import { OnlineMenu } from '../online-menu/entities/online-menu.entity';
-import { Category } from '../../products-inventory/category/entities/category.entity';
+import { Category } from '../../inventory/products-inventory/category/entities/category.entity';
 import { CreateOnlineMenuCategoryDto } from './dto/create-online-menu-category.dto';
 import { UpdateOnlineMenuCategoryDto } from './dto/update-online-menu-category.dto';
 import { GetOnlineMenuCategoryQueryDto, OnlineMenuCategorySortBy } from './dto/get-online-menu-category-query.dto';

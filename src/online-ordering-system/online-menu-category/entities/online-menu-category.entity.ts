@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { OnlineMenu } from '../../online-menu/entities/online-menu.entity';
-import { Category } from '../../../products-inventory/category/entities/category.entity';
+import { Category } from '../../../inventory/products-inventory/category/entities/category.entity';
 import { OnlineMenuCategoryStatus } from '../constants/online-menu-category-status.enum';
 
 @Entity('online_menu_category')

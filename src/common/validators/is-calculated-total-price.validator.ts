@@ -5,8 +5,8 @@ import {
   registerDecorator,
   ValidationOptions,
 } from 'class-validator';
-import { CreatePurchaseOrderItemDto } from 'src/products-inventory/purchase-order-item/dto/create-purchase-order-item.dto';
-import { UpdatePurchaseOrderItemDto } from 'src/products-inventory/purchase-order-item/dto/update-purchase-order-item.dto';
+import { CreatePurchaseOrderItemDto } from 'src/inventory/products-inventory/purchase-order-item/dto/create-purchase-order-item.dto';
+import { UpdatePurchaseOrderItemDto } from 'src/inventory/products-inventory/purchase-order-item/dto/update-purchase-order-item.dto';
 
 @ValidatorConstraint({ async: false })
 export class IsCalculatedTotalPriceConstraint

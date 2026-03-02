@@ -56,6 +56,8 @@ describe('LoyaltyCustomerController', () => {
     is_active: true,
     joinedAt: new Date(),
     loyaltyPointTransactions: [],
+    loyaltyRewardsRedemptions: [],
+    loyaltyCoupons: [],
   };
 
   const toLoyaltyCustomerResponseDto = (

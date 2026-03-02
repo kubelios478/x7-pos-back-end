@@ -43,5 +43,15 @@ export class CreateLoyaltyCustomerDto {
   @Min(0)
   @IsOptional()
   lifetime_points?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Loyalty tier ID associated with the customer',
+    required: false,
+  })
+  @IsInt()
+  @IsOptional()
+  @Type(() => Number)
+  loyalty_tier_id?: number;
 }
 

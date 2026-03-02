@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LoyaltyProgramsService } from './loyalty-programs.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { LoyaltyProgram } from './entities/loyalty-program.entity';
+import { LoyaltyTier } from '../loyalty-tier/entities/loyalty-tier.entity';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { Repository } from 'typeorm';
 import { CreateLoyaltyProgramDto } from './dto/create-loyalty-program.dto';
@@ -81,6 +82,16 @@ describe('LoyaltyProgramsService', () => {
           provide: getRepositoryToken(Merchant),
           useValue: mockMerchantRepo,
         },
+        {
+          provide: getRepositoryToken(LoyaltyTier),
+          useValue: {
+            findOne: jest.fn(),
+            findOneBy: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -88,7 +99,7 @@ describe('LoyaltyProgramsService', () => {
     loyaltyProgramRepo = module.get(getRepositoryToken(LoyaltyProgram));
 
     jest.clearAllMocks();
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => { });
   });
 
   afterEach(() => {

@@ -9,8 +9,8 @@ import { NotFoundException, ForbiddenException, BadRequestException } from '@nes
 import { OnlineMenuItemService } from './online-menu-item.service';
 import { OnlineMenuItem } from './entities/online-menu-item.entity';
 import { OnlineMenu } from '../online-menu/entities/online-menu.entity';
-import { Product } from '../../products-inventory/products/entities/product.entity';
-import { Variant } from '../../products-inventory/variants/entities/variant.entity';
+import { Product } from '../../inventory/products-inventory/products/entities/product.entity';
+import { Variant } from '../../inventory/products-inventory/variants/entities/variant.entity';
 import { CreateOnlineMenuItemDto } from './dto/create-online-menu-item.dto';
 import { UpdateOnlineMenuItemDto } from './dto/update-online-menu-item.dto';
 import { GetOnlineMenuItemQueryDto, OnlineMenuItemSortBy } from './dto/get-online-menu-item-query.dto';
