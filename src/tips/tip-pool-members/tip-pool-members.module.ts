@@ -4,7 +4,7 @@ import { TipPoolMembersService } from './tip-pool-members.service';
 import { TipPoolMembersController } from './tip-pool-members.controller';
 import { TipPoolMember } from './entities/tip-pool-member.entity';
 import { TipPool } from '../tip-pools/entities/tip-pool.entity';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 
 @Module({
   imports: [

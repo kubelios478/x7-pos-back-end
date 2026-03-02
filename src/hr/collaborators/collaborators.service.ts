@@ -7,8 +7,8 @@ import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
 import { CollaboratorResponseDto, OneCollaboratorResponseDto } from './dto/collaborator-response.dto';
 import { GetCollaboratorsQueryDto } from './dto/get-collaborators-query.dto';
 import { PaginatedCollaboratorsResponseDto } from './dto/paginated-collaborators-response.dto';
-import { User } from '../users/entities/user.entity';
-import { Merchant } from '../merchants/entities/merchant.entity';
+import { User } from '../../users/entities/user.entity';
+import { Merchant } from '../../merchants/entities/merchant.entity';
 import { CollaboratorStatus } from './constants/collaborator-status.enum';
 
 @Injectable()

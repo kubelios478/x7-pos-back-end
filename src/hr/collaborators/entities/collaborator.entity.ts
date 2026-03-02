@@ -8,15 +8,15 @@ import {
     JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../../users/entities/user.entity';
-import { Merchant } from '../../merchants/entities/merchant.entity';
+import { User } from '../../../users/entities/user.entity';
+import { Merchant } from '../../../merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ShiftRole } from '../constants/shift-role.enum';
 import { CollaboratorStatus } from '../constants/collaborator-status.enum';
-import { ShiftAssignment } from '../../shift-assignments/entities/shift-assignment.entity';
-import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
-import { CashDrawer } from '../../cash-drawers/entities/cash-drawer.entity';
-import { Order } from '../../orders/entities/order.entity';
+import { ShiftAssignment } from '../../../shift-assignments/entities/shift-assignment.entity';
+import { TableAssignment } from '../../../table-assignments/entities/table-assignment.entity';
+import { CashDrawer } from '../../../cash-drawers/entities/cash-drawer.entity';
+import { Order } from '../../../orders/entities/order.entity';
 
 @Entity("collaborator")
 @Index(["user_id"], { unique: true })

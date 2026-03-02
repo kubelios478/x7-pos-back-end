@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Shift } from '../../shifts/entities/shift.entity';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 import { ShiftRole } from '../../shifts/constants/shift-role.enum';
 import { ShiftAssignmentStatus } from '../constants/shift-assignment-status.enum';
 

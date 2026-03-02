@@ -9,7 +9,7 @@ import { CashTransactionStatus } from './constants/cash-transaction-status.enum'
 import { CashTransactionType } from './constants/cash-transaction-type.enum';
 import { CashDrawer } from '../cash-drawers/entities/cash-drawer.entity';
 import { CashDrawerStatus } from '../cash-drawers/constants/cash-drawer-status.enum';
-import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../hr/collaborators/entities/collaborator.entity';
 import { Order } from '../orders/entities/order.entity';
 import { OneCashTransactionResponseDto, PaginatedCashTransactionsResponseDto, CashTransactionResponseDto } from './dto/cash-transaction-response.dto';
 import { CashDrawerHistoryService } from '../cash-drawer-history/cash-drawer-history.service';

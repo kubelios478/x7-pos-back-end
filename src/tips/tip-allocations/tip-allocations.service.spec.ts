@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TipAllocationsService } from './tip-allocations.service';
 import { TipAllocation } from './entities/tip-allocation.entity';
 import { Tip } from '../tips/entities/tip.entity';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 import { Shift } from '../../shifts/entities/shift.entity';
 import { CreateTipAllocationDto } from './dto/create-tip-allocation.dto';
 import { UpdateTipAllocationDto } from './dto/update-tip-allocation.dto';

@@ -17,7 +17,7 @@ import { MerchantSubscriptionModule } from './subscriptions/merchant-subscriptio
 import { ApplicationsModule } from './subscriptions/applications/applications.module';
 import { SubscriptionApplicationModule } from './subscriptions/subscription-application/subscription-application.module';
 import { FeaturesModule } from './subscriptions/features/features.module';
-import { CollaboratorsModule } from './collaborators/collaborators.module';
+import { HrModule } from './hr/hr.module';
 import { ShiftAssignmentsModule } from './shift-assignments/shift-assignments.module';
 import { TableAssignmentsModule } from './table-assignments/table-assignments.module';
 import { ProductsInventoryModule } from './products-inventory/products-inventory.module';
@@ -29,7 +29,7 @@ import { Merchant } from './merchants/entities/merchant.entity';
 import { Customer } from './customers/entities/customer.entity';
 import { Category } from './products-inventory/category/entities/category.entity';
 import { Table } from './tables/entities/table.entity';
-import { Collaborator } from './collaborators/entities/collaborator.entity';
+import { Collaborator } from './hr/collaborators/entities/collaborator.entity';
 import { Location } from './products-inventory/stocks/locations/entities/location.entity';
 
 import { Shift } from './shifts/entities/shift.entity';
@@ -139,6 +139,12 @@ import { TipPoolsModule } from './tips/tip-pools/tip-pools.module';
 import { TipPool } from './tips/tip-pools/entities/tip-pool.entity';
 import { TipPoolMembersModule } from './tips/tip-pool-members/tip-pool-members.module';
 import { TipPoolMember } from './tips/tip-pool-members/entities/tip-pool-member.entity';
+import { TipSettlementsModule } from './tips/tip-settlements/tip-settlements.module';
+import { TipSettlement } from './tips/tip-settlements/entities/tip-settlement.entity';
+import { CashTipMovementsModule } from './tips/cash-tip-movements/cash-tip-movements.module';
+import { CashTipMovement } from './tips/cash-tip-movements/entities/cash-tip-movement.entity';
+import { CollaboratorContract } from './hr/collaborator-contracts/entities/collaborator-contract.entity';
+import { TimeEntry } from './hr/collaborator-time-entries/entities/time-entry.entity';
 import { QROrderItemModule } from './qr-code/qr-order-item/qr-order-item.module';
 import { QROrderItem } from './qr-code/qr-order-item/entity/qr-order-item.entity';
 import { LoyaltyRewardsRedemtion } from './loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
@@ -238,6 +244,10 @@ import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon
           TipAllocation,
           TipPool,
           TipPoolMember,
+          TipSettlement,
+          CashTipMovement,
+          CollaboratorContract,
+          TimeEntry,
         ],
         synchronize: true,
       }),
@@ -250,7 +260,7 @@ import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon
     UsersModule,
     CustomersModule,
     TablesModule,
-    CollaboratorsModule,
+    HrModule,
     ShiftsModule,
     ShiftAssignmentsModule,
     TableAssignmentsModule,
@@ -258,7 +268,6 @@ import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon
     SubscriptionsModule,
     MerchantSubscriptionModule,
     ApplicationsModule,
-    CollaboratorsModule,
     ShiftsModule,
     PlanApplicationsModule,
     SubscriptionApplicationModule,
@@ -317,6 +326,8 @@ import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon
     TipAllocationsModule,
     TipPoolsModule,
     TipPoolMembersModule,
+    TipSettlementsModule,
+    CashTipMovementsModule,
     QROrderItemModule,
   ],
 })
