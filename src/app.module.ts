@@ -41,7 +41,7 @@ import { TableAssignment } from './table-assignments/entities/table-assignment.e
 import { CashDrawersModule } from './cash-drawers/cash-drawers.module';
 import { CashDrawer } from './cash-drawers/entities/cash-drawer.entity';
 import { CashTransaction } from './cash-transactions/entities/cash-transaction.entity';
-import { Receipt } from './receipts/entities/receipt.entity';
+import { Receipt } from './inventory/billing-transactions/receipts/entities/receipt.entity';
 import { Order } from './orders/entities/order.entity';
 
 import { Variant } from './inventory/products-inventory/variants/entities/variant.entity';
@@ -51,7 +51,6 @@ import { MerchantSubscription } from './subscriptions/merchant-subscriptions/ent
 import { ApplicationEntity } from './subscriptions/applications/entity/application-entity';
 import { PlanApplication } from './subscriptions/plan-applications/entity/plan-applications.entity';
 import { CashTransactionsModule } from './cash-transactions/cash-transactions.module';
-import { ReceiptsModule } from './receipts/receipts.module';
 import { OrdersModule } from './orders/orders.module';
 import { SubscriptionApplication } from './subscriptions/subscription-application/entity/subscription-application.entity';
 import { Item } from './inventory/products-inventory/stocks/items/entities/item.entity';
@@ -142,6 +141,7 @@ import { TipPoolMember } from './tips/tip-pool-members/entities/tip-pool-member.
 import { LoyaltyRewardsRedemtion } from './loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
 import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
 import { InventoryModule } from './inventory/inventory.module';
+import { ReceiptsModule } from './inventory/billing-transactions/receipts/receipts.module';
 
 @Module({
   imports: [
@@ -318,4 +318,4 @@ import { InventoryModule } from './inventory/inventory.module';
     InventoryModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

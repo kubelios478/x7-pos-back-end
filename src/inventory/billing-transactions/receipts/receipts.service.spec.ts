@@ -8,7 +8,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ReceiptsService } from './receipts.service';
 import { Receipt } from './entities/receipt.entity';
-import { Order } from '../orders/entities/order.entity';
+import { Order } from 'src/orders/entities/order.entity';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { GetReceiptsQueryDto, ReceiptSortBy } from './dto/get-receipts-query.dto';

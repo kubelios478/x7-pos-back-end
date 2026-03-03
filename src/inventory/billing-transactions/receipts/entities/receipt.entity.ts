@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { ReceiptStatus } from '../constants/receipt-status.enum';
-import { Order } from '../../orders/entities/order.entity';
+import { Order } from 'src/orders/entities/order.entity';
 
 @Entity('receipts')
 export class Receipt {

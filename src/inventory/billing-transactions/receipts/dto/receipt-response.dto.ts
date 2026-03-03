@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { SuccessResponse } from '../../common/dtos/success-response.dto';
 import { ReceiptStatus } from '../constants/receipt-status.enum';
+import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 
 export class ReceiptResponseDto {
   @ApiProperty({ example: 1 })

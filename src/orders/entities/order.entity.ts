@@ -19,10 +19,10 @@ import { OrderStatus } from '../constants/order-status.enum';
 import { OrderBusinessStatus } from '../constants/order-business-status.enum';
 import { OrderType } from '../constants/order-type.enum';
 import { CashTransaction } from '../../cash-transactions/entities/cash-transaction.entity';
-import { Receipt } from '../../receipts/entities/receipt.entity';
 import { LoyaltyPointTransaction } from 'src/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 import { LoyaltyRewardsRedemtion } from 'src/loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
 import { LoyaltyCoupon } from 'src/loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
+import { Receipt } from 'src/inventory/billing-transactions/receipts/entities/receipt.entity';
 
 @Entity('orders')
 @Index(['merchant_id', 'status', 'created_at'])

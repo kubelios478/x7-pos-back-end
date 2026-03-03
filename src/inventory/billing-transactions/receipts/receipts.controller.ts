@@ -4,14 +4,14 @@ import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { UpdateReceiptDto } from './dto/update-receipt.dto';
 import { GetReceiptsQueryDto, ReceiptSortBy } from './dto/get-receipts-query.dto';
 import { ApiBearerAuth, ApiBadRequestResponse, ApiBody, ApiConflictResponse, ApiCreatedResponse, ApiExtraModels, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { Scopes } from '../auth/decorators/scopes.decorator';
-import { UserRole } from '../users/constants/role.enum';
-import { Scope } from '../users/constants/scope.enum';
 import { OneReceiptResponseDto, PaginatedReceiptsResponseDto } from './dto/receipt-response.dto';
-import { ErrorResponse } from '../common/dtos/error-response.dto';
+import { ErrorResponse } from 'src/common/dtos/error-response.dto';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { Scopes } from 'src/auth/decorators/scopes.decorator';
+import { UserRole } from 'src/users/constants/role.enum';
+import { Scope } from 'src/users/constants/scope.enum';
 
 @ApiTags('Receipts')
 @ApiBearerAuth()
