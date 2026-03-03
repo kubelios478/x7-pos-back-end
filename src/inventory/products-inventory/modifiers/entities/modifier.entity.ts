@@ -4,6 +4,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Product } from '../../products/entities/product.entity';
@@ -38,4 +39,24 @@ export class Modifier {
   })
   @JoinColumn({ name: 'productId' })
   product: Product;
+
+  @ApiProperty({
+    example: 10,
+    description: 'Parent modifier ID',
+    required: false,
+    nullable: true,
+  })
+  @Column({ type: 'int', nullable: true })
+  parentId: number | null;
+
+  @ManyToOne(() => Modifier, (modifier) => modifier.children, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'parentId' })
+  parent?: Modifier | null;
+
+  @OneToMany(() => Modifier, (modifier) => modifier.parent)
+  children: Modifier[];
 }

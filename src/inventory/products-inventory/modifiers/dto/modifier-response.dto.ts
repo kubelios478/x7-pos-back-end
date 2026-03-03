@@ -18,6 +18,14 @@ export class ModifierResponseDto {
     description: 'Associated product details',
   })
   product: ProductResponseDto | null;
+
+  @ApiProperty({
+    example: { id: 1, name: 'Size' },
+    nullable: true,
+    description: 'Parent modifier details',
+    required: false,
+  })
+  parent?: { id: number; name: string } | null;
 }
 
 export class OneModifierResponse extends SuccessResponse {

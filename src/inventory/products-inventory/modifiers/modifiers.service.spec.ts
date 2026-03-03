@@ -64,6 +64,9 @@ describe('ModifiersService', () => {
     productId: mockProduct.id!,
     product: mockProduct as Product,
     isActive: true,
+    parentId: null,
+    parent: null,
+    children: [],
   };
 
   const mockCreateModifierDto: CreateModifierDto = {
@@ -99,6 +102,7 @@ describe('ModifiersService', () => {
     name: mockModifier.name!,
     priceDelta: mockModifier.priceDelta!,
     product: mockProductResponseDto,
+    parent: null,
   };
 
   beforeEach(async () => {
@@ -107,6 +111,7 @@ describe('ModifiersService', () => {
       save: jest.fn((entity: Modifier | Modifier[]) => Promise.resolve(entity)),
       findOne: jest.fn(),
       findOneBy: jest.fn(),
+      find: jest.fn(),
       createQueryBuilder: jest.fn(),
       getOne: jest.fn(),
     };
@@ -203,6 +208,7 @@ describe('ModifiersService', () => {
       expect(modifierRepository.create).toHaveBeenCalledWith({
         ...mockCreateModifierDto,
         productId: mockProduct.id,
+        parentId: null,
       });
       expect(modifierRepository.save).toHaveBeenCalledWith(mockModifier);
 
@@ -211,6 +217,25 @@ describe('ModifiersService', () => {
         message: 'Modifier Created successfully',
         data: mockModifierResponseDto,
       });
+    });
+
+    it('should throw NotFoundException if parentId modifier does not exist', async () => {
+      const dtoWithParent = { ...mockCreateModifierDto, parentId: 999 };
+
+      productRepository.findOneBy.mockResolvedValueOnce(mockProduct as Product);
+      modifierRepository.findOne.mockResolvedValueOnce(null); // Parent not found
+
+      await expect(
+        async () => await service.create(merchantId, dtoWithParent),
+      ).rejects.toThrow('Parent not found');
+
+      expect(productRepository.findOneBy).toHaveBeenCalledWith({
+        id: dtoWithParent.productId,
+        merchantId: merchantId,
+        isActive: true,
+      });
+      expect(modifierRepository.create).not.toHaveBeenCalled();
+      expect(modifierRepository.save).not.toHaveBeenCalled();
     });
 
     it('should activate an existing inactive modifier', async () => {
@@ -643,6 +668,25 @@ describe('ModifiersService', () => {
           await service.update(null as any, merchantId, mockUpdateModifierDto),
       ).rejects.toThrow('Modifier ID is incorrect');
     });
+
+    it('should throw NotFoundException if new parentId does not exist', async () => {
+      const dtoWithParent = { ...mockUpdateModifierDto, parentId: 999 };
+
+      mockQueryBuilder.getOne.mockResolvedValueOnce(mockModifier as Modifier);
+      modifierRepository.findOne.mockResolvedValueOnce(null); // name check passes
+      modifierRepository.findOneBy.mockResolvedValueOnce(null); // parent not found
+
+      await expect(
+        async () => await service.update(modifierId, merchantId, dtoWithParent),
+      ).rejects.toThrow('Parent not found');
+
+      expect(modifierRepository.findOneBy).toHaveBeenCalledWith({
+        id: dtoWithParent.parentId,
+        productId: mockModifier.productId,
+        isActive: true,
+      });
+      expect(modifierRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('Remove', () => {
@@ -656,6 +700,7 @@ describe('ModifiersService', () => {
       } as Modifier;
 
       mockQueryBuilder.getOne.mockResolvedValueOnce(mockModifier as Modifier);
+      modifierRepository.find.mockResolvedValueOnce([]); // No children
       modifierRepository.save.mockResolvedValueOnce(inactiveModifier);
       mockQueryBuilder.getOne.mockResolvedValueOnce(inactiveModifier);
 
@@ -682,8 +727,34 @@ describe('ModifiersService', () => {
           name: inactiveModifier.name,
           priceDelta: inactiveModifier.priceDelta,
           product: mockProductResponseDto,
+          parent: null,
         },
       });
+    });
+
+    it('should recursively deactivate children when removing a modifier', async () => {
+      const childModifier = {
+        ...mockModifier,
+        id: 2,
+        parentId: mockModifier.id,
+        isActive: true,
+      } as Modifier;
+      const inactiveModifier = { ...mockModifier, isActive: false } as Modifier;
+
+      mockQueryBuilder.getOne.mockResolvedValueOnce(mockModifier as Modifier);
+      // First find call: children of parent (id=1)
+      modifierRepository.find
+        .mockResolvedValueOnce([childModifier]) // children of parent
+        .mockResolvedValueOnce([]); // children of child
+      modifierRepository.save.mockResolvedValue(undefined);
+      mockQueryBuilder.getOne.mockResolvedValueOnce(inactiveModifier);
+
+      await service.remove(mockModifier.id!, merchantId);
+
+      expect(modifierRepository.find).toHaveBeenCalledWith({
+        where: { parentId: mockModifier.id, isActive: true },
+      });
+      expect(childModifier.isActive).toBe(false);
     });
 
     it('should throw NotFoundException if Modifier to remove is not found', async () => {

@@ -24,13 +24,13 @@ export class ModifiersService {
     private readonly productRepository: Repository<Product>,
     @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
-  ) {}
+  ) { }
 
   async create(
     merchant_id: number,
     createModifierDto: CreateModifierDto,
   ): Promise<OneModifierResponse> {
-    const { productId, ...modifierData } = createModifierDto;
+    const { productId, parentId, ...modifierData } = createModifierDto;
 
     const product = await this.productRepository.findOneBy({
       id: productId,
@@ -40,6 +40,15 @@ export class ModifiersService {
 
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+    }
+
+    if (parentId) {
+      const parentModifier = await this.modifierRepository.findOne({
+        where: { id: parentId, productId: product.id, isActive: true },
+      });
+      if (!parentModifier) {
+        ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
+      }
     }
 
     const existingModifierByName = await this.modifierRepository.findOne({
@@ -70,6 +79,7 @@ export class ModifiersService {
       const newModifier = this.modifierRepository.create({
         ...modifierData,
         productId: product.id,
+        parentId: parentId ?? null,
       });
 
       const savedModifier = await this.modifierRepository.save(newModifier);
@@ -94,6 +104,7 @@ export class ModifiersService {
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
+      .leftJoinAndSelect('modifier.parent', 'parent')
       .where('product.merchantId = :merchantId', { merchantId })
       .andWhere('modifier.isActive = :isActive', { isActive: true });
 
@@ -129,6 +140,9 @@ export class ModifiersService {
           product: modifier.product
             ? (await this.productsService.findOne(modifier.product.id)).data
             : null,
+          parent: modifier.parent
+            ? { id: modifier.parent.id, name: modifier.parent.name }
+            : null,
         };
         return result;
       }),
@@ -162,6 +176,7 @@ export class ModifiersService {
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
+      .leftJoinAndSelect('modifier.parent', 'parent')
       .where('modifier.id = :id', { id });
 
     if (createdUpdateDelete !== 'Deleted') {
@@ -186,6 +201,9 @@ export class ModifiersService {
       priceDelta: modifier.priceDelta,
       product: modifier.product
         ? (await this.productsService.findOne(modifier.product.id)).data
+        : null,
+      parent: modifier.parent
+        ? { id: modifier.parent.id, name: modifier.parent.name }
         : null,
     };
 
@@ -262,6 +280,22 @@ export class ModifiersService {
       }
     }
 
+    if (
+      modifierData.parentId !== undefined &&
+      modifierData.parentId !== modifier.parentId
+    ) {
+      if (modifierData.parentId !== null) {
+        const parentModifier = await this.modifierRepository.findOneBy({
+          id: modifierData.parentId,
+          productId: modifier.productId,
+          isActive: true,
+        });
+        if (!parentModifier) {
+          ErrorHandler.notFound(ErrorMessage.PARENT_NOT_FOUND);
+        }
+      }
+    }
+
     Object.assign(modifier, modifierData);
     await this.modifierRepository.save(modifier);
 
@@ -287,6 +321,18 @@ export class ModifiersService {
     }
 
     try {
+      const hideRecursive = async (modifierId: number): Promise<void> => {
+        const children = await this.modifierRepository.find({
+          where: { parentId: modifierId, isActive: true },
+        });
+        for (const child of children) {
+          await hideRecursive(child.id);
+          child.isActive = false;
+          await this.modifierRepository.save(child);
+        }
+      };
+
+      await hideRecursive(modifier.id);
       modifier.isActive = false;
       await this.modifierRepository.save(modifier);
 

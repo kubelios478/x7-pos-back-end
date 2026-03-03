@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateModifierDto {
   @ApiProperty({ example: 'Color', description: 'Modifier name' })
@@ -22,4 +22,14 @@ export class CreateModifierDto {
   @IsNotEmpty()
   @Type(() => Number)
   productId: number;
+
+  @ApiProperty({
+    example: 2,
+    description: 'Parent modifier ID (optional)',
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  parentId?: number;
 }
