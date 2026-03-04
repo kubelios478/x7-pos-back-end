@@ -86,6 +86,17 @@ export class LoyaltyRewardLittleResponseDto {
     description: 'Name of the loyalty reward',
   })
   name: string;
+
+  @ApiProperty({
+    description: 'Description of the loyalty reward',
+  })
+  description: string;
+
+  @ApiProperty({
+    example: 100,
+    description: 'Cost in points to redeem the reward',
+  })
+  cost_points: number;
 }
 
 export class OneLoyaltyRewardResponse extends SuccessResponse {

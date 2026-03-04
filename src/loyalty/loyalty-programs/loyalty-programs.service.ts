@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LoyaltyProgram } from './entities/loyalty-program.entity';
 import { Merchant } from '../../merchants/entities/merchant.entity';
+import { LoyaltyTier } from '../loyalty-tier/entities/loyalty-tier.entity';
 import { CreateLoyaltyProgramDto } from './dto/create-loyalty-program.dto';
 import { UpdateLoyaltyProgramDto } from './dto/update-loyalty-program.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
@@ -13,6 +14,7 @@ import {
 } from './dto/loyalty-program-response.dto';
 import { AllPaginatedLoyaltyPrograms } from './dto/all-paginated-loyalty-programs.dto';
 import { GetLoyaltyProgramsQueryDto } from './dto/get-loyalty-programs-query.dto';
+import { DEFAULT_PROGRAM_TIERS } from '../loyalty-tier/loyalty-tier.helpers';
 
 @Injectable()
 export class LoyaltyProgramsService {
@@ -21,7 +23,9 @@ export class LoyaltyProgramsService {
     private readonly loyaltyProgramRepo: Repository<LoyaltyProgram>,
     @InjectRepository(Merchant)
     private readonly merchantRepo: Repository<Merchant>,
-  ) {}
+    @InjectRepository(LoyaltyTier)
+    private readonly loyaltyTierRepo: Repository<LoyaltyTier>,
+  ) { }
 
   async create(
     merchant_id: number,
@@ -56,10 +60,25 @@ export class LoyaltyProgramsService {
         });
         const savedLoyaltyProgram =
           await this.loyaltyProgramRepo.save(newLoyaltyProgram);
+
+        await this.createDefaultTiers(savedLoyaltyProgram.id);
+
         return this.findOne(savedLoyaltyProgram.id, merchant_id, 'Created');
       }
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  /** Crea todos los tiers definidos por defecto al crear el programa. */
+  private async createDefaultTiers(loyaltyProgramId: number): Promise<void> {
+    for (const tierData of DEFAULT_PROGRAM_TIERS) {
+      const tier = this.loyaltyTierRepo.create({
+        ...tierData,
+        loyalty_program_id: loyaltyProgramId,
+        is_active: true,
+      });
+      await this.loyaltyTierRepo.save(tier);
     }
   }
 
@@ -114,9 +133,9 @@ export class LoyaltyProgramsService {
         updated_at: program.updated_at,
         merchant: program.merchant
           ? {
-              id: program.merchant.id,
-              name: program.merchant.name,
-            }
+            id: program.merchant.id,
+            name: program.merchant.name,
+          }
           : null,
       }),
     );
@@ -168,13 +187,14 @@ export class LoyaltyProgramsService {
       is_active: loyaltyProgram.is_active,
       points_per_currency: loyaltyProgram.points_per_currency,
       min_points_to_redeem: loyaltyProgram.min_points_to_redeem,
+
       created_at: loyaltyProgram.created_at,
       updated_at: loyaltyProgram.updated_at,
       merchant: loyaltyProgram.merchant
         ? {
-            id: loyaltyProgram.merchant.id,
-            name: loyaltyProgram.merchant.name,
-          }
+          id: loyaltyProgram.merchant.id,
+          name: loyaltyProgram.merchant.name,
+        }
         : null,
     };
 

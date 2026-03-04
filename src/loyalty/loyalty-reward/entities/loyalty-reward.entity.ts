@@ -4,6 +4,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -11,6 +12,8 @@ import { LoyaltyRewardType } from '../constants/loyalty-reward-type.enum';
 import { ApiProperty } from '@nestjs/swagger';
 import { Product } from 'src/products-inventory/products/entities/product.entity';
 import { LoyaltyProgram } from 'src/loyalty/loyalty-programs/entities/loyalty-program.entity';
+import { LoyaltyRewardsRedemtion } from 'src/loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
+import { LoyaltyCoupon } from 'src/loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
 
 @Entity('loyalty_reward')
 export class LoyaltyReward {
@@ -115,4 +118,16 @@ export class LoyaltyReward {
 
   @Column({ default: true })
   is_active: boolean;
+
+  @OneToMany(
+    () => LoyaltyRewardsRedemtion,
+    (loyaltyRewardsRedemtion) => loyaltyRewardsRedemtion.reward,
+  )
+  loyaltyRewardsRedemptions: LoyaltyRewardsRedemtion[];
+
+  @OneToMany(
+    () => LoyaltyCoupon,
+    (loyaltyCoupon) => loyaltyCoupon.reward,
+  )
+  loyaltyCoupons: LoyaltyCoupon[];
 }

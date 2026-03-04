@@ -7,8 +7,8 @@ import { QRLocation } from '../qr-location/entity/qr-location.entity';
 import { Customer } from 'src/customers/entities/customer.entity';
 import { Order } from 'src/orders/entities/order.entity';
 import { Table } from 'src/tables/entities/table.entity';
-import { QrOrderController } from './qr-order.controller';
-import { QrOrderService } from './qr-order.service';
+import { QROrderController } from './qr-order.controller';
+import { QROrderService } from './qr-order.service';
 
 @Module({
   imports: [
@@ -21,8 +21,8 @@ import { QrOrderService } from './qr-order.service';
       Order,
     ]),
   ],
-  controllers: [QrOrderController],
-  providers: [QrOrderService],
-  exports: [QrOrderService],
+  controllers: [QROrderController],
+  providers: [QROrderService],
+  exports: [QROrderService],
 })
 export class QrOrderModule {}

@@ -9,7 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { TipPoolMember } from './entities/tip-pool-member.entity';
 import { TipPool } from '../tip-pools/entities/tip-pool.entity';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 import { CreateTipPoolMemberDto } from './dto/create-tip-pool-member.dto';
 import { UpdateTipPoolMemberDto } from './dto/update-tip-pool-member.dto';
 import {

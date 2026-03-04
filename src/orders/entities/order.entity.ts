@@ -12,7 +12,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { Table } from '../../tables/entities/table.entity';
-import { Collaborator } from '../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../hr/collaborators/entities/collaborator.entity';
 import { MerchantSubscription } from '../../subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { Customer } from '../../customers/entities/customer.entity';
 import { OrderStatus } from '../constants/order-status.enum';
@@ -21,6 +21,8 @@ import { OrderType } from '../constants/order-type.enum';
 import { CashTransaction } from '../../cash-transactions/entities/cash-transaction.entity';
 import { Receipt } from '../../receipts/entities/receipt.entity';
 import { LoyaltyPointTransaction } from 'src/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
+import { LoyaltyRewardsRedemtion } from 'src/loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
+import { LoyaltyCoupon } from 'src/loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
 
 @Entity('orders')
 @Index(['merchant_id', 'status', 'created_at'])
@@ -173,6 +175,18 @@ export class Order {
     (loyaltyPointTransaction) => loyaltyPointTransaction.order,
   )
   loyaltyPointTransactions: LoyaltyPointTransaction[];
+
+  @OneToMany(
+    () => LoyaltyRewardsRedemtion,
+    (loyaltyRewardsRedemtion) => loyaltyRewardsRedemtion.order,
+  )
+  loyaltyRewardsRedemptions: LoyaltyRewardsRedemtion[];
+
+  @OneToMany(
+    () => LoyaltyCoupon,
+    (loyaltyCoupon) => loyaltyCoupon.order,
+  )
+  loyaltyCoupons: LoyaltyCoupon[];
 }
 
 /*

@@ -15,6 +15,7 @@ import { GetLoyaltyCustomersQueryDto } from './dto/get-loyalty-customers-query.d
 import { AllPaginatedLoyaltyCustomerDto } from './dto/all-paginated-loyalty-customer.dto';
 import { LoyaltyTier } from '../loyalty-tier/entities/loyalty-tier.entity';
 import { Customer } from 'src/customers/entities/customer.entity';
+import { findOrCreateAvailableTier, evaluateTierUpgrade } from '../loyalty-tier/loyalty-tier.helpers';
 
 @Injectable()
 export class LoyaltyCustomerService {
@@ -27,33 +28,43 @@ export class LoyaltyCustomerService {
     private readonly loyaltyTierRepo: Repository<LoyaltyTier>,
     @InjectRepository(Customer)
     private readonly customerRepo: Repository<Customer>,
-  ) {}
+  ) { }
 
   async create(
     merchant_id: number,
     createLoyaltyCustomerDto: CreateLoyaltyCustomerDto,
   ): Promise<OneLoyaltyCustomerResponse> {
-    const { loyalty_program_id, loyalty_tier_id, customer_id } =
+    let { loyalty_program_id, customer_id } =
       createLoyaltyCustomerDto;
 
-    const loyaltyProgram = await this.loyaltyProgramRepo.findOneBy({
-      id: loyalty_program_id,
-      merchantId: merchant_id,
-      is_active: true,
-    });
-    if (!loyaltyProgram) {
-      ErrorHandler.notFound(ErrorMessage.LOYALTY_PROGRAM_NOT_FOUND);
+    // Si no se proporciona ID, buscar el primero programa activo encontrado (por fecha de creación)
+    if (!loyalty_program_id) {
+      const bestProgram = await this.loyaltyProgramRepo.findOne({
+        where: { merchantId: merchant_id, is_active: true },
+        order: { created_at: 'ASC' },
+      });
+      if (!bestProgram) {
+        ErrorHandler.notFound(ErrorMessage.LOYALTY_PROGRAM_NOT_FOUND);
+      }
+      loyalty_program_id = bestProgram.id;
+    } else {
+      const loyaltyProgram = await this.loyaltyProgramRepo.findOneBy({
+        id: loyalty_program_id,
+        merchantId: merchant_id,
+        is_active: true,
+      });
+      if (!loyaltyProgram) {
+        ErrorHandler.notFound(ErrorMessage.LOYALTY_PROGRAM_NOT_FOUND);
+      }
     }
 
-    const loyaltyTier = await this.loyaltyTierRepo.findOneBy({
-      id: loyalty_tier_id,
-      loyalty_program_id: loyalty_program_id,
-      loyaltyProgram: { merchantId: merchant_id },
-      is_active: true,
-    });
-    if (!loyaltyTier) {
-      ErrorHandler.notFound(ErrorMessage.LOYALTY_TIER_NOT_FOUND);
-    }
+    // Al crear un cliente siempre empieza con 0 puntos, por lo tanto se asigna el tier Base (0 puntos)
+    const assignedTier = await findOrCreateAvailableTier(
+      loyalty_program_id,
+      merchant_id,
+      this.loyaltyTierRepo,
+    );
+
     const customer = await this.customerRepo.findOneBy({
       id: customer_id,
       merchantId: merchant_id,
@@ -62,16 +73,17 @@ export class LoyaltyCustomerService {
       ErrorHandler.notFound(ErrorMessage.CUSTOMER_NOT_FOUND);
     }
 
-    const existingLoyaltyCustomer =
-      await this.loyaltyCustomerRepository.findOneBy({
-        customerId: customer_id,
-        loyaltyProgramId: loyalty_program_id,
-        loyaltyProgram: { merchantId: merchant_id },
-        is_active: true,
-      });
+    // Verificar si el customer ya está inscrito en CUALQUIER programa del merchant
+    const alreadyInProgram = await this.loyaltyCustomerRepository
+      .createQueryBuilder('lc')
+      .innerJoin('lc.loyaltyProgram', 'lp')
+      .where('lc.customerId = :customer_id', { customer_id })
+      .andWhere('lp.merchantId = :merchant_id', { merchant_id })
+      .andWhere('lc.is_active = true')
+      .getOne();
 
-    if (existingLoyaltyCustomer) {
-      ErrorHandler.exists(ErrorMessage.LOYALTY_CUSTOMER_EXISTS);
+    if (alreadyInProgram) {
+      ErrorHandler.exists(ErrorMessage.LOYALTY_CUSTOMER_ALREADY_IN_PROGRAM);
     }
 
     try {
@@ -91,18 +103,28 @@ export class LoyaltyCustomerService {
 
       const newLoyaltyCustomer = this.loyaltyCustomerRepository.create({
         loyaltyProgramId: loyalty_program_id,
-        loyaltyTierId: loyalty_tier_id,
+        loyaltyTierId: assignedTier.id,
         customerId: customer_id,
-        ...createLoyaltyCustomerDto,
+        currentPoints: createLoyaltyCustomerDto.current_points || 0,
+        lifetimePoints: createLoyaltyCustomerDto.lifetime_points || 0,
         joinedAt: new Date(),
       });
       const savedLoyaltyCustomer =
         await this.loyaltyCustomerRepository.save(newLoyaltyCustomer);
+
+      // Evaluar si califica para un tier mejor de inmediato
+      const newTierOnCreate = await evaluateTierUpgrade(savedLoyaltyCustomer, this.loyaltyTierRepo);
+      if (newTierOnCreate) {
+        savedLoyaltyCustomer.loyaltyTierId = newTierOnCreate.id;
+        await this.loyaltyCustomerRepository.save(savedLoyaltyCustomer);
+      }
+
       return this.findOne(savedLoyaltyCustomer.id, merchant_id, 'Created');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
   }
+
 
   async findAll(
     query: GetLoyaltyCustomersQueryDto,
@@ -194,21 +216,21 @@ export class LoyaltyCustomerService {
         joined_at: lc.joinedAt,
         customer: lc.customer
           ? {
-              id: lc.customer.id,
-              name: lc.customer.name,
-            }
+            id: lc.customer.id,
+            name: lc.customer.name,
+          }
           : null,
         loyaltyProgram: lc.loyaltyProgram
           ? {
-              id: lc.loyaltyProgram.id,
-              name: lc.loyaltyProgram.name,
-            }
+            id: lc.loyaltyProgram.id,
+            name: lc.loyaltyProgram.name,
+          }
           : null,
         loyaltyTier: lc.loyaltyTier
           ? {
-              id: lc.loyaltyTier.id,
-              name: lc.loyaltyTier.name,
-            }
+            id: lc.loyaltyTier.id,
+            name: lc.loyaltyTier.name,
+          }
           : null,
       }));
 
@@ -268,21 +290,21 @@ export class LoyaltyCustomerService {
       joined_at: loyaltyCustomer.joinedAt,
       customer: loyaltyCustomer.customer
         ? {
-            id: loyaltyCustomer.customer.id,
-            name: loyaltyCustomer.customer.name,
-          }
+          id: loyaltyCustomer.customer.id,
+          name: loyaltyCustomer.customer.name,
+        }
         : null,
       loyaltyProgram: loyaltyCustomer.loyaltyProgram
         ? {
-            id: loyaltyCustomer.loyaltyProgram.id,
-            name: loyaltyCustomer.loyaltyProgram.name,
-          }
+          id: loyaltyCustomer.loyaltyProgram.id,
+          name: loyaltyCustomer.loyaltyProgram.name,
+        }
         : null,
       loyaltyTier: loyaltyCustomer.loyaltyTier
         ? {
-            id: loyaltyCustomer.loyaltyTier.id,
-            name: loyaltyCustomer.loyaltyTier.name,
-          }
+          id: loyaltyCustomer.loyaltyTier.id,
+          name: loyaltyCustomer.loyaltyTier.name,
+        }
         : null,
     };
 
@@ -329,12 +351,15 @@ export class LoyaltyCustomerService {
     if (!id || id <= 0) {
       ErrorHandler.invalidId('Loyalty Customer ID is incorrect');
     }
-    const { loyalty_tier_id, ...update_data } = updateLoyaltyCustomerDto;
+    const { loyalty_tier_id, current_points, lifetime_points, ...other_data } = updateLoyaltyCustomerDto;
 
-    const loyaltyCustomer = await this.loyaltyCustomerRepository.findOneBy({
-      id,
-      is_active: true,
-      loyaltyProgram: { merchantId: merchant_id },
+    const loyaltyCustomer = await this.loyaltyCustomerRepository.findOne({
+      where: {
+        id,
+        is_active: true,
+        loyaltyProgram: { merchantId: merchant_id },
+      },
+      relations: ['loyaltyProgram'],
     });
 
     if (!loyaltyCustomer) {
@@ -345,21 +370,35 @@ export class LoyaltyCustomerService {
       const loyaltyTier = await this.loyaltyTierRepo.findOneBy({
         id: loyalty_tier_id,
         loyalty_program_id: loyaltyCustomer.loyaltyProgramId,
-        loyaltyProgram: { merchantId: merchant_id },
         is_active: true,
       });
       if (!loyaltyTier) {
         ErrorHandler.notFound(ErrorMessage.LOYALTY_TIER_NOT_FOUND);
       }
+      loyaltyCustomer.loyaltyTierId = loyalty_tier_id;
     }
 
-    Object.assign(loyaltyCustomer, {
-      ...update_data,
-      loyaltyTierId: loyalty_tier_id,
-    });
+    // Mapear campos snake_case a camelCase del modelo
+    if (current_points !== undefined) loyaltyCustomer.currentPoints = current_points;
+    if (lifetime_points !== undefined) loyaltyCustomer.lifetimePoints = lifetime_points;
+
+    // Aplicar otros campos (como is_active)
+    Object.assign(loyaltyCustomer, other_data);
 
     try {
       await this.loyaltyCustomerRepository.save(loyaltyCustomer);
+
+      if (lifetime_points !== undefined) {
+        const newerTier = await evaluateTierUpgrade(
+          loyaltyCustomer,
+          this.loyaltyTierRepo
+        );
+        if (newerTier) {
+          loyaltyCustomer.loyaltyTierId = newerTier.id;
+          await this.loyaltyCustomerRepository.save(loyaltyCustomer);
+        }
+      }
+
       return this.findOne(id, merchant_id, 'Updated');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
