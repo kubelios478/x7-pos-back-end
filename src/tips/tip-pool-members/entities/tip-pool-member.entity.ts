@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { TipPool } from '../../tip-pools/entities/tip-pool.entity';
-import { Collaborator } from '../../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../../hr/collaborators/entities/collaborator.entity';
 import { TipPoolMemberRecordStatus } from '../constants/tip-pool-member-record-status.enum';
 
 @Entity('tip_pool_members')

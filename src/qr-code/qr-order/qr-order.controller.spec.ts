@@ -124,9 +124,9 @@ describe('QROrderController', () => {
   });
 
   //--------------------------------------------------------------
-  // POST /qr-orders
+  // POST /qr-order
   //--------------------------------------------------------------
-  describe('POST /qr-orders', () => {
+  describe('POST /qr-order', () => {
     it('should create a qr order successfully', async () => {
       const expectedResponse = {
         statusCode: 201,
@@ -160,9 +160,9 @@ describe('QROrderController', () => {
     });
   });
   //--------------------------------------------------------------
-  // GET /qr-orders
+  // GET /qr-order
   //--------------------------------------------------------------
-  describe('GET /qr-orders', () => {
+  describe('GET /qr-order', () => {
     it('should retrieve all qr orders successfully', async () => {
       const findAllSpy = jest
         .spyOn(service, 'findAll')
@@ -214,9 +214,9 @@ describe('QROrderController', () => {
     });
   });
   //--------------------------------------------------------------
-  // GET /qr-orders/:id
+  // GET /qr-order/:id
   //--------------------------------------------------------------
-  describe('GET /qr-orders/:id', () => {
+  describe('GET /qr-order/:id', () => {
     it('should retrieve a qr order by id successfully', async () => {
       const findOneSpy = jest
         .spyOn(service, 'findOne')
@@ -242,9 +242,9 @@ describe('QROrderController', () => {
     });
   });
   //--------------------------------------------------------------
-  // PATCH /qr-orders/:id
+  // PATCH /qr-order/:id
   //--------------------------------------------------------------
-  describe('PATCH /qr-orders/:id', () => {
+  describe('PATCH /qr-order/:id', () => {
     it('should update a qr order successfully', async () => {
       const updatedResponse = {
         statusCode: 200,
@@ -277,9 +277,9 @@ describe('QROrderController', () => {
     });
   });
   //--------------------------------------------------------------
-  // DELETE /qr-orders/:id
+  // DELETE /qr-order/:id
   //--------------------------------------------------------------
-  describe('DELETE /qr-orders/:id', () => {
+  describe('DELETE /qr-order/:id', () => {
     it('should delete a qr order successfully', async () => {
       const deleteResponse = {
         statusCode: 200,

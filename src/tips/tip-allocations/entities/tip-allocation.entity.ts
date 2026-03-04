@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { Tip } from '../../tips/entities/tip.entity';
-import { Collaborator } from '../../../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../../../hr/collaborators/entities/collaborator.entity';
 import { Shift } from '../../../shifts/entities/shift.entity';
 import { TipAllocationRole } from '../constants/tip-allocation-role.enum';
 import { TipAllocationRecordStatus } from '../constants/tip-allocation-record-status.enum';

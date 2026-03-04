@@ -173,6 +173,12 @@ export class ErrorHandler {
     throw new NotFoundException(message);
   }
 
+  static qrOrderItemNotFound(
+    message: string = ErrorMessage.QR_ORDER_ITEM_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
   static customerNotFound(
     message: string = ErrorMessage.CUSTOMER_NOT_FOUND,
   ): never {
