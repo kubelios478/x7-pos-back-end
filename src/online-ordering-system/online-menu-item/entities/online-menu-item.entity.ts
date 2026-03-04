@@ -10,8 +10,8 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { OnlineMenu } from '../../online-menu/entities/online-menu.entity';
-import { Product } from '../../../products-inventory/products/entities/product.entity';
-import { Variant } from '../../../products-inventory/variants/entities/variant.entity';
+import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
+import { Variant } from '../../../inventory/products-inventory/variants/entities/variant.entity';
 import { OnlineMenuItemStatus } from '../constants/online-menu-item-status.enum';
 
 @Entity('online_menu_item')

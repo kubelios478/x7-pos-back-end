@@ -5,6 +5,7 @@ import { LoyaltyPointsTransactionService } from './loyalty-points-transaction.se
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { LoyaltyCustomer } from '../loyalty-customer/entities/loyalty-customer.entity';
 import { LoyaltyPointTransaction } from './entities/loyalty-points-transaction.entity';
+import { LoyaltyTier } from '../loyalty-tier/entities/loyalty-tier.entity';
 import { Order } from 'src/orders/entities/order.entity';
 import { CashTransaction } from 'src/cash-transactions/entities/cash-transaction.entity';
 import { DataSource, Repository } from 'typeorm';
@@ -113,6 +114,16 @@ describe('LoyaltyPointsTransactionService', () => {
           provide: getRepositoryToken(CashTransaction),
           useValue: {
             findOneBy: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(LoyaltyTier),
+          useValue: {
+            findOne: jest.fn(),
+            findOneBy: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
           },
         },
         {

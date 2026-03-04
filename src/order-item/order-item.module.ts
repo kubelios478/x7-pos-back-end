@@ -4,9 +4,9 @@ import { OrderItemService } from './order-item.service';
 import { OrderItemController } from './order-item.controller';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
-import { Product } from '../products-inventory/products/entities/product.entity';
-import { Variant } from '../products-inventory/variants/entities/variant.entity';
-import { Modifier } from '../products-inventory/modifiers/entities/modifier.entity';
+import { Product } from '../inventory/products-inventory/products/entities/product.entity';
+import { Variant } from '../inventory/products-inventory/variants/entities/variant.entity';
+import { Modifier } from '../inventory/products-inventory/modifiers/entities/modifier.entity';
 
 @Module({
   imports: [

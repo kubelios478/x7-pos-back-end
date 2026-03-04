@@ -1,7 +1,7 @@
 //src/qr-code/qr-order-item/entity/qr-order-item.entity.ts
 import { QROrder } from 'src/qr-code/qr-order/entity/qr-order.entity';
-import { Product } from 'src/products-inventory/products/entities/product.entity';
-import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 import {
   Column,
   Entity,

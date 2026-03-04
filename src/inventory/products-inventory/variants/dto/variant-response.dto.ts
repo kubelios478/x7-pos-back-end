@@ -1,0 +1,37 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { SuccessResponse } from 'src/common/dtos/success-response.dto';
+import { ProductResponseDto } from '../../products/dto/product-response.dto';
+
+export class VariantResponseDto {
+  @ApiProperty({ example: 1, description: 'Variant ID' })
+  id: number;
+
+  @ApiProperty({ example: 'Phone', description: 'Variant name' })
+  name: string;
+
+  @ApiProperty({ example: 100, description: 'Variant price' })
+  price: number;
+
+  @ApiProperty({ example: 'Variant Sku', description: 'Variant SKU' })
+  sku: string;
+
+  @ApiProperty({
+    type: () => ProductResponseDto,
+    nullable: true,
+    description: 'Associated product details',
+  })
+  product: ProductResponseDto | null;
+}
+
+export class VariantLittleResponseDto {
+  @ApiProperty({ example: 1, description: 'Variant ID' })
+  id: number;
+
+  @ApiProperty({ example: 'Phone', description: 'Variant name' })
+  name: string;
+}
+
+export class OneVariantResponse extends SuccessResponse {
+  @ApiProperty()
+  data: VariantResponseDto;
+}

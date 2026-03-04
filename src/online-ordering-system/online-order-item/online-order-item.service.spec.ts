@@ -9,8 +9,8 @@ import { NotFoundException, ForbiddenException, BadRequestException, ConflictExc
 import { OnlineOrderItemService } from './online-order-item.service';
 import { OnlineOrderItem } from './entities/online-order-item.entity';
 import { OnlineOrder } from '../online-order/entities/online-order.entity';
-import { Product } from '../../products-inventory/products/entities/product.entity';
-import { Variant } from '../../products-inventory/variants/entities/variant.entity';
+import { Product } from '../../inventory/products-inventory/products/entities/product.entity';
+import { Variant } from '../../inventory/products-inventory/variants/entities/variant.entity';
 import { CreateOnlineOrderItemDto } from './dto/create-online-order-item.dto';
 import { UpdateOnlineOrderItemDto } from './dto/update-online-order-item.dto';
 import { GetOnlineOrderItemQueryDto, OnlineOrderItemSortBy } from './dto/get-online-order-item-query.dto';

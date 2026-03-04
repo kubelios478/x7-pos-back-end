@@ -4,8 +4,8 @@ import { QRMenuItemController } from './qr-menu-item.controller';
 import { QRMenuItemService } from './qr-menu-item.service';
 import { QRMenuItem } from '../qr-menu-item/entity/qr-menu-item.entity';
 import { QRMenuSection } from '../qr-menu-section/entity/qr-menu-section.entity';
-import { Product } from 'src/products-inventory/products/entities/product.entity';
-import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 import { OneQRMenuItemResponseDto } from './dto/qr-menu-item-response.dto';
 import { PaginatedQRMenuItemResponseDto } from './dto/paginated-qr-menu-item-response.dto';
 

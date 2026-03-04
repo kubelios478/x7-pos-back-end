@@ -17,6 +17,13 @@ import { Merchant } from 'src/merchants/entities/merchant.entity';
 import { GetLoyaltyTiersQueryDto } from './dto/get-loyalty-tiers-query.dto';
 import { LoyaltyTierBenefit } from './constants/loyalty-tier-benefit.enum';
 
+jest.mock('./loyalty-tier.helpers', () => ({
+  recalculateProgramLevels: jest.fn().mockResolvedValue(undefined),
+  findOrCreateAvailableTier: jest.fn().mockResolvedValue(null),
+  evaluateTierUpgrade: jest.fn().mockResolvedValue(null),
+  DEFAULT_PROGRAM_TIERS: [],
+}));
+
 describe('LoyaltyTierService', () => {
   let service: LoyaltyTierService;
   let loyaltyTierRepo: jest.Mocked<Repository<LoyaltyTier>>;
@@ -51,6 +58,7 @@ describe('LoyaltyTierService', () => {
     const mockLoyaltyTierRepo = {
       create: jest.fn(),
       save: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       findOne: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
@@ -115,10 +123,12 @@ describe('LoyaltyTierService', () => {
     const newLoyaltyTier: LoyaltyTier = {
       id: 1,
       ...createLoyaltyTierDto,
+      level: 1,
       is_active: true,
       loyaltyProgram: loyaltyProgram as LoyaltyProgram,
       benefits: [],
       created_at: new Date(),
+      loyaltyCustomers: [],
     };
     const expectedResponse: OneLoyaltyTierResponse = {
       statusCode: 201,
@@ -152,7 +162,6 @@ describe('LoyaltyTierService', () => {
       expect(loyaltyTierRepo.findOneBy).toHaveBeenCalledWith({
         name: createLoyaltyTierDto.name,
         loyalty_program_id: createLoyaltyTierDto.loyalty_program_id,
-        loyaltyProgram: { merchantId: merchant_id },
         is_active: true,
       });
       expect(loyaltyTierRepo.findOne).toHaveBeenCalledWith({
@@ -176,10 +185,12 @@ describe('LoyaltyTierService', () => {
       const inactiveLoyaltyTier: LoyaltyTier = {
         id: 1,
         ...createLoyaltyTierDto,
+        level: 1,
         is_active: false,
         loyaltyProgram: loyaltyProgram as LoyaltyProgram,
         benefits: [],
         created_at: new Date(),
+        loyaltyCustomers: [],
       };
       loyaltyProgramRepo.findOneBy.mockResolvedValue(
         loyaltyProgram as LoyaltyProgram,
@@ -260,6 +271,7 @@ describe('LoyaltyTierService', () => {
       is_active: true,
       benefits: [LoyaltyTierBenefit.DISCOUNT],
       created_at: new Date(),
+      loyaltyCustomers: [],
       loyaltyProgram: {
         id: 1,
         merchantId: merchant_id,
@@ -363,6 +375,7 @@ describe('LoyaltyTierService', () => {
       is_active: true,
       benefits: [],
       created_at: new Date(),
+      loyaltyCustomers: [],
       loyaltyProgram: {
         id: 1,
         merchantId: merchant_id,
@@ -438,6 +451,7 @@ describe('LoyaltyTierService', () => {
       multiplier: 1,
       benefits: [],
       created_at: new Date(),
+      loyaltyCustomers: [],
       loyaltyProgram: {
         id: 1,
         merchantId: merchant_id,
@@ -520,6 +534,7 @@ describe('LoyaltyTierService', () => {
       multiplier: 1,
       benefits: [],
       created_at: new Date(),
+      loyaltyCustomers: [],
       loyaltyProgram: {
         id: 1,
         merchantId: merchant_id,

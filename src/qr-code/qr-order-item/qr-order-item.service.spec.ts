@@ -4,8 +4,8 @@ import { QROrderItemService } from './qr-order-item.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { QROrderItem } from './entity/qr-order-item.entity';
 import { QROrder } from '../qr-order/entity/qr-order.entity';
-import { Product } from 'src/products-inventory/products/entities/product.entity';
-import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 import { CreateQROrderItemDto } from './dto/create-qr-order-item.dto';
 import { SelectQueryBuilder } from 'typeorm';
 import { Repository, In } from 'typeorm';
@@ -37,7 +37,6 @@ describe('QROrderItemService', () => {
     variant: 1,
     quantity: 2,
     price: 10.0,
-    total_price: 20.0,
     notes: 'Test note',
     status: 'active',
   };
@@ -48,7 +47,6 @@ describe('QROrderItemService', () => {
     variant: 1,
     quantity: 3,
     price: 15.0,
-    total_price: 45.0,
     notes: 'Updated note',
     status: 'active',
   };
@@ -396,6 +394,7 @@ describe('QROrderItemService', () => {
         qrOrder: mockUpdateQROrderItemDto.qrOrder as unknown as QROrder,
         product: mockUpdateQROrderItemDto.product as unknown as Product,
         variant: mockUpdateQROrderItemDto.variant as unknown as Variant,
+        total_price: mockUpdateQROrderItemDto.quantity * mockUpdateQROrderItemDto.price, // 3 * 15 = 45
       };
 
       const findOneSpy = jest.spyOn(qrOrderItemRepository, 'findOne');

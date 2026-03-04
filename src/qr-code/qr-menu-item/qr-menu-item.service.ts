@@ -2,8 +2,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QRMenuItem } from './entity/qr-menu-item.entity';
-import { Product } from 'src/products-inventory/products/entities/product.entity';
-import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 import { QRMenuSection } from '../qr-menu-section/entity/qr-menu-section.entity';
 import { OneQRMenuItemResponseDto } from './dto/qr-menu-item-response.dto';
 import { CreateQRMenuItemDto } from './dto/create-qr-menu-item.dto';

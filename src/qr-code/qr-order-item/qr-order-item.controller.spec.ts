@@ -4,8 +4,8 @@ import { QROrderItemController } from './qr-order-item.controller';
 import { QROrderItemService } from './qr-order-item.service';
 import { QROrderItem } from './entity/qr-order-item.entity';
 import { QROrder } from '../qr-order/entity/qr-order.entity';
-import { Product } from 'src/products-inventory/products/entities/product.entity';
-import { Variant } from 'src/products-inventory/variants/entities/variant.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 
 describe('QROrderItemController', () => {
   let controller: QROrderItemController;

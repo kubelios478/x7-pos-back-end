@@ -5,8 +5,8 @@ import { KitchenOrderItemController } from './kitchen-order-item.controller';
 import { KitchenOrderItem } from './entities/kitchen-order-item.entity';
 import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
 import { OrderItem } from '../../order-item/entities/order-item.entity';
-import { Product } from '../../products-inventory/products/entities/product.entity';
-import { Variant } from '../../products-inventory/variants/entities/variant.entity';
+import { Product } from '../../inventory/products-inventory/products/entities/product.entity';
+import { Variant } from '../../inventory/products-inventory/variants/entities/variant.entity';
 
 @Module({
   imports: [
