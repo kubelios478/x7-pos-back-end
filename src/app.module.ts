@@ -143,6 +143,9 @@ import { QROrderItemModule } from './qr-code/qr-order-item/qr-order-item.module'
 import { QROrderItem } from './qr-code/qr-order-item/entity/qr-order-item.entity';
 import { LoyaltyRewardsRedemtion } from './loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
 import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
+import { ConfigurationModule } from './configuration/configuration.module';
+import { Configuration } from './configuration/entity/configuration-entity';
+import { MerchantTipRule } from './configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
 
 @Module({
   imports: [
@@ -238,6 +241,8 @@ import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon
           TipAllocation,
           TipPool,
           TipPoolMember,
+          Configuration,
+          MerchantTipRule,
         ],
         synchronize: true,
       }),
@@ -318,6 +323,7 @@ import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon
     TipPoolsModule,
     TipPoolMembersModule,
     QROrderItemModule,
+    ConfigurationModule,
   ],
 })
 export class AppModule {}
