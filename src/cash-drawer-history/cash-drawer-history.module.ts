@@ -4,7 +4,7 @@ import { CashDrawerHistoryService } from './cash-drawer-history.service';
 import { CashDrawerHistoryController } from './cash-drawer-history.controller';
 import { CashDrawerHistory } from './entities/cash-drawer-history.entity';
 import { CashDrawer } from '../cash-drawers/entities/cash-drawer.entity';
-import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../hr/collaborators/entities/collaborator.entity';
 
 @Module({
   imports: [

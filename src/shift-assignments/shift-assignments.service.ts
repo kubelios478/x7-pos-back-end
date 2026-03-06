@@ -8,7 +8,7 @@ import { ShiftAssignmentResponseDto, OneShiftAssignmentResponseDto, AllShiftAssi
 import { GetShiftAssignmentsQueryDto } from './dto/get-shift-assignments-query.dto';
 import { PaginatedShiftAssignmentsResponseDto, PaginationMetaDto } from './dto/paginated-shift-assignments-response.dto';
 import { Shift } from '../shifts/entities/shift.entity';
-import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../hr/collaborators/entities/collaborator.entity';
 import { ShiftRole } from '../shifts/constants/shift-role.enum';
 import { ShiftAssignmentStatus } from './constants/shift-assignment-status.enum';
 

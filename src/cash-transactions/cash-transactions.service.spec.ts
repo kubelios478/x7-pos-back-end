@@ -9,7 +9,7 @@ import { NotFoundException, ForbiddenException, BadRequestException } from '@nes
 import { CashTransactionsService } from './cash-transactions.service';
 import { CashTransaction } from './entities/cash-transaction.entity';
 import { CashDrawer } from '../cash-drawers/entities/cash-drawer.entity';
-import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../hr/collaborators/entities/collaborator.entity';
 import { Order } from '../orders/entities/order.entity';
 import { CreateCashTransactionDto } from './dto/create-cash-transaction.dto';
 import { UpdateCashTransactionDto } from './dto/update-cash-transaction.dto';

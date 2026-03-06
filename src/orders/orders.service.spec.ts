@@ -14,7 +14,7 @@ import { OrdersService } from './orders.service';
 import { Order } from './entities/order.entity';
 import { Merchant } from '../merchants/entities/merchant.entity';
 import { Table } from '../tables/entities/table.entity';
-import { Collaborator } from '../collaborators/entities/collaborator.entity';
+import { Collaborator } from '../hr/collaborators/entities/collaborator.entity';
 import { MerchantSubscription } from '../subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { Customer } from '../customers/entities/customer.entity';
 import { CreateOrderDto } from './dto/create-order.dto';

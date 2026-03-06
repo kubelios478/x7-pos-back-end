@@ -58,12 +58,27 @@ export class LoyaltyCustomerService {
       }
     }
 
-    // Al crear un cliente siempre empieza con 0 puntos, por lo tanto se asigna el tier Base (0 puntos)
-    const assignedTier = await findOrCreateAvailableTier(
-      loyalty_program_id,
-      merchant_id,
-      this.loyaltyTierRepo,
-    );
+    // Determinar qué tier asignar
+    let assignedTier;
+    if (createLoyaltyCustomerDto.loyalty_tier_id) {
+      // Si se provee un tier específico, validarlo directamente
+      assignedTier = await this.loyaltyTierRepo.findOneBy({
+        id: createLoyaltyCustomerDto.loyalty_tier_id,
+        loyalty_program_id: loyalty_program_id,
+        loyaltyProgram: { merchantId: merchant_id },
+        is_active: true,
+      });
+      if (!assignedTier) {
+        ErrorHandler.notFound(ErrorMessage.LOYALTY_TIER_NOT_FOUND);
+      }
+    } else {
+      // Sin tier específico: asignar el tier base del programa
+      assignedTier = await findOrCreateAvailableTier(
+        loyalty_program_id,
+        merchant_id,
+        this.loyaltyTierRepo,
+      );
+    }
 
     const customer = await this.customerRepo.findOneBy({
       id: customer_id,

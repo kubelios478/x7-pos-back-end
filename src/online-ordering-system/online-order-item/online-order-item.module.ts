@@ -4,8 +4,8 @@ import { OnlineOrderItemService } from './online-order-item.service';
 import { OnlineOrderItemController } from './online-order-item.controller';
 import { OnlineOrderItem } from './entities/online-order-item.entity';
 import { OnlineOrder } from '../online-order/entities/online-order.entity';
-import { Product } from '../../products-inventory/products/entities/product.entity';
-import { Variant } from '../../products-inventory/variants/entities/variant.entity';
+import { Product } from '../../inventory/products-inventory/products/entities/product.entity';
+import { Variant } from '../../inventory/products-inventory/variants/entities/variant.entity';
 
 @Module({
   imports: [

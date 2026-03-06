@@ -25,4 +25,4 @@ import { QROrderService } from './qr-order.service';
   providers: [QROrderService],
   exports: [QROrderService],
 })
-export class QrOrderModule {}
+export class QrOrderModule { }
