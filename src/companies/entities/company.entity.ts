@@ -5,6 +5,7 @@ import { MerchantSummaryDto } from '../../merchants/dtos/merchant-summary.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { CustomerSummaryDto } from 'src/customers/dtos/customer-summary.dto';
 import { Customer } from 'src/customers/entities/customer.entity';
+import { Configuration } from 'src/configuration/entity/configuration-entity';
 
 @Entity()
 export class Company {
@@ -84,4 +85,12 @@ export class Company {
   })
   @OneToMany(() => Customer, (customer) => customer.company)
   customers: Customer[];
+
+  @ApiProperty({
+    type: () => Configuration,
+    description: 'Configuration associated with the company',
+    required: false,
+  })
+  @OneToMany(() => Configuration, (configuration) => configuration.company)
+  configurations: Configuration[];
 }

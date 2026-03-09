@@ -148,6 +148,9 @@ import { QROrderItemModule } from './qr-code/qr-order-item/qr-order-item.module'
 import { QROrderItem } from './qr-code/qr-order-item/entity/qr-order-item.entity';
 import { LoyaltyRewardsRedemtion } from './loyalty/loyalty-rewards-redemtions/entities/loyalty-rewards-redemtion.entity';
 import { LoyaltyCoupon } from './loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
+import { ConfigurationModule } from './configuration/configuration.module';
+import { Configuration } from './configuration/entity/configuration-entity';
+import { MerchantTipRule } from './configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
 import { InventoryModule } from './inventory/inventory.module';
 import { ReceiptsModule } from './inventory/billing-transactions/receipts/receipts.module';
 
@@ -245,6 +248,8 @@ import { ReceiptsModule } from './inventory/billing-transactions/receipts/receip
           TipAllocation,
           TipPool,
           TipPoolMember,
+          Configuration,
+          MerchantTipRule,
           TipSettlement,
           CashTipMovement,
           CollaboratorContract,
@@ -331,6 +336,7 @@ import { ReceiptsModule } from './inventory/billing-transactions/receipts/receip
     TipSettlementsModule,
     CashTipMovementsModule,
     QROrderItemModule,
+    ConfigurationModule,
   ],
 })
 export class AppModule { }
