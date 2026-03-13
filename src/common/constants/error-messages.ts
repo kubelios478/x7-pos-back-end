@@ -63,6 +63,8 @@ export enum ErrorMessage {
   QR_ORDER_NOT_FOUND = 'QR Order not found',
   TABLE_NOT_FOUND = 'Table not found',
   QR_ORDER_ITEM_NOT_FOUND = 'QR Order Item not found',
+  MERCHANT_TIP_RULE_NOT_FOUND = 'Merchant Tip Rule not found',
+  MERCHANT_OVERTIME_RULE_NOT_FOUND = 'Merchant Overtime Rule not found',
 
   // 409 Conflict
   EMAIL_ALREADY_EXISTS = 'Email address is already registered',

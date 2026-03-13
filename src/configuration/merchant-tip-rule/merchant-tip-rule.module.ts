@@ -6,10 +6,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Company } from 'src/companies/entities/company.entity';
 import { MerchantTipRule } from './entity/merchant-tip-rule-entity';
 import { Configuration } from '../entity/configuration-entity';
+import { User } from 'src/users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Company, MerchantTipRule, Configuration]),
+    TypeOrmModule.forFeature([Company, MerchantTipRule, Configuration, User]),
   ],
   controllers: [MerchantTipRuleController],
   providers: [MerchantTipRuleService],

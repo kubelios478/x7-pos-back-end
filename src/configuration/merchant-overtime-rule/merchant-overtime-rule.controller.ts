@@ -1,4 +1,4 @@
-//src/configuration/merchant-tip-rule/merchant-tip-rule.controller.ts
+//src/configuration/merchant-overtime-rule/merchant-overtime-rule.controller.ts
 import {
   Controller,
   Post,
@@ -6,8 +6,8 @@ import {
   Body,
   Get,
   Query,
-  Param,
   ParseIntPipe,
+  Param,
   Patch,
   Delete,
 } from '@nestjs/common';
@@ -24,27 +24,27 @@ import {
   ApiParam,
   ApiNotFoundResponse,
 } from '@nestjs/swagger';
-import { Roles } from 'src/auth/decorators/roles.decorator';
-import { Scopes } from 'src/auth/decorators/scopes.decorator';
+import { MerchantOvertimeRuleService } from './merchant-overtime-rule.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/users/constants/role.enum';
+import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { Scope } from 'src/users/constants/scope.enum';
-import { CreateMerchantTipRuleDto } from './dto/create-merchant-tip-rule.dto';
+import { CreateMerchantOvertimeRuleDto } from './dto/create-merchant-overtime-rule.dto';
 import {
-  MerchantTipRuleResponseDto,
-  OneMerchantTipRuleResponseDto,
-} from './dto/merchant-tip-rule-response.dto';
-import { MerchantTipRuleService } from './merchant-tip-rule.service';
-import { PaginatedMerchantTipRuleResponseDto } from './dto/paginated-merchant-tip-rule-response.dto';
-import { QueryMerchantTipRuleDto } from './dto/query-merchant-tip-rule.dto';
-import { UpdateMerchantTipRuleDto } from './dto/update-merchant-tip-rule.dto';
+  MerchantOvertimeRuleResponseDto,
+  OneMerchantOvertimeRuleResponseDto,
+} from './dto/merchant-overtime-rule-response.dto';
+import { PaginatedMerchantOvertimeRuleResponseDto } from './dto/paginated-merchant-overtime-rule-response.dto';
+import { QueryMerchantOvertimeRuleDto } from './dto/query-merchant-overtime-rule.dto';
+import { UpdateMerchantOvertimeRuleDto } from './dto/update-merchant-overtime-rule.dto';
 
-@ApiTags('Merchant Tip Rule')
-@Controller('merchant-tip-rule')
-export class MerchantTipRuleController {
+@ApiTags('Merchant Overtime Rule')
+@Controller('merchant-overtime-rule')
+export class MerchantOvertimeRuleController {
   constructor(
-    private readonly merchantTipRuleService: MerchantTipRuleService,
+    private readonly merchantOvertimeRuleService: MerchantOvertimeRuleService,
   ) {}
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,15 +57,15 @@ export class MerchantTipRuleController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary: 'Create a new Merchant Tip Rule',
-    description: 'Endpoint to create a new Merchant Tip Rule.',
+    summary: 'Create a new Merchant Overtime Rule',
+    description: 'Endpoint to create a new Merchant Overtime Rule.',
   })
   @ApiBody({
-    type: CreateMerchantTipRuleDto,
-    description: 'The details of the Merchant Tip Rule to be created.',
+    type: CreateMerchantOvertimeRuleDto,
+    description: 'The details of the Merchant Overtime Rule to be created.',
   })
   @ApiCreatedResponse({
-    type: MerchantTipRuleResponseDto,
+    type: MerchantOvertimeRuleResponseDto,
     schema: {
       example: {
         company: 1,
@@ -74,16 +74,16 @@ export class MerchantTipRuleController {
         createdBy: 'admin_user',
         updatedBy: 'admin_user',
         status: 'active',
-        name: 'Default Tip Rule',
-        tipCalculationMethod: 'percentage',
-        tipDistributionMethod: 'pool',
-        suggestedPercentages: [15, 18, 20],
-        fixedAmountOptions: [5, 10, 15],
-        allowCustomTip: true,
-        maximumTipPercentage: 100,
-        includeKitchenStaff: false,
-        includeManagers: false,
-        autoDistribute: true,
+        name: 'Default Overtime Rule',
+        description: 'Description of the Overtime Rule',
+        calculationMethod: 'Daily',
+        thresholdHours: 8,
+        maxHours: 10,
+        rateMethod: 'Percentage',
+        rateValue: 200,
+        appliesOnHolidays: true,
+        appliesOnWeekends: true,
+        priority: 10,
       },
     },
   })
@@ -93,7 +93,7 @@ export class MerchantTipRuleController {
       example: {
         statusCode: 400,
         message: [
-          'Merchant Tip Rule must be a string',
+          'Merchant Overtime Rule must be a string',
           'status must be one of the following values: active, inactive',
         ],
         error: 'Bad Request',
@@ -131,9 +131,9 @@ export class MerchantTipRuleController {
     },
   })
   async create(
-    @Body() dto: CreateMerchantTipRuleDto,
-  ): Promise<OneMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.create(dto);
+    @Body() dto: CreateMerchantOvertimeRuleDto,
+  ): Promise<OneMerchantOvertimeRuleResponseDto> {
+    return this.merchantOvertimeRuleService.create(dto);
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -146,12 +146,13 @@ export class MerchantTipRuleController {
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
-    summary: 'Get a list of Merchant Tip Rules',
-    description: 'Endpoint to retrieve a paginated list of Merchant Tip Rules.',
+    summary: 'Get a list of Merchant Overtime Rules',
+    description:
+      'Endpoint to retrieve a paginated list of Merchant Overtime Rules.',
   })
   @ApiOkResponse({
-    description: 'List of Merchant Tip Rules retrieved successfully.',
-    type: PaginatedMerchantTipRuleResponseDto,
+    description: 'List of Merchant Overtime Rules retrieved successfully.',
+    type: PaginatedMerchantOvertimeRuleResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized. Authentication required',
@@ -184,9 +185,9 @@ export class MerchantTipRuleController {
     },
   })
   async findAll(
-    @Query() query: QueryMerchantTipRuleDto,
-  ): Promise<PaginatedMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.findAll(query);
+    @Query() query: QueryMerchantOvertimeRuleDto,
+  ): Promise<PaginatedMerchantOvertimeRuleResponseDto> {
+    return this.merchantOvertimeRuleService.findAll(query);
   }
 
   @Get(':id')
@@ -200,17 +201,18 @@ export class MerchantTipRuleController {
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
-    summary: 'Get a Merchant Tip Rule by ID',
-    description: 'Endpoint to retrieve a single Merchant Tip Rule by its ID.',
+    summary: 'Get a Merchant Overtime Rule by ID',
+    description:
+      'Endpoint to retrieve a single Merchant Overtime Rule by its ID.',
   })
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'ID of the Merchant Tip Rule to retrieve',
+    description: 'ID of the Merchant Overtime Rule to retrieve',
     example: 1,
   })
   @ApiOkResponse({
-    description: 'Merchant Tip Rule retrieved successfully.',
+    description: 'Merchant Overtime Rule retrieved successfully.',
     schema: {
       example: {
         id: 1,
@@ -220,16 +222,16 @@ export class MerchantTipRuleController {
         createdBy: 'admin_user',
         updatedBy: 'admin_user',
         status: 'active',
-        name: 'Default Tip Rule',
-        tipCalculationMethod: 'percentage',
-        tipDistributionMethod: 'pool',
-        suggestedPercentages: [15, 18, 20],
-        fixedAmountOptions: [5, 10, 15],
-        allowCustomTip: true,
-        maximumTipPercentage: 100,
-        includeKitchenStaff: false,
-        includeManagers: false,
-        autoDistribute: true,
+        name: 'Default Overtime Rule',
+        description: 'Description of the Overtime Rule',
+        calculationMethod: 'Daily',
+        thresholdHours: 8,
+        maxHours: 10,
+        rateMethod: 'Percentage',
+        rateValue: 200,
+        appliesOnHolidays: true,
+        appliesOnWeekends: true,
+        priority: 10,
       },
     },
   })
@@ -264,11 +266,11 @@ export class MerchantTipRuleController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Merchant Tip Rule not found',
+    description: 'Merchant Overtime Rule not found',
     schema: {
       example: {
         statusCode: 404,
-        message: 'Merchant Tip Rule with ID 1 not found',
+        message: 'Merchant Overtime Rule with ID 1 not found',
         error: 'Not Found',
       },
     },
@@ -285,12 +287,13 @@ export class MerchantTipRuleController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<OneMerchantTipRuleResponseDto> {
+  ): Promise<OneMerchantOvertimeRuleResponseDto> {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
-    const merchantTipRule = await this.merchantTipRuleService.findOne(id);
-    return merchantTipRule;
+    const merchantOvertimeRule =
+      await this.merchantOvertimeRuleService.findOne(id);
+    return merchantOvertimeRule;
   }
 
   @Patch(':id')
@@ -304,40 +307,40 @@ export class MerchantTipRuleController {
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
-    summary: 'Update a Merchant Tip Rule by ID',
-    description: 'Endpoint to update an existing Merchant Tip Rule.',
+    summary: 'Update a Merchant Overtime Rule by ID',
+    description: 'Endpoint to update an existing Merchant Overtime Rule.',
   })
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'ID of the Merchant Tip Rule to update',
+    description: 'ID of the Merchant Overtime Rule to update',
     example: 1,
   })
   @ApiBody({
-    type: UpdateMerchantTipRuleDto,
-    description: 'Data to update the Merchant Tip Rule',
+    type: UpdateMerchantOvertimeRuleDto,
+    description: 'Data to update the Merchant Overtime Rule',
   })
   @ApiOkResponse({
-    description: 'Merchant Tip Rule updated successfully.',
+    description: 'Merchant Overtime Rule updated successfully.',
     schema: {
       example: {
         id: 1,
         company: 1,
-        createdAt: '2023-09-26T12:34:56Z',
-        updatedAt: '2023-09-27T12:34:56Z',
-        createdBy: 'admin_user',
-        updatedBy: 'admin_user',
+        createdAt: '2023-10-26T12:34:56Z',
+        updatedAt: '2023-10-27T12:34:56Z',
+        createdBy: 'admin_user2',
+        updatedBy: 'admin_user2',
         status: 'inactive',
-        name: 'Updated Tip Rule',
-        tipCalculationMethod: 'fixed_amount',
-        tipDistributionMethod: 'individual',
-        suggestedPercentages: [10, 15, 20],
-        fixedAmountOptions: [5, 10, 15],
-        allowCustomTip: false,
-        maximumTipPercentage: 50,
-        includeKitchenStaff: true,
-        includeManagers: true,
-        autoDistribute: false,
+        name: 'Updated Overtime Rule',
+        description: 'Description of the Overtime Rule',
+        calculationMethod: 'Weekly',
+        thresholdHours: 8,
+        maxHours: 20,
+        rateMethod: 'percentage',
+        rateValue: 200,
+        appliesOnHolidays: true,
+        appliesOnWeekends: true,
+        priority: 1,
       },
     },
   })
@@ -355,11 +358,11 @@ export class MerchantTipRuleController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Merchant Tip Rule not found',
+    description: 'Merchant Overtime Rule not found',
     schema: {
       example: {
         statusCode: 404,
-        message: 'Merchant Tip Rule with ID 1 not found',
+        message: 'Merchant Overtime Rule with ID 1 not found',
         error: 'Not Found',
       },
     },
@@ -396,9 +399,9 @@ export class MerchantTipRuleController {
   })
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateMerchantTipRuleDto,
-  ): Promise<OneMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.update(id, dto);
+    @Body() dto: UpdateMerchantOvertimeRuleDto,
+  ): Promise<OneMerchantOvertimeRuleResponseDto> {
+    return this.merchantOvertimeRuleService.update(id, dto);
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -411,36 +414,36 @@ export class MerchantTipRuleController {
   )
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
-    summary: 'Delete a Merchant Tip Rule by ID',
-    description: 'Endpoint to delete an existing Merchant Tip Rule.',
+    summary: 'Delete a Merchant Overtime Rule by ID',
+    description: 'Endpoint to delete an existing Merchant Overtime Rule.',
   })
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'ID of the Merchant Tip Rule to delete',
+    description: 'ID of the Merchant Overtime Rule to delete',
     example: 1,
   })
   @ApiOkResponse({
-    description: 'Merchant Tip Rule deleted successfully',
+    description: 'Merchant Overtime Rule deleted successfully',
     schema: {
       example: {
         id: 1,
         company: 1,
-        createdAt: '2023-09-26T12:34:56Z',
-        updatedAt: '2023-09-27T12:34:56Z',
-        createdBy: 'admin_user',
-        updatedBy: 'admin_user',
+        createdAt: '2023-10-26T12:34:56Z',
+        updatedAt: '2023-10-27T12:34:56Z',
+        createdBy: 'admin_user2',
+        updatedBy: 'admin_user2',
         status: 'deleted',
-        name: 'Updated Tip Rule',
-        tipCalculationMethod: 'fixed_amount',
-        tipDistributionMethod: 'individual',
-        suggestedPercentages: [10, 15, 20],
-        fixedAmountOptions: [5, 10, 15],
-        allowCustomTip: false,
-        maximumTipPercentage: 50,
-        includeKitchenStaff: true,
-        includeManagers: true,
-        autoDistribute: false,
+        name: 'Updated Overtime Rule',
+        description: 'Description of the Overtime Rule',
+        calculationMethod: 'Weekly',
+        thresholdHours: 8,
+        maxHours: 20,
+        rateMethod: 'percentage',
+        rateValue: 200,
+        appliesOnHolidays: true,
+        appliesOnWeekends: true,
+        priority: 1,
       },
     },
   })
@@ -496,7 +499,7 @@ export class MerchantTipRuleController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<OneMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.remove(id);
+  ): Promise<OneMerchantOvertimeRuleResponseDto> {
+    return this.merchantOvertimeRuleService.remove(id);
   }
 }

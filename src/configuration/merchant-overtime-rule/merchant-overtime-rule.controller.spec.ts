@@ -1,16 +1,16 @@
-//src/configuration/merchant-tip-rule/merchant-tip-rule.controller.spec.ts
+//src/configuration/merchant-overtime-rule/merchant-overtime-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { MerchantTipRuleController } from './merchant-tip-rule.controller';
-import { MerchantTipRuleService } from './merchant-tip-rule.service';
-import { MerchantTipRule } from './entity/merchant-tip-rule-entity';
+import { MerchantOvertimeRuleController } from './merchant-overtime-rule.controller';
+import { MerchantOvertimeRuleService } from './merchant-overtime-rule.service';
+import { MerchantOvertimeRule } from './entity/merchant-overtime-rule.entity';
 import { Company } from 'src/companies/entities/company.entity';
-import { TipCalculationMethod } from '../constants/tip-calculation-method.enum';
-import { TipDistributionMethod } from '../constants/tip-distribution-method.enum';
 import { User } from 'src/users/entities/user.entity';
+import { OvertimeCalculationType } from '../constants/overtime-calculation-type.enum';
+import { OvertimeRateType } from '../constants/overtime-rate-type.enum';
 
 describe('MerchantTipRuleController', () => {
-  let controller: MerchantTipRuleController;
-  let service: MerchantTipRuleService;
+  let controller: MerchantOvertimeRuleController;
+  let service: MerchantOvertimeRuleService;
 
   // Mock data
   const mockCompany: Company = {
@@ -32,7 +32,7 @@ describe('MerchantTipRuleController', () => {
     id: 1,
   } as User;
 
-  const mockMerchantTipRule: MerchantTipRule = {
+  const mockMerchantOvertimeRule: MerchantOvertimeRule = {
     id: 1,
     company: mockCompany,
     createdAt: new Date(),
@@ -40,19 +40,19 @@ describe('MerchantTipRuleController', () => {
     createdBy: mockUser,
     updatedBy: mockUser,
     status: 'active',
-    name: 'Test Merchant Tip Rule',
-    tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
-    tipDistributionMethod: TipDistributionMethod.INDIVIDUAL,
-    suggestedPercentages: [10, 15, 20],
-    fixedAmountOptions: [1, 2, 3],
-    allowCustomTip: true,
-    maximumTipPercentage: 25,
-    includeKitchenStaff: false,
-    includeManagers: false,
-    autoDistribute: true,
-  } as MerchantTipRule;
+    name: 'Test Merchant Overtime Rule',
+    description: 'Description of the Overtime Rule',
+    calculationMethod: OvertimeCalculationType.DAILY,
+    rateMethod: OvertimeRateType.MULTIPLIER,
+    thresholdHours: 8,
+    maxHours: 10,
+    rateValue: 200,
+    appliesOnHolidays: true,
+    appliesOnWeekends: true,
+    priority: 10,
+  };
 
-  const mockCreateMerchantTipRuleDto = {
+  const mockCreateMerchantOvertimeRuleDto = {
     id: 1,
     companyId: mockCompany.id,
     createdAt: new Date(),
@@ -60,16 +60,16 @@ describe('MerchantTipRuleController', () => {
     createdById: mockUser.id,
     updatedById: mockUser.id,
     status: 'active',
-    name: 'Test Merchant Tip Rule',
-    tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
-    tipDistributionMethod: TipDistributionMethod.INDIVIDUAL,
-    suggestedPercentages: [10, 15, 20],
-    fixedAmountOptions: [1, 2, 3],
-    allowCustomTip: true,
-    maximumTipPercentage: 25,
-    includeKitchenStaff: false,
-    includeManagers: false,
-    autoDistribute: true,
+    name: 'Test Merchant Overtime Rule',
+    description: 'Description of the Overtime Rule',
+    calculationMethod: OvertimeCalculationType.DAILY,
+    rateMethod: OvertimeRateType.MULTIPLIER,
+    thresholdHours: 8,
+    maxHours: 10,
+    rateValue: 200,
+    appliesOnHolidays: true,
+    appliesOnWeekends: true,
+    priority: 10,
   };
 
   const mockPagination = {
@@ -81,38 +81,39 @@ describe('MerchantTipRuleController', () => {
 
   const mockPaginatedResponse = {
     statusCode: 200,
-    message: 'Merchant tip rules retrieved successfully',
-    data: [mockMerchantTipRule],
+    message: 'Merchant Overtime rules retrieved successfully',
+    data: [mockMerchantOvertimeRule],
     pagination: mockPagination,
   };
 
-  const mockOneMerchantTipRuleResponse = {
+  const mockOneMerchantOvertimeRuleResponseDto = {
     statusCode: 200,
-    message: 'Merchant tip rule retrieved successfully',
-    data: mockMerchantTipRule,
+    message: 'Merchant Overtime rule retrieved successfully',
+    data: mockMerchantOvertimeRule,
   };
 
-  const mockUpdateMerchantTipRuleDto = {
-    companyId: mockCompany.id,
+  const mockUpdateMerchantOvertimeRuleDto = {
+    id: 1,
+    company: mockCompany,
     createdAt: new Date(),
     updatedAt: new Date(),
-    createdById: mockUser.id,
-    updatedById: mockUser.id,
-    status: 'active',
-    name: 'Test Merchant Tip Rule 2',
-    tipCalculationMethod: TipCalculationMethod.CUSTOM,
-    tipDistributionMethod: TipDistributionMethod.ROLE_BASED,
-    suggestedPercentages: [10, 20, 30],
-    fixedAmountOptions: [1, 2, 3],
-    allowCustomTip: false,
-    maximumTipPercentage: 50,
-    includeKitchenStaff: true,
-    includeManagers: true,
-    autoDistribute: true,
+    createdBy: 'Test User 2',
+    updatedBy: 'Test User 2',
+    status: 'inactive',
+    name: 'Update Merchant Overtime Rule',
+    description: 'Description of the Overtime Rule 2',
+    calculationMethod: OvertimeCalculationType.SPECIAL_DAY,
+    rateMethod: OvertimeRateType.FIXED_AMOUNT,
+    thresholdHours: 16,
+    maxHours: 20,
+    rateValue: 200,
+    appliesOnHolidays: true,
+    appliesOnWeekends: true,
+    priority: 5,
   };
 
   beforeEach(async () => {
-    const mockMerchantTipRuleService = {
+    const mockMerchantOvertimeRule = {
       create: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
@@ -121,19 +122,21 @@ describe('MerchantTipRuleController', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [MerchantTipRuleController],
+      controllers: [MerchantOvertimeRuleController],
       providers: [
         {
-          provide: MerchantTipRuleService,
-          useValue: mockMerchantTipRuleService,
+          provide: MerchantOvertimeRuleService,
+          useValue: mockMerchantOvertimeRule,
         },
       ],
     }).compile();
 
-    controller = module.get<MerchantTipRuleController>(
-      MerchantTipRuleController,
+    controller = module.get<MerchantOvertimeRuleController>(
+      MerchantOvertimeRuleController,
     );
-    service = module.get<MerchantTipRuleService>(MerchantTipRuleService);
+    service = module.get<MerchantOvertimeRuleService>(
+      MerchantOvertimeRuleService,
+    );
   });
 
   describe('Controller Initialization', () => {
@@ -146,14 +149,14 @@ describe('MerchantTipRuleController', () => {
   });
 
   //--------------------------------------------------------------
-  // POST /merchant-tip-rule
+  // POST /merchant-overtime-rule
   //--------------------------------------------------------------
-  describe('POST /merchant-tip-rule', () => {
-    it('should create a merchant tip rule successfully', async () => {
+  describe('POST /merchant-overtime-rule', () => {
+    it('should create a merchant overtime rule successfully', async () => {
       const expectedResponse = {
         statusCode: 201,
-        message: 'Merchant tip rule created successfully',
-        data: mockMerchantTipRule,
+        message: 'Merchant overtime rule created successfully',
+        data: mockMerchantOvertimeRule,
       };
 
       const createSpy = jest
@@ -161,31 +164,31 @@ describe('MerchantTipRuleController', () => {
         .mockResolvedValue(expectedResponse);
       createSpy.mockResolvedValue(expectedResponse);
 
-      const result = await controller.create(mockCreateMerchantTipRuleDto);
+      const result = await controller.create(mockCreateMerchantOvertimeRuleDto);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantTipRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantOvertimeRuleDto);
       expect(result).toEqual(expectedResponse);
     });
 
     it('should handle errors during creation', async () => {
-      const errorMessage = 'Failed to create Merchant Tip Rule';
+      const errorMessage = 'Failed to create Merchant Overtime Rule';
       const createSpy = jest
         .spyOn(service, 'create')
         .mockRejectedValue(new Error(errorMessage));
       createSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(mockCreateMerchantTipRuleDto),
+        controller.create(mockCreateMerchantOvertimeRuleDto),
       ).rejects.toThrow(errorMessage);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantTipRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantOvertimeRuleDto);
     });
   });
   //--------------------------------------------------------------
-  // GET /merchant-tip-rule
+  // GET /merchant-overtime-rule
   //--------------------------------------------------------------
-  describe('GET /merchant-tip-rule', () => {
-    it('should retrieve all merchant tip rules successfully', async () => {
+  describe('GET /merchant-overtime-rule', () => {
+    it('should retrieve all merchant overtime rules successfully', async () => {
       const findAllSpy = jest
         .spyOn(service, 'findAll')
         .mockResolvedValue(mockPaginatedResponse);
@@ -200,7 +203,7 @@ describe('MerchantTipRuleController', () => {
     it('should return empty list with pagination', async () => {
       const emptyPaginatedResponse = {
         statusCode: 200,
-        message: 'Merchant tip rules retrieved successfully',
+        message: 'Merchant overtime rules retrieved successfully',
         data: [],
         pagination: {
           total: 0,
@@ -222,7 +225,7 @@ describe('MerchantTipRuleController', () => {
     });
 
     it('should handle service errors in findAll', async () => {
-      const errorMessage = 'Failed to retrieve Merchant Tip Rules';
+      const errorMessage = 'Failed to retrieve Merchant Overtime Rules';
       const findAllSpy = jest
         .spyOn(service, 'findAll')
         .mockRejectedValue(new Error(errorMessage));
@@ -236,23 +239,23 @@ describe('MerchantTipRuleController', () => {
     });
   });
   //--------------------------------------------------------------
-  // GET /merchant-tip-rule/:id
+  // GET /merchant-overtime-rule/:id
   //--------------------------------------------------------------
-  describe('GET /merchant-tip-rule/:id', () => {
-    it('should retrieve a merchant tip rule by id successfully', async () => {
+  describe('GET /merchant-overtime-rule/:id', () => {
+    it('should retrieve a merchant overtime rule by id successfully', async () => {
       const findOneSpy = jest
         .spyOn(service, 'findOne')
-        .mockResolvedValue(mockOneMerchantTipRuleResponse);
-      findOneSpy.mockResolvedValue(mockOneMerchantTipRuleResponse);
+        .mockResolvedValue(mockOneMerchantOvertimeRuleResponseDto);
+      findOneSpy.mockResolvedValue(mockOneMerchantOvertimeRuleResponseDto);
 
       const result = await controller.findOne(1);
 
       expect(findOneSpy).toHaveBeenCalledWith(1);
-      expect(result).toEqual(mockOneMerchantTipRuleResponse);
+      expect(result).toEqual(mockOneMerchantOvertimeRuleResponseDto);
     });
 
     it('should handle errors when retrieving by ID', async () => {
-      const errorMessage = 'Failed to retrieve Merchant Tip Rule';
+      const errorMessage = 'Failed to retrieve Merchant Overtime Rule';
       const findOneSpy = jest
         .spyOn(service, 'findOne')
         .mockRejectedValue(new Error(errorMessage));
@@ -264,49 +267,58 @@ describe('MerchantTipRuleController', () => {
     });
   });
   //--------------------------------------------------------------
-  // PATCH /merchant-tip-rule/:id
+  // PATCH /merchant-overtime-rule/:id
   //--------------------------------------------------------------
   describe('PATCH /merchant-tip-rule/:id', () => {
-    it('should update a merchant tip rule successfully', async () => {
+    it('should update a merchant overtime rule successfully', async () => {
       const updatedResponse = {
         statusCode: 200,
-        message: 'Merchant Tip Rule updated successfully',
-        data: mockMerchantTipRule,
+        message: 'Merchant Overtime Rule updated successfully',
+        data: mockMerchantOvertimeRule,
       };
       const updateSpy = jest
         .spyOn(service, 'update')
         .mockResolvedValue(updatedResponse);
       updateSpy.mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, mockUpdateMerchantTipRuleDto);
+      const result = await controller.update(
+        1,
+        mockUpdateMerchantOvertimeRuleDto,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantTipRuleDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        mockUpdateMerchantOvertimeRuleDto,
+      );
       expect(result).toEqual(updatedResponse);
     });
 
     it('should handle errors during update', async () => {
-      const errorMessage = 'Failed to update Merchant Tip Rule';
+      const errorMessage = 'Failed to update Merchant Overtime Rule';
       const updateSpy = jest
         .spyOn(service, 'update')
         .mockRejectedValue(new Error(errorMessage));
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, mockUpdateMerchantTipRuleDto),
+        controller.update(1, mockUpdateMerchantOvertimeRuleDto),
       ).rejects.toThrow(errorMessage);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantTipRuleDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        mockUpdateMerchantOvertimeRuleDto,
+      );
     });
   });
   //--------------------------------------------------------------
-  // DELETE /merchant-tip-rule/:id
+  // DELETE /merchant-overtime-rule/:id
   //--------------------------------------------------------------
-  describe('DELETE /merchant-tip-rule/:id', () => {
-    it('should delete a merchant tip rule successfully', async () => {
+  describe('DELETE /merchant-overtime-rule/:id', () => {
+    it('should delete a merchant overtime rule successfully', async () => {
       const deleteResponse = {
         statusCode: 200,
-        message: 'Merchant Tip Rule deleted successfully',
-        data: mockOneMerchantTipRuleResponse.data,
+        message: 'Merchant Overtime Rule deleted successfully',
+        data: mockOneMerchantOvertimeRuleResponseDto.data,
       };
       const removeSpy = jest
         .spyOn(service, 'remove')
@@ -320,7 +332,7 @@ describe('MerchantTipRuleController', () => {
     });
 
     it('should handle errors during deletion', async () => {
-      const errorMessage = 'Failed to delete Merchant Tip Rule';
+      const errorMessage = 'Failed to delete Merchant Overtime Rule';
       const removeSpy = jest
         .spyOn(service, 'remove')
         .mockRejectedValue(new Error(errorMessage));

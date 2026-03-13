@@ -42,20 +42,20 @@ export class CreateMerchantTipRuleDto {
   updatedAt: Date;
 
   @ApiProperty({
-    example: 'Created by user',
-    description: 'User who created the merchant tip rule',
+    example: 5,
+    description: 'User ID who created the merchant tip rule',
   })
-  @IsString()
+  @IsInt()
   @IsNotEmpty()
-  createdBy: string;
+  createdById: number;
 
   @ApiProperty({
-    example: 'Updated by user',
-    description: 'User who last updated the merchant tip rule',
+    example: 5,
+    description: 'User ID who last updated the merchant tip rule',
   })
-  @IsString()
+  @IsInt()
   @IsNotEmpty()
-  updatedBy: string;
+  updatedById: number;
 
   @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
   @IsString()
@@ -68,6 +68,7 @@ export class CreateMerchantTipRuleDto {
     description: 'Name of the merchant tip rule',
   })
   @IsString()
+  @IsNotEmpty()
   name: string;
 
   @ApiProperty({
@@ -76,6 +77,7 @@ export class CreateMerchantTipRuleDto {
       'Method used to calculate tips (e.g., Percentage, Fixed Amount)',
   })
   @IsEnum(TipCalculationMethod)
+  @IsNotEmpty()
   tipCalculationMethod: TipCalculationMethod;
 
   @ApiProperty({
@@ -84,6 +86,7 @@ export class CreateMerchantTipRuleDto {
       'Method used to distribute tips among staff (e.g., Equal distribution, Role-based distribution)',
   })
   @IsEnum(TipDistributionMethod)
+  @IsNotEmpty()
   tipDistributionMethod: TipDistributionMethod;
 
   @ApiProperty({
@@ -92,6 +95,7 @@ export class CreateMerchantTipRuleDto {
   })
   @IsArray()
   @IsNumber({}, { each: true })
+  @IsNotEmpty()
   suggestedPercentages?: number[];
 
   @ApiProperty({
@@ -100,6 +104,7 @@ export class CreateMerchantTipRuleDto {
   })
   @IsArray()
   @IsNumber({}, { each: true })
+  @IsNotEmpty()
   fixedAmountOptions?: number[];
 
   @ApiProperty({
@@ -107,6 +112,7 @@ export class CreateMerchantTipRuleDto {
     description: 'Whether to allow customers to enter a custom tip amount',
   })
   @IsBoolean()
+  @IsNotEmpty()
   allowCustomTip: boolean;
 
   @ApiProperty({
@@ -115,6 +121,7 @@ export class CreateMerchantTipRuleDto {
       'Maximum tip percentage allowed when using percentage-based calculation',
   })
   @IsNumber()
+  @IsNotEmpty()
   maximumTipPercentage: number;
 
   @ApiProperty({
@@ -122,6 +129,7 @@ export class CreateMerchantTipRuleDto {
     description: 'Whether to include kitchen staff in tip distribution',
   })
   @IsBoolean()
+  @IsNotEmpty()
   includeKitchenStaff: boolean;
 
   @ApiProperty({
@@ -129,6 +137,7 @@ export class CreateMerchantTipRuleDto {
     description: 'Whether to include managers in tip distribution',
   })
   @IsBoolean()
+  @IsNotEmpty()
   includeManagers: boolean;
 
   @ApiProperty({
@@ -137,5 +146,6 @@ export class CreateMerchantTipRuleDto {
       'Whether to automatically distribute tips to staff based on the defined rules',
   })
   @IsBoolean()
+  @IsNotEmpty()
   autoDistribute: boolean;
 }

@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Company } from 'src/companies/entities/company.entity';
+import { User } from 'src/users/entities/user.entity';
 import { In, Repository } from 'typeorm';
 import { CreateMerchantTipRuleDto } from './dto/create-merchant-tip-rule.dto';
 import { OneMerchantTipRuleResponseDto } from './dto/merchant-tip-rule-response.dto';
@@ -19,6 +20,9 @@ export class MerchantTipRuleService {
 
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async create(
@@ -38,12 +42,28 @@ export class MerchantTipRuleService {
       }
     }
 
+    const createdByUser = await this.userRepository.findOne({
+      where: { id: dto.createdById },
+    });
+
+    if (!createdByUser) {
+      ErrorHandler.userNotFound();
+    }
+
+    const updatedByUser = await this.userRepository.findOne({
+      where: { id: dto.updatedById },
+    });
+
+    if (!updatedByUser) {
+      ErrorHandler.userNotFound();
+    }
+
     const merchantTipRule = this.merchantTipRuleRepository.create({
       company: company,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,
-      createdBy: dto.createdBy,
-      updatedBy: dto.updatedBy,
+      createdBy: createdByUser,
+      updatedBy: updatedByUser,
       status: dto.status,
       name: dto.name,
       tipCalculationMethod: dto.tipCalculationMethod,
@@ -84,7 +104,16 @@ export class MerchantTipRuleService {
     const qb = this.merchantTipRuleRepository
       .createQueryBuilder('merchantTipRule')
       .leftJoin('merchantTipRule.company', 'company')
-      .select(['merchantTipRule', 'company.id']);
+      .leftJoin('merchantTipRule.createdBy', 'createdBy')
+      .leftJoin('merchantTipRule.updatedBy', 'updatedBy')
+      .select([
+        'merchantTipRule',
+        'company.id',
+        'createdBy.id',
+        'createdBy.email',
+        'updatedBy.id',
+        'updatedBy.email',
+      ]);
     if (status) {
       qb.andWhere('merchantTipRule.status = :status', { status });
     } else {
@@ -121,10 +150,10 @@ export class MerchantTipRuleService {
 
     const merchantTipRule = await this.merchantTipRuleRepository.findOne({
       where: { id, status: In(['active', 'inactive']) },
-      relations: ['company'],
+      relations: ['company', 'createdBy', 'updatedBy'],
     });
     if (!merchantTipRule) {
-      ErrorHandler.notFound('Merchant Tip Rule not found');
+      ErrorHandler.merchantTipRuleNotFound();
     }
     return {
       statusCode: 200,
@@ -145,7 +174,19 @@ export class MerchantTipRuleService {
       relations: ['company'],
     });
     if (!merchantTipRule) {
-      ErrorHandler.notFound('Merchant Tip Rule not found');
+      ErrorHandler.merchantTipRuleNotFound();
+    }
+
+    if (dto.updatedById) {
+      const updatedByUser = await this.userRepository.findOne({
+        where: { id: dto.updatedById },
+      });
+
+      if (!updatedByUser) {
+        ErrorHandler.userNotFound();
+      }
+
+      merchantTipRule.updatedBy = updatedByUser;
     }
 
     Object.assign(merchantTipRule, dto);
@@ -168,7 +209,7 @@ export class MerchantTipRuleService {
       where: { id },
     });
     if (!merchantTipRule) {
-      ErrorHandler.notFound('Merchant Tip Rule not found');
+      ErrorHandler.merchantTipRuleNotFound();
     }
 
     merchantTipRule.status = 'deleted';

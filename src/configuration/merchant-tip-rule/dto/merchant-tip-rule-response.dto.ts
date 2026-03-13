@@ -4,7 +4,7 @@ import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 import { MerchantTipRule } from '../entity/merchant-tip-rule-entity';
 import { Configuration } from 'src/configuration/entity/configuration-entity';
 import { Company } from 'src/companies/entities/company.entity';
-
+import { User } from 'src/users/entities/user.entity';
 export class MerchantTipRuleResponseDto extends Configuration {
   @ApiProperty({
     example: 'default',
@@ -31,16 +31,16 @@ export class MerchantTipRuleResponseDto extends Configuration {
   updatedAt: Date;
 
   @ApiProperty({
-    example: 'Created by user',
+    type: () => User,
     description: 'User who created the merchant tip rule',
   })
-  createdBy: string;
+  createdBy: User;
 
   @ApiProperty({
-    example: 'Updated by user',
+    type: () => User,
     description: 'User who last updated the merchant tip rule',
   })
-  updatedBy: string;
+  updatedBy: User;
 
   @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
   status: string;

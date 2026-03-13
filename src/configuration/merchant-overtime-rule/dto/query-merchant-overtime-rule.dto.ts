@@ -1,9 +1,9 @@
-//src/configuration/merchant-tip-rule/dto/query-merchant-tip-rule.dto.ts
+//src/configuration/merchant-overtime-rule/dto/query-merchant-overtime-rule.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class QueryMerchantTipRuleDto {
+export class QueryMerchantOvertimeRuleDto {
   @ApiPropertyOptional({
     description: 'Filter by status',
     enum: ['active', 'inactive', 'deleted'],

@@ -189,6 +189,22 @@ export class ErrorHandler {
     throw new NotFoundException(message);
   }
 
+  static merchantTipRuleNotFound(
+    message: string = ErrorMessage.MERCHANT_TIP_RULE_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static merchantOvertimeRuleNotFound(
+    message: string = ErrorMessage.MERCHANT_OVERTIME_RULE_NOT_FOUND,
+  ): never {
+    throw new NotFoundException(message);
+  }
+
+  static userNotFound(message: string = ErrorMessage.USER_NOT_FOUND): never {
+    throw new NotFoundException(message);
+  }
+
   static resourceNotFound(resource: string, id?: number | string): never {
     const message = id
       ? `${resource} with ID ${id} not found`

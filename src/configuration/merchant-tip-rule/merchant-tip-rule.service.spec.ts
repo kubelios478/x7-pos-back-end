@@ -10,11 +10,13 @@ import { CreateMerchantTipRuleDto } from './dto/create-merchant-tip-rule.dto';
 import { UpdateMerchantTipRuleDto } from './dto/update-merchant-tip-rule.dto';
 import { SelectQueryBuilder } from 'typeorm';
 import { Repository, In } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
 
 describe('MerchantTipRuleService', () => {
   let service: MerchantTipRuleService;
   let merchantTipRuleRepository: Repository<MerchantTipRule>;
   let companyRepository: Repository<Company>;
+  let userRepository: Repository<User>;
 
   //Mock data
   const mockMerchantTipRule: Partial<MerchantTipRule> = {
@@ -35,8 +37,8 @@ describe('MerchantTipRuleService', () => {
     } as Company,
     createdAt: new Date(),
     updatedAt: new Date(),
-    createdBy: 'Test User',
-    updatedBy: 'Test User',
+    createdBy: { id: 1 } as User,
+    updatedBy: { id: 1 } as User,
     status: 'active',
     name: 'Test Merchant Tip Rule',
     tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
@@ -52,8 +54,8 @@ describe('MerchantTipRuleService', () => {
 
   const mockCreateMerchantTipRuleDto: CreateMerchantTipRuleDto = {
     companyId: 1,
-    createdBy: 'Test User',
-    updatedBy: 'Test User',
+    createdById: 1,
+    updatedById: 1,
     status: 'active',
     name: 'Test Merchant Tip Rule',
     tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
@@ -71,8 +73,8 @@ describe('MerchantTipRuleService', () => {
 
   const mockUpdateMerchantTipRuleDto: UpdateMerchantTipRuleDto = {
     companyId: 1,
-    createdBy: 'Test User',
-    updatedBy: 'Test User 2',
+    createdById: 1,
+    updatedById: 1,
     status: 'inactive',
     name: 'Updated Merchant Tip Rule',
     tipCalculationMethod: TipCalculationMethod.FIXED_AMOUNT,
@@ -123,6 +125,16 @@ describe('MerchantTipRuleService', () => {
             remove: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -133,6 +145,7 @@ describe('MerchantTipRuleService', () => {
     companyRepository = module.get<Repository<Company>>(
       getRepositoryToken(Company),
     );
+    userRepository = module.get<Repository<User>>(getRepositoryToken(User));
   });
 
   describe('Service Initialization', () => {
@@ -152,6 +165,9 @@ describe('MerchantTipRuleService', () => {
       jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
         id: 1,
       } as Company);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
 
       const createSpy = jest.spyOn(merchantTipRuleRepository, 'create');
       const saveSpy = jest.spyOn(merchantTipRuleRepository, 'save');
@@ -180,6 +196,9 @@ describe('MerchantTipRuleService', () => {
       jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
         id: 1,
       } as Company);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
 
       const createSpy = jest.spyOn(merchantTipRuleRepository, 'create');
       const saveSpy = jest.spyOn(merchantTipRuleRepository, 'save');
@@ -284,7 +303,7 @@ describe('MerchantTipRuleService', () => {
           id: 999,
           status: In(['active', 'inactive']),
         },
-        relations: ['company'],
+        relations: ['company', 'createdBy', 'updatedBy'],
       });
     });
 
@@ -296,8 +315,8 @@ describe('MerchantTipRuleService', () => {
         } as Company,
         createdAt: new Date(),
         updatedAt: new Date(),
-        createdBy: 'Test User',
-        updatedBy: 'Test User',
+        createdBy: { id: 1 } as User,
+        updatedBy: { id: 1 } as User,
         status: 'active',
         name: 'Test Merchant Tip Rule',
         tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
@@ -331,10 +350,19 @@ describe('MerchantTipRuleService', () => {
         ...mockMerchantTipRule,
         ...mockUpdateMerchantTipRuleDto,
         company: mockMerchantTipRule.company,
+        createdBy: mockMerchantTipRule.createdBy,
+        updatedBy: mockMerchantTipRule.updatedBy,
       };
 
       const findOneSpy = jest.spyOn(merchantTipRuleRepository, 'findOne');
       const saveSpy = jest.spyOn(merchantTipRuleRepository, 'save');
+
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as Company);
 
       findOneSpy.mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
       saveSpy.mockResolvedValue(updatedMerchantTipRule as MerchantTipRule);
@@ -380,6 +408,13 @@ describe('MerchantTipRuleService', () => {
     it('should handle database errors during update', async () => {
       const findOneSpy = jest.spyOn(merchantTipRuleRepository, 'findOne');
       const saveSpy = jest.spyOn(merchantTipRuleRepository, 'save');
+
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as Company);
 
       findOneSpy.mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
       saveSpy.mockRejectedValue(new Error('Database error'));

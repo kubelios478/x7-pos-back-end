@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Company } from 'src/companies/entities/company.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { User } from 'src/users/entities/user.entity';
 
 @Entity({ name: 'configuration' })
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -34,19 +35,13 @@ export class Configuration {
   @Column({ type: 'date' })
   updatedAt: Date;
 
-  @ApiProperty({
-    example: 'Created by user',
-    description: 'User who created the configuration',
-  })
-  @Column({ type: 'varchar', length: 100 })
-  createdBy: string;
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'created_by' })
+  createdBy: User;
 
-  @ApiProperty({
-    example: 'Updated by user',
-    description: 'User who updated the configuration',
-  })
-  @Column({ type: 'varchar', length: 100 })
-  updatedBy: string;
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'updated_by' })
+  updatedBy: User;
 
   @ApiProperty({
     example: 'active',
