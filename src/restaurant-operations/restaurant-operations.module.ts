@@ -4,6 +4,7 @@ import { TipsModule } from './tips/tips.module';
 import { CashdrawerModule } from './cashdrawer/cashdrawer.module';
 import { KitchenDisplaySystemModule } from './kitchen-display-system/kitchen-display-system.module';
 import { DiningSystemModule } from './dining-system/dining-system.module';
+import { ReservationsModule } from './reservations/reservations.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { DiningSystemModule } from './dining-system/dining-system.module';
     CashdrawerModule,
     KitchenDisplaySystemModule,
     DiningSystemModule,
+    ReservationsModule,
   ],
   controllers: [],
   providers: [],
