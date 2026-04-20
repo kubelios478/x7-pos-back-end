@@ -1,34 +1,34 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
 import { ReservationStatusHistoryService } from './reservation-status-history.service';
-import { CreateReservationStatusHistoryDto } from './dto/create-reservation-status-history.dto';
-import { UpdateReservationStatusHistoryDto } from './dto/update-reservation-status-history.dto';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scopes } from 'src/auth/decorators/scopes.decorator';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+@ApiTags('Reservation Status History')
+@ApiBearerAuth()
 @Controller('reservation-status-history')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationStatusHistoryController {
-  constructor(private readonly reservationStatusHistoryService: ReservationStatusHistoryService) {}
+  constructor(private readonly historyService: ReservationStatusHistoryService) { }
 
-  @Post()
-  create(@Body() createReservationStatusHistoryDto: CreateReservationStatusHistoryDto) {
-    return this.reservationStatusHistoryService.create(createReservationStatusHistoryDto);
-  }
-
-  @Get()
-  findAll() {
-    return this.reservationStatusHistoryService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.reservationStatusHistoryService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateReservationStatusHistoryDto: UpdateReservationStatusHistoryDto) {
-    return this.reservationStatusHistoryService.update(+id, updateReservationStatusHistoryDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.reservationStatusHistoryService.remove(+id);
+  @Get('by-reservation/:reservationId')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Get status history of a reservation' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('reservationId', ParseIntPipe) reservationId: number,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+  ) {
+    return this.historyService.findAll(reservationId, user.merchant.id, page, limit);
   }
 }
