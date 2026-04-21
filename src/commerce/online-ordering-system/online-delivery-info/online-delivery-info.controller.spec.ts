@@ -12,6 +12,12 @@ import { OneOnlineDeliveryInfoResponseDto } from './dto/online-delivery-info-res
 import { PaginatedOnlineDeliveryInfoResponseDto } from './dto/paginated-online-delivery-info-response.dto';
 import { OnlineDeliveryInfoStatus } from './constants/online-delivery-info-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
+const MERCHANT_ID = 1;
+
 describe('OnlineDeliveryInfoController', () => {
   let controller: OnlineDeliveryInfoController;
   let service: OnlineDeliveryInfoService;
@@ -27,13 +33,15 @@ describe('OnlineDeliveryInfoController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
-      id: 1,
+      id: MERCHANT_ID,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockOnlineDeliveryInfoResponse: OneOnlineDeliveryInfoResponseDto = {

@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { SuccessResponse } from '../../../common/dtos/success-response.dto';
-import { LoyaltyCustomerLittleResponseDto } from '../../loyalty-customer/dto/loyalty-customer-response.dto';
-import { LoyaltyRewardLittleResponseDto } from '../../loyalty-reward/dto/loyalty-reward-response.dto';
-import { OrderLittleResponseDto } from '../../../orders/dto/order-response.dto';
+import { LoyaltyCustomerLittleResponseDto } from 'src/growth/loyalty/loyalty-customer/dto/loyalty-customer-response.dto';
+import { LoyaltyRewardLittleResponseDto } from 'src/growth/loyalty/loyalty-reward/dto/loyalty-reward-response.dto';
+import { OrderLittleResponseDto } from 'src/restaurant-operations/pos/orders/dto/order-response.dto';
 
 export class LoyaltyRewardsRedemptionResponseDto {
   @ApiProperty({
@@ -44,10 +44,10 @@ export class LoyaltyRewardsRedemptionResponseDto {
   redeemed_at: Date;
 }
 
-export class OneLoyaltyRewardsRedemtionResponse extends SuccessResponse {
+export class OneLoyaltyRewardsRedemptionResponse extends SuccessResponse {
   @ApiProperty({
-    type: () => LoyaltyRewardsRedemtionResponseDto,
+    type: () => LoyaltyRewardsRedemptionResponseDto,
     description: 'The loyalty rewards redemption',
   })
-  data: LoyaltyRewardsRedemtionResponseDto;
+  data: LoyaltyRewardsRedemptionResponseDto;
 }

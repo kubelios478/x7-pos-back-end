@@ -12,6 +12,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { OneReservationTableResponse } from './dto/reservation-table-response.dto';
 import { AllPaginatedReservationTables } from './dto/all-paginated-reservation-tables.dto';
+import { GetReservationTablesQueryDto } from './dto/get-reservation-tables-query.dto';
 
 @ApiTags('Reservation Tables')
 @ApiBearerAuth()
@@ -30,6 +31,18 @@ export class ReservationTableController {
     @Body() createReservationTableDto: CreateReservationTableDto
   ): Promise<OneReservationTableResponse> {
     return this.reservationTableService.create(createReservationTableDto, user.merchant.id);
+  }
+
+  @Get()
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Get all reservation tables of the merchant' })
+  @ApiResponse({ status: 200, type: AllPaginatedReservationTables })
+  findAllGlobal(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() queryDto: GetReservationTablesQueryDto,
+  ): Promise<AllPaginatedReservationTables> {
+    return this.reservationTableService.findAllGlobal(user.merchant.id, queryDto);
   }
 
   @Get('by-reservation/:reservationId')

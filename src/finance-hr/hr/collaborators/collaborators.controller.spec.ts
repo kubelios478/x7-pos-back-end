@@ -13,6 +13,10 @@ import { PaginatedCollaboratorsResponseDto } from './dto/paginated-collaborators
 import { ShiftRole } from './constants/shift-role.enum';
 import { CollaboratorStatus } from './constants/collaborator-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('CollaboratorsController', () => {
   let controller: CollaboratorsController;
   let service: CollaboratorsService;
@@ -25,17 +29,17 @@ describe('CollaboratorsController', () => {
     remove: jest.fn(),
   };
 
-  const mockUser = {
+  const mockUser: AuthenticatedUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
-  };
+  const mockRequest = mockUser;
 
   const mockCollaboratorResponse: OneCollaboratorResponseDto = {
     statusCode: 201,
@@ -46,7 +50,7 @@ describe('CollaboratorsController', () => {
       merchant_id: 1,
       name: 'Juan Pérez',
       role: ShiftRole.WAITER,
-      status: CollaboratorStatus.ACTIVO,
+      status: CollaboratorStatus.ACTIVE,
       merchant: {
         id: 1,
         name: 'Restaurant ABC',
@@ -102,7 +106,7 @@ describe('CollaboratorsController', () => {
       merchant_id: 1,
       name: 'Juan Pérez',
       role: ShiftRole.WAITER,
-      status: CollaboratorStatus.ACTIVO,
+      status: CollaboratorStatus.ACTIVE,
     };
 
     it('should create a new collaborator successfully', async () => {
@@ -179,7 +183,7 @@ describe('CollaboratorsController', () => {
       const queryWithFilters: GetCollaboratorsQueryDto = {
         page: 2,
         limit: 20,
-        status: CollaboratorStatus.ACTIVO,
+        status: CollaboratorStatus.ACTIVE,
       };
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
@@ -336,7 +340,7 @@ describe('CollaboratorsController', () => {
 
     it('should handle status-only updates', async () => {
       const statusDto: UpdateCollaboratorDto = {
-        status: CollaboratorStatus.VACACIONES,
+        status: CollaboratorStatus.VACATION,
       };
       const updateSpy = jest.spyOn(service, 'update');
       const updatedResponse: OneCollaboratorResponseDto = {
@@ -345,7 +349,7 @@ describe('CollaboratorsController', () => {
         message: 'Collaborator updated successfully',
         data: {
           ...mockCollaboratorResponse.data,
-          status: CollaboratorStatus.VACACIONES,
+          status: CollaboratorStatus.VACATION,
         },
       };
       updateSpy.mockResolvedValue(updatedResponse);
@@ -353,7 +357,7 @@ describe('CollaboratorsController', () => {
       const result = await controller.update(1, statusDto, mockRequest);
 
       expect(updateSpy).toHaveBeenCalledWith(1, statusDto, mockUser.merchant.id);
-      expect(result.data.status).toBe(CollaboratorStatus.VACACIONES);
+      expect(result.data.status).toBe(CollaboratorStatus.VACATION);
     });
 
     it('should handle requests without merchant', async () => {

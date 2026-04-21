@@ -13,6 +13,10 @@ import { PaginatedKitchenEventLogResponseDto } from './dto/kitchen-event-log-res
 import { KitchenEventLogEventType } from './constants/kitchen-event-log-event-type.enum';
 import { KitchenEventLogStatus } from './constants/kitchen-event-log-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('KitchenEventLogController', () => {
   let controller: KitchenEventLogController;
   let service: KitchenEventLogService;
@@ -28,13 +32,15 @@ describe('KitchenEventLogController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockKitchenEventLogResponse: OneKitchenEventLogResponseDto = {

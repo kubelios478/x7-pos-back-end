@@ -6,6 +6,10 @@ import { UpdateMarketingSegmentRuleDto } from './dto/update-marketing-segment-ru
 import { MarketingSegmentRuleOperator } from './constants/marketing-segment-rule-operator.enum';
 import { MarketingSegmentRuleStatus } from './constants/marketing-segment-rule-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('MarketingSegmentRulesController', () => {
   let controller: MarketingSegmentRulesController;
   let service: MarketingSegmentRulesService;
@@ -18,12 +22,18 @@ describe('MarketingSegmentRulesController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
+  };
+
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockCreateDto: CreateMarketingSegmentRuleDto = {

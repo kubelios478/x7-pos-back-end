@@ -2,24 +2,20 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
-import { LoyaltyRewardsRedemtionsService } from './loyalty-rewards-redemptions.service';
+import { LoyaltyRewardsRedemptionsService } from './loyalty-rewards-redemptions.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { LoyaltyRewardsRedemtion } from './entities/loyalty-rewards-redemption.entity';
+import { LoyaltyRewardsRedemption } from './entities/loyalty-rewards-redemption.entity';
 import { LoyaltyCustomer } from '../loyalty-customer/entities/loyalty-customer.entity';
 import { LoyaltyReward } from '../loyalty-reward/entities/loyalty-reward.entity';
-<<<<<<< HEAD:src/loyalty/loyalty-rewards-redemtions/loyalty-rewards-redemtions.service.spec.ts
-import { Order } from '../../restaurant-operations/pos/orders/entities/order.entity';
-=======
-import { Order } from '../../../orders/entities/order.entity';
->>>>>>> blacksheru-main:src/growth/loyalty/loyalty-rewards-redemptions/loyalty-rewards-redemtions.service.spec.ts
+import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
 import { DataSource, Repository } from 'typeorm';
-import { CreateLoyaltyRewardsRedemtionDto } from './dto/create-loyalty-rewards-redemption.dto';
+import { CreateLoyaltyRewardsRedemptionDto } from './dto/create-loyalty-rewards-redemption.dto';
 import { ErrorMessage } from '../../../common/constants/error-messages';
 import { BadRequestException } from '@nestjs/common';
 
-describe('LoyaltyRewardsRedemtionsService', () => {
-  let service: LoyaltyRewardsRedemtionsService;
-  let loyaltyRewardsRedemtionRepo: jest.Mocked<Repository<LoyaltyRewardsRedemtion>>;
+describe('LoyaltyRewardsRedemptionsService', () => {
+  let service: LoyaltyRewardsRedemptionsService;
+  let loyaltyRewardsRedemptionRepo: jest.Mocked<Repository<LoyaltyRewardsRedemption>>;
   let loyaltyCustomerRepo: jest.Mocked<Repository<LoyaltyCustomer>>;
   let loyaltyRewardRepo: jest.Mocked<Repository<LoyaltyReward>>;
   let orderRepo: jest.Mocked<Repository<Order>>;
@@ -95,9 +91,9 @@ describe('LoyaltyRewardsRedemtionsService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        LoyaltyRewardsRedemtionsService,
+        LoyaltyRewardsRedemptionsService,
         {
-          provide: getRepositoryToken(LoyaltyRewardsRedemtion),
+          provide: getRepositoryToken(LoyaltyRewardsRedemption),
           useValue: {
             create: jest.fn(),
             save: jest.fn(),
@@ -135,15 +131,15 @@ describe('LoyaltyRewardsRedemtionsService', () => {
       ],
     }).compile();
 
-    service = module.get<LoyaltyRewardsRedemtionsService>(LoyaltyRewardsRedemtionsService);
-    loyaltyRewardsRedemtionRepo = module.get(getRepositoryToken(LoyaltyRewardsRedemtion));
+    service = module.get<LoyaltyRewardsRedemptionsService>(LoyaltyRewardsRedemptionsService);
+    loyaltyRewardsRedemptionRepo = module.get(getRepositoryToken(LoyaltyRewardsRedemption));
     loyaltyCustomerRepo = module.get(getRepositoryToken(LoyaltyCustomer));
     loyaltyRewardRepo = module.get(getRepositoryToken(LoyaltyReward));
     orderRepo = module.get(getRepositoryToken(Order));
     dataSource = module.get(DataSource);
 
     jest.clearAllMocks();
-    loyaltyRewardsRedemtionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
+    loyaltyRewardsRedemptionRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder as any);
     dataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
   });
 
@@ -152,7 +148,7 @@ describe('LoyaltyRewardsRedemtionsService', () => {
   });
 
   describe('create', () => {
-    const createDto: CreateLoyaltyRewardsRedemtionDto = {
+    const createDto: CreateLoyaltyRewardsRedemptionDto = {
       loyalty_customer_id: 1,
       reward_id: 1,
       order_id: 101,
@@ -300,7 +296,7 @@ describe('LoyaltyRewardsRedemtionsService', () => {
     it('should update redemption successfully verifying merchant check', async () => {
       const redemption = getMockRedemption();
       mockQueryBuilder.getOne.mockResolvedValue(redemption as any);
-      loyaltyRewardsRedemtionRepo.save.mockResolvedValue(redemption as any);
+      loyaltyRewardsRedemptionRepo.save.mockResolvedValue(redemption as any);
       orderRepo.findOneBy.mockResolvedValue(getMockOrder() as any);
 
       jest.spyOn(service, 'findOne').mockResolvedValue({
@@ -314,7 +310,7 @@ describe('LoyaltyRewardsRedemtionsService', () => {
       expect(result.statusCode).toBe(200);
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('redemption.id = :id', { id: 1 });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('program.merchantId = :merchantId', { merchantId });
-      expect(loyaltyRewardsRedemtionRepo.save).toHaveBeenCalled();
+      expect(loyaltyRewardsRedemptionRepo.save).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if updated reward not found', async () => {

@@ -5,10 +5,21 @@ import { ReservationStatusHistoryService } from './reservation-status-history.se
 describe('ReservationStatusHistoryController', () => {
   let controller: ReservationStatusHistoryController;
 
+  const mockService = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findAllGlobal: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ReservationStatusHistoryController],
-      providers: [ReservationStatusHistoryService],
+      providers: [
+        {
+          provide: ReservationStatusHistoryService,
+          useValue: mockService,
+        },
+      ],
     }).compile();
 
     controller = module.get<ReservationStatusHistoryController>(ReservationStatusHistoryController);

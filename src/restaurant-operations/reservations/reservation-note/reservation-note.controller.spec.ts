@@ -5,10 +5,23 @@ import { ReservationNoteService } from './reservation-note.service';
 describe('ReservationNoteController', () => {
   let controller: ReservationNoteController;
 
+  const mockService = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findAllGlobal: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ReservationNoteController],
-      providers: [ReservationNoteService],
+      providers: [
+        {
+          provide: ReservationNoteService,
+          useValue: mockService,
+        },
+      ],
     }).compile();
 
     controller = module.get<ReservationNoteController>(ReservationNoteController);

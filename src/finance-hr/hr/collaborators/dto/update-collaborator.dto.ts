@@ -17,19 +17,19 @@ export class UpdateCollaboratorDto {
     @MaxLength(150)
     name?: string;
 
-    @ApiPropertyOptional({ 
-        example: ShiftRole.WAITER, 
+    @ApiPropertyOptional({
+        example: ShiftRole.WAITER,
         enum: ShiftRole,
-        description: 'Role of the Collaborator' 
+        description: 'Role of the Collaborator'
     })
     @IsOptional()
     @IsEnum(ShiftRole)
     role?: ShiftRole;
 
-    @ApiPropertyOptional({ 
-        example: CollaboratorStatus.ACTIVO, 
+    @ApiPropertyOptional({
+        example: CollaboratorStatus.ACTIVE,
         enum: CollaboratorStatus,
-        description: 'Status of the Collaborator' 
+        description: 'Status of the Collaborator'
     })
     @IsOptional()
     @IsEnum(CollaboratorStatus)

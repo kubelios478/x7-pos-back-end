@@ -11,6 +11,10 @@ import { GetTablesQueryDto } from './dto/get-tables-query.dto';
 import { OneTableResponseDto } from './dto/table-response.dto';
 import { PaginatedTablesResponseDto } from './dto/paginated-tables-response.dto';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('TablesController', () => {
   let controller: TablesController;
   let service: TablesService;
@@ -26,13 +30,15 @@ describe('TablesController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockTableResponse: OneTableResponseDto = {

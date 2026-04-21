@@ -10,6 +10,10 @@ import { UpdateOrderItemDto } from './dto/update-order-item.dto';
 import { GetOrderItemQueryDto } from './dto/get-order-item-query.dto';
 import { OrderItemStatus } from './constants/order-item-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('OrderItemController', () => {
   let controller: OrderItemController;
   let service: OrderItemService;
@@ -22,12 +26,18 @@ describe('OrderItemController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
+  };
+
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockOrderItemResponse = {

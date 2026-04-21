@@ -16,17 +16,17 @@ export class CollaboratorResponseDto {
   @ApiProperty({ example: 'Juan Pérez', description: 'Name of the Collaborator' })
   name: string;
 
-  @ApiProperty({ 
-    example: ShiftRole.WAITER, 
+  @ApiProperty({
+    example: ShiftRole.WAITER,
     enum: ShiftRole,
-    description: 'Role of the Collaborator' 
+    description: 'Role of the Collaborator'
   })
   role: ShiftRole;
 
-  @ApiProperty({ 
-    example: CollaboratorStatus.ACTIVO, 
+  @ApiProperty({
+    example: CollaboratorStatus.ACTIVE,
     enum: CollaboratorStatus,
-    description: 'Status of the Collaborator' 
+    description: 'Status of the Collaborator'
   })
   status: CollaboratorStatus;
 

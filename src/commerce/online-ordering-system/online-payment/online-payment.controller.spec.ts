@@ -13,6 +13,10 @@ import { PaginatedOnlinePaymentResponseDto } from './dto/paginated-online-paymen
 import { OnlineOrderPaymentStatus } from '../online-order/constants/online-order-payment-status.enum';
 import { OnlinePaymentStatus } from './constants/online-payment-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('OnlinePaymentController', () => {
   let controller: OnlinePaymentController;
   let service: OnlinePaymentService;
@@ -28,13 +32,15 @@ describe('OnlinePaymentController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockOnlinePaymentResponse: OneOnlinePaymentResponseDto = {

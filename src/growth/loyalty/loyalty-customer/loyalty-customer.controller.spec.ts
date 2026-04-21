@@ -56,7 +56,7 @@ describe('LoyaltyCustomerController', () => {
     is_active: true,
     joinedAt: new Date(),
     loyaltyPointTransactions: [],
-    loyaltyRewardsRedemptions: [],
+    redemptions: [],
     loyaltyCoupons: [],
   };
 

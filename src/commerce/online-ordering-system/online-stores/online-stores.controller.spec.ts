@@ -12,6 +12,10 @@ import { OneOnlineStoreResponseDto } from './dto/online-store-response.dto';
 import { PaginatedOnlineStoreResponseDto } from './dto/paginated-online-store-response.dto';
 import { OnlineStoreStatus } from './constants/online-store-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('OnlineStoresController', () => {
   let controller: OnlineStoresController;
   let service: OnlineStoresService;
@@ -27,13 +31,15 @@ describe('OnlineStoresController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockOnlineStoreResponse: OneOnlineStoreResponseDto = {

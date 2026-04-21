@@ -7,6 +7,10 @@ import { MarketingAutomationTrigger } from './constants/marketing-automation-tri
 import { MarketingAutomationAction } from './constants/marketing-automation-action.enum';
 import { MarketingAutomationStatus } from './constants/marketing-automation-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('MarketingAutomationsController', () => {
   let controller: MarketingAutomationsController;
   let service: MarketingAutomationsService;
@@ -19,11 +23,13 @@ describe('MarketingAutomationsController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockRequest: AuthenticatedUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
   };
 

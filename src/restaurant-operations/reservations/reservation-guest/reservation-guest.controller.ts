@@ -13,6 +13,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { OneReservationGuestResponse } from './dto/reservation-guest-response.dto';
 import { AllPaginatedReservationGuests } from './dto/all-paginated-reservation-guests.dto';
+import { GetReservationGuestsQueryDto } from './dto/get-reservation-guests-query.dto';
 
 @ApiTags('Reservation Guests')
 @ApiBearerAuth()
@@ -31,6 +32,18 @@ export class ReservationGuestController {
     @Body() createGuestDto: CreateReservationGuestDto
   ): Promise<OneReservationGuestResponse> {
     return this.reservationGuestService.create(createGuestDto, user.merchant.id);
+  }
+
+  @Get()
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Get all guests of the merchant' })
+  @ApiResponse({ status: 200, type: AllPaginatedReservationGuests })
+  findAllGlobal(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() queryDto: GetReservationGuestsQueryDto,
+  ): Promise<AllPaginatedReservationGuests> {
+    return this.reservationGuestService.findAllGlobal(user.merchant.id, queryDto);
   }
 
   @Get('by-reservation/:reservationId')

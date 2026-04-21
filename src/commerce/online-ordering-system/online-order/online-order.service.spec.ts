@@ -9,13 +9,6 @@ import { NotFoundException, ForbiddenException, BadRequestException, ConflictExc
 import { OnlineOrderService } from './online-order.service';
 import { OnlineOrder } from './entities/online-order.entity';
 import { OnlineStore } from '../online-stores/entities/online-store.entity';
-<<<<<<< ours
-import { Order } from '../../restaurant-operations/pos/orders/entities/order.entity';
-import { Customer } from 'src/business-partners/customers/entities/customer.entity';
-=======
-import { Order } from '../../../orders/entities/order.entity';
-import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
->>>>>>> theirs
 import { CreateOnlineOrderDto } from './dto/create-online-order.dto';
 import { UpdateOnlineOrderDto } from './dto/update-online-order.dto';
 import { GetOnlineOrderQueryDto, OnlineOrderSortBy } from './dto/get-online-order-query.dto';
@@ -23,6 +16,8 @@ import { OnlineStoreStatus } from '../online-stores/constants/online-store-statu
 import { OnlineOrderStatus } from './constants/online-order-status.enum';
 import { OnlineOrderType } from './constants/online-order-type.enum';
 import { OnlineOrderPaymentStatus } from './constants/online-order-payment-status.enum';
+import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
+import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
 
 describe('OnlineOrderService', () => {
   let service: OnlineOrderService;

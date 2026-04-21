@@ -8,9 +8,9 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { Merchant } from '../../merchants/entities/merchant.entity';
+import { Merchant } from '../../platform-saas/merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { TableAssignment } from '../../table-assignments/entities/table-assignment.entity';
+import { TableAssignment } from '../../restaurant-operations/dining-system/table-assignments/entities/table-assignment.entity';
 import { Order } from '../../restaurant-operations/pos/orders/entities/order.entity';
 
 @Entity('table')

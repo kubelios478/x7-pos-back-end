@@ -15,6 +15,13 @@ import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OrderType } from './constants/order-type.enum';
 import { ForbiddenException } from '@nestjs/common';
 
+import { OrderSource } from './constants/order-source.enum';
+import { DeliveryStatus } from './constants/delivery-status.enum';
+import { KitchenStatus } from './constants/kitchen-status.enum';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('OrdersController', () => {
   let controller: OrdersController;
   let service: OrdersService;
@@ -30,13 +37,15 @@ describe('OrdersController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockOrderResponseData: OrderResponseDto = {
@@ -49,6 +58,20 @@ describe('OrdersController', () => {
     type: OrderType.DINE_IN,
     customerId: 1,
     status: OrderStatus.ACTIVE,
+    orderNumber: '000001',
+    source: OrderSource.POS,
+    guestCount: 2,
+    subtotal: 100,
+    taxTotal: 15,
+    discountTotal: 0,
+    tipTotal: 10,
+    total: 125,
+    paidTotal: 125,
+    balanceDue: 0,
+    isPaid: true,
+    deliveryFee: 0,
+    deliveryStatus: DeliveryStatus.UNASSIGNED,
+    kitchenStatus: KitchenStatus.PENDING,
     createdAt: new Date('2024-01-15T08:00:00Z'),
     closedAt: null,
     updatedAt: new Date('2024-01-15T08:00:00Z'),

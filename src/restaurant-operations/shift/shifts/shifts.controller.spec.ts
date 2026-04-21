@@ -13,6 +13,10 @@ import { PaginatedShiftsResponseDto } from './dto/paginated-shifts-response.dto'
 import { ShiftRole } from './constants/shift-role.enum';
 import { ShiftStatus } from './constants/shift-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('ShiftsController', () => {
   let controller: ShiftsController;
   let service: ShiftsService;
@@ -28,13 +32,15 @@ describe('ShiftsController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockShiftResponse: OneShiftResponseDto = {

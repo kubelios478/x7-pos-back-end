@@ -12,6 +12,10 @@ import { OneKitchenDisplayDeviceResponseDto } from './dto/kitchen-display-device
 import { PaginatedKitchenDisplayDeviceResponseDto } from './dto/paginated-kitchen-display-device-response.dto';
 import { KitchenDisplayDeviceStatus } from './constants/kitchen-display-device-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('KitchenDisplayDeviceController', () => {
   let controller: KitchenDisplayDeviceController;
   let service: KitchenDisplayDeviceService;
@@ -27,13 +31,15 @@ describe('KitchenDisplayDeviceController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockKitchenDisplayDeviceResponse: OneKitchenDisplayDeviceResponseDto = {

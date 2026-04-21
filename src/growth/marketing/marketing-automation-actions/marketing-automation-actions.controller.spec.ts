@@ -8,6 +8,10 @@ import { MarketingAutomationActionType } from './constants/marketing-automation-
 import { MarketingAutomationActionStatus } from './constants/marketing-automation-action-status.enum';
 import { OneMarketingAutomationActionResponseDto, PaginatedMarketingAutomationActionResponseDto } from './dto/marketing-automation-action-response.dto';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('MarketingAutomationActionsController', () => {
   let controller: MarketingAutomationActionsController;
   let service: jest.Mocked<MarketingAutomationActionsService>;
@@ -46,12 +50,18 @@ describe('MarketingAutomationActionsController', () => {
     },
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
+  };
+
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   beforeEach(async () => {
@@ -116,7 +126,7 @@ describe('MarketingAutomationActionsController', () => {
 
       service.create.mockResolvedValue(mockMarketingAutomationActionResponse);
 
-      await controller.create(createDto, reqWithoutMerchant);
+      await controller.create(createDto, reqWithoutMerchant as any);
 
       expect(service.create).toHaveBeenCalledWith(createDto, undefined);
     });

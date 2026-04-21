@@ -142,7 +142,7 @@ export class Order {
     example: '000001',
     description: 'Unique order number within the merchant',
   })
-  @Column({ type: 'varchar', length: 20 })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   order_number: string;
 
   @ApiProperty({ enum: OrderSource, default: OrderSource.POS })

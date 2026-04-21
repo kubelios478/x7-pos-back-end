@@ -3,10 +3,26 @@ import { TipPoolMembersController } from './tip-pool-members.controller';
 import { TipPoolMembersService } from './tip-pool-members.service';
 import { CreateTipPoolMemberDto } from './dto/create-tip-pool-member.dto';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('TipPoolMembersController', () => {
   let controller: TipPoolMembersController;
   const mockService = { create: jest.fn(), findAll: jest.fn(), findOne: jest.fn(), update: jest.fn(), remove: jest.fn() };
-  const mockReq = { user: { merchant: { id: 1 } } };
+  const mockUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
+    },
+  };
+
+  const mockReq: AuthenticatedUser = {
+    ...mockUser,
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

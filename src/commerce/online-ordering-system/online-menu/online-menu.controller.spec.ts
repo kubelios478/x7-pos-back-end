@@ -11,6 +11,10 @@ import { GetOnlineMenuQueryDto } from './dto/get-online-menu-query.dto';
 import { OneOnlineMenuResponseDto } from './dto/online-menu-response.dto';
 import { PaginatedOnlineMenuResponseDto } from './dto/paginated-online-menu-response.dto';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('OnlineMenuController', () => {
   let controller: OnlineMenuController;
   let service: OnlineMenuService;
@@ -26,13 +30,15 @@ describe('OnlineMenuController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockOnlineMenuResponse: OneOnlineMenuResponseDto = {

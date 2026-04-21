@@ -1071,7 +1071,7 @@ describe('OrdersService', () => {
       jest
         .spyOn(orderRepository, 'save')
         .mockImplementation(
-          async (o: Order) => ({ ...mockOrder, ...o }) as Order,
+          async (o: any) => ({ ...mockOrder, ...o }) as any,
         );
       jest.spyOn(orderItemRepository, 'find').mockResolvedValue([]);
     });

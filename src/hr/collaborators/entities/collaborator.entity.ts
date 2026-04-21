@@ -8,15 +8,15 @@ import {
     JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from '../../../users/entities/user.entity';
-import { Merchant } from '../../../merchants/entities/merchant.entity';
+import { User } from 'src/platform-saas/users/entities/user.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { ShiftRole } from '../constants/shift-role.enum';
-import { CollaboratorStatus } from '../constants/collaborator-status.enum';
-import { ShiftAssignment } from '../../../shift-assignments/entities/shift-assignment.entity';
-import { TableAssignment } from '../../../table-assignments/entities/table-assignment.entity';
-import { CashDrawer } from '../../../cashdrawer/cash-drawers/entities/cash-drawer.entity';
-import { Order } from '../../../restaurant-operations/pos/orders/entities/order.entity';
+import { ShiftRole } from 'src/finance-hr/hr/collaborators/constants/shift-role.enum';
+import { CollaboratorStatus } from 'src/finance-hr/hr/collaborators/constants/collaborator-status.enum';
+import { ShiftAssignment } from 'src/restaurant-operations/shift/shift-assignments/entities/shift-assignment.entity';
+import { TableAssignment } from 'src/restaurant-operations/dining-system/table-assignments/entities/table-assignment.entity';
+import { CashDrawer } from 'src/restaurant-operations/cashdrawer/cash-drawers/entities/cash-drawer.entity';
+import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
 
 @Entity("collaborator")
 @Index(["user_id"], { unique: true })
@@ -45,18 +45,18 @@ export class Collaborator {
     @Column({ type: 'varchar', length: 150 })
     name: string;
 
-    @ApiProperty({ 
-        example: ShiftRole.WAITER, 
+    @ApiProperty({
+        example: ShiftRole.WAITER,
         enum: ShiftRole,
-        description: 'Role of the Collaborator (mesero, cajero, cocinero, etc.)' 
+        description: 'Role of the Collaborator (mesero, cajero, cocinero, etc.)'
     })
     @Column({ type: 'enum', enum: ShiftRole })
     role: ShiftRole;
 
-    @ApiProperty({ 
-        example: CollaboratorStatus.ACTIVO, 
+    @ApiProperty({
+        example: CollaboratorStatus.ACTIVE,
         enum: CollaboratorStatus,
-        description: 'Current status of the Collaborator' 
+        description: 'Current status of the Collaborator'
     })
     @Column({ type: 'enum', enum: CollaboratorStatus })
     status: CollaboratorStatus;

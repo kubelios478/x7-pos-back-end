@@ -8,6 +8,10 @@ import { MarketingSegmentType } from './constants/marketing-segment-type.enum';
 import { MarketingSegmentStatus } from './constants/marketing-segment-status.enum';
 import { NotFoundException, ForbiddenException, BadRequestException, ConflictException } from '@nestjs/common';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('MarketingSegmentsController', () => {
   let controller: MarketingSegmentsController;
   let service: MarketingSegmentsService;
@@ -20,12 +24,18 @@ describe('MarketingSegmentsController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
+  };
+
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockSegmentResponse = {
