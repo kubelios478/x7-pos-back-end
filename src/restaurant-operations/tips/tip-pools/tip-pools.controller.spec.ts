@@ -11,20 +11,14 @@ import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interf
 
 describe('TipPoolsController', () => {
   let controller: TipPoolsController;
-  const mockService = { create: jest.fn(), findAll: jest.fn(), findOne: jest.fn(), update: jest.fn(), remove: jest.fn() };
-  const mockUser = {
-    id: 1,
-    email: 'test@example.com',
-    role: UserRole.MERCHANT_ADMIN,
-    scope: Scope.MERCHANT_WEB,
-    merchant: {
-      id: 1,
-    },
+  const mockService = {
+    create: jest.fn(),
+    findAll: jest.fn(),
+    findOne: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
   };
-
-  const mockReq: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockReq = { user: { merchant: { id: 1 } } };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

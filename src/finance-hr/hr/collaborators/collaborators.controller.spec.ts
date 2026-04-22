@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { CollaboratorsController } from './collaborators.controller';
 import { CollaboratorsService } from './collaborators.service';
@@ -12,10 +8,9 @@ import { OneCollaboratorResponseDto } from './dto/collaborator-response.dto';
 import { PaginatedCollaboratorsResponseDto } from './dto/paginated-collaborators-response.dto';
 import { ShiftRole } from './constants/shift-role.enum';
 import { CollaboratorStatus } from './constants/collaborator-status.enum';
-
+import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('CollaboratorsController', () => {
   let controller: CollaboratorsController;
@@ -29,7 +24,8 @@ describe('CollaboratorsController', () => {
     remove: jest.fn(),
   };
 
-  const mockUser: AuthenticatedUser = {
+  /** Coincide con `@Request() req: AuthenticatedUser` en el controlador. */
+  const mockRequest: AuthenticatedUser = {
     id: 1,
     email: 'test@example.com',
     role: UserRole.MERCHANT_ADMIN,
@@ -38,8 +34,6 @@ describe('CollaboratorsController', () => {
       id: 1,
     },
   };
-
-  const mockRequest = mockUser;
 
   const mockCollaboratorResponse: OneCollaboratorResponseDto = {
     statusCode: 201,
@@ -115,7 +109,10 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
+      expect(createSpy).toHaveBeenCalledWith(
+        createDto,
+        mockRequest.merchant.id,
+      );
       expect(result).toEqual(mockCollaboratorResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Collaborator created successfully');
@@ -129,21 +126,22 @@ describe('CollaboratorsController', () => {
       await expect(controller.create(createDto, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
+      expect(createSpy).toHaveBeenCalledWith(
+        createDto,
+        mockRequest.merchant.id,
+      );
     });
 
     it('should handle requests without merchant', async () => {
       const requestWithoutMerchant = {
-        user: {
-          id: 1,
-          email: 'test@example.com',
-        },
-      };
+        ...mockRequest,
+        merchant: undefined,
+      } as unknown as AuthenticatedUser;
 
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockResolvedValue(mockCollaboratorResponse);
 
-      const result = await controller.create(createDto, requestWithoutMerchant as any);
+      const result = await controller.create(createDto, requestWithoutMerchant);
 
       expect(createSpy).toHaveBeenCalledWith(createDto, undefined);
       expect(result).toEqual(mockCollaboratorResponse);
@@ -162,7 +160,7 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.findAll(query, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(query, mockRequest.merchant.id);
       expect(result).toEqual(mockPaginatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.data).toHaveLength(1);
@@ -176,7 +174,7 @@ describe('CollaboratorsController', () => {
       await expect(controller.findAll(query, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(query, mockRequest.merchant.id);
     });
 
     it('should pass query parameters correctly', async () => {
@@ -190,21 +188,22 @@ describe('CollaboratorsController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockRequest.merchant.id,
+      );
     });
 
     it('should handle requests without merchant', async () => {
       const requestWithoutMerchant = {
-        user: {
-          id: 1,
-          email: 'test@example.com',
-        },
-      };
+        ...mockRequest,
+        merchant: undefined,
+      } as unknown as AuthenticatedUser;
 
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll(query, requestWithoutMerchant as any);
+      const result = await controller.findAll(query, requestWithoutMerchant);
 
       expect(findAllSpy).toHaveBeenCalledWith(query, undefined);
       expect(result).toEqual(mockPaginatedResponse);
@@ -223,7 +222,7 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.findOne(1, mockRequest);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockRequest.merchant.id);
       expect(result).toEqual(response);
       expect(result.statusCode).toBe(200);
       expect(result.data.id).toBe(1);
@@ -237,7 +236,7 @@ describe('CollaboratorsController', () => {
       await expect(controller.findOne(1, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockRequest.merchant.id);
     });
 
     it('should parse id parameter correctly', async () => {
@@ -251,16 +250,14 @@ describe('CollaboratorsController', () => {
 
       await controller.findOne(123, mockRequest);
 
-      expect(findOneSpy).toHaveBeenCalledWith(123, mockUser.merchant.id);
+      expect(findOneSpy).toHaveBeenCalledWith(123, mockRequest.merchant.id);
     });
 
     it('should handle requests without merchant', async () => {
       const requestWithoutMerchant = {
-        user: {
-          id: 1,
-          email: 'test@example.com',
-        },
-      };
+        ...mockRequest,
+        merchant: undefined,
+      } as unknown as AuthenticatedUser;
 
       const findOneSpy = jest.spyOn(service, 'findOne');
       const response: OneCollaboratorResponseDto = {
@@ -270,7 +267,7 @@ describe('CollaboratorsController', () => {
       };
       findOneSpy.mockResolvedValue(response);
 
-      const result = await controller.findOne(1, requestWithoutMerchant as any);
+      const result = await controller.findOne(1, requestWithoutMerchant);
 
       expect(findOneSpy).toHaveBeenCalledWith(1, undefined);
       expect(result).toEqual(response);
@@ -299,7 +296,11 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockRequest.merchant.id,
+      );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Collaborator updated successfully');
@@ -310,10 +311,14 @@ describe('CollaboratorsController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(1, updateDto, mockRequest)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(1, updateDto, mockRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockRequest.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
     });
 
     it('should handle partial updates', async () => {
@@ -334,7 +339,11 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.update(1, partialDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, partialDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        partialDto,
+        mockRequest.merchant.id,
+      );
       expect(result.data.name).toBe('Only Name Updated');
     });
 
@@ -356,17 +365,19 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.update(1, statusDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, statusDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        statusDto,
+        mockRequest.merchant.id,
+      );
       expect(result.data.status).toBe(CollaboratorStatus.VACATION);
     });
 
     it('should handle requests without merchant', async () => {
       const requestWithoutMerchant = {
-        user: {
-          id: 1,
-          email: 'test@example.com',
-        },
-      };
+        ...mockRequest,
+        merchant: undefined,
+      } as unknown as AuthenticatedUser;
 
       const updateSpy = jest.spyOn(service, 'update');
       const updatedResponse: OneCollaboratorResponseDto = {
@@ -376,7 +387,11 @@ describe('CollaboratorsController', () => {
       };
       updateSpy.mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, updateDto, requestWithoutMerchant as any);
+      const result = await controller.update(
+        1,
+        updateDto,
+        requestWithoutMerchant,
+      );
 
       expect(updateSpy).toHaveBeenCalledWith(1, updateDto, undefined);
       expect(result).toEqual(updatedResponse);
@@ -399,7 +414,7 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.remove(1, mockRequest);
 
-      expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockRequest.merchant.id);
       expect(result).toEqual(deletedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Collaborator deleted successfully');
@@ -414,7 +429,7 @@ describe('CollaboratorsController', () => {
       await expect(controller.remove(1, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockRequest.merchant.id);
     });
 
     it('should parse id parameter correctly', async () => {
@@ -432,16 +447,14 @@ describe('CollaboratorsController', () => {
 
       await controller.remove(456, mockRequest);
 
-      expect(removeSpy).toHaveBeenCalledWith(456, mockUser.merchant.id);
+      expect(removeSpy).toHaveBeenCalledWith(456, mockRequest.merchant.id);
     });
 
     it('should handle requests without merchant', async () => {
       const requestWithoutMerchant = {
-        user: {
-          id: 1,
-          email: 'test@example.com',
-        },
-      };
+        ...mockRequest,
+        merchant: undefined,
+      } as unknown as AuthenticatedUser;
 
       const removeSpy = jest.spyOn(service, 'remove');
       const deletedResponse: OneCollaboratorResponseDto = {
@@ -455,11 +468,10 @@ describe('CollaboratorsController', () => {
       };
       removeSpy.mockResolvedValue(deletedResponse);
 
-      const result = await controller.remove(1, requestWithoutMerchant as any);
+      const result = await controller.remove(1, requestWithoutMerchant);
 
       expect(removeSpy).toHaveBeenCalledWith(1, undefined);
       expect(result).toEqual(deletedResponse);
     });
   });
 });
-

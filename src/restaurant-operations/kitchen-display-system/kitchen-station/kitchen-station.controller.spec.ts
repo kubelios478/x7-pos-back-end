@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { KitchenStationController } from './kitchen-station.controller';
 import { KitchenStationService } from './kitchen-station.service';
@@ -13,10 +9,10 @@ import { PaginatedKitchenStationResponseDto } from './dto/paginated-kitchen-stat
 import { KitchenStationStatus } from './constants/kitchen-station-status.enum';
 import { KitchenStationType } from './constants/kitchen-station-type.enum';
 import { KitchenDisplayMode } from './constants/kitchen-display-mode.enum';
+import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { Request as ExpressRequest } from 'express';
 
-import { UserRole } from 'src/platform-saas/users/constants/role.enum';
-import { Scope } from 'src/platform-saas/users/constants/scope.enum';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 describe('KitchenStationController', () => {
   let controller: KitchenStationController;
@@ -40,9 +36,9 @@ describe('KitchenStationController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as AuthenticatedRequest;
 
   const mockKitchenStationResponse: OneKitchenStationResponseDto = {
     statusCode: 201,
@@ -177,7 +173,10 @@ describe('KitchenStationController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockUser.merchant.id,
+      );
     });
   });
 
@@ -228,7 +227,11 @@ describe('KitchenStationController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(mockUpdatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.data.name).toBe('Hot Station 1 Updated');
@@ -239,10 +242,14 @@ describe('KitchenStationController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(999, updateDto, mockRequest)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(999, updateDto, mockRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        999,
+        updateDto,
+        mockUser.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(999, updateDto, mockUser.merchant.id);
     });
   });
 

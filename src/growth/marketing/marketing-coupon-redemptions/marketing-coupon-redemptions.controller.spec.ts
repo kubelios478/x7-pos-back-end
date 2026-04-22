@@ -35,7 +35,7 @@ describe('MarketingCouponRedemptionsController', () => {
     couponId: 1,
     orderId: 1,
     customerId: 1,
-    discountApplied: 10.50,
+    discountApplied: 10.5,
   };
 
   const mockResponse = {
@@ -59,7 +59,7 @@ describe('MarketingCouponRedemptionsController', () => {
         email: 'john@example.com',
       },
       redeemedAt: new Date('2024-01-15T10:00:00Z'),
-      discountApplied: 10.50,
+      discountApplied: 10.5,
       status: MarketingCouponRedemptionStatus.ACTIVE,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -77,8 +77,12 @@ describe('MarketingCouponRedemptionsController', () => {
       ],
     }).compile();
 
-    controller = module.get<MarketingCouponRedemptionsController>(MarketingCouponRedemptionsController);
-    service = module.get<MarketingCouponRedemptionsService>(MarketingCouponRedemptionsService);
+    controller = module.get<MarketingCouponRedemptionsController>(
+      MarketingCouponRedemptionsController,
+    );
+    service = module.get<MarketingCouponRedemptionsService>(
+      MarketingCouponRedemptionsService,
+    );
   });
 
   afterEach(() => {
@@ -140,7 +144,7 @@ describe('MarketingCouponRedemptionsController', () => {
   describe('update', () => {
     it('should update a marketing coupon redemption', async () => {
       const updateDto: UpdateMarketingCouponRedemptionDto = {
-        discountApplied: 20.00,
+        discountApplied: 20.0,
       };
       const updatedResponse = {
         ...mockResponse,
@@ -148,7 +152,7 @@ describe('MarketingCouponRedemptionsController', () => {
         message: 'Marketing coupon redemption updated successfully',
         data: {
           ...mockResponse.data,
-          discountApplied: 20.00,
+          discountApplied: 20.0,
         },
       };
 

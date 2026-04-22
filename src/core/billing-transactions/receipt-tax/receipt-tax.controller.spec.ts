@@ -7,7 +7,10 @@ import { ReceiptTaxService } from './receipt-tax.service';
 import { CreateReceiptTaxDto } from './dto/create-receipt-tax.dto';
 import { UpdateReceiptTaxDto } from './dto/update-receipt-tax.dto';
 import { GetReceiptTaxesQueryDto } from './dto/get-receipt-taxes-query.dto';
-import { OneReceiptTaxResponseDto, ReceiptTaxResponseDto } from './dto/receipt-tax-response.dto';
+import {
+  OneReceiptTaxResponseDto,
+  ReceiptTaxResponseDto,
+} from './dto/receipt-tax-response.dto';
 import { AllPaginatedReceiptTaxes } from './dto/all-paginated-receipt-taxes.dto';
 import { ReceiptTaxScope } from './constants/receipt-tax-scope.enum';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
@@ -20,11 +23,9 @@ const MERCHANT_ID = 1;
 const mockUser = {
   id: 1,
   email: 'test@example.com',
-  role: UserRole.MERCHANT_ADMIN,
-  scope: Scope.MERCHANT_WEB,
   merchant: { id: MERCHANT_ID },
 };
-const mockRequest: AuthenticatedUser = { ...mockUser };
+const mockRequest = { user: mockUser };
 
 const mockTaxResponse: ReceiptTaxResponseDto = {
   id: 1,
@@ -108,7 +109,9 @@ describe('ReceiptTaxController', () => {
 
     it('should propagate service errors', async () => {
       jest.spyOn(service, 'create').mockRejectedValue(new ForbiddenException());
-      await expect(controller.create(dto, mockRequest as any)).rejects.toThrow(ForbiddenException);
+      await expect(controller.create(dto, mockRequest as any)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -126,8 +129,12 @@ describe('ReceiptTaxController', () => {
     });
 
     it('should propagate service errors', async () => {
-      jest.spyOn(service, 'findAll').mockRejectedValue(new ForbiddenException());
-      await expect(controller.findAll(query, mockRequest as any)).rejects.toThrow(ForbiddenException);
+      jest
+        .spyOn(service, 'findAll')
+        .mockRejectedValue(new ForbiddenException());
+      await expect(
+        controller.findAll(query, mockRequest as any),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -135,7 +142,11 @@ describe('ReceiptTaxController', () => {
 
   describe('findOne', () => {
     it('should return a receipt tax by id', async () => {
-      const response = { ...mockOneResponse, statusCode: 200, message: 'Receipt tax retrieved successfully' };
+      const response = {
+        ...mockOneResponse,
+        statusCode: 200,
+        message: 'Receipt tax retrieved successfully',
+      };
       jest.spyOn(service, 'findOne').mockResolvedValue(response);
       const result = await controller.findOne(1, mockRequest as any);
       expect(service.findOne).toHaveBeenCalledWith(1, MERCHANT_ID);
@@ -146,10 +157,14 @@ describe('ReceiptTaxController', () => {
   // ─── PATCH /receipt-taxes/:id ────────────────────────────────────────────────
 
   describe('update', () => {
-    const dto: UpdateReceiptTaxDto = { name: 'IVA actualizado', amount: 6.00 };
+    const dto: UpdateReceiptTaxDto = { name: 'IVA actualizado', amount: 6.0 };
 
     it('should update a receipt tax', async () => {
-      const updated = { ...mockOneResponse, statusCode: 200, message: 'Receipt tax updated successfully' };
+      const updated = {
+        ...mockOneResponse,
+        statusCode: 200,
+        message: 'Receipt tax updated successfully',
+      };
       jest.spyOn(service, 'update').mockResolvedValue(updated);
       const result = await controller.update(1, dto, mockRequest as any);
       expect(service.update).toHaveBeenCalledWith(1, dto, MERCHANT_ID);
@@ -161,7 +176,11 @@ describe('ReceiptTaxController', () => {
 
   describe('remove', () => {
     it('should delete a receipt tax', async () => {
-      const deleted = { ...mockOneResponse, statusCode: 200, message: 'Receipt tax deleted successfully' };
+      const deleted = {
+        ...mockOneResponse,
+        statusCode: 200,
+        message: 'Receipt tax deleted successfully',
+      };
       jest.spyOn(service, 'remove').mockResolvedValue(deleted);
       const result = await controller.remove(1, mockRequest as any);
       expect(service.remove).toHaveBeenCalledWith(1, MERCHANT_ID);

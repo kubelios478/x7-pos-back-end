@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { CashTransactionsController } from './cash-transactions.controller';
@@ -8,7 +7,10 @@ import { CashTransactionsService } from './cash-transactions.service';
 import { CreateCashTransactionDto } from './dto/create-cash-transaction.dto';
 import { UpdateCashTransactionDto } from './dto/update-cash-transaction.dto';
 import { GetCashTransactionsQueryDto } from './dto/get-cash-transactions-query.dto';
-import { OneCashTransactionResponseDto, CashTransactionResponseDto } from './dto/cash-transaction-response.dto';
+import {
+  OneCashTransactionResponseDto,
+  CashTransactionResponseDto,
+} from './dto/cash-transaction-response.dto';
 import { PaginatedCashTransactionsResponseDto } from './dto/cash-transaction-response.dto';
 import { CashTransactionType } from './constants/cash-transaction-type.enum';
 import { CashTransactionStatus } from './constants/cash-transaction-status.enum';
@@ -88,7 +90,9 @@ describe('CashTransactionsController', () => {
       ],
     }).compile();
 
-    controller = module.get<CashTransactionsController>(CashTransactionsController);
+    controller = module.get<CashTransactionsController>(
+      CashTransactionsController,
+    );
     service = module.get<CashTransactionsService>(CashTransactionsService);
   });
 
@@ -127,9 +131,9 @@ describe('CashTransactionsController', () => {
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.create(createDto, mockRequest as any)).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.create(createDto, mockRequest as any),
+      ).rejects.toThrow(errorMessage);
       expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
     });
 
@@ -141,11 +145,13 @@ describe('CashTransactionsController', () => {
         },
       };
       const createSpy = jest.spyOn(service, 'create');
-      createSpy.mockRejectedValue(new ForbiddenException('You must be associated with a merchant'));
-
-      await expect(controller.create(createDto, requestWithoutMerchant as any)).rejects.toThrow(
-        ForbiddenException,
+      createSpy.mockRejectedValue(
+        new ForbiddenException('You must be associated with a merchant'),
       );
+
+      await expect(
+        controller.create(createDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
       expect(createSpy).toHaveBeenCalledWith(createDto, undefined);
     });
   });
@@ -173,9 +179,9 @@ describe('CashTransactionsController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll(query, mockRequest as any)).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.findAll(query, mockRequest as any),
+      ).rejects.toThrow(errorMessage);
       expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
     });
 
@@ -195,7 +201,10 @@ describe('CashTransactionsController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest as any);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockUser.merchant.id,
+      );
     });
 
     it('should throw ForbiddenException if user has no merchant_id', async () => {
@@ -206,11 +215,13 @@ describe('CashTransactionsController', () => {
         },
       };
       const findAllSpy = jest.spyOn(service, 'findAll');
-      findAllSpy.mockRejectedValue(new ForbiddenException('You must be associated with a merchant'));
-
-      await expect(controller.findAll(query, requestWithoutMerchant as any)).rejects.toThrow(
-        ForbiddenException,
+      findAllSpy.mockRejectedValue(
+        new ForbiddenException('You must be associated with a merchant'),
       );
+
+      await expect(
+        controller.findAll(query, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
       expect(findAllSpy).toHaveBeenCalledWith(query, undefined);
     });
   });
@@ -266,11 +277,13 @@ describe('CashTransactionsController', () => {
         },
       };
       const findOneSpy = jest.spyOn(service, 'findOne');
-      findOneSpy.mockRejectedValue(new ForbiddenException('You must be associated with a merchant'));
-
-      await expect(controller.findOne(1, requestWithoutMerchant as any)).rejects.toThrow(
-        ForbiddenException,
+      findOneSpy.mockRejectedValue(
+        new ForbiddenException('You must be associated with a merchant'),
       );
+
+      await expect(
+        controller.findOne(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
       expect(findOneSpy).toHaveBeenCalledWith(1, undefined);
     });
   });
@@ -297,7 +310,11 @@ describe('CashTransactionsController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest as any);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Cash transaction updated successfully');
@@ -308,10 +325,14 @@ describe('CashTransactionsController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(1, updateDto, mockRequest as any)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(1, updateDto, mockRequest as any),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
     });
 
     it('should handle partial updates', async () => {
@@ -332,7 +353,11 @@ describe('CashTransactionsController', () => {
 
       const result = await controller.update(1, partialDto, mockRequest as any);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, partialDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        partialDto,
+        mockUser.merchant.id,
+      );
       expect(result.data.notes).toBe('Only notes updated');
     });
 
@@ -344,11 +369,13 @@ describe('CashTransactionsController', () => {
         },
       };
       const updateSpy = jest.spyOn(service, 'update');
-      updateSpy.mockRejectedValue(new ForbiddenException('You must be associated with a merchant'));
-
-      await expect(controller.update(1, updateDto, requestWithoutMerchant as any)).rejects.toThrow(
-        ForbiddenException,
+      updateSpy.mockRejectedValue(
+        new ForbiddenException('You must be associated with a merchant'),
       );
+
+      await expect(
+        controller.update(1, updateDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
       expect(updateSpy).toHaveBeenCalledWith(1, updateDto, undefined);
     });
   });
@@ -404,11 +431,13 @@ describe('CashTransactionsController', () => {
         },
       };
       const removeSpy = jest.spyOn(service, 'remove');
-      removeSpy.mockRejectedValue(new ForbiddenException('You must be associated with a merchant'));
-
-      await expect(controller.remove(1, requestWithoutMerchant as any)).rejects.toThrow(
-        ForbiddenException,
+      removeSpy.mockRejectedValue(
+        new ForbiddenException('You must be associated with a merchant'),
       );
+
+      await expect(
+        controller.remove(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
       expect(removeSpy).toHaveBeenCalledWith(1, undefined);
     });
   });

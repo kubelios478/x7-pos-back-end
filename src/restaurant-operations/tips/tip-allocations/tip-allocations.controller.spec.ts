@@ -51,7 +51,7 @@ describe('TipAllocationsController', () => {
     data: {
       id: 1,
       tipId: 1,
-      tip: { id: 1, amount: 5.50 },
+      tip: { id: 1, amount: 5.5 },
       collaboratorId: 1,
       collaborator: { id: 1, name: 'Juan Pérez' },
       shiftId: 1,
@@ -101,7 +101,14 @@ describe('TipAllocationsController', () => {
         statusCode: 200,
         message: 'Tip allocations retrieved successfully',
         data: [mockResponse.data],
-        paginationMeta: { page: 1, limit: 10, total: 1, totalPages: 1, hasNext: false, hasPrev: false },
+        paginationMeta: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        },
       };
       mockService.findAll.mockResolvedValue(mockPaginated);
 
@@ -125,7 +132,7 @@ describe('TipAllocationsController', () => {
 
   describe('update', () => {
     it('should update a tip allocation', async () => {
-      const updateDto: UpdateTipAllocationDto = { amount: 3.00 };
+      const updateDto: UpdateTipAllocationDto = { amount: 3.0 };
       const updatedResponse = {
         ...mockResponse,
         statusCode: 200,
@@ -147,7 +154,10 @@ describe('TipAllocationsController', () => {
         ...mockResponse,
         statusCode: 200,
         message: 'Tip allocation deleted successfully',
-        data: { ...mockResponse.data, recordStatus: TipAllocationRecordStatus.DELETED },
+        data: {
+          ...mockResponse.data,
+          recordStatus: TipAllocationRecordStatus.DELETED,
+        },
       };
       mockService.remove.mockResolvedValue(deletedResponse);
 

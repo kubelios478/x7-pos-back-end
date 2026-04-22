@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { ShiftsController } from './shifts.controller';
@@ -137,7 +135,9 @@ describe('ShiftsController', () => {
         },
       };
 
-      await expect(controller.create(createDto, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.create(createDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to create shifts',
       );
     });
@@ -186,7 +186,10 @@ describe('ShiftsController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockUser.merchant.id,
+      );
     });
 
     it('should throw ForbiddenException when user has no merchant', async () => {
@@ -197,7 +200,9 @@ describe('ShiftsController', () => {
         },
       };
 
-      await expect(controller.findAll(query, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.findAll(query, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to view shifts',
       );
     });
@@ -235,7 +240,9 @@ describe('ShiftsController', () => {
         },
       };
 
-      await expect(controller.findOne(1, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.findOne(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to view shifts',
       );
     });
@@ -265,7 +272,11 @@ describe('ShiftsController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(mockUpdatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.data.role).toBe(ShiftRole.COOK);
@@ -276,10 +287,14 @@ describe('ShiftsController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(999, updateDto, mockRequest)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(999, updateDto, mockRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        999,
+        updateDto,
+        mockUser.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(999, updateDto, mockUser.merchant.id);
     });
 
     it('should throw ForbiddenException when user has no merchant', async () => {
@@ -290,7 +305,9 @@ describe('ShiftsController', () => {
         },
       };
 
-      await expect(controller.update(1, updateDto, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.update(1, updateDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to update shifts',
       );
     });
@@ -337,7 +354,9 @@ describe('ShiftsController', () => {
         },
       };
 
-      await expect(controller.remove(1, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.remove(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to delete shifts',
       );
     });

@@ -119,12 +119,12 @@ export class LoyaltyReward {
   @Column({ default: true })
   is_active: boolean;
 
-  @OneToMany(() => LoyaltyRewardsRedemption, (loyaltyRewardsRedemption) => loyaltyRewardsRedemption.reward)
-  redemptions: LoyaltyRewardsRedemption[];
-
   @OneToMany(
-    () => LoyaltyCoupon,
-    (loyaltyCoupon) => loyaltyCoupon.reward,
+    () => LoyaltyRewardsRedemption,
+    (loyaltyRewardsRedemption) => loyaltyRewardsRedemption.reward,
   )
+  loyaltyRewardsRedemptions: LoyaltyRewardsRedemption[];
+
+  @OneToMany(() => LoyaltyCoupon, (loyaltyCoupon) => loyaltyCoupon.reward)
   loyaltyCoupons: LoyaltyCoupon[];
 }

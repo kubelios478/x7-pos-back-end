@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { OnlinePaymentController } from './online-payment.controller';
 import { OnlinePaymentService } from './online-payment.service';
@@ -12,10 +8,10 @@ import { OneOnlinePaymentResponseDto } from './dto/online-payment-response.dto';
 import { PaginatedOnlinePaymentResponseDto } from './dto/paginated-online-payment-response.dto';
 import { OnlineOrderPaymentStatus } from '../online-order/constants/online-order-payment-status.enum';
 import { OnlinePaymentStatus } from './constants/online-payment-status.enum';
+import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { Request as ExpressRequest } from 'express';
 
-import { UserRole } from 'src/platform-saas/users/constants/role.enum';
-import { Scope } from 'src/platform-saas/users/constants/scope.enum';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 describe('OnlinePaymentController', () => {
   let controller: OnlinePaymentController;
@@ -39,9 +35,9 @@ describe('OnlinePaymentController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as AuthenticatedRequest;
 
   const mockOnlinePaymentResponse: OneOnlinePaymentResponseDto = {
     statusCode: 201,
@@ -124,7 +120,8 @@ describe('OnlinePaymentController', () => {
     });
 
     it('should handle service errors during creation', async () => {
-      const errorMessage = 'Online order not found or you do not have access to it';
+      const errorMessage =
+        'Online order not found or you do not have access to it';
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
@@ -176,7 +173,10 @@ describe('OnlinePaymentController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockUser.merchant.id,
+      );
     });
   });
 
@@ -226,7 +226,11 @@ describe('OnlinePaymentController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Online payment updated successfully');
@@ -237,10 +241,14 @@ describe('OnlinePaymentController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(1, updateDto, mockRequest)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(1, updateDto, mockRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
     });
   });
 

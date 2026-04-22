@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { OnlineMenuController } from './online-menu.controller';
 import { OnlineMenuService } from './online-menu.service';
@@ -10,10 +6,10 @@ import { UpdateOnlineMenuDto } from './dto/update-online-menu.dto';
 import { GetOnlineMenuQueryDto } from './dto/get-online-menu-query.dto';
 import { OneOnlineMenuResponseDto } from './dto/online-menu-response.dto';
 import { PaginatedOnlineMenuResponseDto } from './dto/paginated-online-menu-response.dto';
+import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { Request as ExpressRequest } from 'express';
 
-import { UserRole } from 'src/platform-saas/users/constants/role.enum';
-import { Scope } from 'src/platform-saas/users/constants/scope.enum';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 describe('OnlineMenuController', () => {
   let controller: OnlineMenuController;
@@ -37,9 +33,9 @@ describe('OnlineMenuController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as AuthenticatedRequest;
 
   const mockOnlineMenuResponse: OneOnlineMenuResponseDto = {
     statusCode: 201,
@@ -116,7 +112,8 @@ describe('OnlineMenuController', () => {
     });
 
     it('should handle service errors during creation', async () => {
-      const errorMessage = 'Online store not found or you do not have access to it';
+      const errorMessage =
+        'Online store not found or you do not have access to it';
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
@@ -169,7 +166,10 @@ describe('OnlineMenuController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockUser.merchant.id,
+      );
     });
   });
 
@@ -229,7 +229,11 @@ describe('OnlineMenuController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Online menu updated successfully');
@@ -240,10 +244,14 @@ describe('OnlineMenuController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(1, updateDto, mockRequest)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(1, updateDto, mockRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
     });
 
     it('should handle partial updates', async () => {
@@ -264,7 +272,11 @@ describe('OnlineMenuController', () => {
 
       const result = await controller.update(1, partialDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, partialDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        partialDto,
+        mockUser.merchant.id,
+      );
       expect(result.data.name).toBe('Only Name Updated');
     });
   });
@@ -330,7 +342,10 @@ describe('OnlineMenuController', () => {
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockResolvedValue(mockOnlineMenuResponse);
 
-      const result = await controller.create(createDto, requestWithoutMerchant as any);
+      const result = await controller.create(
+        createDto,
+        requestWithoutMerchant as unknown as AuthenticatedRequest,
+      );
 
       expect(createSpy).toHaveBeenCalledWith(createDto, undefined);
       expect(result).toEqual(mockOnlineMenuResponse);

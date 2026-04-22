@@ -6,7 +6,10 @@ import { UpdateMarketingAutomationActionDto } from './dto/update-marketing-autom
 import { GetMarketingAutomationActionQueryDto } from './dto/get-marketing-automation-action-query.dto';
 import { MarketingAutomationActionType } from './constants/marketing-automation-action-type.enum';
 import { MarketingAutomationActionStatus } from './constants/marketing-automation-action-status.enum';
-import { OneMarketingAutomationActionResponseDto, PaginatedMarketingAutomationActionResponseDto } from './dto/marketing-automation-action-response.dto';
+import {
+  OneMarketingAutomationActionResponseDto,
+  PaginatedMarketingAutomationActionResponseDto,
+} from './dto/marketing-automation-action-response.dto';
 
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
@@ -16,25 +19,26 @@ describe('MarketingAutomationActionsController', () => {
   let controller: MarketingAutomationActionsController;
   let service: jest.Mocked<MarketingAutomationActionsService>;
 
-  const mockMarketingAutomationActionResponse: OneMarketingAutomationActionResponseDto = {
-    statusCode: 200,
-    message: 'Marketing automation action retrieved successfully',
-    data: {
-      id: 1,
-      automationId: 1,
-      automation: {
+  const mockMarketingAutomationActionResponse: OneMarketingAutomationActionResponseDto =
+    {
+      statusCode: 200,
+      message: 'Marketing automation action retrieved successfully',
+      data: {
         id: 1,
-        name: 'Test Automation',
+        automationId: 1,
+        automation: {
+          id: 1,
+          name: 'Test Automation',
+        },
+        sequence: 1,
+        actionType: MarketingAutomationActionType.SEND_EMAIL,
+        targetId: null,
+        payload: '{"template_id": 1}',
+        delaySeconds: 0,
+        status: MarketingAutomationActionStatus.ACTIVE,
+        createdAt: new Date(),
       },
-      sequence: 1,
-      actionType: MarketingAutomationActionType.SEND_EMAIL,
-      targetId: null,
-      payload: '{"template_id": 1}',
-      delaySeconds: 0,
-      status: MarketingAutomationActionStatus.ACTIVE,
-      createdAt: new Date(),
-    },
-  };
+    };
 
   const mockPaginatedResponse: PaginatedMarketingAutomationActionResponseDto = {
     statusCode: 200,
@@ -83,7 +87,9 @@ describe('MarketingAutomationActionsController', () => {
       ],
     }).compile();
 
-    controller = module.get<MarketingAutomationActionsController>(MarketingAutomationActionsController);
+    controller = module.get<MarketingAutomationActionsController>(
+      MarketingAutomationActionsController,
+    );
     service = module.get(MarketingAutomationActionsService);
   });
 
@@ -112,7 +118,9 @@ describe('MarketingAutomationActionsController', () => {
 
       expect(service.create).toHaveBeenCalledWith(createDto, 1);
       expect(result.statusCode).toBe(201);
-      expect(result.message).toBe('Marketing automation action created successfully');
+      expect(result.message).toBe(
+        'Marketing automation action created successfully',
+      );
     });
 
     it('should handle request without merchant', async () => {
@@ -229,7 +237,9 @@ describe('MarketingAutomationActionsController', () => {
 
       expect(service.remove).toHaveBeenCalledWith(1, 1);
       expect(result.statusCode).toBe(200);
-      expect(result.message).toBe('Marketing automation action deleted successfully');
+      expect(result.message).toBe(
+        'Marketing automation action deleted successfully',
+      );
       expect(result.data.status).toBe(MarketingAutomationActionStatus.DELETED);
     });
   });

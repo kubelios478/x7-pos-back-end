@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { KitchenOrderItemController } from './kitchen-order-item.controller';
 import { KitchenOrderItemService } from './kitchen-order-item.service';
@@ -11,10 +7,11 @@ import { GetKitchenOrderItemQueryDto } from './dto/get-kitchen-order-item-query.
 import { OneKitchenOrderItemResponseDto } from './dto/kitchen-order-item-response.dto';
 import { PaginatedKitchenOrderItemResponseDto } from './dto/kitchen-order-item-response.dto';
 import { KitchenOrderItemStatus } from './constants/kitchen-order-item-status.enum';
+import { KitchenOrderItemPreparationStatus } from './constants/kitchen-order-item-preparation-status.enum';
+import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { Request as ExpressRequest } from 'express';
 
-import { UserRole } from 'src/platform-saas/users/constants/role.enum';
-import { Scope } from 'src/platform-saas/users/constants/scope.enum';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 describe('KitchenOrderItemController', () => {
   let controller: KitchenOrderItemController;
@@ -26,6 +23,8 @@ describe('KitchenOrderItemController', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+    advancePreparationStatus: jest.fn(),
+    revertPreparationStatus: jest.fn(),
   };
 
   const mockUser = {
@@ -38,9 +37,9 @@ describe('KitchenOrderItemController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as AuthenticatedRequest;
 
   const mockKitchenOrderItemResponse: OneKitchenOrderItemResponseDto = {
     statusCode: 201,
@@ -53,6 +52,7 @@ describe('KitchenOrderItemController', () => {
       variantId: null,
       quantity: 2,
       preparedQuantity: 0,
+      preparationStatus: KitchenOrderItemPreparationStatus.PENDING,
       status: KitchenOrderItemStatus.ACTIVE,
       startedAt: null,
       completedAt: null,
@@ -98,7 +98,9 @@ describe('KitchenOrderItemController', () => {
       ],
     }).compile();
 
-    controller = module.get<KitchenOrderItemController>(KitchenOrderItemController);
+    controller = module.get<KitchenOrderItemController>(
+      KitchenOrderItemController,
+    );
     service = module.get<KitchenOrderItemService>(KitchenOrderItemService);
   });
 
@@ -164,6 +166,44 @@ describe('KitchenOrderItemController', () => {
     });
   });
 
+  describe('POST /kitchen-order-items/:id/preparation/next', () => {
+    it('should delegate to advancePreparationStatus', async () => {
+      const advanceSpy = jest.spyOn(service, 'advancePreparationStatus');
+      const response: OneKitchenOrderItemResponseDto = {
+        ...mockKitchenOrderItemResponse,
+        statusCode: 200,
+        message: 'Kitchen order item preparation status advanced successfully',
+        data: {
+          ...mockKitchenOrderItemResponse.data,
+          preparationStatus: KitchenOrderItemPreparationStatus.IN_PREPARATION,
+        },
+      };
+      advanceSpy.mockResolvedValue(response);
+
+      const result = await controller.advancePreparationStatus(1, mockRequest);
+
+      expect(advanceSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(result).toEqual(response);
+    });
+  });
+
+  describe('POST /kitchen-order-items/:id/preparation/previous', () => {
+    it('should delegate to revertPreparationStatus', async () => {
+      const revertSpy = jest.spyOn(service, 'revertPreparationStatus');
+      const response: OneKitchenOrderItemResponseDto = {
+        ...mockKitchenOrderItemResponse,
+        statusCode: 200,
+        message: 'Kitchen order item preparation status reverted successfully',
+      };
+      revertSpy.mockResolvedValue(response);
+
+      const result = await controller.revertPreparationStatus(1, mockRequest);
+
+      expect(revertSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(result).toEqual(response);
+    });
+  });
+
   describe('PUT /kitchen-order-items/:id (update)', () => {
     const updateDto: UpdateKitchenOrderItemDto = {
       preparedQuantity: 1,
@@ -186,7 +226,11 @@ describe('KitchenOrderItemController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Kitchen order item updated successfully');

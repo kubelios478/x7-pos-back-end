@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { OnlineMenuItemController } from './online-menu-item.controller';
 import { OnlineMenuItemService } from './online-menu-item.service';
@@ -11,10 +7,10 @@ import { GetOnlineMenuItemQueryDto } from './dto/get-online-menu-item-query.dto'
 import { OneOnlineMenuItemResponseDto } from './dto/online-menu-item-response.dto';
 import { PaginatedOnlineMenuItemResponseDto } from './dto/paginated-online-menu-item-response.dto';
 import { OnlineMenuItemStatus } from './constants/online-menu-item-status.enum';
+import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { Request as ExpressRequest } from 'express';
 
-import { UserRole } from 'src/platform-saas/users/constants/role.enum';
-import { Scope } from 'src/platform-saas/users/constants/scope.enum';
-import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 describe('OnlineMenuItemController', () => {
   let controller: OnlineMenuItemController;
@@ -38,9 +34,9 @@ describe('OnlineMenuItemController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as AuthenticatedRequest;
 
   const mockOnlineMenuItemResponse: OneOnlineMenuItemResponseDto = {
     statusCode: 201,
@@ -135,7 +131,8 @@ describe('OnlineMenuItemController', () => {
     });
 
     it('should handle service errors during creation', async () => {
-      const errorMessage = 'Online menu not found or you do not have access to it';
+      const errorMessage =
+        'Online menu not found or you do not have access to it';
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
@@ -188,7 +185,10 @@ describe('OnlineMenuItemController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockUser.merchant.id,
+      );
     });
   });
 
@@ -239,7 +239,11 @@ describe('OnlineMenuItemController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Online menu item updated successfully');
@@ -250,10 +254,14 @@ describe('OnlineMenuItemController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(1, updateDto, mockRequest)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(1, updateDto, mockRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
     });
   });
 
@@ -287,7 +295,3 @@ describe('OnlineMenuItemController', () => {
     });
   });
 });
-
-
-
-

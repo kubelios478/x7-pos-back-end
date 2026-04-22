@@ -1,6 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { ShiftAssignmentsController } from './shift-assignments.controller';
@@ -92,7 +90,9 @@ describe('ShiftAssignmentsController', () => {
       ],
     }).compile();
 
-    controller = module.get<ShiftAssignmentsController>(ShiftAssignmentsController);
+    controller = module.get<ShiftAssignmentsController>(
+      ShiftAssignmentsController,
+    );
     service = module.get<ShiftAssignmentsService>(ShiftAssignmentsService);
   });
 
@@ -145,7 +145,9 @@ describe('ShiftAssignmentsController', () => {
         },
       };
 
-      await expect(controller.create(createDto, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.create(createDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to create shift assignments',
       );
     });
@@ -196,7 +198,10 @@ describe('ShiftAssignmentsController', () => {
 
       await controller.findAll(queryWithFilters, mockRequest);
 
-      expect(findAllSpy).toHaveBeenCalledWith(queryWithFilters, mockUser.merchant.id);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        queryWithFilters,
+        mockUser.merchant.id,
+      );
     });
 
     it('should handle requests without merchant', async () => {
@@ -207,7 +212,9 @@ describe('ShiftAssignmentsController', () => {
         },
       };
 
-      await expect(controller.findAll(query, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.findAll(query, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to view shift assignments',
       );
     });
@@ -264,7 +271,9 @@ describe('ShiftAssignmentsController', () => {
         },
       };
 
-      await expect(controller.findOne(1, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.findOne(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to view shift assignments',
       );
     });
@@ -291,7 +300,11 @@ describe('ShiftAssignmentsController', () => {
 
       const result = await controller.update(1, updateDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
+      );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Shift assignment updated successfully');
@@ -302,10 +315,14 @@ describe('ShiftAssignmentsController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(1, updateDto, mockRequest)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.update(1, updateDto, mockRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        updateDto,
+        mockUser.merchant.id,
       );
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, mockUser.merchant.id);
     });
 
     it('should handle partial updates', async () => {
@@ -326,7 +343,11 @@ describe('ShiftAssignmentsController', () => {
 
       const result = await controller.update(1, partialDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, partialDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        partialDto,
+        mockUser.merchant.id,
+      );
       expect(result.data.roleDuringShift).toBe(ShiftRole.MANAGER);
     });
 
@@ -348,7 +369,11 @@ describe('ShiftAssignmentsController', () => {
 
       const result = await controller.update(1, statusDto, mockRequest);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, statusDto, mockUser.merchant.id);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        statusDto,
+        mockUser.merchant.id,
+      );
       expect(result.data.status).toBe(ShiftAssignmentStatus.COMPLETED);
     });
 
@@ -360,7 +385,9 @@ describe('ShiftAssignmentsController', () => {
         },
       };
 
-      await expect(controller.update(1, updateDto, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.update(1, updateDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to update shift assignments',
       );
     });
@@ -426,10 +453,11 @@ describe('ShiftAssignmentsController', () => {
         },
       };
 
-      await expect(controller.remove(1, requestWithoutMerchant as any)).rejects.toThrow(
+      await expect(
+        controller.remove(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(
         'User must be associated with a merchant to delete shift assignments',
       );
     });
   });
 });
-
