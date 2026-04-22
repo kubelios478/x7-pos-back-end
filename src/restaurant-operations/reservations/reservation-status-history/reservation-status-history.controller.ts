@@ -1,6 +1,10 @@
-import { Controller, Get, Param, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
 import { ReservationStatusHistoryService } from './reservation-status-history.service';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CreateReservationStatusHistoryDto } from './dto/create-reservation-status-history.dto';
+import { UpdateReservationStatusHistoryDto } from './dto/update-reservation-status-history.dto';
+import { OneReservationStatusHistoryResponse } from './dto/reservation-status-history-response.dto';
+import { AllPaginatedReservationStatusHistory } from './dto/all-paginated-reservation-status-history.dto';
+import { GetReservationStatusHistoryQueryDto } from './dto/get-reservation-status-history-query.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -9,8 +13,7 @@ import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import { AllPaginatedReservationStatusHistory } from './dto/all-paginated-reservation-status-history.dto';
-import { GetReservationStatusHistoryQueryDto } from './dto/get-reservation-status-history-query.dto';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Reservation Status History')
 @ApiBearerAuth()
@@ -18,6 +21,18 @@ import { GetReservationStatusHistoryQueryDto } from './dto/get-reservation-statu
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationStatusHistoryController {
   constructor(private readonly historyService: ReservationStatusHistoryService) { }
+
+  @Post()
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Create a new status history entry' })
+  @ApiResponse({ status: 201, type: OneReservationStatusHistoryResponse })
+  create(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createDto: CreateReservationStatusHistoryDto,
+  ): Promise<OneReservationStatusHistoryResponse> {
+    return this.historyService.create(createDto, user.merchant.id);
+  }
 
   @Get()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
@@ -44,5 +59,42 @@ export class ReservationStatusHistoryController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
     return this.historyService.findAll(reservationId, user.merchant.id, page, limit);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Get status history entry by ID' })
+  @ApiResponse({ status: 200, type: OneReservationStatusHistoryResponse })
+  findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneReservationStatusHistoryResponse> {
+    return this.historyService.findOne(id, user.merchant.id);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Update status history entry' })
+  @ApiResponse({ status: 200, type: OneReservationStatusHistoryResponse })
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateReservationStatusHistoryDto,
+  ): Promise<OneReservationStatusHistoryResponse> {
+    return this.historyService.update(id, updateDto, user.merchant.id);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Remove status history entry' })
+  @ApiResponse({ status: 200, type: OneReservationStatusHistoryResponse })
+  remove(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneReservationStatusHistoryResponse> {
+    return this.historyService.remove(id, user.merchant.id);
   }
 }

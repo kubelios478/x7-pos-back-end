@@ -5,6 +5,8 @@ import { CreateOnlinePaymentDto } from './dto/create-online-payment.dto';
 import { UpdateOnlinePaymentDto } from './dto/update-online-payment.dto';
 import { GetOnlinePaymentQueryDto } from './dto/get-online-payment-query.dto';
 import { OneOnlinePaymentResponseDto } from './dto/online-payment-response.dto';
+import { UserRole } from '../../../platform-saas/users/constants/role.enum';
+import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 import { PaginatedOnlinePaymentResponseDto } from './dto/paginated-online-payment-response.dto';
 import { OnlineOrderPaymentStatus } from '../online-order/constants/online-order-payment-status.enum';
 import { OnlinePaymentStatus } from './constants/online-payment-status.enum';

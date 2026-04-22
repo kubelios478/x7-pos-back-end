@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, Max, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ReservationStatus } from '../constants/reservation.constants';
 
 export class GetReservationsQueryDto {
     @ApiPropertyOptional({
@@ -41,4 +42,12 @@ export class GetReservationsQueryDto {
     @Type(() => Number)
     @IsNumber()
     customer_id?: number;
+
+    @ApiPropertyOptional({
+        enum: ReservationStatus,
+        description: 'Filter by reservation status',
+    })
+    @IsOptional()
+    @IsEnum(ReservationStatus)
+    status?: ReservationStatus;
 }

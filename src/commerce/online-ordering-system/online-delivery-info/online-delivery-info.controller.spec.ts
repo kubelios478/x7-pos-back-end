@@ -7,6 +7,8 @@ import { GetOnlineDeliveryInfoQueryDto } from './dto/get-online-delivery-info-qu
 import { OneOnlineDeliveryInfoResponseDto } from './dto/online-delivery-info-response.dto';
 import { PaginatedOnlineDeliveryInfoResponseDto } from './dto/paginated-online-delivery-info-response.dto';
 import { OnlineDeliveryInfoStatus } from './constants/online-delivery-info-status.enum';
+import { UserRole } from '../../../platform-saas/users/constants/role.enum';
+import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { Request as ExpressRequest } from 'express';
 
@@ -23,6 +25,8 @@ describe('OnlineDeliveryInfoController', () => {
     update: jest.fn(),
     remove: jest.fn(),
   };
+
+  const MERCHANT_ID = 1;
 
   const mockUser = {
     id: 1,

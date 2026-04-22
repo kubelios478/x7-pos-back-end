@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Reservation } from 'src/restaurant-operations/reservations/reservation/entities/reservation.entity';
+import { ReservationStatus } from '../../reservation/constants/reservation.constants';
 
 @Entity('reservation_status_history')
 export class ReservationStatusHistory {
@@ -15,8 +16,12 @@ export class ReservationStatusHistory {
     @JoinColumn({ name: 'reservation_id' })
     reservation: Reservation;
 
-    @Column({ length: 50 })
-    status: string;
+    @Column({
+        type: 'enum',
+        enum: ReservationStatus,
+        default: ReservationStatus.PENDING,
+    })
+    status: ReservationStatus;
 
     @Column({ nullable: true })
     changed_by: number;

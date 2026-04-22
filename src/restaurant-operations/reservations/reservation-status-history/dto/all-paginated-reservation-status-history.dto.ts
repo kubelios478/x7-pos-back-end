@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ReservationStatusHistory } from '../entities/reservation-status-history.entity';
+import { ReservationStatusHistoryResponseDto } from './reservation-status-history-response.dto';
 
 export class AllPaginatedReservationStatusHistory {
     @ApiProperty({ example: 200 })
@@ -8,8 +8,8 @@ export class AllPaginatedReservationStatusHistory {
     @ApiProperty({ example: 'Status history retrieved successfully' })
     message: string;
 
-    @ApiProperty({ type: [ReservationStatusHistory] })
-    data: ReservationStatusHistory[];
+    @ApiProperty({ type: [ReservationStatusHistoryResponseDto] })
+    data: ReservationStatusHistoryResponseDto[];
 
     @ApiProperty({ example: 1 })
     page: number;

@@ -5,6 +5,8 @@ import { CreateOnlineMenuDto } from './dto/create-online-menu.dto';
 import { UpdateOnlineMenuDto } from './dto/update-online-menu.dto';
 import { GetOnlineMenuQueryDto } from './dto/get-online-menu-query.dto';
 import { OneOnlineMenuResponseDto } from './dto/online-menu-response.dto';
+import { UserRole } from '../../../platform-saas/users/constants/role.enum';
+import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 import { PaginatedOnlineMenuResponseDto } from './dto/paginated-online-menu-response.dto';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { Request as ExpressRequest } from 'express';

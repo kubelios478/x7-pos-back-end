@@ -6,6 +6,8 @@ import { CreateOnlineOrderDto } from './dto/create-online-order.dto';
 import { UpdateOnlineOrderDto } from './dto/update-online-order.dto';
 import { GetOnlineOrderQueryDto } from './dto/get-online-order-query.dto';
 import { OneOnlineOrderResponseDto } from './dto/online-order-response.dto';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { PaginatedOnlineOrderResponseDto } from './dto/paginated-online-order-response.dto';
 import { OnlineOrderStatus } from './constants/online-order-status.enum';
 import { OnlineOrderType } from './constants/online-order-type.enum';
@@ -26,11 +28,6 @@ describe('OnlineOrderController', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
-  };
-
-  const mockOnlineOrderFulfillmentService = {
-    acceptOnlineOrder: jest.fn(),
-    cancelOnlineOrder: jest.fn(),
   };
 
   const mockOnlineOrderFulfillmentService = {

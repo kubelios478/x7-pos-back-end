@@ -7,6 +7,10 @@ import { Reservation } from 'src/restaurant-operations/reservations/reservation/
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { AllPaginatedReservationStatusHistory } from './dto/all-paginated-reservation-status-history.dto';
 
+import { CreateReservationStatusHistoryDto } from './dto/create-reservation-status-history.dto';
+import { UpdateReservationStatusHistoryDto } from './dto/update-reservation-status-history.dto';
+import { OneReservationStatusHistoryResponse, ReservationStatusHistoryResponseDto } from './dto/reservation-status-history-response.dto';
+
 @Injectable()
 export class ReservationStatusHistoryService {
   constructor(
@@ -15,6 +19,27 @@ export class ReservationStatusHistoryService {
     @InjectRepository(Reservation)
     private readonly reservationRepository: Repository<Reservation>,
   ) { }
+
+  async create(createDto: CreateReservationStatusHistoryDto, merchantId: number): Promise<OneReservationStatusHistoryResponse> {
+    await this.validateReservationOwnership(createDto.reservation_id, merchantId);
+
+    try {
+      const historyItem = new ReservationStatusHistory();
+      historyItem.reservation_id = createDto.reservation_id;
+      historyItem.status = createDto.status;
+      historyItem.changed_by = createDto.changed_by;
+      historyItem.is_active = true;
+
+      const saved = await this.historyRepository.save(historyItem);
+      return {
+        statusCode: 201,
+        message: 'Status history entry created successfully',
+        data: this.mapToResponseDto(saved),
+      };
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+    }
+  }
 
   async findAll(reservationId: number, merchantId: number, page = 1, limit = 10): Promise<AllPaginatedReservationStatusHistory> {
     return this.findAllGlobal(merchantId, { reservation_id: reservationId, page, limit });
@@ -45,13 +70,80 @@ export class ReservationStatusHistoryService {
     return {
       statusCode: 200,
       message: 'All merchant status history retrieved successfully',
-      data,
+      data: data.map(h => this.mapToResponseDto(h)),
       page,
       limit,
       total,
       totalPages,
       hasNext: page < totalPages,
       hasPrev: page > 1,
+    };
+  }
+
+  async findOne(id: number, merchantId: number): Promise<OneReservationStatusHistoryResponse> {
+    const history = await this.historyRepository.findOne({
+      where: { id, is_active: true },
+      relations: ['reservation'],
+    });
+
+    if (!history || history.reservation.merchant_id !== merchantId) {
+      ErrorHandler.notFound('Status history entry not found');
+    }
+
+    return {
+      statusCode: 200,
+      message: 'Status history entry retrieved successfully',
+      data: this.mapToResponseDto(history),
+    };
+  }
+
+  async update(id: number, updateDto: UpdateReservationStatusHistoryDto, merchantId: number): Promise<OneReservationStatusHistoryResponse> {
+    await this.findOne(id, merchantId);
+    const history = await this.historyRepository.findOneBy({ id });
+
+    if (!history) {
+      ErrorHandler.notFound('Status history entry not found');
+    }
+
+    Object.assign(history, updateDto);
+    try {
+      const saved = await this.historyRepository.save(history);
+      return {
+        statusCode: 200,
+        message: 'Status history entry updated successfully',
+        data: this.mapToResponseDto(saved),
+      };
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  async remove(id: number, merchantId: number): Promise<OneReservationStatusHistoryResponse> {
+    await this.findOne(id, merchantId);
+    const history = await this.historyRepository.findOneBy({ id });
+
+    if (!history) {
+      ErrorHandler.notFound('Status history entry not found');
+    }
+
+    history.is_active = false;
+    const saved = await this.historyRepository.save(history);
+
+    return {
+      statusCode: 200,
+      message: 'Status history entry removed successfully',
+      data: this.mapToResponseDto(saved),
+    };
+  }
+
+  private mapToResponseDto(history: ReservationStatusHistory): ReservationStatusHistoryResponseDto {
+    return {
+      id: history.id,
+      reservation_id: history.reservation_id,
+      status: history.status,
+      changed_at: history.changed_at,
+      changed_by: history.changed_by,
+      is_active: history.is_active,
     };
   }
 

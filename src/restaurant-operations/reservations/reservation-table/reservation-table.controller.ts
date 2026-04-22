@@ -1,6 +1,7 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
 import { ReservationTableService } from './reservation-table.service';
 import { CreateReservationTableDto } from './dto/create-reservation-table.dto';
+import { UpdateReservationTableDto } from './dto/update-reservation-table.dto';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -59,6 +60,31 @@ export class ReservationTableController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<AllPaginatedReservationTables> {
     return this.reservationTableService.findAll(reservationId, user.merchant.id, page, limit);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Get a reservation table assignment by ID' })
+  @ApiResponse({ status: 200, type: OneReservationTableResponse })
+  findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number
+  ): Promise<OneReservationTableResponse> {
+    return this.reservationTableService.findOne(id, user.merchant.id);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Update a reservation table assignment' })
+  @ApiResponse({ status: 200, type: OneReservationTableResponse })
+  update(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateDto: UpdateReservationTableDto
+  ): Promise<OneReservationTableResponse> {
+    return this.reservationTableService.update(id, updateDto, user.merchant.id);
   }
 
   @Delete(':reservationId/:tableId')

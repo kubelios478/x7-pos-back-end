@@ -95,6 +95,8 @@ export class ReservationController {
   }
 
   @Patch(':id/cancel')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({ summary: 'Cancel a reservation' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: OneReservationResponse })

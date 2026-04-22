@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, type QueryDeepPartialEntity } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { KitchenOrder } from './entities/kitchen-order.entity';
 import { KitchenOrderItem } from '../kitchen-order-item/entities/kitchen-order-item.entity';
 import { KitchenOrderStatus } from './constants/kitchen-order-status.enum';
@@ -60,7 +61,7 @@ export class KitchenOrderSyncService {
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
     private readonly ordersService: OrdersService,
-  ) {}
+  ) { }
 
   /**
    * Espeja estados KOI → líneas POS, actualiza business_status de cada kitchen order

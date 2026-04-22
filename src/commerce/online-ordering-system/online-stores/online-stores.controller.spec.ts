@@ -5,6 +5,8 @@ import { CreateOnlineStoreDto } from './dto/create-online-store.dto';
 import { UpdateOnlineStoreDto } from './dto/update-online-store.dto';
 import { GetOnlineStoreQueryDto } from './dto/get-online-store-query.dto';
 import { OneOnlineStoreResponseDto } from './dto/online-store-response.dto';
+import { UserRole } from '../../../platform-saas/users/constants/role.enum';
+import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 import { PaginatedOnlineStoreResponseDto } from './dto/paginated-online-store-response.dto';
 import { OnlineStoreStatus } from './constants/online-store-status.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';

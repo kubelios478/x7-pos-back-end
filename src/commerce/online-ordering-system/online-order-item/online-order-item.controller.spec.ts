@@ -7,6 +7,8 @@ import { GetOnlineOrderItemQueryDto } from './dto/get-online-order-item-query.dt
 import { OneOnlineOrderItemResponseDto } from './dto/online-order-item-response.dto';
 import { PaginatedOnlineOrderItemResponseDto } from './dto/paginated-online-order-item-response.dto';
 import { OnlineOrderItemStatus } from './constants/online-order-item-status.enum';
+import { UserRole } from '../../../platform-saas/users/constants/role.enum';
+import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { Request as ExpressRequest } from 'express';
 

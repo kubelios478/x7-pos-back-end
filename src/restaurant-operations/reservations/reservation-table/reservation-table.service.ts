@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateReservationTableDto } from './dto/create-reservation-table.dto';
+import { UpdateReservationTableDto } from './dto/update-reservation-table.dto';
 import { ReservationTable } from './entities/reservation-table.entity';
 import { Reservation } from 'src/restaurant-operations/reservations/reservation/entities/reservation.entity';
 import { Table } from 'src/restaurant-operations/dining-system/tables/entities/table.entity';
@@ -78,7 +79,7 @@ export class ReservationTableService {
       relations: ['reservation', 'table'],
       skip,
       take: limit,
-      order: { reservation_id: 'DESC' },
+      order: { id: 'DESC' },
     });
 
     const totalPages = Math.ceil(total / limit);
@@ -94,6 +95,44 @@ export class ReservationTableService {
       hasNext: page < totalPages,
       hasPrev: page > 1,
     };
+  }
+
+  async findOne(id: number, merchantId: number): Promise<OneReservationTableResponse> {
+    const resTable = await this.reservationTableRepository.findOne({
+      where: { id, is_active: true },
+      relations: ['reservation', 'table'],
+    });
+
+    if (!resTable || resTable.reservation.merchant_id !== merchantId) {
+      ErrorHandler.notFound('Table assignment not found');
+    }
+
+    return {
+      statusCode: 200,
+      message: 'Table assignment retrieved successfully',
+      data: this.mapToResponseDto(resTable),
+    };
+  }
+
+  async update(id: number, updateDto: UpdateReservationTableDto, merchantId: number): Promise<OneReservationTableResponse> {
+    await this.findOne(id, merchantId);
+    const resTable = await this.reservationTableRepository.findOneBy({ id });
+
+    if (!resTable) {
+      ErrorHandler.notFound('Table assignment not found');
+    }
+
+    Object.assign(resTable, updateDto);
+    try {
+      const saved = await this.reservationTableRepository.save(resTable);
+      return {
+        statusCode: 200,
+        message: 'Table assignment updated successfully',
+        data: this.mapToResponseDto(saved),
+      };
+    } catch (error) {
+      ErrorHandler.handleDatabaseError(error);
+    }
   }
 
   async remove(reservationId: number, tableId: number, merchantId: number): Promise<OneReservationTableResponse> {

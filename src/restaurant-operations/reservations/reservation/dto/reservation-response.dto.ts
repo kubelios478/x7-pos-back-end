@@ -1,6 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 import { ReservationStatus } from '../constants/reservation.constants';
+import { ReservationGuestResponseDto } from 'src/restaurant-operations/reservations/reservation-guest/dto/reservation-guest-response.dto';
+import { ReservationTableResponseDto } from 'src/restaurant-operations/reservations/reservation-table/dto/reservation-table-response.dto';
+import { ReservationNoteResponseDto } from 'src/restaurant-operations/reservations/reservation-note/dto/reservation-note-response.dto';
+import { ReservationStatusHistory } from 'src/restaurant-operations/reservations/reservation-status-history/entities/reservation-status-history.entity';
 
 export class ReservationResponseDto {
     @ApiProperty({ example: 1 })
@@ -38,6 +42,18 @@ export class ReservationResponseDto {
 
     @ApiProperty({ example: '2026-04-16T14:00:00Z' })
     created_at: Date;
+
+    @ApiPropertyOptional({ type: [ReservationGuestResponseDto] })
+    guests?: ReservationGuestResponseDto[];
+
+    @ApiPropertyOptional({ type: [ReservationTableResponseDto] })
+    tables?: ReservationTableResponseDto[];
+
+    @ApiPropertyOptional({ type: [ReservationNoteResponseDto] })
+    notes?: ReservationNoteResponseDto[];
+
+    @ApiPropertyOptional({ type: [ReservationStatusHistory] })
+    status_history?: ReservationStatusHistory[];
 }
 
 export class OneReservationResponse extends SuccessResponse {

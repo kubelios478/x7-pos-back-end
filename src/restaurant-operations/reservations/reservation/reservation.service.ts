@@ -35,6 +35,16 @@ export class ReservationService {
   ): Promise<OneReservationResponse> {
     const { table_ids, ...reservationData } = createReservationDto;
 
+    // Check table availability
+    if (table_ids && table_ids.length > 0) {
+      await this.checkTableAvailability(
+        merchantId,
+        createReservationDto.table_ids!,
+        createReservationDto.reservation_date,
+        createReservationDto.duration_minutes || 120,
+      );
+    }
+
     try {
       const newReservation = this.reservationRepository.create({
         ...reservationData,
@@ -78,29 +88,31 @@ export class ReservationService {
   }
 
   async findAll(
-    queryBy: GetReservationsQueryDto,
+    queryDto: GetReservationsQueryDto,
     merchantId: number,
   ): Promise<AllPaginatedReservations> {
-    const page = queryBy.page || 1;
-    const limit = queryBy.limit || 10;
+    const { page = 1, limit = 10, date, customer_id, status } = queryDto;
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.reservationRepository
       .createQueryBuilder('reservation')
-      .leftJoinAndSelect('reservation.customer', 'customer')
-      .leftJoinAndSelect('reservation.tables', 'reservationTables')
-      .leftJoinAndSelect('reservationTables.table', 'table')
+      .leftJoinAndSelect('reservation.guests', 'guests')
+      .leftJoinAndSelect('reservation.tables', 'tables')
+      .leftJoinAndSelect('reservation.notes', 'notes')
+      .leftJoinAndSelect('reservation.statusHistory', 'statusHistory')
       .where('reservation.merchant_id = :merchantId', { merchantId })
       .andWhere('reservation.is_active = :isActive', { isActive: true });
 
-    if (queryBy.customer_id) {
-      queryBuilder.andWhere('reservation.customer_id = :customerId', {
-        customerId: queryBy.customer_id,
-      });
+    if (date) {
+      queryBuilder.andWhere('DATE(reservation.reservation_date) = :date', { date });
     }
 
-    if (queryBy.date) {
-      queryBuilder.andWhere('DATE(reservation.reservation_date) = :date', { date: queryBy.date });
+    if (customer_id) {
+      queryBuilder.andWhere('reservation.customer_id = :customer_id', { customer_id });
+    }
+
+    if (status) {
+      queryBuilder.andWhere('reservation.status = :status', { status });
     }
 
     const total = await queryBuilder.getCount();
@@ -167,6 +179,23 @@ export class ReservationService {
       ErrorHandler.notFound('Reservation not found');
     }
 
+    // Check table availability if date or table_ids are updated
+    if (updateReservationDto.reservation_date || updateReservationDto['table_ids']) {
+      const date = updateReservationDto.reservation_date || reservation.reservation_date.toISOString();
+      const duration = updateReservationDto.duration_minutes || reservation.duration_minutes;
+
+      // If table_ids not provided, use current tables
+      let tableIds = updateReservationDto['table_ids'];
+      if (!tableIds) {
+        const currentTables = await this.reservationTableRepository.findBy({ reservation_id: id, is_active: true });
+        tableIds = currentTables.map(t => t.table_id);
+      }
+
+      if (tableIds && tableIds.length > 0) {
+        await this.checkTableAvailability(merchantId, tableIds, date, duration, id);
+      }
+    }
+
     const oldStatus = reservation.status;
     Object.assign(reservation, updateReservationDto);
 
@@ -206,6 +235,13 @@ export class ReservationService {
     try {
       reservation.is_active = false;
       await this.reservationRepository.save(reservation);
+
+      // Deactivate associated tables
+      await this.reservationTableRepository.update(
+        { reservation_id: id },
+        { is_active: false }
+      );
+
       return {
         statusCode: 200,
         message: 'Reservation deleted successfully',
@@ -245,8 +281,44 @@ export class ReservationService {
     }
   }
 
+  private async checkTableAvailability(
+    merchantId: number,
+    tableIds: number[],
+    date: string | Date,
+    durationMinutes: number,
+    excludeReservationId?: number,
+  ) {
+    const start = new Date(date);
+    const end = new Date(start.getTime() + durationMinutes * 60000);
+
+    const query = this.reservationTableRepository
+      .createQueryBuilder('resTable')
+      .innerJoin('resTable.reservation', 'reservation')
+      .where('resTable.table_id IN (:...tableIds)', { tableIds })
+      .andWhere('resTable.is_active = :isActive', { isActive: true })
+      .andWhere('reservation.merchant_id = :merchantId', { merchantId })
+      .andWhere('reservation.is_active = :resActive', { resActive: true })
+      .andWhere('reservation.status NOT IN (:...excludedStatuses)', {
+        excludedStatuses: [ReservationStatus.CANCELLED, ReservationStatus.NO_SHOW],
+      })
+      .andWhere(
+        '(reservation.reservation_date < :end AND (reservation.reservation_date + (reservation.duration_minutes || \' minutes\')::interval) > :start)',
+        { start, end },
+      );
+
+    if (excludeReservationId) {
+      query.andWhere('reservation.id != :excludeReservationId', { excludeReservationId });
+    }
+
+    const conflict = await query.getOne();
+
+    if (conflict) {
+      ErrorHandler.badRequest(`One or more tables are already booked for the selected time range.`);
+    }
+  }
+
   private mapToResponseDto(reservation: Reservation): ReservationResponseDto {
-    return {
+    const response: ReservationResponseDto = {
       id: reservation.id,
       merchant_id: reservation.merchant_id,
       customer_id: reservation.customer_id,
@@ -260,5 +332,42 @@ export class ReservationService {
       created_by: reservation.created_by,
       created_at: reservation.created_at,
     };
+
+    if (reservation.guests) {
+      response.guests = reservation.guests.map(guest => ({
+        id: guest.id,
+        reservation_id: guest.reservation_id,
+        name: guest.name,
+        email: guest.email,
+        phone: guest.phone,
+        is_primary: guest.is_primary,
+        is_active: guest.is_active,
+      }));
+    }
+
+    if (reservation.tables) {
+      response.tables = reservation.tables.map(resTable => ({
+        reservation_id: resTable.reservation_id,
+        table_id: resTable.table_id,
+        is_active: resTable.is_active,
+      }));
+    }
+
+    if (reservation.notes) {
+      response.notes = reservation.notes.map(note => ({
+        id: note.id,
+        reservation_id: note.reservation_id,
+        note: note.note,
+        created_by: note.created_by,
+        created_at: note.created_at,
+        is_active: note.is_active,
+      }));
+    }
+
+    if (reservation.statusHistory) {
+      response.status_history = reservation.statusHistory;
+    }
+
+    return response;
   }
 }

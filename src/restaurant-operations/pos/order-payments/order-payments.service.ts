@@ -5,7 +5,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, type QueryDeepPartialEntity } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OrderPayment } from './entities/order-payment.entity';
 import { Order } from '../orders/entities/order.entity';
 import { CreateOrderPaymentDto } from './dto/create-order-payment.dto';
@@ -33,7 +34,7 @@ export class OrderPaymentsService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
-  ) {}
+  ) { }
 
   async create(
     dto: CreateOrderPaymentDto,
