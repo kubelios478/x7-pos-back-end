@@ -50,6 +50,7 @@ describe('ReservationService', () => {
     save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 1, ...dto })),
     findOneBy: jest.fn(),
     findBy: jest.fn().mockResolvedValue([]),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
   beforeEach(async () => {
@@ -101,6 +102,7 @@ describe('ReservationService', () => {
 
     it('should create a reservation when tables are available', async () => {
       mockQueryBuilder.getOne.mockResolvedValue(null); // No conflict
+      mockGenericRepository.findBy.mockResolvedValue([{ id: 1 }, { id: 2 }]); // Tables found
       const reservation = {
         id: 10,
         ...createDto,
@@ -124,6 +126,26 @@ describe('ReservationService', () => {
 
       await expect(service.create(merchantId, createDto)).rejects.toThrow();
     });
+
+    it('should fail if some requested tables do not exist for the merchant', async () => {
+      mockQueryBuilder.getOne.mockResolvedValue(null); // No booking conflict
+      mockGenericRepository.findBy.mockResolvedValue([{ id: 1 }]); // Only 1 table found instead of 2
+
+      await expect(service.create(merchantId, createDto)).rejects.toThrow('One or more tables not found or do not belong to your merchant');
+    });
+
+    it('should create a reservation without tables', async () => {
+      const dtoWithoutTables = { ...createDto, table_ids: [] };
+      const reservation = { id: 11, ...dtoWithoutTables, reservation_date: new Date() };
+      mockReservationRepository.create.mockReturnValue(reservation);
+      mockReservationRepository.save.mockResolvedValue(reservation);
+      jest.spyOn(service, 'findOne').mockResolvedValue({ data: reservation } as any);
+
+      const result = await service.create(merchantId, dtoWithoutTables);
+
+      expect(result.data.id).toBe(11);
+      expect(mockResTableRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('findAll', () => {
@@ -142,6 +164,43 @@ describe('ReservationService', () => {
         expect.stringContaining('reservation.status = :status'),
         { status: query.status }
       );
+    });
+
+    it('should filter by customer_id', async () => {
+      const query = { customer_id: 50 };
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await service.findAll(query, 1);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('reservation.customer_id = :customer_id'),
+        { customer_id: 50 }
+      );
+    });
+
+    it('should filter by guest name (partial search)', async () => {
+      const query = { guest_name: 'John' };
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await service.findAll(query, 1);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('LOWER(guests.name) LIKE LOWER(:guestName)'),
+        { guestName: '%John%' }
+      );
+    });
+
+    it('should handle pagination correctly', async () => {
+      const query = { page: 2, limit: 5 };
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await service.findAll(query, 1);
+
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(5);
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(5);
     });
   });
 
@@ -165,6 +224,12 @@ describe('ReservationService', () => {
       });
 
       await expect(service.findOne(1, 2)).rejects.toThrow();
+    });
+
+    it('should throw not found if reservation does not exist', async () => {
+      mockReservationRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOne(999, 1)).rejects.toThrow('Reservation not found');
     });
   });
 
@@ -192,33 +257,44 @@ describe('ReservationService', () => {
 
       expect(mockGenericRepository.save).toHaveBeenCalled(); // History log for status change
     });
+
+    it('should update party_size without checking availability', async () => {
+      const existing = { id: 1, merchant_id: 1, reservation_date: new Date() };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+      jest.spyOn(service, 'findOne').mockResolvedValue({ data: existing } as any);
+
+      await service.update(1, 1, { party_size: 10 });
+
+      expect(mockQueryBuilder.getOne).not.toHaveBeenCalled();
+      expect(mockReservationRepository.save).toHaveBeenCalledWith(expect.objectContaining({ party_size: 10 }));
+    });
   });
 
   describe('remove', () => {
-    it('should soft delete reservation and deactivate tables', async () => {
+    it('should soft delete reservation and deactivate tables, guests and notes', async () => {
       const reservation = { id: 1, merchant_id: 1, is_active: true };
-      const resTable = { id: 1, is_active: true };
 
       mockReservationRepository.findOneBy.mockResolvedValue(reservation);
-      mockResTableRepository.findBy.mockResolvedValue([resTable]);
-
-      // Implementation of update mock for this test
-      mockResTableRepository.update.mockImplementation((criteria, update) => {
-        if (criteria.reservation_id === reservation.id) {
-          resTable.is_active = update.is_active;
-        }
-        return Promise.resolve({ affected: 1 });
-      });
 
       await service.remove(1, 1);
 
       expect(reservation.is_active).toBe(false);
-      expect(resTable.is_active).toBe(false);
       expect(mockReservationRepository.save).toHaveBeenCalledWith(reservation);
       expect(mockResTableRepository.update).toHaveBeenCalledWith(
         { reservation_id: 1 },
         { is_active: false }
       );
+      expect(mockGenericRepository.update).toHaveBeenCalledTimes(2);
+      expect(mockGenericRepository.update).toHaveBeenCalledWith(
+        { reservation_id: 1 },
+        { is_active: false }
+      );
+    });
+
+    it('should fail to remove if reservation not found', async () => {
+      mockReservationRepository.findOneBy.mockResolvedValue(null);
+
+      await expect(service.remove(999, 1)).rejects.toThrow();
     });
   });
 });

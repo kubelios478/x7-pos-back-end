@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreateReservationNoteDto {
     @ApiProperty({ example: 1 })
@@ -14,6 +14,6 @@ export class CreateReservationNoteDto {
 
     @ApiProperty({ example: 1, required: false })
     @IsNumber()
-    @IsNotEmpty({ always: false })
+    @IsOptional()
     created_by?: number;
 }

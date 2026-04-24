@@ -83,9 +83,9 @@ export class ReservationNoteController {
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateNoteDto: UpdateReservationNoteDto // Note: There might be a typo in previous edit, using UpdateReservationNoteDto
+    @Body() updateNoteDto: UpdateReservationNoteDto
   ): Promise<OneReservationNoteResponse> {
-    return this.reservationNoteService.update(id, updateNoteDto as any, user.merchant.id);
+    return this.reservationNoteService.update(id, updateNoteDto, user.merchant.id);
   }
 
   @Delete(':id')

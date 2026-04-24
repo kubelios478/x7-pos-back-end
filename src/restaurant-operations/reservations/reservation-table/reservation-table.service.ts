@@ -87,7 +87,7 @@ export class ReservationTableService {
     return {
       statusCode: 200,
       message: 'All merchant reservation tables retrieved successfully',
-      data,
+      data: data.map(item => this.mapToResponseDto(item)),
       page,
       limit,
       total,
@@ -157,11 +157,32 @@ export class ReservationTableService {
     };
   }
 
+  async removeById(id: number, merchantId: number): Promise<OneReservationTableResponse> {
+    const resTable = await this.reservationTableRepository.findOne({
+      where: { id, is_active: true },
+      relations: ['reservation'],
+    });
+
+    if (!resTable || resTable.reservation.merchant_id !== merchantId) {
+      ErrorHandler.notFound('Table assignment not found');
+    }
+
+    resTable.is_active = false;
+    const saved = await this.reservationTableRepository.save(resTable);
+    return {
+      statusCode: 200,
+      message: 'Table assignment removed successfully',
+      data: this.mapToResponseDto(saved),
+    };
+  }
+
   private mapToResponseDto(resTable: ReservationTable): ReservationTableResponseDto {
     return {
       reservation_id: resTable.reservation_id,
       table_id: resTable.table_id,
       is_active: resTable.is_active,
+      table_number: resTable.table?.number,
+      capacity: resTable.table?.capacity,
     };
   }
 

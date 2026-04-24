@@ -126,6 +126,11 @@ import { Variant } from './inventory/products-inventory/variants/entities/varian
 import { FinanceHrModule } from './finance-hr/finance-hr.module';
 import { FloorZone } from './restaurant-operations/dining-system/floor-zone/entity/floor-zone.entity';
 import { FloorPlan } from './restaurant-operations/dining-system/floor-plan/entity/floor-plan.entity';
+import { Reservation } from './restaurant-operations/reservations/reservation/entities/reservation.entity';
+import { ReservationTable } from './restaurant-operations/reservations/reservation-table/entities/reservation-table.entity';
+import { ReservationStatusHistory } from './restaurant-operations/reservations/reservation-status-history/entities/reservation-status-history.entity';
+import { ReservationGuest } from './restaurant-operations/reservations/reservation-guest/entities/reservation-guest.entity';
+import { ReservationNote } from './restaurant-operations/reservations/reservation-note/entities/reservation-note.entity';
 
 @Module({
   imports: [
@@ -220,6 +225,11 @@ import { FloorPlan } from './restaurant-operations/dining-system/floor-plan/enti
           QRMenuSection,
           QROrder,
           QROrderItem,
+          Reservation,
+          ReservationTable,
+          ReservationStatusHistory,
+          ReservationGuest,
+          ReservationNote,
           Shift,
           ShiftAssignment,
           SubscriptionApplication,

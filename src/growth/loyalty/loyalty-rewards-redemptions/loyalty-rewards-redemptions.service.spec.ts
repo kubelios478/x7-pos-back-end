@@ -13,10 +13,10 @@ import { CreateLoyaltyRewardsRedemptionDto } from './dto/create-loyalty-rewards-
 import { ErrorMessage } from '../../../common/constants/error-messages';
 import { BadRequestException } from '@nestjs/common';
 
-describe('LoyaltyRewardsRedemtionsService', () => {
-  let service: LoyaltyRewardsRedemtionsService;
-  let loyaltyRewardsRedemtionRepo: jest.Mocked<
-    Repository<LoyaltyRewardsRedemtion>
+describe('LoyaltyRewardsRedemptionsService', () => {
+  let service: LoyaltyRewardsRedemptionsService;
+  let loyaltyRewardsRedemptionRepo: jest.Mocked<
+    Repository<LoyaltyRewardsRedemption>
   >;
   let loyaltyCustomerRepo: jest.Mocked<Repository<LoyaltyCustomer>>;
   let loyaltyRewardRepo: jest.Mocked<Repository<LoyaltyReward>>;
@@ -133,11 +133,11 @@ describe('LoyaltyRewardsRedemtionsService', () => {
       ],
     }).compile();
 
-    service = module.get<LoyaltyRewardsRedemtionsService>(
-      LoyaltyRewardsRedemtionsService,
+    service = module.get<LoyaltyRewardsRedemptionsService>(
+      LoyaltyRewardsRedemptionsService,
     );
-    loyaltyRewardsRedemtionRepo = module.get(
-      getRepositoryToken(LoyaltyRewardsRedemtion),
+    loyaltyRewardsRedemptionRepo = module.get(
+      getRepositoryToken(LoyaltyRewardsRedemption),
     );
     loyaltyCustomerRepo = module.get(getRepositoryToken(LoyaltyCustomer));
     loyaltyRewardRepo = module.get(getRepositoryToken(LoyaltyReward));
@@ -145,7 +145,7 @@ describe('LoyaltyRewardsRedemtionsService', () => {
     dataSource = module.get(DataSource);
 
     jest.clearAllMocks();
-    loyaltyRewardsRedemtionRepo.createQueryBuilder.mockReturnValue(
+    loyaltyRewardsRedemptionRepo.createQueryBuilder.mockReturnValue(
       mockQueryBuilder as any,
     );
     dataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
@@ -363,7 +363,7 @@ describe('LoyaltyRewardsRedemtionsService', () => {
         'program.merchantId = :merchantId',
         { merchantId },
       );
-      expect(loyaltyRewardsRedemtionRepo.save).toHaveBeenCalled();
+      expect(loyaltyRewardsRedemptionRepo.save).toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if updated reward not found', async () => {

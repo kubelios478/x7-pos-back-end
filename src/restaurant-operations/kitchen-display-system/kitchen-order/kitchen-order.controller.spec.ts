@@ -9,6 +9,8 @@ import { PaginatedKitchenOrderResponseDto } from './dto/paginated-kitchen-order-
 import { KitchenOrderBusinessStatus } from './constants/kitchen-order-business-status.enum';
 import { KitchenOrderStatus } from './constants/kitchen-order-status.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { Request as ExpressRequest } from 'express';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };

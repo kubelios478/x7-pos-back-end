@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ReservationTable } from '../entities/reservation-table.entity';
+import { ReservationTableResponseDto } from './reservation-table-response.dto';
 
 export class AllPaginatedReservationTables {
     @ApiProperty({ example: 200 })
@@ -8,8 +8,8 @@ export class AllPaginatedReservationTables {
     @ApiProperty({ example: 'Reservation tables retrieved successfully' })
     message: string;
 
-    @ApiProperty({ type: [ReservationTable] })
-    data: ReservationTable[];
+    @ApiProperty({ type: [ReservationTableResponseDto] })
+    data: ReservationTableResponseDto[];
 
     @ApiProperty({ example: 1 })
     page: number;

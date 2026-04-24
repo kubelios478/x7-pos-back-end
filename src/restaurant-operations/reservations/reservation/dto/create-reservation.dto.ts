@@ -52,4 +52,9 @@ export class CreateReservationDto {
     @IsOptional()
     @IsInt({ each: true })
     table_ids?: number[];
+
+    @ApiPropertyOptional({ example: '2026-04-16T19:05:00Z' })
+    @IsDateString()
+    @IsOptional()
+    seated_at?: string;
 }

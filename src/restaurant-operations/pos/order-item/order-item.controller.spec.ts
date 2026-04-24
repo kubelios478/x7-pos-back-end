@@ -7,14 +7,12 @@ import { GetOrderItemQueryDto } from './dto/get-order-item-query.dto';
 import { OneOrderItemResponseDto } from './dto/order-item-response.dto';
 import { PaginatedOrderItemResponseDto } from './dto/paginated-order-item-response.dto';
 import { OrderItemStatus } from './constants/order-item-status.enum';
-import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
-import { Request as ExpressRequest } from 'express';
-
-type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
-
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { Request as ExpressRequest } from 'express';
+
+type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 describe('OrderItemController', () => {
   let controller: OrderItemController;
@@ -28,7 +26,7 @@ describe('OrderItemController', () => {
     remove: jest.fn(),
   };
 
-  const mockUser = {
+  const mockUser: AuthenticatedUser = {
     id: 1,
     email: 'test@example.com',
     role: UserRole.MERCHANT_ADMIN,
@@ -36,11 +34,11 @@ describe('OrderItemController', () => {
     merchant: {
       id: 1,
     },
-  } as AuthenticatedRequest;
-
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
   };
+
+  const mockRequest = {
+    user: mockUser,
+  } as unknown as AuthenticatedRequest;
 
   const mockOrderItemResponse = {
     statusCode: 200,

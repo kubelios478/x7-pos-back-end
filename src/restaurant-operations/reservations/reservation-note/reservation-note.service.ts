@@ -65,7 +65,7 @@ export class ReservationNoteService {
     return {
       statusCode: 200,
       message: 'All merchant notes retrieved successfully',
-      data: notes,
+      data: notes.map(note => this.mapToResponseDto(note)),
       page,
       limit,
       total,

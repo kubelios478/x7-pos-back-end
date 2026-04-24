@@ -12,6 +12,7 @@ import {
   ForbiddenException,
   Query,
 } from '@nestjs/common';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
@@ -46,7 +47,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 @Controller('tables')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class TablesController {
-  constructor(private readonly tableService: TablesService) {}
+  constructor(private readonly tableService: TablesService) { }
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -158,10 +159,10 @@ export class TablesController {
   })
   async create(
     @Body() dto: CreateTableDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneTableResponseDto> {
     // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -323,10 +324,10 @@ export class TablesController {
   })
   async findAll(
     @Query() query: GetTablesQueryDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedTablesResponseDto> {
     // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -429,10 +430,10 @@ export class TablesController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneTableResponseDto> {
     // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -585,10 +586,10 @@ export class TablesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTableDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneTableResponseDto> {
     // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -714,10 +715,10 @@ export class TablesController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneTableResponseDto> {
     // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {

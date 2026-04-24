@@ -9,6 +9,12 @@ export class ReservationTableResponseDto {
 
     @ApiProperty({ example: true })
     is_active: boolean;
+
+    @ApiProperty({ example: 'A1', required: false })
+    table_number?: string;
+
+    @ApiProperty({ example: 4, required: false })
+    capacity?: number;
 }
 
 export class OneReservationTableResponse {

@@ -64,7 +64,7 @@ export class ReservationGuestService {
     return {
       statusCode: 200,
       message: 'All merchant guests retrieved successfully',
-      data: guests,
+      data: guests.map(guest => this.mapToResponseDto(guest)),
       page,
       limit,
       total,

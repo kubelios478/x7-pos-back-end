@@ -10,6 +10,8 @@ import { KitchenStationStatus } from './constants/kitchen-station-status.enum';
 import { KitchenStationType } from './constants/kitchen-station-type.enum';
 import { KitchenDisplayMode } from './constants/kitchen-display-mode.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { Request as ExpressRequest } from 'express';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };

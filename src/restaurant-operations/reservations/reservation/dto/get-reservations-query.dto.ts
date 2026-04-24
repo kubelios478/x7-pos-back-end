@@ -50,4 +50,12 @@ export class GetReservationsQueryDto {
     @IsOptional()
     @IsEnum(ReservationStatus)
     status?: ReservationStatus;
+
+    @ApiPropertyOptional({
+        example: 'John Doe',
+        description: 'Filter by guest name (partial match)',
+    })
+    @IsOptional()
+    @IsString()
+    guest_name?: string;
 }

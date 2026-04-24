@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ReservationGuest } from '../entities/reservation-guest.entity';
+import { ReservationGuestResponseDto } from './reservation-guest-response.dto';
 
 export class AllPaginatedReservationGuests {
     @ApiProperty({ example: 200 })
@@ -8,8 +8,8 @@ export class AllPaginatedReservationGuests {
     @ApiProperty({ example: 'Guests retrieved successfully' })
     message: string;
 
-    @ApiProperty({ type: [ReservationGuest] })
-    data: ReservationGuest[];
+    @ApiProperty({ type: [ReservationGuestResponseDto] })
+    data: ReservationGuestResponseDto[];
 
     @ApiProperty({ example: 1 })
     page: number;

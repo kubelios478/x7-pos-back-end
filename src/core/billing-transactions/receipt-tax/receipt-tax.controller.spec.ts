@@ -23,9 +23,11 @@ const MERCHANT_ID = 1;
 const mockUser = {
   id: 1,
   email: 'test@example.com',
+  role: UserRole.MERCHANT_ADMIN,
+  scope: Scope.MERCHANT_WEB,
   merchant: { id: MERCHANT_ID },
 };
-const mockRequest = { user: mockUser };
+const mockRequest = mockUser;
 
 const mockTaxResponse: ReceiptTaxResponseDto = {
   id: 1,

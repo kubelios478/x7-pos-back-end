@@ -87,6 +87,18 @@ export class ReservationTableController {
     return this.reservationTableService.update(id, updateDto, user.merchant.id);
   }
 
+  @Delete(':id')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({ summary: 'Remove a table assignment by ID' })
+  @ApiResponse({ status: 200, type: OneReservationTableResponse })
+  removeById(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneReservationTableResponse> {
+    return this.reservationTableService.removeById(id, user.merchant.id);
+  }
+
   @Delete(':reservationId/:tableId')
   @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
