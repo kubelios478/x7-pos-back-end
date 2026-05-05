@@ -131,6 +131,17 @@ import { ReservationTable } from './restaurant-operations/reservations/reservati
 import { ReservationStatusHistory } from './restaurant-operations/reservations/reservation-status-history/entities/reservation-status-history.entity';
 import { ReservationGuest } from './restaurant-operations/reservations/reservation-guest/entities/reservation-guest.entity';
 import { ReservationNote } from './restaurant-operations/reservations/reservation-note/entities/reservation-note.entity';
+import { DeliverySystemModule } from './commerce/delivery-system/delivery-system.module';
+import { DeliveryZoneModule } from './commerce/delivery-system/delivery-zone/delivery-zone.module';
+import { DeliveryFeeModule } from './commerce/delivery-system/delivery-fee/delivery-fee.module';
+import { DeliveryDriverModule } from './commerce/delivery-system/delivery-driver/delivery-driver.module';
+import { DeliveryTrackingModule } from './commerce/delivery-system/delivery-tracking/delivery-tracking.module';
+import { DeliveryAssignmentModule } from './commerce/delivery-system/delivery-assignment/delivery-assignment.module';
+import { DeliveryZone } from './commerce/delivery-system/delivery-zone/entity/delivery-zone.entity';
+import { DeliveryFee } from './commerce/delivery-system/delivery-fee/entity/delivery-fee.entity';
+import { DeliveryDriver } from './commerce/delivery-system/delivery-driver/entity/delivery-driver.entity';
+import { DeliveryAssignment } from './commerce/delivery-system/delivery-assignment/entity/delivery-assignment.entity';
+import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/entity/delivery-tracking.entity';
 
 @Module({
   imports: [
@@ -255,6 +266,11 @@ import { ReservationNote } from './restaurant-operations/reservations/reservatio
           MerchantTaxRule,
           FloorZone,
           FloorPlan,
+          DeliveryZone,
+          DeliveryFee,
+          DeliveryDriver,
+          DeliveryAssignment,
+          DeliveryTracking,
         ],
         synchronize: true,
       }),
@@ -280,6 +296,12 @@ import { ReservationNote } from './restaurant-operations/reservations/reservatio
     CommerceModule,
     GrowthModule,
     FinanceHrModule,
+    DeliverySystemModule,
+    DeliveryZoneModule,
+    DeliveryFeeModule,
+    DeliveryDriverModule,
+    DeliveryTrackingModule,
+    DeliveryAssignmentModule,
   ],
 })
 export class AppModule {}

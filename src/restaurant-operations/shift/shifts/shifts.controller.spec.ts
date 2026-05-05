@@ -37,9 +37,9 @@ describe('ShiftsController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as unknown as any;
 
   const mockShiftResponse: OneShiftResponseDto = {
     statusCode: 201,

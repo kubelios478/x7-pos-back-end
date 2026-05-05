@@ -12,6 +12,11 @@ import {
   ForbiddenException,
   Query,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
+import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
+import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
+import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
+
 import { ShiftsService } from './shifts.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
@@ -47,7 +52,8 @@ import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('shifts')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@RequireFeature(SUBSCRIPTION_FEATURE_IDS.SHIFTS)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class ShiftsController {
   constructor(private readonly shiftsService: ShiftsService) {}
 
@@ -183,10 +189,10 @@ export class ShiftsController {
   })
   async create(
     @Body() dto: CreateShiftDto,
-    @Request() req: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneShiftResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -381,10 +387,10 @@ export class ShiftsController {
   })
   async findAll(
     @Query() query: GetShiftsQueryDto,
-    @Request() req: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<PaginatedShiftsResponseDto> {
-    // Get the merchant_id from the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has merchant_id
     if (!authenticatedUserMerchantId) {
@@ -528,10 +534,10 @@ export class ShiftsController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneShiftResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -718,10 +724,10 @@ export class ShiftsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateShiftDto,
-    @Request() req: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneShiftResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -876,10 +882,10 @@ export class ShiftsController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneShiftResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {

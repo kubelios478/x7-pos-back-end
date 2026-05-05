@@ -33,9 +33,9 @@ describe('TablesController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as unknown as any;
 
   const mockTableResponse: OneTableResponseDto = {
     statusCode: 201,

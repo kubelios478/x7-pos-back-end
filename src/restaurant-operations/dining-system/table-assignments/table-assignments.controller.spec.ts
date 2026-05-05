@@ -39,9 +39,9 @@ describe('TableAssignmentsController', () => {
     },
   };
 
-  const mockRequest: AuthenticatedUser = {
-    ...mockUser,
-  };
+  const mockRequest = {
+    user: mockUser,
+  } as unknown as any;
 
   const mockTableAssignmentResponseData: TableAssignmentResponseDto = {
     id: 1,
@@ -151,17 +151,10 @@ describe('TableAssignmentsController', () => {
           email: 'test@example.com',
         },
       };
-      const createSpy = jest.spyOn(service, 'create');
-      createSpy.mockRejectedValue(
-        new ForbiddenException(
-          'User must be associated with a merchant to create table assignments',
-        ),
-      );
 
       await expect(
         controller.create(createDto, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      expect(createSpy).toHaveBeenCalledWith(createDto, undefined);
     });
   });
 
@@ -223,17 +216,10 @@ describe('TableAssignmentsController', () => {
           email: 'test@example.com',
         },
       };
-      const findAllSpy = jest.spyOn(service, 'findAll');
-      findAllSpy.mockRejectedValue(
-        new ForbiddenException(
-          'User must be associated with a merchant to view table assignments',
-        ),
-      );
 
       await expect(
         controller.findAll(query, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      expect(findAllSpy).toHaveBeenCalledWith(query, undefined);
     });
   });
 
@@ -287,17 +273,10 @@ describe('TableAssignmentsController', () => {
           email: 'test@example.com',
         },
       };
-      const findOneSpy = jest.spyOn(service, 'findOne');
-      findOneSpy.mockRejectedValue(
-        new ForbiddenException(
-          'User must be associated with a merchant to view table assignments',
-        ),
-      );
 
       await expect(
         controller.findOne(1, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      expect(findOneSpy).toHaveBeenCalledWith(1, undefined);
     });
   });
 
@@ -381,17 +360,10 @@ describe('TableAssignmentsController', () => {
           email: 'test@example.com',
         },
       };
-      const updateSpy = jest.spyOn(service, 'update');
-      updateSpy.mockRejectedValue(
-        new ForbiddenException(
-          'User must be associated with a merchant to update table assignments',
-        ),
-      );
 
       await expect(
         controller.update(1, updateDto, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      expect(updateSpy).toHaveBeenCalledWith(1, updateDto, undefined);
     });
   });
 
@@ -445,17 +417,10 @@ describe('TableAssignmentsController', () => {
           email: 'test@example.com',
         },
       };
-      const removeSpy = jest.spyOn(service, 'remove');
-      removeSpy.mockRejectedValue(
-        new ForbiddenException(
-          'User must be associated with a merchant to delete table assignments',
-        ),
-      );
 
       await expect(
         controller.remove(1, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      expect(removeSpy).toHaveBeenCalledWith(1, undefined);
     });
   });
 });

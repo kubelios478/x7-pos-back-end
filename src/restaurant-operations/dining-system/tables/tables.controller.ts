@@ -12,7 +12,11 @@ import {
   ForbiddenException,
   Query,
 } from '@nestjs/common';
-import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { Request as ExpressRequest } from 'express';
+import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
+import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
+import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
+
 import { TablesService } from './tables.service';
 import { CreateTableDto } from './dto/create-table.dto';
 import { UpdateTableDto } from './dto/update-table.dto';
@@ -45,7 +49,8 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 @ApiTags('Tables')
 @ApiBearerAuth()
 @Controller('tables')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@RequireFeature(SUBSCRIPTION_FEATURE_IDS.TABLES)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class TablesController {
   constructor(private readonly tableService: TablesService) { }
 
@@ -159,10 +164,10 @@ export class TablesController {
   })
   async create(
     @Body() dto: CreateTableDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneTableResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = user.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -324,10 +329,10 @@ export class TablesController {
   })
   async findAll(
     @Query() query: GetTablesQueryDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<PaginatedTablesResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = user.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -430,10 +435,10 @@ export class TablesController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneTableResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = user.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -586,10 +591,10 @@ export class TablesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTableDto,
-    @CurrentUser() user: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneTableResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = user.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
@@ -715,10 +720,10 @@ export class TablesController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: AuthenticatedUser,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneTableResponseDto> {
-    // Get the merchant_id of the authenticated user
-    const authenticatedUserMerchantId = user.merchant?.id;
+    const authenticatedUser = req.user as AuthenticatedUser | undefined;
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
 
     // Validate that the user has a merchant_id
     if (!authenticatedUserMerchantId) {
