@@ -9,9 +9,31 @@ export class SubscriptionPaymentResponseDto {
 
   @ApiProperty({
     example: 1,
-    description: 'ID of the Merchant Subscription Associated',
+    description: 'ID of the merchant subscription associated',
+    required: false,
   })
-  merchantSubscription: { id: number };
+  merchantSubscription?: { id: number } | null;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Company identifier',
+    required: false,
+  })
+  company_id?: number | null;
+
+  @ApiProperty({
+    example: 3,
+    description: 'Subscription plan identifier',
+    required: false,
+  })
+  plan_id?: number | null;
+
+  @ApiProperty({
+    example: 'ext_123',
+    description: 'External transaction identifier',
+    required: false,
+  })
+  external_transaction_id?: string | null;
 
   @ApiProperty({ example: 10900 })
   amount: number;

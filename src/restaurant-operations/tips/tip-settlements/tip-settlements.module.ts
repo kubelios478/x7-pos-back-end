@@ -11,7 +11,8 @@ import { User } from '../../../platform-saas/users/entities/user.entity';
 import { Merchant } from '../../../platform-saas/merchants/entities/merchant.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       TipSettlement,
       Collaborator,

@@ -9,7 +9,8 @@ import { SupplierInvoice } from '../supplier-invoices/entities/supplier-invoice.
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([SupplierInvoiceItem, SupplierInvoice, Product]),
   ],
   controllers: [SupplierInvoiceItemController],

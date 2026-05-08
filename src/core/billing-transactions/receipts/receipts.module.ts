@@ -10,7 +10,8 @@ import { ReceiptItem } from '../receipt-item/entities/receipt-item.entity';
 import { ReceiptTax } from '../receipt-tax/entities/receipt-tax.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Receipt, Order, ReceiptItem, ReceiptTax]),
   ],
   controllers: [ReceiptsController],

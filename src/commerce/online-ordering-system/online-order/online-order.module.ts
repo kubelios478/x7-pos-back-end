@@ -16,7 +16,8 @@ import { KitchenOrderModule } from '../../../restaurant-operations/kitchen-displ
 import { OnlineOrderSyncModule } from './online-order-sync.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       OnlineOrder,
       OnlineStore,

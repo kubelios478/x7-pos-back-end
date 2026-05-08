@@ -8,7 +8,8 @@ import { Product } from '../products/entities/product.entity';
 import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Variant, Product]),
     forwardRef(() => ProductsModule),
   ],

@@ -11,7 +11,8 @@ import { Configuration } from '../entity/configuration-entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Company, MerchantTipRule, Configuration, User]),
   ],
   controllers: [MerchantTipRuleController],

@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, type QueryDeepPartialEntity } from 'typeorm';
+import {
+  EntityManager,
+  In,
+  Repository,
+  type QueryDeepPartialEntity,
+} from 'typeorm';
 import { KitchenOrder } from './entities/kitchen-order.entity';
 import { KitchenOrderItem } from '../kitchen-order-item/entities/kitchen-order-item.entity';
 import { KitchenOrderStatus } from './constants/kitchen-order-status.enum';
@@ -67,6 +72,20 @@ export class KitchenOrderSyncService {
    * y recalcula agregados de la orden (`Order.kitchen_status`, etc.).
    */
   async syncPosOrderFromKitchenOrders(orderId: number): Promise<void> {
+    await this.syncPosOrderFromKitchenOrdersWithManager(
+      this.kitchenOrderRepository.manager,
+      orderId,
+    );
+  }
+
+  /**
+   * Transaction-friendly version of {@link syncPosOrderFromKitchenOrders}.
+   * MUST be called with the QueryRunner manager when atomicity is required.
+   */
+  async syncPosOrderFromKitchenOrdersWithManager(
+    manager: EntityManager,
+    orderId: number,
+  ): Promise<void> {
     const kitchenOrders = await this.kitchenOrderRepository.find({
       where: {
         order_id: orderId,
@@ -91,7 +110,7 @@ export class KitchenOrderSyncService {
         continue;
       }
       const lineStatus = preparationToOrderLineStatus(koi.preparation_status);
-      await this.orderItemRepository.update(koi.order_item_id, {
+      await manager.getRepository(OrderItem).update(koi.order_item_id, {
         kitchen_status: lineStatus,
       });
     }
@@ -116,14 +135,25 @@ export class KitchenOrderSyncService {
       ) {
         patch.completed_at = now;
       }
-      await this.kitchenOrderRepository.update(ko.id, patch);
+      await manager.getRepository(KitchenOrder).update(ko.id, patch);
     }
 
-    await this.ordersService.syncOrderAggregates(orderId);
+    await this.ordersService.syncOrderAggregatesWithManager(manager, orderId);
   }
 
   /** Si ya no hay KOI activos para una línea POS, vuelve el estado de cocina de la línea a pending. */
   async resetOrderLineIfNoActiveKoi(orderItemId: number | null): Promise<void> {
+    await this.resetOrderLineIfNoActiveKoiWithManager(
+      this.kitchenOrderItemRepository.manager,
+      orderItemId,
+    );
+  }
+
+  /** Transaction-friendly version of {@link resetOrderLineIfNoActiveKoi}. */
+  async resetOrderLineIfNoActiveKoiWithManager(
+    manager: EntityManager,
+    orderItemId: number | null,
+  ): Promise<void> {
     if (orderItemId == null) {
       return;
     }
@@ -134,7 +164,7 @@ export class KitchenOrderSyncService {
       },
     });
     if (count === 0) {
-      await this.orderItemRepository.update(orderItemId, {
+      await manager.getRepository(OrderItem).update(orderItemId, {
         kitchen_status: OrderItemKitchenStatus.PENDING,
       });
     }

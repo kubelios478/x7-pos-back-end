@@ -11,7 +11,8 @@ import { MerchantTaxRuleController } from './merchant-tax-rule.controller';
 import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Company, MerchantTaxRule, Configuration, User]),
   ],
   controllers: [MerchantTaxRuleController],

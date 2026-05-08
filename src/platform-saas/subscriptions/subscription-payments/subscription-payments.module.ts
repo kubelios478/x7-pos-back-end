@@ -5,10 +5,19 @@ import { SubscriptionPaymentsService } from './subscription-payments.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionPayment } from './entity/subscription-payments.entity';
 import { MerchantSubscription } from '../merchant-subscriptions/entities/merchant-subscription.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
+import { CompanySubscription } from '../company-subscriptions/entities/company-subscription.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([SubscriptionPayment, MerchantSubscription]),
+    TypeOrmModule.forFeature([
+      SubscriptionPayment,
+      MerchantSubscription,
+      Merchant,
+      SubscriptionPlan,
+      CompanySubscription,
+    ]),
   ],
   controllers: [SubscriptionPaymentsController],
   providers: [SubscriptionPaymentsService],

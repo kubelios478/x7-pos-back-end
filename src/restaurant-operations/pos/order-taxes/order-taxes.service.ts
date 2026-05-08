@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  DataSource,
   Repository,
   Between,
   In,
@@ -34,6 +35,7 @@ const ORDER_TAX_RELATIONS = ['order', 'order.merchant'] as const;
 @Injectable()
 export class OrderTaxesService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(OrderTax)
     private readonly orderTaxRepository: Repository<OrderTax>,
     @InjectRepository(Order)
@@ -77,17 +79,33 @@ export class OrderTaxesService {
     row.rate = roundMoney(dto.rate);
     row.amount = roundMoney(dto.amount);
 
-    const saved = await this.orderTaxRepository.save(row);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const complete = await this.orderTaxRepository.findOne({
-      where: { id: saved.id },
-      relations: [...ORDER_TAX_RELATIONS],
-    });
+    let complete: OrderTax | null = null;
+    try {
+      const saved = await queryRunner.manager.save(OrderTax, row);
+      await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        dto.orderId,
+      );
+      complete = await queryRunner.manager.findOne(OrderTax, {
+        where: { id: saved.id },
+        relations: [...ORDER_TAX_RELATIONS],
+      });
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
     if (!complete) {
       throw new NotFoundException('Order tax not found after creation');
     }
 
-    await this.ordersService.syncOrderAggregates(dto.orderId);
+    await this.ordersService.syncOnlineOrderFromPosOrder(dto.orderId);
 
     return {
       statusCode: 201,
@@ -313,19 +331,43 @@ export class OrderTaxesService {
       patch.amount = roundMoney(dto.amount);
     }
 
-    await this.orderTaxRepository.update(id, patch);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const updated = await this.orderTaxRepository.findOne({
-      where: { id },
-      relations: [...ORDER_TAX_RELATIONS],
-    });
-    if (!updated) {
-      throw new NotFoundException('Order tax not found after update');
+    let updated: OrderTax | null = null;
+    try {
+      await queryRunner.manager.update(OrderTax, id, patch);
+      updated = await queryRunner.manager.findOne(OrderTax, {
+        where: { id },
+        relations: [...ORDER_TAX_RELATIONS],
+      });
+      if (!updated) {
+        throw new NotFoundException('Order tax not found after update');
+      }
+
+      await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        updated.order_id,
+      );
+      if (previousOrderId !== updated.order_id) {
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          previousOrderId,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
     }
 
-    await this.ordersService.syncOrderAggregates(updated.order_id);
+    await this.ordersService.syncOnlineOrderFromPosOrder(updated.order_id);
     if (previousOrderId !== updated.order_id) {
-      await this.ordersService.syncOrderAggregates(previousOrderId);
+      await this.ordersService.syncOnlineOrderFromPosOrder(previousOrderId);
     }
 
     return {
@@ -366,8 +408,25 @@ export class OrderTaxesService {
     const orderId = existing.order_id;
     const snapshot = this.format(existing);
 
-    await this.orderTaxRepository.delete(id);
-    await this.ordersService.syncOrderAggregates(orderId);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.delete(OrderTax, id);
+      await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        orderId,
+      );
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    await this.ordersService.syncOnlineOrderFromPosOrder(orderId);
 
     return {
       statusCode: 200,

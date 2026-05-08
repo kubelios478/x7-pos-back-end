@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { RequestResetPasswordDto } from './dto/request-reset-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { OnboardingRegisterDto } from './dto/onboarding-register.dto';
 import { User } from '../platform-saas/users/entities/user.entity';
 
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -16,6 +17,7 @@ describe('AuthController', () => {
 
   const mockAuthService = {
     login: jest.fn(),
+    registerOnboarding: jest.fn(),
     sendResetLink: jest.fn(),
     resetPassword: jest.fn(),
     refreshToken: jest.fn(),
@@ -121,6 +123,39 @@ describe('AuthController', () => {
       await controller.login(incompleteLoginDto);
 
       expect(authService.login).toHaveBeenCalledWith(incompleteLoginDto);
+    });
+  });
+
+  describe('registerOnboarding', () => {
+    const onboardingDto: OnboardingRegisterDto = {
+      companyName: 'Acme Corp',
+      companyEmail: 'contact@acme.com',
+      companyPhone: '+56 9 1234 5678',
+      rut: '12.345.678-9',
+      address: '123 Main Street, Suite 100',
+      city: 'Santiago',
+      state: 'Metropolitan Region',
+      country: 'Chile',
+      branchName: 'Downtown Branch',
+      adminEmail: 'admin@acme.com',
+      username: 'admin_acme',
+      password: 'SecurePass123',
+    };
+
+    it('should delegate onboarding registration to auth service', async () => {
+      const mockResult = {
+        access_token: 'access-token',
+        refreshToken: 'refresh-token',
+        user: { id: 1, email: onboardingDto.adminEmail },
+      };
+      mockAuthService.registerOnboarding.mockResolvedValue(mockResult);
+
+      const result = await controller.registerOnboarding(onboardingDto);
+
+      expect(authService.registerOnboarding).toHaveBeenCalledWith(
+        onboardingDto,
+      );
+      expect(result).toEqual(mockResult);
     });
   });
 

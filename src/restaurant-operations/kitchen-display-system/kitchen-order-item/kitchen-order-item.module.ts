@@ -11,7 +11,8 @@ import { Variant } from '../../../inventory/products-inventory/variants/entities
 import { KitchenOrderModule } from '../kitchen-order/kitchen-order.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       KitchenOrderItem,
       KitchenOrder,

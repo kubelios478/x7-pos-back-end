@@ -30,6 +30,8 @@ import { CashDrawerHistory } from './restaurant-operations/cashdrawer/cash-drawe
 import { CashTipMovement } from './restaurant-operations/tips/cash-tip-movements/entities/cash-tip-movement.entity';
 import { CashTransaction } from './restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
 import { Category } from './inventory/products-inventory/category/entities/category.entity';
+import { Input } from './inventory/inputs/entities/input.entity';
+import { InputSupplier } from './inventory/inputs/entities/input-supplier.entity';
 import { Collaborator } from './finance-hr/hr/collaborators/entities/collaborator.entity';
 import { CollaboratorContract } from './finance-hr/hr/collaborator-contracts/entities/collaborator-contract.entity';
 import { Company } from './platform-saas/companies/entities/company.entity';
@@ -66,6 +68,7 @@ import { Merchant } from './platform-saas/merchants/entities/merchant.entity';
 import { MerchantOvertimeRule } from './core/configuration/merchant-overtime-rule/entity/merchant-overtime-rule.entity';
 import { MerchantPayrollRule } from './core/configuration/merchant-payroll-rule/entity/merchant-payroll-rule.entity';
 import { MerchantSubscription } from './platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
+import { CompanySubscription } from './platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
 import { MerchantTaxRule } from './core/configuration/merchant-tax-rule/entity/merchant-tax-rule.entity';
 import { MerchantTipRule } from './core/configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
 import { Modifier } from './inventory/products-inventory/modifiers/entities/modifier.entity';
@@ -137,6 +140,7 @@ import { DeliveryFee } from './commerce/delivery-system/delivery-fee/entity/deli
 import { DeliveryDriver } from './commerce/delivery-system/delivery-driver/entity/delivery-driver.entity';
 import { DeliveryAssignment } from './commerce/delivery-system/delivery-assignment/entity/delivery-assignment.entity';
 import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/entity/delivery-tracking.entity';
+import { RealtimeModule } from './realtime/realtime.module';
 
 @Module({
   imports: [
@@ -158,6 +162,8 @@ import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/e
           CashTipMovement,
           CashTransaction,
           Category,
+          Input,
+          InputSupplier,
           Variant,
           Modifier,
           Location,
@@ -202,6 +208,7 @@ import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/e
           MerchantOvertimeRule,
           MerchantPayrollRule,
           MerchantSubscription,
+          CompanySubscription,
           MerchantTaxRule,
           MerchantTipRule,
           OnlineDeliveryInfo,
@@ -292,6 +299,7 @@ import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/e
     DeliveryDriverModule,
     DeliveryTrackingModule,
     DeliveryAssignmentModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}

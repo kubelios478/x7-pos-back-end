@@ -9,7 +9,11 @@ import { Order } from '../orders/entities/order.entity';
 import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([OrderTax, Order]), OrdersModule],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([OrderTax, Order]),
+    OrdersModule,
+  ],
   controllers: [OrderTaxesController],
   providers: [OrderTaxesService],
   exports: [OrderTaxesService],

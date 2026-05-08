@@ -1,4 +1,8 @@
-import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  UnauthorizedException,
+  HttpException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { FeatureAccessGuard } from './feature-access.guard';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
@@ -55,5 +59,21 @@ describe('FeatureAccessGuard', () => {
     expect(() => guard.canActivate(mockContext(baseUser))).toThrow(
       ForbiddenException,
     );
+  });
+
+  it('throws 402 when merchant subscription is missing in JWT', () => {
+    reflector.getAllAndOverride.mockReturnValue(10);
+    const userWithoutPlan: AuthenticatedUser = {
+      ...baseUser,
+      planId: undefined,
+      authorizedFeatureIds: [],
+    };
+    try {
+      guard.canActivate(mockContext(userWithoutPlan));
+      fail('Expected guard to throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(HttpException);
+      expect((e as HttpException).getStatus()).toBe(402);
+    }
   });
 });

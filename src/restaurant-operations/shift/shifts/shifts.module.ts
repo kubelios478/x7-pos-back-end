@@ -9,7 +9,10 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { ShiftAssignment } from '../shift-assignments/entities/shift-assignment.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([Shift, Merchant, ShiftAssignment])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([Shift, Merchant, ShiftAssignment]),
+  ],
   controllers: [ShiftsController],
   providers: [ShiftsService],
   exports: [ShiftsService],

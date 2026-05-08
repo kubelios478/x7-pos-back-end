@@ -10,7 +10,8 @@ import { Variant } from '../../variants/entities/variant.entity';
 import { Location } from '../locations/entities/location.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Item, Product, Location, Variant]),
     forwardRef(() => MovementsModule),
   ],

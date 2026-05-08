@@ -9,7 +9,8 @@ import { OnlineMenu } from '../online-menu/entities/online-menu.entity';
 import { Category } from '../../../inventory/products-inventory/category/entities/category.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([OnlineMenuCategory, OnlineMenu, Category]),
   ],
   controllers: [OnlineMenuCategoryController],

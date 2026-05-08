@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  DataSource,
   Repository,
   Between,
   In,
@@ -47,6 +48,7 @@ const ORDER_ITEM_RELATIONS = [
 @Injectable()
 export class OrderItemService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Order)
@@ -169,19 +171,40 @@ export class OrderItemService {
       discount: orderItem.discount,
     });
 
-    const savedOrderItem = await this.orderItemRepository.save(orderItem);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Fetch the complete order item with relations
-    const completeOrderItem = await this.orderItemRepository.findOne({
-      where: { id: savedOrderItem.id },
-      relations: [...ORDER_ITEM_RELATIONS],
-    });
+    let completeOrderItem: OrderItem | null = null;
+    try {
+      const savedOrderItem = await queryRunner.manager.save(
+        OrderItem,
+        orderItem,
+      );
+      await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        createOrderItemDto.orderId,
+      );
+
+      completeOrderItem = await queryRunner.manager.findOne(OrderItem, {
+        where: { id: savedOrderItem.id },
+        relations: [...ORDER_ITEM_RELATIONS],
+      });
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
 
     if (!completeOrderItem) {
       throw new NotFoundException('Order item not found after creation');
     }
-
-    await this.ordersService.syncOrderAggregates(createOrderItemDto.orderId);
+    await this.ordersService.syncOnlineOrderFromPosOrder(
+      createOrderItemDto.orderId,
+    );
 
     return {
       statusCode: 201,
@@ -580,21 +603,46 @@ export class OrderItemService {
       });
     }
 
-    await this.orderItemRepository.update(id, updateData);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Fetch updated order item
-    const updatedOrderItem = await this.orderItemRepository.findOne({
-      where: { id },
-      relations: [...ORDER_ITEM_RELATIONS],
-    });
+    let updatedOrderItem: OrderItem | null = null;
+    try {
+      await queryRunner.manager.update(OrderItem, id, updateData);
+      updatedOrderItem = await queryRunner.manager.findOne(OrderItem, {
+        where: { id },
+        relations: [...ORDER_ITEM_RELATIONS],
+      });
 
-    if (!updatedOrderItem) {
-      throw new NotFoundException('Order item not found after update');
+      if (!updatedOrderItem) {
+        throw new NotFoundException('Order item not found after update');
+      }
+
+      await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        updatedOrderItem.order_id,
+      );
+      if (previousOrderId !== updatedOrderItem.order_id) {
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          previousOrderId,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
     }
 
-    await this.ordersService.syncOrderAggregates(updatedOrderItem.order_id);
+    await this.ordersService.syncOnlineOrderFromPosOrder(
+      updatedOrderItem.order_id,
+    );
     if (previousOrderId !== updatedOrderItem.order_id) {
-      await this.ordersService.syncOrderAggregates(previousOrderId);
+      await this.ordersService.syncOnlineOrderFromPosOrder(previousOrderId);
     }
 
     return {
@@ -647,11 +695,30 @@ export class OrderItemService {
       throw new ConflictException('Order item is already deleted');
     }
 
-    // Perform logical deletion
-    existingOrderItem.status = OrderItemStatus.DELETED;
-    await this.orderItemRepository.save(existingOrderItem);
+    const orderId = existingOrderItem.order_id;
 
-    await this.ordersService.syncOrderAggregates(existingOrderItem.order_id);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.update(OrderItem, id, {
+        status: OrderItemStatus.DELETED,
+      });
+      await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        orderId,
+      );
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    existingOrderItem.status = OrderItemStatus.DELETED;
+    await this.ordersService.syncOnlineOrderFromPosOrder(orderId);
 
     return {
       statusCode: 200,

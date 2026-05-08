@@ -10,7 +10,8 @@ import { LoyaltyCustomer } from '../loyalty-customer/entities/loyalty-customer.e
 import { Order } from '../../../restaurant-operations/pos/orders/entities/order.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       LoyaltyRewardsRedemption,
       LoyaltyReward,

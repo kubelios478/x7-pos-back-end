@@ -12,7 +12,8 @@ import { Modifier } from '../modifiers/entities/modifier.entity';
 import { ModifiersModule } from '../modifiers/modifiers.module';
 import { VariantsModule } from '../variants/variants.module';
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       Product,
       Merchant,

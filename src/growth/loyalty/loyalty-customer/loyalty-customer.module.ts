@@ -11,7 +11,8 @@ import { LoyaltyTier } from '../loyalty-tier/entities/loyalty-tier.entity';
 import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       LoyaltyCustomer,
       LoyaltyProgram,

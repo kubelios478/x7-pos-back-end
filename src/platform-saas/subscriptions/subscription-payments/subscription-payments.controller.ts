@@ -11,6 +11,7 @@ import {
   Patch,
   Delete,
   Query,
+  Request,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -37,6 +38,10 @@ import { SubscriptionPaymentsService } from './subscription-payments.service';
 import { UpdateSubscriptionPaymentDto } from './dto/update-subscription-payment.dto';
 import { PaginatedSubscriptionPaymentResponseDto } from './dto/paginated-subscription-payment-response.dto';
 import { QuerySubscriptionPaymentDto } from './dto/query-subscription-payment.dto';
+import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
+import { SubscriptionPaymentWebhookDto } from './dto/subscription-payment-webhook.dto';
+import { Request as ExpressRequest } from 'express';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Subscription Payments')
 @Controller('subscription-payments')
@@ -44,6 +49,42 @@ export class SubscriptionPaymentsController {
   constructor(
     private readonly subscriptionPaymentService: SubscriptionPaymentsService,
   ) {}
+
+  @Post('intent')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_CLOVER,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_WEB,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Create a payment intent (gateway-agnostic)',
+    description:
+      'Creates an audit payment record with status PENDING for the authenticated company.',
+  })
+  async createIntent(
+    @Body() dto: CreatePaymentIntentDto,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
+  ) {
+    const merchantId = req.user?.merchant?.id;
+    if (!merchantId) {
+      throw new BadRequestException('User must be associated with a merchant');
+    }
+    return this.subscriptionPaymentService.createIntent(merchantId, dto);
+  }
+
+  @Post('webhook')
+  @ApiOperation({
+    summary: 'Payment webhook (gateway-agnostic)',
+    description:
+      'Processes a payment confirmation event and activates/extents the company subscription when paid.',
+  })
+  async webhook(@Body() dto: SubscriptionPaymentWebhookDto) {
+    return this.subscriptionPaymentService.handleWebhook(dto);
+  }
+
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(

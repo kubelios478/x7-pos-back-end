@@ -13,7 +13,8 @@ import { QROrderController } from './qr-order.controller';
 import { QROrderService } from './qr-order.service';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       QROrder,
       Merchant,

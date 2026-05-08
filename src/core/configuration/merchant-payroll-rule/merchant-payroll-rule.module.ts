@@ -11,7 +11,8 @@ import { MerchantPayrollRuleController } from './merchant-payroll-rule.controlle
 import { MerchantPayrollRuleService } from './merchant-payroll-rule.service';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       Company,
       MerchantPayrollRule,

@@ -636,18 +636,37 @@ export class OrdersService {
    * Call after order-item, order-item-modifier, order-tax or order-payment create / update / delete, or after changing order-level discount/tip/delivery.
    */
   async syncOrderAggregates(orderId: number): Promise<void> {
-    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    await this.syncOrderAggregatesWithManager(this.orderRepo.manager, orderId);
+    await this.syncOnlineOrderFromPosOrder(orderId);
+  }
+
+  /** Post-commit sync to propagate POS order changes to online orders. */
+  async syncOnlineOrderFromPosOrder(orderId: number): Promise<void> {
+    await this.onlineOrderSyncService.syncFromPosOrder(orderId);
+  }
+
+  /**
+   * Transaction-friendly version of {@link syncOrderAggregates}.
+   * It only touches POS tables and MUST be called with the transaction manager when atomicity is required.
+   */
+  async syncOrderAggregatesWithManager(
+    manager: EntityManager,
+    orderId: number,
+  ): Promise<void> {
+    const order = await manager.getRepository(Order).findOne({
+      where: { id: orderId },
+    });
     if (!order) return;
 
-    const items = await this.orderItemRepo.find({
+    const items = await manager.getRepository(OrderItem).find({
       where: { order_id: orderId },
     });
 
-    const payments = await this.orderPaymentRepo.find({
+    const payments = await manager.getRepository(OrderPayment).find({
       where: { order_id: orderId },
     });
 
-    const taxes = await this.orderTaxRepo.find({
+    const taxes = await manager.getRepository(OrderTax).find({
       where: { order_id: orderId },
     });
 
@@ -681,8 +700,7 @@ export class OrdersService {
     }
 
     applyPaidDerivedFields(order);
-    await this.orderRepo.save(order);
-    await this.onlineOrderSyncService.syncFromPosOrder(orderId);
+    await manager.getRepository(Order).save(order);
   }
 
   /**

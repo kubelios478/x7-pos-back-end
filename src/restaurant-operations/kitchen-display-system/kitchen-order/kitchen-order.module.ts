@@ -14,7 +14,8 @@ import { KitchenStation } from '../kitchen-station/entities/kitchen-station.enti
 import { OrdersModule } from '../../pos/orders/orders.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       KitchenOrder,
       KitchenOrderItem,

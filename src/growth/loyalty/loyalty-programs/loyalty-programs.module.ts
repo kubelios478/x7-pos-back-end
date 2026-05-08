@@ -9,7 +9,10 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { LoyaltyTier } from '../loyalty-tier/entities/loyalty-tier.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([LoyaltyProgram, Merchant, LoyaltyTier])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([LoyaltyProgram, Merchant, LoyaltyTier]),
+  ],
   controllers: [LoyaltyProgramsController],
   providers: [LoyaltyProgramsService],
   exports: [LoyaltyProgramsService],

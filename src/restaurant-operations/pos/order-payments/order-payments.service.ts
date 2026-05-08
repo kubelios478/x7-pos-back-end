@@ -5,7 +5,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, type QueryDeepPartialEntity } from 'typeorm';
+import {
+  DataSource,
+  Repository,
+  Between,
+  In,
+  type QueryDeepPartialEntity,
+} from 'typeorm';
 import { OrderPayment } from './entities/order-payment.entity';
 import { Order } from '../orders/entities/order.entity';
 import { CreateOrderPaymentDto } from './dto/create-order-payment.dto';
@@ -28,6 +34,7 @@ const ORDER_PAYMENT_RELATIONS = ['order', 'order.merchant'] as const;
 @Injectable()
 export class OrderPaymentsService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(OrderPayment)
     private readonly orderPaymentRepository: Repository<OrderPayment>,
     @InjectRepository(Order)
@@ -45,19 +52,17 @@ export class OrderPaymentsService {
       );
     }
 
-    const order = await this.orderRepository.findOne({
+    const precheck = await this.orderRepository.findOne({
       where: { id: dto.orderId },
-      relations: ['merchant'],
+      select: ['id', 'merchant_id', 'logical_status'],
     });
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-    if (order.merchant_id !== authenticatedUserMerchantId) {
+    if (!precheck) throw new NotFoundException('Order not found');
+    if (precheck.merchant_id !== authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'You can only record payments for orders belonging to your merchant',
       );
     }
-    if (order.logical_status !== OrderStatus.ACTIVE) {
+    if (precheck.logical_status !== OrderStatus.ACTIVE) {
       throw new BadRequestException('Cannot add payments to a deleted order');
     }
 
@@ -83,7 +88,24 @@ export class OrderPaymentsService {
     row.tip_amount = roundMoney(tip);
     row.is_refund = dto.isRefund ?? false;
 
-    const saved = await this.orderPaymentRepository.save(row);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let saved: OrderPayment;
+    try {
+      saved = await queryRunner.manager.save(OrderPayment, row);
+      await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        dto.orderId,
+      );
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
 
     const complete = await this.orderPaymentRepository.findOne({
       where: { id: saved.id },
@@ -93,7 +115,8 @@ export class OrderPaymentsService {
       throw new NotFoundException('Order payment not found after creation');
     }
 
-    await this.ordersService.syncOrderAggregates(dto.orderId);
+    // External sync after commit (keeps transaction purely POS-scoped).
+    await this.ordersService.syncOnlineOrderFromPosOrder(dto.orderId);
 
     return {
       statusCode: 201,

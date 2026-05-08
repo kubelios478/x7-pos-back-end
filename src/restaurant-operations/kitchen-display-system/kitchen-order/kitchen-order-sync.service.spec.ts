@@ -15,19 +15,37 @@ describe('KitchenOrderSyncService', () => {
   const mockKitchenOrderRepo = {
     find: jest.fn(),
     update: jest.fn(),
+    manager: {
+      getRepository: jest.fn(),
+    },
   };
   const mockKitchenOrderItemRepo = {
     find: jest.fn(),
     count: jest.fn(),
+    manager: {
+      getRepository: jest.fn(),
+    },
   };
   const mockOrderItemRepo = {
     update: jest.fn(),
   };
   const mockOrdersService = {
-    syncOrderAggregates: jest.fn().mockResolvedValue(undefined),
+    syncOrderAggregatesWithManager: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
+    mockKitchenOrderRepo.manager.getRepository.mockImplementation((entity) => {
+      if (entity === OrderItem) return mockOrderItemRepo;
+      if (entity === KitchenOrder) return mockKitchenOrderRepo;
+      return {};
+    });
+    mockKitchenOrderItemRepo.manager.getRepository.mockImplementation(
+      (entity) => {
+        if (entity === OrderItem) return mockOrderItemRepo;
+        return {};
+      },
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         KitchenOrderSyncService,
@@ -81,7 +99,9 @@ describe('KitchenOrderSyncService', () => {
         kitchen_status: OrderItemKitchenStatus.READY,
       });
       expect(mockKitchenOrderRepo.update).toHaveBeenCalled();
-      expect(mockOrdersService.syncOrderAggregates).toHaveBeenCalledWith(100);
+      expect(
+        mockOrdersService.syncOrderAggregatesWithManager,
+      ).toHaveBeenCalledWith(mockKitchenOrderRepo.manager, 100);
     });
 
     it('should no-op when no kitchen orders for POS order', async () => {
@@ -90,7 +110,9 @@ describe('KitchenOrderSyncService', () => {
       await service.syncPosOrderFromKitchenOrders(100);
 
       expect(mockOrderItemRepo.update).not.toHaveBeenCalled();
-      expect(mockOrdersService.syncOrderAggregates).not.toHaveBeenCalled();
+      expect(
+        mockOrdersService.syncOrderAggregatesWithManager,
+      ).not.toHaveBeenCalled();
     });
   });
 
