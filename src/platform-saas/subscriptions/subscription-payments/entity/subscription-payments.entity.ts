@@ -11,6 +11,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { MerchantSubscription } from 'src/platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { SubscriptionPlan } from '../../subscription-plan/entity/subscription-plan.entity';
+import { CompanySubscription } from '../../company-subscriptions/entities/company-subscription.entity';
 
 @Entity('subscription_payments')
 export class SubscriptionPayment {
@@ -24,6 +25,10 @@ export class SubscriptionPayment {
   @ManyToOne(() => MerchantSubscription, { eager: true, nullable: true })
   @JoinColumn({ name: 'merchant_subscription_id' })
   merchantSubscription?: MerchantSubscription | null;
+
+  @ManyToOne(() => CompanySubscription, { eager: true, nullable: true })
+  @JoinColumn({ name: 'company_subscription_id' })
+  companySubscription?: CompanySubscription | null;
 
   @ApiProperty({
     example: 1,

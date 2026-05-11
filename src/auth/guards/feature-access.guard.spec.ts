@@ -61,7 +61,7 @@ describe('FeatureAccessGuard', () => {
     );
   });
 
-  it('throws 402 when merchant subscription is missing in JWT', () => {
+  it('throws 402 when company subscription is missing in JWT', () => {
     reflector.getAllAndOverride.mockReturnValue(10);
     const userWithoutPlan: AuthenticatedUser = {
       ...baseUser,

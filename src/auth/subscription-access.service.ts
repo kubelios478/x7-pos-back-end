@@ -49,6 +49,8 @@ export class SubscriptionAccessService {
   /**
    * Resolves the current merchant subscription (most recent by startDate / id) that is
    * active and not past endDate, and returns the plan id plus feature ids for that plan.
+   *
+   * @deprecated Subscriptions are company-level. Prefer `getSubscriptionAccessForCompany`.
    */
   async getSubscriptionAccessForMerchant(
     merchantId: number,

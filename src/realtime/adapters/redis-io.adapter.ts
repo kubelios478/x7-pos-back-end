@@ -1,4 +1,5 @@
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import type { INestApplicationContext } from '@nestjs/common';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
 import type { ServerOptions } from 'socket.io';
@@ -6,10 +7,7 @@ import type { ServerOptions } from 'socket.io';
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter> | undefined;
 
-  constructor(
-    private readonly app: Parameters<IoAdapter['constructor']>[0],
-    private readonly redisUrl: string,
-  ) {
+  constructor(app: INestApplicationContext, private readonly redisUrl: string) {
     super(app);
   }
 

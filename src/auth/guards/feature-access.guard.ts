@@ -47,7 +47,7 @@ export class FeatureAccessGuard implements CanActivate {
 
     if (!isAuthorizedForFeature(user, requiredFeatureId)) {
       throw new ForbiddenException(
-        `Feature ${requiredFeatureId} is not included in the current merchant plan`,
+        `Feature ${requiredFeatureId} is not included in the current company plan`,
       );
     }
 

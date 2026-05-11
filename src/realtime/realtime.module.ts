@@ -7,6 +7,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { RealtimeGateway } from './realtime.gateway';
 import { RealtimeEventBusService } from './realtime-event-bus.service';
 import { RealtimeAuthService } from './realtime-auth.service';
+import { RealtimeTestController } from './realtime-test.controller';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { RealtimeAuthService } from './realtime-auth.service';
       }),
     }),
   ],
+  controllers: [RealtimeTestController],
   providers: [RealtimeGateway, RealtimeEventBusService, RealtimeAuthService],
   exports: [RealtimeEventBusService],
 })

@@ -16,6 +16,13 @@ export class SubscriptionPaymentResponseDto {
 
   @ApiProperty({
     example: 1,
+    description: 'ID of the company subscription associated',
+    required: false,
+  })
+  companySubscription?: { id: number } | null;
+
+  @ApiProperty({
+    example: 1,
     description: 'Company identifier',
     required: false,
   })

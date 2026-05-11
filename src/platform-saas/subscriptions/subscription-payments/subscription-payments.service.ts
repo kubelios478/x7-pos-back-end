@@ -225,30 +225,46 @@ export class SubscriptionPaymentsService {
   async create(
     dto: CreateSubscriptionPaymentDto,
   ): Promise<OneSubscriptionPaymentResponseDto> {
-    if (
-      dto.merchantSubscriptionId &&
-      (!Number.isInteger(dto.merchantSubscriptionId) ||
-        dto.merchantSubscriptionId <= 0)
-    ) {
-      ErrorHandler.invalidId(
-        'Merchant Subscription ID must be positive integer',
+    const hasMerchant = Boolean(dto.merchantSubscriptionId);
+    const hasCompany = Boolean(dto.companySubscriptionId);
+    if (!hasMerchant && !hasCompany) {
+      ErrorHandler.invalidInput(
+        'Either companySubscriptionId or merchantSubscriptionId must be provided',
       );
     }
+    if (hasMerchant && hasCompany) {
+      ErrorHandler.invalidInput(
+        'Provide only one of companySubscriptionId or merchantSubscriptionId',
+      );
+    }
+
     let merchantSubscription: MerchantSubscription | null = null;
+    let companySubscription: CompanySubscription | null = null;
 
     if (dto.merchantSubscriptionId) {
-      if (dto.merchantSubscriptionId) {
-        merchantSubscription = await this.merchantSubscriptionRepo.findOne({
-          where: { id: dto.merchantSubscriptionId },
-        });
-        if (!merchantSubscription) {
-          ErrorHandler.merchantSubscriptionNotFound();
-        }
+      merchantSubscription = await this.merchantSubscriptionRepo.findOne({
+        where: { id: dto.merchantSubscriptionId },
+      });
+      if (!merchantSubscription) {
+        ErrorHandler.merchantSubscriptionNotFound();
+      }
+    }
+
+    if (dto.companySubscriptionId) {
+      companySubscription = await this.companySubscriptionRepo.findOne({
+        where: { id: dto.companySubscriptionId },
+        relations: ['company', 'plan'],
+      });
+      if (!companySubscription) {
+        ErrorHandler.notFound('Company subscription not found');
       }
     }
 
     const subscriptionPayment = this.subscriptionPaymentRepo.create({
       merchantSubscription: merchantSubscription,
+      companySubscription,
+      company_id: companySubscription?.company_id ?? null,
+      plan_id: companySubscription?.plan?.id ?? null,
       amount: dto.amount,
       currency: dto.currency,
       status: dto.status,
@@ -286,12 +302,17 @@ export class SubscriptionPaymentsService {
         'subscriptionPayment.merchantSubscription',
         'merchantSubscription',
       )
+      .leftJoin(
+        'subscriptionPayment.companySubscription',
+        'companySubscription',
+      )
       .select([
         'subscriptionPayment',
         'merchantSubscription.id',
         'merchantSubscription.status',
         'merchantSubscription.merchant',
         'merchantSubscription.plan',
+        'companySubscription.id',
       ]);
 
     if (status) {
@@ -316,6 +337,9 @@ export class SubscriptionPaymentsService {
       id: item.id,
       merchantSubscription: item.merchantSubscription
         ? { id: item.merchantSubscription.id }
+        : null,
+      companySubscription: item.companySubscription
+        ? { id: item.companySubscription.id }
         : null,
       company_id: item.company_id ?? null,
       plan_id: item.plan_id ?? null,
