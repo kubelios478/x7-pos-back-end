@@ -86,6 +86,7 @@ export class OrdersService {
   async create(
     dto: CreateOrderDto,
     authenticatedUserMerchantId: number,
+    activeShiftId?: number,
   ): Promise<OneOrderResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
@@ -208,6 +209,7 @@ export class OrdersService {
     order.kitchen_status = KitchenStatus.PENDING;
     order.ready_at = null;
     order.preparing_at = null;
+    order.shift_id = activeShiftId ?? null;
 
     const saved = await this.orderRepo.save(order);
 

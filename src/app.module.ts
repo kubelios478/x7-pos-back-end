@@ -29,6 +29,7 @@ import { CashDrawer } from './restaurant-operations/cashdrawer/cash-drawers/enti
 import { CashDrawerHistory } from './restaurant-operations/cashdrawer/cash-drawer-history/entities/cash-drawer-history.entity';
 import { CashTipMovement } from './restaurant-operations/tips/cash-tip-movements/entities/cash-tip-movement.entity';
 import { CashTransaction } from './restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
+import { CashShift } from './restaurant-operations/cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { Category } from './inventory/products-inventory/category/entities/category.entity';
 import { Collaborator } from './finance-hr/hr/collaborators/entities/collaborator.entity';
 import { CollaboratorContract } from './finance-hr/hr/collaborator-contracts/entities/collaborator-contract.entity';
@@ -162,6 +163,7 @@ import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/e
           CashDrawerHistory,
           CashTipMovement,
           CashTransaction,
+          CashShift,
           Category,
           Variant,
           Modifier,
@@ -304,4 +306,4 @@ import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/e
     DeliveryAssignmentModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
