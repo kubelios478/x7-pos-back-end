@@ -70,8 +70,8 @@ export class RealtimeAuthService {
           );
         planId = access.planId;
         authorizedFeatureIds = access.authorizedFeatureIds;
-      } catch (err) {
-        const message = (err as { message?: string }).message ?? '';
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : '';
         if (
           message === MSG_NO_COMPANY_PLAN ||
           message === MSG_COMPANY_SUBSCRIPTION_OUTDATED
@@ -79,7 +79,7 @@ export class RealtimeAuthService {
           planId = undefined;
           authorizedFeatureIds = [];
         } else {
-          throw err;
+          throw error;
         }
       }
     }

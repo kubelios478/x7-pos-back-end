@@ -1,7 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { Repository } from 'typeorm';
 import { RealtimeAuthService } from './realtime-auth.service';
 import { SubscriptionAccessService } from 'src/auth/subscription-access.service';
 import { User } from 'src/platform-saas/users/entities/user.entity';
@@ -10,8 +9,6 @@ import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 
 describe('RealtimeAuthService', () => {
   let service: RealtimeAuthService;
-  let jwtService: JwtService;
-  let userRepository: Repository<User>;
 
   const mockJwtService = {
     verifyAsync: jest.fn(),
@@ -39,8 +36,6 @@ describe('RealtimeAuthService', () => {
     }).compile();
 
     service = moduleRef.get(RealtimeAuthService);
-    jwtService = moduleRef.get(JwtService);
-    userRepository = moduleRef.get(getRepositoryToken(User));
 
     jest.clearAllMocks();
   });
@@ -52,7 +47,7 @@ describe('RealtimeAuthService', () => {
       status: 401,
       message: 'Invalid token',
     });
-    expect(jwtService.verifyAsync).toHaveBeenCalledWith('bad');
+    expect(mockJwtService.verifyAsync).toHaveBeenCalledWith('bad');
   });
 
   it('returns authenticated user and resolves companyId', async () => {
@@ -89,7 +84,7 @@ describe('RealtimeAuthService', () => {
       planId: 1,
       authorizedFeatureIds: [1, 2],
     });
-    expect(userRepository.findOne).toHaveBeenCalledWith({
+    expect(mockUserRepository.findOne).toHaveBeenCalledWith({
       where: { id: 10 },
       relations: ['merchant'],
     });

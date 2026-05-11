@@ -6,7 +6,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { ConfigService } from '@nestjs/config';
-import type { Server, Socket } from 'socket.io';
+import type { Server } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { RealtimeEventBusService } from './realtime-event-bus.service';
 import { RealtimeAuthService } from './realtime-auth.service';
@@ -15,18 +15,14 @@ import {
   REALTIME_CORS_ORIGIN_DEFAULT,
   REALTIME_NAMESPACE_DEFAULT,
 } from './realtime.constants';
+import type { RealtimeSocket } from './realtime-socket.types';
 
-type SocketWithUser = Socket & {
-  data: {
-    user?: {
-      id: number;
-      merchant: { id: number };
-      companyId?: number;
-      planId?: number;
-      authorizedFeatureIds?: number[];
-    };
-  };
-};
+function getConnectErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return 'Authentication failed';
+}
 
 function parseBearerToken(value: string | undefined): string | undefined {
   if (!value) return undefined;
@@ -84,7 +80,7 @@ export class RealtimeGateway
     }
   }
 
-  async handleConnection(client: SocketWithUser) {
+  async handleConnection(client: RealtimeSocket) {
     const wsEnabled = this.config.get<string>('WS_ENABLED');
     if (wsEnabled && wsEnabled.toLowerCase() === 'false') {
       client.emit('realtime.error', { message: 'WebSockets are disabled' });
@@ -118,15 +114,14 @@ export class RealtimeGateway
         userId: user.id,
         companyId,
       });
-    } catch (e) {
-      const message =
-        (e as { message?: string }).message ?? 'Authentication failed';
+    } catch (error: unknown) {
+      const message = getConnectErrorMessage(error);
       client.emit('realtime.error', { message });
       client.disconnect(true);
     }
   }
 
-  handleDisconnect(client: SocketWithUser) {
+  handleDisconnect(client: RealtimeSocket) {
     const userId = client.data.user?.id;
     if (userId) {
       this.logger.debug(`Client disconnected userId=${userId}`);

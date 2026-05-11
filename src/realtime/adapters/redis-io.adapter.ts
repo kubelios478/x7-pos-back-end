@@ -2,12 +2,23 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import type { INestApplicationContext } from '@nestjs/common';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
-import type { ServerOptions } from 'socket.io';
+import { DefaultEventsMap, Server, type ServerOptions } from 'socket.io';
+
+/** socket.io Server type aligned with default event maps (IoAdapter is untyped). */
+type IoServer = Server<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  unknown
+>;
 
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter> | undefined;
 
-  constructor(app: INestApplicationContext, private readonly redisUrl: string) {
+  constructor(
+    app: INestApplicationContext,
+    private readonly redisUrl: string,
+  ) {
     super(app);
   }
 
@@ -19,11 +30,16 @@ export class RedisIoAdapter extends IoAdapter {
     this.adapterConstructor = createAdapter(pubClient, subClient);
   }
 
-  createIOServer(port: number, options?: ServerOptions) {
-    const server = super.createIOServer(port, options);
-    if (this.adapterConstructor) {
-      server.adapter(this.adapterConstructor);
+  createIOServer(port: number, options?: ServerOptions): IoServer {
+    const created: unknown = super.createIOServer(port, options);
+    if (!(created instanceof Server)) {
+      throw new Error(
+        'Expected socket.io Server from IoAdapter.createIOServer',
+      );
     }
-    return server;
+    if (this.adapterConstructor) {
+      created.adapter(this.adapterConstructor);
+    }
+    return created as IoServer;
   }
 }

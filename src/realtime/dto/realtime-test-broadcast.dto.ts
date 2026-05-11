@@ -21,4 +21,3 @@ export class RealtimeTestBroadcastDto {
   @IsNotEmpty()
   message: string;
 }
-
