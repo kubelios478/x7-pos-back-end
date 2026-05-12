@@ -12,8 +12,8 @@ import {
   In,
   type FindOptionsOrder,
   type FindOptionsWhere,
-  type QueryDeepPartialEntity,
 } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OrderItem } from '../order-item/entities/order-item.entity';
 import { OrderPayment } from '../order-payments/entities/order-payment.entity';
 import { OrderTax } from '../order-taxes/entities/order-tax.entity';
@@ -81,11 +81,12 @@ export class OrdersService {
     @InjectRepository(OrderItemModifier)
     private readonly orderItemModifierRepo: Repository<OrderItemModifier>,
     private readonly onlineOrderSyncService: OnlineOrderSyncService,
-  ) {}
+  ) { }
 
   async create(
     dto: CreateOrderDto,
     authenticatedUserMerchantId: number,
+    activeShiftId?: number,
   ): Promise<OneOrderResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
@@ -208,6 +209,7 @@ export class OrdersService {
     order.kitchen_status = KitchenStatus.PENDING;
     order.ready_at = null;
     order.preparing_at = null;
+    order.shift_id = activeShiftId ?? null;
 
     const saved = await this.orderRepo.save(order);
 
@@ -969,11 +971,11 @@ export class OrdersService {
       variantId: orderItem.variant_id,
       variant: orderItem.variant
         ? {
-            id: orderItem.variant.id,
-            name: orderItem.variant.name,
-            price: Number(orderItem.variant.price),
-            sku: orderItem.variant.sku,
-          }
+          id: orderItem.variant.id,
+          name: orderItem.variant.name,
+          price: Number(orderItem.variant.price),
+          sku: orderItem.variant.sku,
+        }
         : null,
       quantity: orderItem.quantity,
       price: Number(orderItem.price),
@@ -1013,15 +1015,15 @@ export class OrdersService {
       },
       onlineOrder: kitchenOrder.onlineOrder
         ? {
-            id: kitchenOrder.onlineOrder.id,
-            status: kitchenOrder.onlineOrder.status,
-          }
+          id: kitchenOrder.onlineOrder.id,
+          status: kitchenOrder.onlineOrder.status,
+        }
         : null,
       station: kitchenOrder.station
         ? {
-            id: kitchenOrder.station.id,
-            name: kitchenOrder.station.name,
-          }
+          id: kitchenOrder.station.id,
+          name: kitchenOrder.station.name,
+        }
         : null,
     };
   }

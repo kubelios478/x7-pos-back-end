@@ -34,18 +34,17 @@ describe('RolesGuard', () => {
     );
   });
 
-  it('allows when any user scope matches one of required scopes', () => {
+  it('allows when user scope matches one of required scopes', () => {
     const user: AuthenticatedUser = {
       id: 1,
       email: 'a@b.c',
       role: UserRole.MERCHANT_ADMIN,
       scope: Scope.MERCHANT_WEB,
-      scopes: [Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID],
       merchant: { id: 1 },
     };
     reflector.get.mockImplementation((key: string) => {
       if (key === ROLES_KEY) return undefined;
-      if (key === SCOPES_KEY) return [Scope.MERCHANT_ANDROID];
+      if (key === SCOPES_KEY) return [Scope.MERCHANT_ANDROID, Scope.MERCHANT_WEB];
       return undefined;
     });
 
@@ -58,7 +57,6 @@ describe('RolesGuard', () => {
       email: 'a@b.c',
       role: UserRole.MERCHANT_ADMIN,
       scope: Scope.MERCHANT_WEB,
-      scopes: [Scope.MERCHANT_WEB],
       merchant: { id: 1 },
     };
     reflector.get.mockImplementation((key: string) => {
@@ -72,13 +70,12 @@ describe('RolesGuard', () => {
     );
   });
 
-  it('falls back to single scope when scopes is empty', () => {
+  it('allows when user scope matches required scope exactly', () => {
     const user: AuthenticatedUser = {
       id: 1,
       email: 'a@b.c',
       role: UserRole.MERCHANT_USER,
       scope: Scope.MERCHANT_ANDROID,
-      scopes: [],
       merchant: { id: 1 },
     };
     reflector.get.mockImplementation((key: string) => {

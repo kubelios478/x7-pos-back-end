@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
+import { RequireActiveShift } from 'src/auth/decorators/active-shift.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
 
 import { Request as ExpressRequest } from 'express';
@@ -58,7 +59,7 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDER_PAYMENTS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class OrderPaymentsController {
-  constructor(private readonly orderPaymentsService: OrderPaymentsService) {}
+  constructor(private readonly orderPaymentsService: OrderPaymentsService) { }
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -69,6 +70,7 @@ export class OrderPaymentsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @RequireActiveShift()
   @ApiOperation({ summary: 'Create an order payment' })
   @ApiBody({ type: CreateOrderPaymentDto })
   @ApiCreatedResponse({ type: OneOrderPaymentResponseDto })
@@ -80,7 +82,7 @@ export class OrderPaymentsController {
     @Body() dto: CreateOrderPaymentDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderPaymentResponseDto> {
-    return this.orderPaymentsService.create(dto, req.user?.merchant?.id);
+    return this.orderPaymentsService.create(dto, req.user?.merchant?.id, req.user?.activeShiftId);
   }
 
   @Get()

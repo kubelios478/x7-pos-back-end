@@ -7,6 +7,10 @@ import { TipMethod } from './constants/tip-method.enum';
 import { TipStatus } from './constants/tip-status.enum';
 import { TipRecordStatus } from './constants/tip-record-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('TipsController', () => {
   let controller: TipsController;
   let service: TipsService;
@@ -19,11 +23,13 @@ describe('TipsController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockRequest: AuthenticatedUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
   };
 

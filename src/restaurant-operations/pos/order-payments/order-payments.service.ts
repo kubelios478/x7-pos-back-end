@@ -5,7 +5,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, type QueryDeepPartialEntity } from 'typeorm';
+import { Repository, Between, In, DataSource } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OrderPayment } from './entities/order-payment.entity';
 import { Order } from '../orders/entities/order.entity';
 import { CreateOrderPaymentDto } from './dto/create-order-payment.dto';
@@ -22,6 +23,10 @@ import { PaginatedOrderPaymentResponseDto } from './dto/paginated-order-payment-
 import { OrderStatus } from '../orders/constants/order-status.enum';
 import { OrdersService } from '../orders/orders.service';
 import { roundMoney } from '../orders/order-aggregation.util';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashShiftStatus } from '../../cashdrawer/cash-shifts/constants/cash-shift-status.enum';
+import { CashShiftMovementType } from '../../cashdrawer/cash-shifts/constants/cash-shift-movement-type.enum';
 
 const ORDER_PAYMENT_RELATIONS = ['order', 'order.merchant'] as const;
 
@@ -33,16 +38,24 @@ export class OrderPaymentsService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
-  ) {}
+    private readonly cashFlowService: CashFlowService,
+    private readonly dataSource: DataSource,
+  ) { }
 
   async create(
     dto: CreateOrderPaymentDto,
     authenticatedUserMerchantId: number,
+    activeShiftId?: number,
   ): Promise<OneOrderPaymentResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'You must be associated with a merchant to create order payments',
       );
+    }
+
+    // CAT 1 requires the shift to be open prior to payment. The Interceptor already does this but we verify it is injected.
+    if (!activeShiftId) {
+      throw new BadRequestException('Cash shift opening required. There is no active shift.');
     }
 
     const order = await this.orderRepository.findOne({
@@ -74,21 +87,72 @@ export class OrderPaymentsService {
       );
     }
 
-    const row = new OrderPayment();
-    row.order_id = dto.orderId;
-    row.amount = roundMoney(dto.amount);
-    row.method = dto.method;
-    row.provider = dto.provider ?? null;
-    row.reference = dto.reference ?? null;
-    row.tip_amount = roundMoney(tip);
-    row.is_refund = dto.isRefund ?? false;
+    // GOLDEN FLOW: Atomic Transactions (QueryRunner)
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const saved = await this.orderPaymentRepository.save(row);
+    let savedPaymentId: number;
+
+    try {
+      // Step A: Validate that the shift is still open (Row Lock)
+      const shift = await queryRunner.manager.findOne(CashShift, {
+        where: { id: activeShiftId, merchantId: authenticatedUserMerchantId, status: CashShiftStatus.OPEN },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!shift) {
+        throw new BadRequestException('The active cash shift has been closed. Operation cancelled.');
+      }
+
+      // Step B: Register the payment
+      const row = new OrderPayment();
+      row.order_id = dto.orderId;
+      row.amount = roundMoney(dto.amount);
+      row.method = dto.method;
+      row.provider = dto.provider ?? null;
+      row.reference = dto.reference ?? null;
+      row.tip_amount = roundMoney(tip);
+      row.is_refund = dto.isRefund ?? false;
+
+      const savedPayment = await queryRunner.manager.save(OrderPayment, row);
+      savedPaymentId = savedPayment.id;
+
+      // Step C: Register the financial transaction linked to the shiftId
+      if (dto.method.toLowerCase() === 'cash' || dto.method.toLowerCase() === 'efectivo') {
+        const movementType = dto.isRefund ? CashShiftMovementType.OUT : CashShiftMovementType.IN;
+        const totalAmount = Number(savedPayment.amount) + Number(savedPayment.tip_amount);
+
+        await this.cashFlowService.addMovement(
+          shift.id,
+          totalAmount,
+          movementType,
+          dto.orderId,
+          order.collaborator_id, // Collaborator who processed the order will be the owner of the movement
+          shift.cashDrawerId,
+          queryRunner.manager,
+        );
+      }
+
+      // Step D: Update the inventory
+      // TODO: The inventory service should be invoked here to deduct stock.
+      // Example: await this.inventoryService.deductFromOrder(dto.orderId, queryRunner.manager);
+
+      // Commit all changes
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      // Rollback the entire transaction if anything fails (Atomic Guarantee)
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
 
     const complete = await this.orderPaymentRepository.findOne({
-      where: { id: saved.id },
+      where: { id: savedPaymentId },
       relations: [...ORDER_PAYMENT_RELATIONS],
     });
+
     if (!complete) {
       throw new NotFoundException('Order payment not found after creation');
     }
@@ -98,7 +162,7 @@ export class OrderPaymentsService {
     return {
       statusCode: 201,
       message: 'Order payment created successfully',
-      data: this.format(complete),
+      data: this.format(complete!),
     };
   }
 

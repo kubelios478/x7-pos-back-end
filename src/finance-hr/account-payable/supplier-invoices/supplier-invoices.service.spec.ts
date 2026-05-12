@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { SuplierInvoicesService } from './supplier-invoices.service';
-import { SuplierInvoice } from './entities/supplier-invoice.entity';
+import { SupplierInvoicesService } from './supplier-invoices.service';
+import { SupplierInvoice } from './entities/supplier-invoice.entity';
 import { Company } from '../../../platform-saas/companies/entities/company.entity';
 import { Supplier } from '../../../core/business-partners/suppliers/entities/supplier.entity';
 import { SupplierInvoiceStatus } from './constants/supplier-invoice-status.enum';
 
-describe('SuplierInvoicesService', () => {
-  let service: SuplierInvoicesService;
+describe('SupplierInvoicesService', () => {
+  let service: SupplierInvoicesService;
 
   const mockInvoiceRepo = {
     create: jest.fn(),
@@ -30,9 +30,9 @@ describe('SuplierInvoicesService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        SuplierInvoicesService,
+        SupplierInvoicesService,
         {
-          provide: getRepositoryToken(SuplierInvoice),
+          provide: getRepositoryToken(SupplierInvoice),
           useValue: mockInvoiceRepo,
         },
         {
@@ -46,7 +46,7 @@ describe('SuplierInvoicesService', () => {
       ],
     }).compile();
 
-    service = module.get<SuplierInvoicesService>(SuplierInvoicesService);
+    service = module.get<SupplierInvoicesService>(SupplierInvoicesService);
     jest.clearAllMocks();
   });
 

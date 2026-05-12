@@ -7,6 +7,10 @@ import { MarketingMessageLogChannel } from './constants/marketing-message-log-ch
 import { MarketingMessageLogStatus } from './constants/marketing-message-log-status.enum';
 import { MarketingMessageLogRecordStatus } from './constants/marketing-message-log-record-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('MarketingMessageLogsController', () => {
   let controller: MarketingMessageLogsController;
   let service: MarketingMessageLogsService;
@@ -19,11 +23,13 @@ describe('MarketingMessageLogsController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockRequest: AuthenticatedUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
   };
 

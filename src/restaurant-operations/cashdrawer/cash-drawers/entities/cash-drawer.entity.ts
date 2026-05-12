@@ -12,6 +12,8 @@ import { Merchant } from '../../../../platform-saas/merchants/entities/merchant.
 import { Shift } from '../../../shift/shifts/entities/shift.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 import { CashDrawerStatus } from '../constants/cash-drawer-status.enum';
+import { CashShift } from '../../cash-shifts/entities/cash-shift.entity';
+import { OneToMany } from 'typeorm';
 
 @Entity('cash_drawer')
 export class CashDrawer {
@@ -139,6 +141,9 @@ export class CashDrawer {
   })
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updated_at: Date;
+
+  @OneToMany(() => CashShift, (cashShift) => cashShift.cashDrawer)
+  cashShifts: CashShift[];
 }
 
 /*
