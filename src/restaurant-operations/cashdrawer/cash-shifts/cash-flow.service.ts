@@ -33,6 +33,7 @@ export class CashFlowService {
         collaboratorId: number,
         cashDrawerId: number,
         manager: EntityManager,
+        notes: string | null = null,
     ): Promise<CashTransaction> {
         const transactionType =
             movementType === CashShiftMovementType.IN
@@ -47,7 +48,7 @@ export class CashFlowService {
             amount,
             collaborator_id: collaboratorId,
             status: CashTransactionStatus.ACTIVE,
-            notes: null,
+            notes,
         });
 
         return manager.getRepository(CashTransaction).save(transaction);
