@@ -128,7 +128,7 @@ export class OrderPaymentsService {
           totalAmount,
           movementType,
           dto.orderId,
-          order.collaborator_id, // Collaborator who processed the order will be the owner of the movement
+          dto.collaboratorId, // Collaborator who processed the payment will be the owner of the movement
           shift.cashDrawerId,
           queryRunner.manager,
         );

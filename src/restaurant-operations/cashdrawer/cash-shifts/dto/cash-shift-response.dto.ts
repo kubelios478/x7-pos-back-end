@@ -13,6 +13,7 @@ export class CashShiftResponseDto {
     status: CashShiftStatus;
     openedAt: Date;
     closedAt: Date | null;
+    salesSummary?: { method: string; amount: number }[];
 }
 
 export class OneCashShiftResponseDto {

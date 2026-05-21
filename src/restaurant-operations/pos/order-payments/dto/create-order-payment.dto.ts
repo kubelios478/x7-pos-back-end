@@ -16,6 +16,11 @@ export class CreateOrderPaymentDto {
   @IsPositive()
   orderId: number;
 
+  @ApiProperty({ example: 5, description: 'ID of the collaborator processing the payment' })
+  @IsNumber()
+  @IsPositive()
+  collaboratorId: number;
+
   @ApiProperty({ example: 50.25 })
   @IsNumber()
   @Min(0)

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderPaymentsController } from './order-payments.controller';
 import { OrderPaymentsService } from './order-payments.service';
+import { ActiveShiftGuard } from '../../../auth/guards/active-shift.guard';
 
 describe('OrderPaymentsController', () => {
   let controller: OrderPaymentsController;
@@ -19,7 +20,10 @@ describe('OrderPaymentsController', () => {
       providers: [
         { provide: OrderPaymentsService, useValue: mockOrderPaymentsService },
       ],
-    }).compile();
+    })
+      .overrideGuard(ActiveShiftGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<OrderPaymentsController>(OrderPaymentsController);
   });

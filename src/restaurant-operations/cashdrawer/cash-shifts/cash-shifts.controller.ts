@@ -90,7 +90,7 @@ export class CashShiftsController {
         @Body() dto: CloseCashShiftDto,
         @CurrentUser() user: AuthenticatedUser,
     ) {
-        return this.cashShiftsService.closeShift(id, dto, user.merchant.id);
+        return this.cashShiftsService.closeShift(id, dto, user);
     }
 
     @ApiOperation({

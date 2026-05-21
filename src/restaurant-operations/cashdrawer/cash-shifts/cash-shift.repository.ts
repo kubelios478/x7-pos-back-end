@@ -40,4 +40,34 @@ export class CashShiftRepository extends Repository<CashShift> {
 
         return Number(result?.liveBalance ?? 0);
     }
+
+    /**
+     * Calculates the sales summary by payment method for a given shift.
+     * Groups by payment method (cash, card, qr, online, etc.) and sums up the net payments (refunds subtract).
+     */
+    async getSalesSummary(shiftId: number): Promise<{ method: string; amount: number }[]> {
+        const results = await this.dataSource
+            .getRepository(CashShift)
+            .createQueryBuilder('cs')
+            .innerJoin('orders', 'o', 'o.shift_id = cs.id')
+            .innerJoin('order_payments', 'op', 'op.order_id = o.id')
+            .select('op.method', 'method')
+            .addSelect(
+                `SUM(
+                    CASE 
+                        WHEN op.is_refund = true THEN -(COALESCE(op.amount, 0) + COALESCE(op.tip_amount, 0))
+                        ELSE (COALESCE(op.amount, 0) + COALESCE(op.tip_amount, 0))
+                    END
+                )`,
+                'amount',
+            )
+            .where('cs.id = :shiftId', { shiftId })
+            .groupBy('op.method')
+            .getRawMany<{ method: string; amount: string }>();
+
+        return results.map((r) => ({
+            method: r.method,
+            amount: Number(r.amount ?? 0),
+        }));
+    }
 }

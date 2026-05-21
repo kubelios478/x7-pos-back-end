@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { ActiveShiftGuard } from '../../../auth/guards/active-shift.guard';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { GetOrdersQueryDto } from './dto/get-orders-query.dto';
@@ -111,7 +112,10 @@ describe('OrdersController', () => {
           useValue: mockOrdersService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(ActiveShiftGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<OrdersController>(OrdersController);
     service = module.get<OrdersService>(OrdersService);
@@ -142,7 +146,7 @@ describe('OrdersController', () => {
 
       const result = await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id, undefined);
       expect(result).toEqual(mockOneOrderResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Order created successfully');
@@ -157,7 +161,7 @@ describe('OrdersController', () => {
       await expect(controller.create(createDto, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id, undefined);
     });
 
     it('should throw ForbiddenException if user has no merchant_id', async () => {
@@ -178,7 +182,7 @@ describe('OrdersController', () => {
           requestWithoutMerchant as AuthenticatedRequest,
         ),
       ).rejects.toThrow(ForbiddenException);
-      expect(createSpy).toHaveBeenCalledWith(createDto, undefined);
+      expect(createSpy).toHaveBeenCalledWith(createDto, undefined, undefined);
     });
 
     it('should pass merchant id from request user to service', async () => {
@@ -187,7 +191,7 @@ describe('OrdersController', () => {
 
       await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, 1);
+      expect(createSpy).toHaveBeenCalledWith(createDto, 1, undefined);
     });
   });
 
