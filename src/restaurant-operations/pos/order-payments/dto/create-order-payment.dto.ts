@@ -49,4 +49,13 @@ export class CreateOrderPaymentDto {
   @IsOptional()
   @IsBoolean()
   isRefund?: boolean;
+
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'Optional POS shift id for inventory kardex linkage',
+  })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  shiftId?: number;
 }

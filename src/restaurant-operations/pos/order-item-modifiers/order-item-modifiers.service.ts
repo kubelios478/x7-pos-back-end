@@ -97,12 +97,15 @@ export class OrderItemModifiersService {
     await queryRunner.startTransaction();
 
     let complete: OrderItemModifier | null = null;
+    let becameFullyPaid = false;
     try {
       const saved = await queryRunner.manager.save(OrderItemModifier, row);
-      await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        orderItem.order_id,
-      );
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          orderItem.order_id,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
       complete = await queryRunner.manager.findOne(OrderItemModifier, {
         where: { id: saved.id },
         relations: [...RELATIONS],
@@ -114,6 +117,11 @@ export class OrderItemModifiersService {
     } finally {
       await queryRunner.release();
     }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(orderItem.order_id);
+    }
+
     if (!complete) {
       throw new NotFoundException(
         'Order item modifier not found after creation',
@@ -363,6 +371,8 @@ export class OrderItemModifiersService {
     await queryRunner.startTransaction();
 
     let updated: OrderItemModifier | null = null;
+    let becameFullyPaidCurrent = false;
+    let becameFullyPaidPrevious = false;
     try {
       await queryRunner.manager.update(OrderItemModifier, id, patch);
       updated = await queryRunner.manager.findOne(OrderItemModifier, {
@@ -375,15 +385,19 @@ export class OrderItemModifiersService {
         );
       }
 
-      await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        updated.orderItem.order_id,
-      );
-      if (previousOrderId !== updated.orderItem.order_id) {
+      const syncCurrent =
         await this.ordersService.syncOrderAggregatesWithManager(
           queryRunner.manager,
-          previousOrderId,
+          updated.orderItem.order_id,
         );
+      becameFullyPaidCurrent = syncCurrent.becameFullyPaid;
+      if (previousOrderId !== updated.orderItem.order_id) {
+        const syncPrev =
+          await this.ordersService.syncOrderAggregatesWithManager(
+            queryRunner.manager,
+            previousOrderId,
+          );
+        becameFullyPaidPrevious = syncPrev.becameFullyPaid;
       }
 
       await queryRunner.commitTransaction();
@@ -392,6 +406,13 @@ export class OrderItemModifiersService {
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaidCurrent) {
+      this.ordersService.emitOrderFullyPaid(updated.orderItem.order_id);
+    }
+    if (becameFullyPaidPrevious) {
+      this.ordersService.emitOrderFullyPaid(previousOrderId);
     }
 
     await this.ordersService.syncOnlineOrderFromPosOrder(
@@ -441,18 +462,25 @@ export class OrderItemModifiersService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    let becameFullyPaid = false;
     try {
       await queryRunner.manager.delete(OrderItemModifier, id);
-      await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        orderId,
-      );
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(orderId);
     }
 
     await this.ordersService.syncOnlineOrderFromPosOrder(orderId);

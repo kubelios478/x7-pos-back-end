@@ -29,10 +29,13 @@ describe('OrderTaxesService', () => {
   };
 
   const mockOrdersService = {
-    syncOrderAggregatesWithManager: jest.fn().mockResolvedValue(undefined),
+    syncOrderAggregatesWithManager: jest
+      .fn()
+      .mockResolvedValue({ becameFullyPaid: false }),
     syncOnlineOrderFromPosOrder: jest.fn().mockResolvedValue(undefined),
     // legacy expectations in this spec
     syncOrderAggregates: jest.fn().mockResolvedValue(undefined),
+    emitOrderFullyPaid: jest.fn(),
   };
 
   const mockQueryRunner = {

@@ -93,18 +93,30 @@ export class OrderPaymentsService {
     await queryRunner.startTransaction();
 
     let saved: OrderPayment;
+    let becameFullyPaid = false;
+    let becameUnpaid = false;
     try {
       saved = await queryRunner.manager.save(OrderPayment, row);
-      await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        dto.orderId,
-      );
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          dto.orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
+      becameUnpaid = syncResult.becameUnpaid;
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(dto.orderId, dto.shiftId);
+    }
+    if (becameUnpaid) {
+      this.ordersService.emitOrderLoyaltyReversal(dto.orderId);
     }
 
     const complete = await this.orderPaymentRepository.findOne({

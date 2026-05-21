@@ -72,10 +72,14 @@ export class KitchenOrderSyncService {
    * y recalcula agregados de la orden (`Order.kitchen_status`, etc.).
    */
   async syncPosOrderFromKitchenOrders(orderId: number): Promise<void> {
-    await this.syncPosOrderFromKitchenOrdersWithManager(
-      this.kitchenOrderRepository.manager,
-      orderId,
-    );
+    const { becameFullyPaid } =
+      await this.syncPosOrderFromKitchenOrdersWithManager(
+        this.kitchenOrderRepository.manager,
+        orderId,
+      );
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(orderId);
+    }
   }
 
   /**
@@ -85,7 +89,7 @@ export class KitchenOrderSyncService {
   async syncPosOrderFromKitchenOrdersWithManager(
     manager: EntityManager,
     orderId: number,
-  ): Promise<void> {
+  ): Promise<{ becameFullyPaid: boolean }> {
     const kitchenOrders = await this.kitchenOrderRepository.find({
       where: {
         order_id: orderId,
@@ -95,7 +99,7 @@ export class KitchenOrderSyncService {
 
     const koIds = kitchenOrders.map((k) => k.id);
     if (koIds.length === 0) {
-      return;
+      return { becameFullyPaid: false };
     }
 
     const allItems = await this.kitchenOrderItemRepository.find({
@@ -138,7 +142,7 @@ export class KitchenOrderSyncService {
       await manager.getRepository(KitchenOrder).update(ko.id, patch);
     }
 
-    await this.ordersService.syncOrderAggregatesWithManager(manager, orderId);
+    return this.ordersService.syncOrderAggregatesWithManager(manager, orderId);
   }
 
   /** Si ya no hay KOI activos para una línea POS, vuelve el estado de cocina de la línea a pending. */

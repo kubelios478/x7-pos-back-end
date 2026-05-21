@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 import {
@@ -21,6 +21,14 @@ export class Item {
   @ApiProperty({ example: 5, description: 'Current quantity' })
   @Column({ type: 'int' })
   currentQty: number;
+
+  @ApiPropertyOptional({
+    example: 10,
+    description:
+      'Minimum quantity before low-stock alerts; null disables LOW alerts',
+  })
+  @Column({ type: 'int', name: 'minimum_qty', nullable: true })
+  minimumQty: number | null;
 
   @ApiProperty({
     example: 1,
@@ -66,6 +74,20 @@ export class Item {
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @ApiPropertyOptional({
+    example: 12.5,
+    description:
+      'Weighted average unit cost (WACC/CPP) for profitability at this location',
+  })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 4,
+    name: 'weighted_average_unit_cost',
+    nullable: true,
+  })
+  weightedAverageUnitCost: string | null;
 
   @OneToMany(() => Movement, (movement) => movement.item)
   movements: Movement[];

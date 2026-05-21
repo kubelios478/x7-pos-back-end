@@ -6,6 +6,7 @@ import { LoyaltyPointsTransactionModule } from './loyalty-points-transaction/loy
 import { LoyaltyRewardModule } from './loyalty-reward/loyalty-reward.module';
 import { LoyaltyRewardsRedemptionsModule } from './loyalty-rewards-redemptions/loyalty-rewards-redemptions.module';
 import { LoyaltyCouponsModule } from './loyalty-coupons/loyalty-coupons.module';
+import { OrderLoyaltyWalletModule } from './order-loyalty-wallet/order-loyalty-wallet.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { LoyaltyCouponsModule } from './loyalty-coupons/loyalty-coupons.module';
     LoyaltyRewardModule,
     LoyaltyRewardsRedemptionsModule,
     LoyaltyCouponsModule,
+    OrderLoyaltyWalletModule,
   ],
 })
 export class LoyaltyModule {}

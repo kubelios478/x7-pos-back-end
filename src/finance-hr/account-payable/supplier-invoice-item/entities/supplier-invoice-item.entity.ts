@@ -8,6 +8,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { SupplierInvoice } from '../../supplier-invoices/entities/supplier-invoice.entity';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 
 @Entity('supplier_invoice_items')
 export class SupplierInvoiceItem {
@@ -22,6 +23,10 @@ export class SupplierInvoiceItem {
   @ApiProperty({ example: 12 })
   @Column({ type: 'int', nullable: true })
   product_id?: number;
+
+  @ApiProperty({ example: 3, nullable: true })
+  @Column({ type: 'int', name: 'variant_id', nullable: true })
+  variant_id?: number | null;
 
   @ApiProperty({ example: 'Flour 25kg bag' })
   @Column({ type: 'varchar', length: 255 })
@@ -63,4 +68,8 @@ export class SupplierInvoiceItem {
   @ManyToOne(() => Product, { nullable: true })
   @JoinColumn({ name: 'product_id' })
   product?: Product;
+
+  @ManyToOne(() => Variant, { nullable: true })
+  @JoinColumn({ name: 'variant_id' })
+  variant?: Variant | null;
 }

@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   Column,
   Entity,
@@ -10,6 +10,7 @@ import {
 import { Product } from '../../products/entities/product.entity';
 import { Item } from '../../stocks/items/entities/item.entity';
 import { PurchaseOrderItem } from '../../purchase-order-item/entities/purchase-order-item.entity';
+import { VariantStockBasisKind } from '../../recipes/constants/variant-stock-basis-kind.enum';
 
 @Entity({ name: 'variant' })
 export class Variant {
@@ -45,6 +46,33 @@ export class Variant {
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @ApiPropertyOptional({
+    enum: VariantStockBasisKind,
+    description:
+      'How inventory integer quantity maps for recipe UOM conversion (default: one count per qty)',
+  })
+  @Column({
+    type: 'enum',
+    enum: VariantStockBasisKind,
+    name: 'stock_basis_kind',
+    nullable: true,
+  })
+  stockBasisKind: VariantStockBasisKind | null;
+
+  @ApiPropertyOptional({
+    example: 25000,
+    description:
+      'Canonical units (grams, ml, or 1 for UNIT_COUNT) represented by one +1 of stock currentQty',
+  })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 4,
+    name: 'base_units_per_stock_increment',
+    nullable: true,
+  })
+  baseUnitsPerStockIncrement: string | null;
 
   @OneToMany(() => Item, (item) => item.variant)
   items: Item[];

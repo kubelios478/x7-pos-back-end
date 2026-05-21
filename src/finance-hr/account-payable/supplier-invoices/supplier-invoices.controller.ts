@@ -43,6 +43,12 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { SupplierInvoiceStatus } from './constants/supplier-invoice-status.enum';
 import { SupplierInvoiceSortBy } from './dto/get-supplier-invoices-query.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { SupplierInvoiceInventoryService } from 'src/inventory/supplier-invoice-inventory/supplier-invoice-inventory.service';
+import { ReceiveSupplierInventoryDto } from 'src/inventory/supplier-invoice-inventory/dto/receive-supplier-inventory.dto';
+import { ReceiveSupplierInventoryResponseDto } from 'src/inventory/supplier-invoice-inventory/dto/receive-supplier-inventory-response.dto';
+import { ApiConflictResponse } from '@nestjs/swagger';
 
 @ApiTags('Supplier invoices (Account payable)')
 @ApiBearerAuth()
@@ -56,7 +62,44 @@ import { SupplierInvoiceSortBy } from './dto/get-supplier-invoices-query.dto';
 export class SupplierInvoicesController {
   constructor(
     private readonly supplierInvoicesService: SupplierInvoicesService,
+    private readonly supplierInvoiceInventoryService: SupplierInvoiceInventoryService,
   ) {}
+
+  @Post(':id/receive-inventory')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(Scope.MERCHANT_WEB)
+  @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)
+  @ApiOperation({
+    summary: 'Receive supplier invoice into stock (WACC + PURCHASE_ENTRY)',
+  })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiBody({ type: ReceiveSupplierInventoryDto })
+  @ApiOkResponse({
+    description: 'Inventory received successfully',
+    type: ReceiveSupplierInventoryResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Inventory was already received for this invoice',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input or missing stock location',
+  })
+  @ApiNotFoundResponse({ description: 'Supplier invoice not found' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiForbiddenResponse({
+    description: 'Forbidden (MERCHANT_WEB scope required)',
+  })
+  async receiveInventory(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ReceiveSupplierInventoryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ReceiveSupplierInventoryResponseDto> {
+    return this.supplierInvoiceInventoryService.receiveForInvoice(
+      user.merchant.id,
+      id,
+      dto.locationId,
+    );
+  }
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

@@ -32,6 +32,7 @@ import {
 import { KitchenOrderStatus } from '../kitchen-order/constants/kitchen-order-status.enum';
 import { OrderItemStatus } from '../../../restaurant-operations/pos/order-item/constants/order-item-status.enum';
 import { KitchenOrderSyncService } from '../kitchen-order/kitchen-order-sync.service';
+import { OrdersService } from '../../pos/orders/orders.service';
 
 @Injectable()
 export class KitchenOrderItemService {
@@ -48,6 +49,7 @@ export class KitchenOrderItemService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly kitchenOrderSyncService: KitchenOrderSyncService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   async create(
@@ -151,6 +153,8 @@ export class KitchenOrderItemService {
     await queryRunner.startTransaction();
 
     let completeKitchenOrderItem: KitchenOrderItem | null = null;
+    let becameFullyPaid = false;
+    let posOrderIdForEmit: number | null = null;
     try {
       const savedKitchenOrderItem = await queryRunner.manager.save(
         KitchenOrderItem,
@@ -170,10 +174,13 @@ export class KitchenOrderItemService {
       }
 
       if (completeKitchenOrderItem.kitchenOrder?.order_id) {
-        await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrdersWithManager(
-          queryRunner.manager,
-          completeKitchenOrderItem.kitchenOrder.order_id,
-        );
+        posOrderIdForEmit = completeKitchenOrderItem.kitchenOrder.order_id;
+        const syncResult =
+          await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrdersWithManager(
+            queryRunner.manager,
+            posOrderIdForEmit,
+          );
+        becameFullyPaid = syncResult.becameFullyPaid;
       }
 
       await queryRunner.commitTransaction();
@@ -182,6 +189,10 @@ export class KitchenOrderItemService {
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaid && posOrderIdForEmit != null) {
+      this.ordersService.emitOrderFullyPaid(posOrderIdForEmit);
     }
 
     if (!completeKitchenOrderItem) {
@@ -583,6 +594,7 @@ export class KitchenOrderItemService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    let becameFullyPaid = false;
     try {
       await queryRunner.manager.update(KitchenOrderItem, id, {
         status: KitchenOrderItemStatus.DELETED,
@@ -593,10 +605,12 @@ export class KitchenOrderItemService {
         orderItemIdBefore,
       );
       if (posOrderId) {
-        await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrdersWithManager(
-          queryRunner.manager,
-          posOrderId,
-        );
+        const syncResult =
+          await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrdersWithManager(
+            queryRunner.manager,
+            posOrderId,
+          );
+        becameFullyPaid = syncResult.becameFullyPaid;
       }
 
       await queryRunner.commitTransaction();
@@ -605,6 +619,10 @@ export class KitchenOrderItemService {
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaid && posOrderId != null) {
+      this.ordersService.emitOrderFullyPaid(posOrderId);
     }
 
     existingKitchenOrderItem.status = KitchenOrderItemStatus.DELETED;

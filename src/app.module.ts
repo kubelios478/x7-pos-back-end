@@ -39,6 +39,7 @@ import { Configuration } from './core/configuration/entity/configuration-entity'
 import { Customer } from './core/business-partners/customers/entities/customer.entity';
 import { FeatureEntity } from './platform-saas/subscriptions/features/entity/features.entity';
 import { Item } from './inventory/products-inventory/stocks/items/entities/item.entity';
+import { InventoryStockAlert } from './inventory/stock-alerts/entities/inventory-stock-alert.entity';
 import { JournalEntry } from './core/financial-engine/journal-entry/entities/journal-entry.entity';
 import { JournalEntryLine } from './core/financial-engine/journal-entry-line/entities/journal-entry-line.entity';
 import { KitchenDisplayDevice } from './restaurant-operations/kitchen-display-system/kitchen-display-device/entities/kitchen-display-device.entity';
@@ -93,6 +94,8 @@ import { PayrollTaxDetail } from './finance-hr/payroll/payroll-tax-details/entit
 import { PlanApplication } from './platform-saas/subscriptions/plan-applications/entity/plan-applications.entity';
 import { PlanFeature } from './platform-saas/subscriptions/plan-features/entity/plan-features.entity';
 import { Product } from './inventory/products-inventory/products/entities/product.entity';
+import { ProductRecipe } from './inventory/products-inventory/recipes/entities/product-recipe.entity';
+import { ProductRecipeLine } from './inventory/products-inventory/recipes/entities/product-recipe-line.entity';
 import { PurchaseOrder } from './inventory/products-inventory/purchase-order/entities/purchase-order.entity';
 import { PurchaseOrderItem } from './inventory/products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 import { QRLocation } from './commerce/qr-code/qr-location/entity/qr-location.entity';
@@ -141,10 +144,12 @@ import { DeliveryDriver } from './commerce/delivery-system/delivery-driver/entit
 import { DeliveryAssignment } from './commerce/delivery-system/delivery-assignment/entity/delivery-assignment.entity';
 import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/entity/delivery-tracking.entity';
 import { RealtimeModule } from './realtime/realtime.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -168,6 +173,7 @@ import { RealtimeModule } from './realtime/realtime.module';
           Modifier,
           Location,
           Item,
+          InventoryStockAlert,
           Movement,
           PurchaseOrder,
           PurchaseOrderItem,
@@ -231,6 +237,8 @@ import { RealtimeModule } from './realtime/realtime.module';
           PlanApplication,
           PlanFeature,
           Product,
+          ProductRecipe,
+          ProductRecipeLine,
           QRLocation,
           QRLocation,
           QRMenu,

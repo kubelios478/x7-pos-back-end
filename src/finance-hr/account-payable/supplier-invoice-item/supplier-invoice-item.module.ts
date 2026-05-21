@@ -7,11 +7,19 @@ import { SupplierInvoiceItemController } from './supplier-invoice-item.controlle
 import { SupplierInvoiceItem } from './entities/supplier-invoice-item.entity';
 import { SupplierInvoice } from '../supplier-invoices/entities/supplier-invoice.entity';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Module({
   imports: [
     AuthModule,
-    TypeOrmModule.forFeature([SupplierInvoiceItem, SupplierInvoice, Product]),
+    TypeOrmModule.forFeature([
+      SupplierInvoiceItem,
+      SupplierInvoice,
+      Product,
+      Variant,
+      Merchant,
+    ]),
   ],
   controllers: [SupplierInvoiceItemController],
   providers: [SupplierInvoiceItemService],

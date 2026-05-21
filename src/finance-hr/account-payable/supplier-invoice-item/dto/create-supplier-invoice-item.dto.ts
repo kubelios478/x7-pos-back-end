@@ -21,6 +21,16 @@ export class CreateSupplierInvoiceItemDto {
   @IsOptional()
   product_id?: number;
 
+  @ApiPropertyOptional({
+    example: 3,
+    description:
+      'Supply variant when product_id is set (required for inventory receipt)',
+  })
+  @IsInt()
+  @IsPositive()
+  @IsOptional()
+  variant_id?: number;
+
   @ApiProperty({ example: 'Flour 25kg bag' })
   @IsString()
   description: string;

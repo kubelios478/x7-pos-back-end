@@ -56,6 +56,11 @@ import { formatOnlineOrderToDto } from '../../../commerce/online-ordering-system
 import { OrderType } from './constants/order-type.enum';
 import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OnlineOrderSyncService } from '../../../commerce/online-ordering-system/online-order/online-order-sync.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ORDER_FULLY_PAID_EVENT,
+  ORDER_LOYALTY_REVERSAL_EVENT,
+} from '../../../inventory/sale-inventory/order-paid.events';
 
 @Injectable()
 export class OrdersService {
@@ -81,6 +86,7 @@ export class OrdersService {
     @InjectRepository(OrderItemModifier)
     private readonly orderItemModifierRepo: Repository<OrderItemModifier>,
     private readonly onlineOrderSyncService: OnlineOrderSyncService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async create(
@@ -582,6 +588,13 @@ export class OrdersService {
     await this.orderRepo.save(order);
     await this.syncOrderAggregates(id);
 
+    if (
+      dto.businessStatus === OrderBusinessStatus.CANCELLED &&
+      existing.status !== OrderBusinessStatus.CANCELLED
+    ) {
+      this.emitOrderLoyaltyReversal(id);
+    }
+
     const updated = await this.orderRepo.findOne({ where: { id } });
     if (!updated) {
       throw new NotFoundException('Order not found after update');
@@ -629,6 +642,16 @@ export class OrdersService {
     };
   }
 
+  /** Emits after DB commit when the order first becomes fully paid. */
+  emitOrderFullyPaid(orderId: number, shiftId?: number | null): void {
+    this.eventEmitter.emit(ORDER_FULLY_PAID_EVENT, { orderId, shiftId });
+  }
+
+  /** Emits after DB commit when loyalty points must be reversed (cancel/refund). */
+  emitOrderLoyaltyReversal(orderId: number): void {
+    this.eventEmitter.emit(ORDER_LOYALTY_REVERSAL_EVENT, { orderId });
+  }
+
   /**
    * Recomputes subtotal from line items, tax_total from order_taxes, tip_total
    * (manual_tip_total + sum of payment tip_amount), order total, paid_total from
@@ -636,7 +659,17 @@ export class OrdersService {
    * Call after order-item, order-item-modifier, order-tax or order-payment create / update / delete, or after changing order-level discount/tip/delivery.
    */
   async syncOrderAggregates(orderId: number): Promise<void> {
-    await this.syncOrderAggregatesWithManager(this.orderRepo.manager, orderId);
+    const { becameFullyPaid, becameUnpaid } =
+      await this.syncOrderAggregatesWithManager(
+        this.orderRepo.manager,
+        orderId,
+      );
+    if (becameFullyPaid) {
+      this.emitOrderFullyPaid(orderId);
+    }
+    if (becameUnpaid) {
+      this.emitOrderLoyaltyReversal(orderId);
+    }
     await this.syncOnlineOrderFromPosOrder(orderId);
   }
 
@@ -652,11 +685,15 @@ export class OrdersService {
   async syncOrderAggregatesWithManager(
     manager: EntityManager,
     orderId: number,
-  ): Promise<void> {
+  ): Promise<{ becameFullyPaid: boolean; becameUnpaid: boolean }> {
     const order = await manager.getRepository(Order).findOne({
       where: { id: orderId },
     });
-    if (!order) return;
+    if (!order) {
+      return { becameFullyPaid: false, becameUnpaid: false };
+    }
+
+    const wasPaid = order.is_paid;
 
     const items = await manager.getRepository(OrderItem).find({
       where: { order_id: orderId },
@@ -700,7 +737,10 @@ export class OrdersService {
     }
 
     applyPaidDerivedFields(order);
+    const becameFullyPaid = !wasPaid && order.is_paid;
+    const becameUnpaid = wasPaid && !order.is_paid;
     await manager.getRepository(Order).save(order);
+    return { becameFullyPaid, becameUnpaid };
   }
 
   /**

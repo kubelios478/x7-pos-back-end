@@ -30,7 +30,10 @@ describe('KitchenOrderSyncService', () => {
     update: jest.fn(),
   };
   const mockOrdersService = {
-    syncOrderAggregatesWithManager: jest.fn().mockResolvedValue(undefined),
+    syncOrderAggregatesWithManager: jest
+      .fn()
+      .mockResolvedValue({ becameFullyPaid: false }),
+    emitOrderFullyPaid: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -102,17 +105,34 @@ describe('KitchenOrderSyncService', () => {
       expect(
         mockOrdersService.syncOrderAggregatesWithManager,
       ).toHaveBeenCalledWith(mockKitchenOrderRepo.manager, 100);
+      expect(mockOrdersService.emitOrderFullyPaid).not.toHaveBeenCalled();
     });
 
-    it('should no-op when no kitchen orders for POS order', async () => {
-      mockKitchenOrderRepo.find.mockResolvedValue([]);
+    it('should emit order fully paid when aggregates report first-time paid', async () => {
+      mockKitchenOrderRepo.find.mockResolvedValue([
+        {
+          id: 1,
+          order_id: 100,
+          started_at: null,
+          completed_at: null,
+          status: KitchenOrderStatus.ACTIVE,
+        },
+      ]);
+      mockKitchenOrderItemRepo.find.mockResolvedValue([
+        {
+          kitchen_order_id: 1,
+          order_item_id: 50,
+          preparation_status: KitchenOrderItemPreparationStatus.READY,
+          status: KitchenOrderItemStatus.ACTIVE,
+        },
+      ]);
+      mockOrdersService.syncOrderAggregatesWithManager.mockResolvedValue({
+        becameFullyPaid: true,
+      });
 
       await service.syncPosOrderFromKitchenOrders(100);
 
-      expect(mockOrderItemRepo.update).not.toHaveBeenCalled();
-      expect(
-        mockOrdersService.syncOrderAggregatesWithManager,
-      ).not.toHaveBeenCalled();
+      expect(mockOrdersService.emitOrderFullyPaid).toHaveBeenCalledWith(100);
     });
   });
 

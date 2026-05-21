@@ -8,10 +8,12 @@ import { MovementsModule } from '../movements/movements.module';
 import { Product } from '../../products/entities/product.entity';
 import { Variant } from '../../variants/entities/variant.entity';
 import { Location } from '../locations/entities/location.entity';
+import { StockAlertsModule } from '../../../stock-alerts/stock-alerts.module';
 
 @Module({
   imports: [
     AuthModule,
+    StockAlertsModule,
     TypeOrmModule.forFeature([Item, Product, Location, Variant]),
     forwardRef(() => MovementsModule),
   ],

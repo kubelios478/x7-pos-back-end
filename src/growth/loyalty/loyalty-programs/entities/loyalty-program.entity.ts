@@ -13,6 +13,7 @@ import { Merchant } from '../../../../platform-saas/merchants/entities/merchant.
 import { LoyaltyTier } from '../../loyalty-tier/entities/loyalty-tier.entity'; // Added LoyaltyTier import
 import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
 import { LoyaltyReward } from 'src/growth/loyalty/loyalty-reward/entities/loyalty-reward.entity';
+import { LoyaltyPointsRoundingMode } from '../../constants/loyalty-points-rounding-mode.enum';
 
 @Entity('loyalty_programs')
 export class LoyaltyProgram {
@@ -65,6 +66,34 @@ export class LoyaltyProgram {
   })
   @Column({ default: 0 })
   min_points_to_redeem: number;
+
+  @ApiProperty({
+    example: 5,
+    description:
+      'Percent of net order value (subtotal minus discounts, excluding tax and tips) awarded as points. When null or 0, points_per_currency applies.',
+    nullable: true,
+  })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    name: 'earn_rate_percent',
+    nullable: true,
+  })
+  earn_rate_percent: number | null;
+
+  @ApiProperty({
+    example: LoyaltyPointsRoundingMode.NEAREST,
+    enum: LoyaltyPointsRoundingMode,
+    description: 'Rounding policy for earned points',
+  })
+  @Column({
+    type: 'enum',
+    enum: LoyaltyPointsRoundingMode,
+    name: 'points_rounding_mode',
+    default: LoyaltyPointsRoundingMode.NEAREST,
+  })
+  points_rounding_mode: LoyaltyPointsRoundingMode;
 
   @ApiProperty({
     example: '2023-01-01T12:00:00Z',

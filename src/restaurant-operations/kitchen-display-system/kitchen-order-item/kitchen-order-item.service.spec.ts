@@ -24,6 +24,7 @@ import { OrderItemStatus } from '../../../restaurant-operations/pos/order-item/c
 import { KitchenOrderSyncService } from '../kitchen-order/kitchen-order-sync.service';
 import { KitchenOrderItemPreparationStatus } from './constants/kitchen-order-item-preparation-status.enum';
 import { DataSource } from 'typeorm';
+import { OrdersService } from '../../pos/orders/orders.service';
 
 describe('KitchenOrderItemService', () => {
   let service: KitchenOrderItemService;
@@ -60,10 +61,14 @@ describe('KitchenOrderItemService', () => {
     resetOrderLineIfNoActiveKoi: jest.fn().mockResolvedValue(undefined),
     syncPosOrderFromKitchenOrdersWithManager: jest
       .fn()
-      .mockResolvedValue(undefined),
+      .mockResolvedValue({ becameFullyPaid: false }),
     resetOrderLineIfNoActiveKoiWithManager: jest
       .fn()
       .mockResolvedValue(undefined),
+  };
+
+  const mockOrdersService = {
+    emitOrderFullyPaid: jest.fn(),
   };
 
   const mockQueryRunner = {
@@ -176,6 +181,10 @@ describe('KitchenOrderItemService', () => {
         {
           provide: KitchenOrderSyncService,
           useValue: mockKitchenOrderSyncService,
+        },
+        {
+          provide: OrdersService,
+          useValue: mockOrdersService,
         },
       ],
     }).compile();

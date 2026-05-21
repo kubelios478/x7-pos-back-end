@@ -129,6 +129,8 @@ export class LoyaltyProgramsService {
         is_active: program.is_active,
         points_per_currency: program.points_per_currency,
         min_points_to_redeem: program.min_points_to_redeem,
+        earn_rate_percent: program.earn_rate_percent,
+        points_rounding_mode: program.points_rounding_mode,
         created_at: program.created_at,
         updated_at: program.updated_at,
         merchant: program.merchant
@@ -187,7 +189,8 @@ export class LoyaltyProgramsService {
       is_active: loyaltyProgram.is_active,
       points_per_currency: loyaltyProgram.points_per_currency,
       min_points_to_redeem: loyaltyProgram.min_points_to_redeem,
-
+      earn_rate_percent: loyaltyProgram.earn_rate_percent,
+      points_rounding_mode: loyaltyProgram.points_rounding_mode,
       created_at: loyaltyProgram.created_at,
       updated_at: loyaltyProgram.updated_at,
       merchant: loyaltyProgram.merchant

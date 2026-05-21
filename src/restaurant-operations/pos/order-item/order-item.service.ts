@@ -35,6 +35,7 @@ import { OrderItemKitchenStatus } from './constants/order-item-kitchen-status.en
 import { OrderStatus } from '../orders/constants/order-status.enum';
 import { OrdersService } from '../orders/orders.service';
 import { lineSubtotal } from '../orders/order-aggregation.util';
+import { StockAvailabilityService } from 'src/inventory/stock-alerts/stock-availability.service';
 
 const ORDER_ITEM_RELATIONS = [
   'order',
@@ -58,6 +59,7 @@ export class OrderItemService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly ordersService: OrdersService,
+    private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
 
   async create(
@@ -134,6 +136,28 @@ export class OrderItemService {
           'Variant does not belong to the specified product',
         );
       }
+
+      const variantAvailability =
+        await this.stockAvailabilityService.getVariantAvailability(
+          authenticatedUserMerchantId,
+          createOrderItemDto.variantId,
+        );
+      if (variantAvailability?.isOutOfStock) {
+        throw new BadRequestException(
+          'This product variant is out of stock and cannot be sold',
+        );
+      }
+    } else {
+      const productAvailability =
+        await this.stockAvailabilityService.getProductAvailabilityMap(
+          authenticatedUserMerchantId,
+          [createOrderItemDto.productId],
+        );
+      if (productAvailability.get(createOrderItemDto.productId)?.isOutOfStock) {
+        throw new BadRequestException(
+          'This product is out of stock and cannot be sold',
+        );
+      }
     }
 
     const unitPrice =
@@ -176,15 +200,18 @@ export class OrderItemService {
     await queryRunner.startTransaction();
 
     let completeOrderItem: OrderItem | null = null;
+    let becameFullyPaid = false;
     try {
       const savedOrderItem = await queryRunner.manager.save(
         OrderItem,
         orderItem,
       );
-      await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        createOrderItemDto.orderId,
-      );
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          createOrderItemDto.orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
 
       completeOrderItem = await queryRunner.manager.findOne(OrderItem, {
         where: { id: savedOrderItem.id },
@@ -197,6 +224,10 @@ export class OrderItemService {
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(createOrderItemDto.orderId);
     }
 
     if (!completeOrderItem) {
@@ -608,6 +639,8 @@ export class OrderItemService {
     await queryRunner.startTransaction();
 
     let updatedOrderItem: OrderItem | null = null;
+    let becameFullyPaidCurrent = false;
+    let becameFullyPaidPrevious = false;
     try {
       await queryRunner.manager.update(OrderItem, id, updateData);
       updatedOrderItem = await queryRunner.manager.findOne(OrderItem, {
@@ -619,15 +652,19 @@ export class OrderItemService {
         throw new NotFoundException('Order item not found after update');
       }
 
-      await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        updatedOrderItem.order_id,
-      );
-      if (previousOrderId !== updatedOrderItem.order_id) {
+      const syncCurrent =
         await this.ordersService.syncOrderAggregatesWithManager(
           queryRunner.manager,
-          previousOrderId,
+          updatedOrderItem.order_id,
         );
+      becameFullyPaidCurrent = syncCurrent.becameFullyPaid;
+      if (previousOrderId !== updatedOrderItem.order_id) {
+        const syncPrev =
+          await this.ordersService.syncOrderAggregatesWithManager(
+            queryRunner.manager,
+            previousOrderId,
+          );
+        becameFullyPaidPrevious = syncPrev.becameFullyPaid;
       }
 
       await queryRunner.commitTransaction();
@@ -636,6 +673,13 @@ export class OrderItemService {
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaidCurrent) {
+      this.ordersService.emitOrderFullyPaid(updatedOrderItem.order_id);
+    }
+    if (becameFullyPaidPrevious) {
+      this.ordersService.emitOrderFullyPaid(previousOrderId);
     }
 
     await this.ordersService.syncOnlineOrderFromPosOrder(
@@ -701,20 +745,27 @@ export class OrderItemService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    let becameFullyPaid = false;
     try {
       await queryRunner.manager.update(OrderItem, id, {
         status: OrderItemStatus.DELETED,
       });
-      await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        orderId,
-      );
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
       throw e;
     } finally {
       await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(orderId);
     }
 
     existingOrderItem.status = OrderItemStatus.DELETED;
