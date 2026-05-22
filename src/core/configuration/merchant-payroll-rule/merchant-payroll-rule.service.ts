@@ -11,6 +11,7 @@ import { OneMerchantPayrollRuleResponseDto } from './dto/merchant-payroll-rule-r
 import { QueryMerchantPayrollRuleDto } from './dto/query-merchant-payroll-rule.dto';
 import { PaginatedMerchantPayrollRuleResponseDto } from './dto/paginated-merchant-payroll-rule-response.dto';
 import { UpdateMerchantPayrollRuleDto } from './dto/update-merchant-payroll-rule.dto';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Injectable()
 export class MerchantPayrollRuleService {
@@ -20,6 +21,9 @@ export class MerchantPayrollRuleService {
 
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+
+    @InjectRepository(Merchant)
+    private readonly merchantRepository: Repository<Merchant>,
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -42,6 +46,16 @@ export class MerchantPayrollRuleService {
       }
     }
 
+    let merchant: Merchant | null = null;
+    if (dto.merchantId) {
+      merchant = await this.merchantRepository.findOne({
+        where: { id: dto.merchantId },
+      });
+      if (!merchant) {
+        ErrorHandler.notFound('Merchant not found');
+      }
+    }
+
     const createdByUser = await this.userRepository.findOne({
       where: { id: dto.createdById },
     });
@@ -60,6 +74,7 @@ export class MerchantPayrollRuleService {
 
     const merchantPayrollRule = this.merchantPayrollRuleRepository.create({
       company: company,
+      merchant: merchant,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,
       createdBy: createdByUser,
@@ -103,6 +118,7 @@ export class MerchantPayrollRuleService {
     const qb = this.merchantPayrollRuleRepository
       .createQueryBuilder('merchantPayrollRule')
       .leftJoin('merchantPayrollRule.company', 'company')
+      .leftJoin('merchantPayrollRule.merchant', 'merchant')
       .leftJoin('merchantPayrollRule.createdBy', 'createdBy')
       .leftJoin('merchantPayrollRule.updatedBy', 'updatedBy')
       .select([
@@ -112,6 +128,8 @@ export class MerchantPayrollRuleService {
         'createdBy.email',
         'updatedBy.id',
         'updatedBy.email',
+        'merchant.id',
+        'merchant.name',
       ]);
     if (status) {
       qb.andWhere('merchantPayrollRule.status = :status', { status });
@@ -151,7 +169,7 @@ export class MerchantPayrollRuleService {
     const merchantPayrollRule =
       await this.merchantPayrollRuleRepository.findOne({
         where: { id, status: In(['active', 'inactive']) },
-        relations: ['company', 'createdBy', 'updatedBy'],
+        relations: ['company', 'createdBy', 'updatedBy', 'merchant'],
       });
     if (!merchantPayrollRule) {
       ErrorHandler.merchantPayrollRuleNotFound();
@@ -173,7 +191,7 @@ export class MerchantPayrollRuleService {
     const merchantPayrollRule =
       await this.merchantPayrollRuleRepository.findOne({
         where: { id, status: In(['active', 'inactive']) },
-        relations: ['company'],
+        relations: ['company', 'merchant'],
       });
     if (!merchantPayrollRule) {
       ErrorHandler.merchantPayrollRuleNotFound();

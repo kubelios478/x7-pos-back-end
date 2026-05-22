@@ -55,4 +55,12 @@ export class OrderPayment {
   @ApiProperty()
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   created_at: Date;
+
+  @ApiProperty()
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  source: string;
+
+  @ApiProperty({ example: 1 })
+  @Column({ name: 'shift_id', nullable: true })
+  shift_id: number;
 }

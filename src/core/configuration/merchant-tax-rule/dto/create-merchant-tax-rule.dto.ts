@@ -8,6 +8,7 @@ import {
   IsNotEmpty,
   IsIn,
   IsDate,
+  IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TaxType } from '../../constants/tax-type.enum';
@@ -19,6 +20,13 @@ export class CreateMerchantTaxRuleDto {
   })
   @IsInt()
   companyId: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Identifier of the related merchant',
+  })
+  @IsInt()
+  merchantId: number;
 
   @ApiProperty({
     example: '26-09-2023',
@@ -88,7 +96,7 @@ export class CreateMerchantTaxRuleDto {
     example: 19,
     description: 'Rate of the tax',
   })
-  @IsInt()
+  @IsNumber()
   @IsNotEmpty()
   rate: number;
 

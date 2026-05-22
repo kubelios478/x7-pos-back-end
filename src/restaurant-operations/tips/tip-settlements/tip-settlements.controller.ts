@@ -3,8 +3,10 @@ import {
   Get,
   Post,
   Body,
+  Patch,
   Param,
   Put,
+  Req,
   Delete,
   ParseIntPipe,
   UseGuards,
@@ -49,6 +51,8 @@ import {
   GetTipSettlementQueryDto,
   TipSettlementSortBy,
 } from './dto/get-tip-settlement-query.dto';
+import { QueryTipSettlementReportDto } from './dto/query-tip-settlement-report.dto';
+import { LiquidatedTipSettlementsDto } from './dto/liquidated-tip-settlement.dto';
 
 @ApiTags('Tip Settlements')
 @ApiBearerAuth()
@@ -168,7 +172,10 @@ export class TipSettlementsController {
       authenticatedUserMerchantId,
     );
   }
-
+  @Get('report')
+  getSettlementReport(@Query() query: QueryTipSettlementReportDto, @Req() req) {
+    return this.tipSettlementsService.getSettlementReport(query, req.user);
+  }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -287,5 +294,13 @@ export class TipSettlementsController {
   ) {
     const authenticatedUserMerchantId = req.merchant?.id;
     return this.tipSettlementsService.remove(id, authenticatedUserMerchantId);
+  }
+
+  @Patch('liquidated')
+  async liquidatedTipSettlements(
+    @Body() dto: LiquidatedTipSettlementsDto,
+    @Req() req,
+  ) {
+    return this.tipSettlementsService.liquidatedTipSettlements(dto, req.user);
   }
 }

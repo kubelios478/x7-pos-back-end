@@ -22,6 +22,13 @@ export class CreateMerchantOvertimeRuleDto {
   companyId: number;
 
   @ApiProperty({
+    example: 1,
+    description: 'Identifier of the related merchant',
+  })
+  @IsInt()
+  merchantId: number;
+
+  @ApiProperty({
     example: '26-09-2023',
     description: 'Date when the merchant overtime rule was created',
   })

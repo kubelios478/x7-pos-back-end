@@ -35,6 +35,7 @@ import { KitchenOrderBusinessStatus } from './constants/kitchen-order-business-s
 import { KitchenStationStatus } from '../kitchen-station/constants/kitchen-station-status.enum';
 import { OnlineOrderStatus } from '../../../commerce/online-ordering-system/online-order/constants/online-order-status.enum';
 import { OrderStatus } from '../../../restaurant-operations/pos/orders/constants/order-status.enum';
+import { CancelKitchenOrderDto } from './dto/cancel-kitchen-order.dto';
 
 const KITCHEN_ORDER_DETAIL_RELATIONS = {
   merchant: true,
@@ -638,6 +639,23 @@ export class KitchenOrderService {
       message: 'Kitchen order deleted successfully',
       data: this.formatKitchenOrderResponse(completeKitchenOrder),
     };
+  }
+
+  async cancelKitchenOrder(id: number, dto: CancelKitchenOrderDto, user: any) {
+    const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
+      where: { id },
+    });
+
+    if (!existingKitchenOrder) {
+      throw new NotFoundException('Kitchen order not found');
+    }
+
+    existingKitchenOrder.status = KitchenOrderStatus.CANCELLED;
+    existingKitchenOrder.cancellation_reason = dto.reason;
+    existingKitchenOrder.cancelled_by_user_id = user.id;
+    existingKitchenOrder.cancelled_at = new Date();
+
+    return await this.kitchenOrderRepository.save(existingKitchenOrder);
   }
 
   private formatKitchenOrderResponse(

@@ -10,6 +10,7 @@ import {
   Max,
   Min,
   MaxLength,
+  IsNumber,
 } from 'class-validator';
 
 export enum OrderPaymentSortBy {
@@ -31,6 +32,17 @@ export class GetOrderPaymentQueryDto {
   @IsString()
   @MaxLength(50)
   method?: string;
+
+  @ApiPropertyOptional({ example: 'stripe' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  source?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  shift_id?: number;
 
   @ApiPropertyOptional({ description: 'Filter by refund flag' })
   @IsOptional()

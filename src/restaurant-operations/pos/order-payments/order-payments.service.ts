@@ -82,6 +82,8 @@ export class OrderPaymentsService {
     row.reference = dto.reference ?? null;
     row.tip_amount = roundMoney(tip);
     row.is_refund = dto.isRefund ?? false;
+    row.source = dto.source;
+    row.shift_id = dto.shift_id;
 
     const saved = await this.orderPaymentRepository.save(row);
 
@@ -315,6 +317,7 @@ export class OrderPaymentsService {
     if (dto.method !== undefined) patch.method = dto.method;
     if (dto.provider !== undefined) patch.provider = dto.provider ?? null;
     if (dto.reference !== undefined) patch.reference = dto.reference ?? null;
+    if (dto.source !== undefined) patch.source = dto.source ?? null;
     if (dto.tipAmount !== undefined) {
       if (dto.tipAmount < 0) {
         throw new BadRequestException('Tip amount must be non-negative');
@@ -411,6 +414,8 @@ export class OrderPaymentsService {
       tipAmount: Number(row.tip_amount),
       isRefund: row.is_refund,
       createdAt: row.created_at,
+      source: row.source,
+      shift_id: row.shift_id,
     };
   }
 }

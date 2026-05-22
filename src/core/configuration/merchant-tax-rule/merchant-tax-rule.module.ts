@@ -9,10 +9,17 @@ import { User } from 'src/platform-saas/users/entities/user.entity';
 import { MerchantTaxRule } from './entity/merchant-tax-rule.entity';
 import { MerchantTaxRuleController } from './merchant-tax-rule.controller';
 import { MerchantTaxRuleService } from './merchant-tax-rule.service';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Module({
   imports: [AuthModule,
-    TypeOrmModule.forFeature([Company, MerchantTaxRule, Configuration, User]),
+    TypeOrmModule.forFeature([
+      Company,
+      Merchant,
+      MerchantTaxRule,
+      Configuration,
+      User,
+    ]),
   ],
   controllers: [MerchantTaxRuleController],
   providers: [MerchantTaxRuleService],

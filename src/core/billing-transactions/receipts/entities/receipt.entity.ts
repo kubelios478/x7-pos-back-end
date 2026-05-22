@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
@@ -12,6 +13,7 @@ import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entit
 
 import { ReceiptType } from '../constants/receipt-type.enum';
 
+@Index(['merchant_id', 'invoice_number'], { unique: true })
 @Entity('receipts')
 export class Receipt {
   @ApiProperty({ example: 1, description: 'Unique identifier' })
@@ -24,6 +26,13 @@ export class Receipt {
   })
   @Column({ type: 'int', name: 'order_id' })
   order_id: number;
+
+  @ApiProperty({
+    example: 200,
+    description: 'Order ID associated to the receipt',
+  })
+  @Column()
+  merchant_id: number;
 
   @ApiProperty({
     example: ReceiptType.INVOICE,
@@ -110,4 +119,23 @@ export class Receipt {
   })
   @JoinColumn({ name: 'order_id' })
   order: Order;
+
+  @Column({ type: 'jsonb', nullable: true })
+  order_snapshot: Record<string, any>;
+
+  @Column({ nullable: true })
+  processed_by_user_id: number;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  processed_by_role: string;
+
+  @Column({ type: 'boolean', default: false, nullable: true })
+  is_locked: boolean;
+
+  @ApiProperty({
+    example: 'INV-000001',
+    description: 'Sequential invoice number unique per merchant',
+  })
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  invoice_number: string;
 }
