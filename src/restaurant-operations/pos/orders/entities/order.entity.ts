@@ -100,12 +100,12 @@ export class Order {
     example: 1,
     description: 'Identifier of the Cash Shift associated with the Order',
   })
-  @Column({ type: 'int', name: 'shift_id', nullable: true })
-  shift_id: number | null;
+  @Column({ type: 'int', name: 'cash_shift_id', nullable: true })
+  cash_shift_id: number | null;
 
   @ManyToOne(() => CashShift, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'shift_id' })
-  shift: CashShift;
+  @JoinColumn({ name: 'cash_shift_id' })
+  cash_shift: CashShift;
 
   @ApiProperty({
     example: OrderType.DINE_IN,

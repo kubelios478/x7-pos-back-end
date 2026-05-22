@@ -290,7 +290,7 @@ export class OrdersService {
     order.kitchen_status = KitchenStatus.PENDING;
     order.ready_at = null;
     order.preparing_at = null;
-    order.shift_id = activeShiftId ?? null;
+    order.cash_shift_id = activeShiftId ?? null;
 
     // Save order to get an ID for the order items
     const saved = await this.orderRepo.save(order);
