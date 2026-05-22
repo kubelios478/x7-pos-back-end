@@ -17,6 +17,8 @@ import { DeliveryStatus } from './constants/delivery-status.enum';
 import { KitchenStatus } from './constants/kitchen-status.enum';
 import { ForbiddenException } from '@nestjs/common';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { Request as ExpressRequest } from 'express';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
@@ -36,6 +38,8 @@ describe('OrdersController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },

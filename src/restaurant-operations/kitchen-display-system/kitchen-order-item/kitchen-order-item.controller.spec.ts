@@ -9,6 +9,8 @@ import { PaginatedKitchenOrderItemResponseDto } from './dto/kitchen-order-item-r
 import { KitchenOrderItemStatus } from './constants/kitchen-order-item-status.enum';
 import { KitchenOrderItemPreparationStatus } from './constants/kitchen-order-item-preparation-status.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { Request as ExpressRequest } from 'express';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
@@ -30,6 +32,8 @@ describe('KitchenOrderItemController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },

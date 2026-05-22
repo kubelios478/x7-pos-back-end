@@ -5,6 +5,10 @@ import { CreateMarketingCouponRedemptionDto } from './dto/create-marketing-coupo
 import { UpdateMarketingCouponRedemptionDto } from './dto/update-marketing-coupon-redemption.dto';
 import { MarketingCouponRedemptionStatus } from './constants/marketing-coupon-redemption-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('MarketingCouponRedemptionsController', () => {
   let controller: MarketingCouponRedemptionsController;
   let service: MarketingCouponRedemptionsService;
@@ -17,11 +21,13 @@ describe('MarketingCouponRedemptionsController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockRequest: AuthenticatedUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
   };
 

@@ -9,6 +9,9 @@ import { CreateCustomerDto } from './dtos/create-customer.dto';
 import { UpdateCustomerDto } from './dtos/update-customer.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+
 describe('CustomersController', () => {
   let controller: CustomersController;
   let service: CustomersService;
@@ -24,15 +27,15 @@ describe('CustomersController', () => {
   const mockUser: AuthenticatedUser = {
     id: 1,
     email: 'test@example.com',
-    role: 'merchant_admin' as any,
-    scope: 'merchant' as any,
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockCustomer = {

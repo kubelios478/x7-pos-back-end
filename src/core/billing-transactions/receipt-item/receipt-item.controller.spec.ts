@@ -6,10 +6,19 @@ import { UpdateReceiptItemDto } from './dto/update-receipt-item.dto';
 import { GetReceiptItemsQueryDto } from './dto/get-receipt-items-query.dto';
 import { OneReceiptItemResponseDto } from './dto/receipt-item-response.dto';
 import { AllPaginatedReceiptItems } from './dto/all-paginated-receipt-items.dto';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 const MERCHANT_ID = 1;
 
-const mockReq = { user: { merchant: { id: MERCHANT_ID } } };
+const mockReq: AuthenticatedUser = {
+  id: 1,
+  email: 'test@example.com',
+  role: UserRole.MERCHANT_ADMIN,
+  scope: Scope.MERCHANT_WEB,
+  merchant: { id: MERCHANT_ID },
+};
 
 const mockOneResponse: OneReceiptItemResponseDto = {
   statusCode: 200,

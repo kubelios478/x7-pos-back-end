@@ -10,8 +10,8 @@ import {
   Between,
   In,
   Like,
-  type QueryDeepPartialEntity,
 } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OrderTax } from './entities/order-tax.entity';
 import { Order } from '../orders/entities/order.entity';
 import { CreateOrderTaxDto } from './dto/create-order-tax.dto';
@@ -39,7 +39,7 @@ export class OrderTaxesService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
-  ) {}
+  ) { }
 
   async create(
     dto: CreateOrderTaxDto,

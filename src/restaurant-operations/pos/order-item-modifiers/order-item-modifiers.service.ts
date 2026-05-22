@@ -5,7 +5,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, type QueryDeepPartialEntity } from 'typeorm';
+import { Repository, In } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OrderItemModifier } from './entities/order-item-modifier.entity';
 import { OrderItem } from '../order-item/entities/order-item.entity';
 import { Modifier } from '../../../inventory/products-inventory/modifiers/entities/modifier.entity';
@@ -44,7 +45,7 @@ export class OrderItemModifiersService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
-  ) {}
+  ) { }
 
   async create(
     dto: CreateOrderItemModifierDto,

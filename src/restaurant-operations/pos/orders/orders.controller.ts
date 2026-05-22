@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
+import { RequireActiveShift } from 'src/auth/decorators/active-shift.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
 
 import { Request as ExpressRequest } from 'express';
@@ -61,7 +62,7 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @Controller('orders')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDERS)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -71,6 +72,7 @@ export class OrdersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @RequireActiveShift()
   @ApiOperation({
     summary: 'Create a new order',
     description:
@@ -149,8 +151,12 @@ export class OrdersController {
     @Body() dto: CreateOrderDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderResponseDto> {
-    const merchantId = req.user.merchant?.id;
-    return this.ordersService.create(dto, merchantId);
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.ordersService.create(
+      dto,
+      authenticatedUserMerchantId,
+      req.user?.activeShiftId,
+    );
   }
 
   @Get()

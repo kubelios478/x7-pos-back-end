@@ -6,6 +6,10 @@ import { UpdateTipAllocationDto } from './dto/update-tip-allocation.dto';
 import { TipAllocationRole } from './constants/tip-allocation-role.enum';
 import { TipAllocationRecordStatus } from './constants/tip-allocation-record-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('TipAllocationsController', () => {
   let controller: TipAllocationsController;
   let service: TipAllocationsService;
@@ -18,8 +22,18 @@ describe('TipAllocationsController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: { merchant: { id: 1 } },
+  const mockUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
+    },
+  };
+
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
   const mockCreateDto: CreateTipAllocationDto = {
