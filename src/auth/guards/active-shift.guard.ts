@@ -34,11 +34,22 @@ export class ActiveShiftGuard implements CanActivate {
             );
         }
 
+        const body = request.body || {};
+        const query = request.query || {};
+        const collaboratorId = body.collaboratorId || query.collaboratorId;
+
+        if (!collaboratorId) {
+            throw new PreconditionFailedException(
+                'collaboratorId is required in the request body or query to identify the active cash shift',
+            );
+        }
+
         const activeShift = await this.dataSource
             .getRepository(CashShift)
             .findOne({
                 where: {
                     merchantId: user.merchant.id,
+                    openedBy: collaboratorId,
                     status: CashShiftStatus.OPEN,
                 },
                 select: ['id'],

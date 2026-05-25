@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { CashShiftsService } from './cash-shifts.service';
 import { CreateCashShiftDto } from './dto/create-cash-shift.dto';
 import { CloseCashShiftDto } from './dto/close-cash-shift.dto';
+import { ManualCashTransactionDto } from './dto/manual-cash-transaction.dto';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { CurrentUser } from '../../../auth/decorators/current-user.decorator';
 
@@ -89,6 +90,23 @@ export class CashShiftsController {
         @Body() dto: CloseCashShiftDto,
         @CurrentUser() user: AuthenticatedUser,
     ) {
-        return this.cashShiftsService.closeShift(id, dto, user.merchant.id);
+        return this.cashShiftsService.closeShift(id, dto, user);
+    }
+
+    @ApiOperation({
+        summary: 'Añadir una transacción manual (Ingreso/Egreso)',
+        description: 'Permite registrar retiros (pagos a proveedores) o ingresos extra en la caja abierta. Los retiros no pueden superar el dinero disponible en la caja.',
+    })
+    @ApiResponse({ status: 201, description: 'Transacción registrada exitosamente' })
+    @ApiResponse({ status: 400, description: 'Fondos insuficientes o caja cerrada' })
+    @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+    @Scopes(Scope.ADMIN_PORTAL, Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS, Scope.MERCHANT_CLOVER)
+    @Post(':id/transactions/manual')
+    addManualTransaction(
+        @Param('id', ParseIntPipe) id: number,
+        @Body() dto: ManualCashTransactionDto,
+        @CurrentUser() user: AuthenticatedUser,
+    ) {
+        return this.cashShiftsService.addManualTransaction(id, dto, user.merchant.id);
     }
 }
