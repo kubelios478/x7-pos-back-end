@@ -14,6 +14,7 @@ import { OrderBusinessStatus } from '../constants/order-business-status.enum';
 import { OrderType } from '../constants/order-type.enum';
 import { OrderSource } from '../constants/order-source.enum';
 import { DeliveryStatus } from '../constants/delivery-status.enum';
+import { CreateOrderItemDto } from '../../order-item/dto/create-order-item.dto';
 
 export class CreateOrderDto {
   @ApiProperty({
@@ -131,4 +132,18 @@ export class CreateOrderDto {
   @IsNumber()
   @Min(0)
   tipTotal?: number;
+
+  @ApiProperty({ type: [CreateOrderItemDto] }) // Añade esto
+  @IsNotEmpty()
+  items: CreateOrderItemDto[];
+
+  @ApiProperty()
+  @IsOptional()
+  @IsNumber()
+  merchantTaxRuleIds?: number[];
+
+  @ApiProperty()
+  @IsOptional()
+  @IsNumber()
+  merchantTipRuleId?: number;
 }

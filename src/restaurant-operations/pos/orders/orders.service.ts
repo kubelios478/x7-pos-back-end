@@ -56,6 +56,23 @@ import { formatOnlineOrderToDto } from '../../../commerce/online-ordering-system
 import { OrderType } from './constants/order-type.enum';
 import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OnlineOrderSyncService } from '../../../commerce/online-ordering-system/online-order/online-order-sync.service';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { ShiftsService } from 'src/restaurant-operations/shift/shifts/shifts.service';
+import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
+import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
+import { DataSource } from 'typeorm';
+import { SettlementMethod } from 'src/restaurant-operations/tips/tip-settlements/constants/settlement-method.enum';
+import { ShiftRole } from 'src/restaurant-operations/shift/shifts/constants/shift-role.enum';
+import { MerchantTipRule } from 'src/core/configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
+import { MerchantTaxRule } from 'src/core/configuration/merchant-tax-rule/entity/merchant-tax-rule.entity';
+import { TaxType } from 'src/core/configuration/constants/tax-type.enum';
+import { TipDistributionMethod } from 'src/core/configuration/constants/tip-distribution-method.enum';
+import { CompletePurchaseDto } from './dto/complete-purchase.dto';
+import { Receipt } from 'src/core/billing-transactions/receipts/entities/receipt.entity';
+import { ReceiptsService } from 'src/core/billing-transactions/receipts/receipts.service';
+import { ReceiptType } from 'src/core/billing-transactions/receipts/constants/receipt-type.enum';
+import { User } from 'src/platform-saas/users/entities/user.entity';
+import { SettlementStatus } from 'src/restaurant-operations/tips/tip-settlements/constants/settlement-status.enum';
 
 @Injectable()
 export class OrdersService {
@@ -81,13 +98,28 @@ export class OrdersService {
     @InjectRepository(OrderItemModifier)
     private readonly orderItemModifierRepo: Repository<OrderItemModifier>,
     private readonly onlineOrderSyncService: OnlineOrderSyncService,
-  ) { }
+    @InjectRepository(Product)
+    private readonly productsRepo: Repository<Product>,
+    private readonly shiftService: ShiftsService,
+    @InjectRepository(TipSettlement)
+    private readonly tipSettlementRepo: Repository<TipSettlement>,
+    private readonly dataSource: DataSource,
+    @InjectRepository(MerchantTipRule)
+    private readonly merchantTipRuleRepo: Repository<MerchantTipRule>,
+    @InjectRepository(MerchantTaxRule)
+    private readonly merchantTaxRuleRepo: Repository<MerchantTaxRule>,
+    @InjectRepository(Receipt)
+    private readonly receiptRepo: Repository<Receipt>,
+    private readonly receiptService: ReceiptsService,
+  ) {}
 
   async create(
     dto: CreateOrderDto,
     authenticatedUserMerchantId: number,
     activeShiftId?: number,
   ): Promise<OneOrderResponseDto> {
+    let subtotal = 0;
+    const orderItems: any[] = [];
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
     }
@@ -161,9 +193,6 @@ export class OrdersService {
       throw new ForbiddenException('Customer does not belong to your merchant');
     }
 
-    // Business rule validations
-    // Note: businessStatus and type are validated by class-validator in the DTO
-
     // Validate closedAt if provided
     let closedAt: Date | null = null;
     if (dto.closedAt) {
@@ -172,17 +201,62 @@ export class OrdersService {
         throw new BadRequestException('Invalid closedAt date format');
       }
     }
+    // Validate items
+    for (const item of dto.items) {
+      const product = await this.productsRepo.findOne({
+        where: { id: item.productId, merchantId: merchant.id },
+      });
+
+      if (!product) {
+        throw new BadRequestException(
+          `The Product ${item.productId} does not belong to your merchant`,
+        );
+      }
+
+      // Price, Quantity, Discount and Total Price for each item
+      const price = product.basePrice;
+      const quantity = item.quantity;
+      const discount = item.discount || 0;
+      const totalPrice = roundMoney(price * quantity - discount);
+      subtotal = roundMoney(subtotal + totalPrice);
+
+      // Create OrderItem instances for each item in the order
+      const orderItem = new OrderItem();
+      orderItem.product_id = product.id;
+      orderItem.variant_id = item.variantId ?? null;
+      orderItem.quantity = quantity;
+      orderItem.price = price;
+      orderItem.discount = discount;
+      orderItem.total_price = totalPrice;
+      orderItem.notes = item.notes ?? null;
+
+      orderItems.push(orderItem);
+    }
+    // Generate displayId (daily ticket number)
+    const displayId = await this.generateDailyTicketId(merchant.id);
+    // Find active shift for merchant
+    const activeShift = await this.shiftService.findActiveShiftByMerchant(
+      merchant.id,
+    );
+
+    if (!activeShift) {
+      throw new BadRequestException('No active shift found for this merchant');
+    }
 
     const order = new Order();
     order.merchant_id = dto.merchantId;
     order.table_id = dto.tableId;
     order.collaborator_id = dto.collaboratorId;
     order.subscription_id = dto.subscriptionId;
-    order.status = dto.businessStatus;
     order.type = dto.type;
     order.customer_id = dto.customerId;
     order.closed_at = closedAt;
     order.logical_status = OrderStatus.ACTIVE;
+    order.displayId = displayId;
+    order.shift = activeShift;
+    order.shift_id = activeShift.id;
+    order.status = OrderBusinessStatus.PENDING;
+    order.subtotal = subtotal;
 
     order.order_number = await this.nextOrderNumber(dto.merchantId);
     order.source = dto.source ?? OrderSource.POS;
@@ -194,30 +268,617 @@ export class OrdersService {
     order.delivery_status = dto.deliveryStatus ?? DeliveryStatus.UNASSIGNED;
     order.tax_total = 0;
     order.discount_total = roundMoney(dto.discountTotal ?? 0);
-    order.manual_tip_total = roundMoney(dto.tipTotal ?? 0);
-    order.tip_total = order.manual_tip_total;
     order.paid_total = 0;
-    order.subtotal = 0;
+
+    // For new orders, tip_total is just the manual tip since there are no payments yet
     order.total = computeOrderTotal(
-      0,
+      subtotal,
       order.discount_total,
       order.tax_total,
-      order.tip_total,
+      0,
       order.delivery_fee,
     );
+
+    // Initially, balance_due is the same as total since no payments have been made
+    order.balance_due = order.total;
+    // New orders are not paid yet
+    order.is_paid = false;
+    // Kitchen status starts as pending until items are prepared
+    order.orderItems = orderItems;
+
     applyPaidDerivedFields(order);
     order.kitchen_status = KitchenStatus.PENDING;
     order.ready_at = null;
     order.preparing_at = null;
-    order.shift_id = activeShiftId ?? null;
+    order.cash_shift_id = activeShiftId ?? null;
 
+    // Save order to get an ID for the order items
     const saved = await this.orderRepo.save(order);
+
+    // Now that we have the order ID, we can save the order items with the correct order_id
+    const orderWithRelations = await this.orderRepo.findOne({
+      where: { id: saved.id },
+      relations: ['orderItems', 'orderItems.product', 'orderItems.variant'],
+    });
+
+    if (!orderWithRelations) {
+      throw new NotFoundException('Order not found after creation');
+    }
 
     return {
       statusCode: 201,
       message: 'Order created successfully',
-      data: this.format(saved),
+      data: this.format(orderWithRelations),
     };
+  }
+
+  // Generates a daily ticket ID in the format "Ticket n.º XX" where XX is a zero-padded number that resets each day for each merchant
+  private async generateDailyTicketId(merchantId: number): Promise<string> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const count = await this.orderRepo.count({
+      where: {
+        merchant_id: merchantId,
+        created_at: Between(startOfDay, endOfDay),
+      },
+    });
+
+    const nextNumber = (count + 1).toString().padStart(2, '0');
+    return `Ticket n.º ${nextNumber}`;
+  }
+
+  // Completes the purchase of an order by validating its status, enforcing discount limits based on user role, recalculating totals for data integrity, updating the order status to COMPLETED, and saving the changes to the database. Returns the updated order details in a structured response format.
+  async completePurchase(
+    orderId: number,
+    dto: CompletePurchaseDto,
+    user: any,
+  ): Promise<OneOrderResponseDto> {
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['orderItems'],
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (order.status !== OrderBusinessStatus.PENDING) {
+      throw new BadRequestException('Order must be in pending state');
+    }
+
+    // Enforce discount limits based on user role
+    const maxDiscount = user.role === 'merchant_admin' ? 0.5 : 0.1;
+
+    // Ensure discount does not exceed allowed percentage of subtotal
+    if (order.discount_total > order.subtotal * maxDiscount) {
+      throw new ForbiddenException('Discount exceeds allowed limit');
+    }
+
+    // Recalculate subtotal, taxes, and total to ensure data integrity
+    let subtotal = 0;
+    for (const item of order.orderItems) {
+      subtotal = roundMoney(subtotal + item.total_price);
+    }
+
+    const merchantTaxes = dto.merchantTaxRuleIds?.length
+      ? await this.merchantTaxRuleRepo.find({
+          where: {
+            id: In(dto.merchantTaxRuleIds),
+            merchant_id: order.merchant_id,
+            status: 'active',
+          },
+        })
+      : await this.merchantTaxRuleRepo.find({
+          where: {
+            merchant_id: order.merchant_id,
+            status: 'active',
+          },
+        });
+
+    let taxTotal = 0;
+    const orderTaxes: OrderTax[] = [];
+
+    for (const tax of merchantTaxes) {
+      let taxAmount = 0;
+
+      for (const item of order.orderItems) {
+        let itemTax = 0;
+
+        switch (tax.taxType) {
+          case TaxType.PERCENTAGE:
+            itemTax = roundMoney(item.total_price * tax.rate);
+            break;
+
+          case TaxType.FIXED:
+            itemTax = roundMoney(tax.rate);
+            break;
+
+          default:
+            itemTax = 0;
+        }
+
+        taxAmount = roundMoney(taxAmount + itemTax);
+      }
+
+      taxTotal = roundMoney(taxTotal + taxAmount);
+
+      const orderTax = new OrderTax();
+      orderTax.name = tax.name;
+      orderTax.rate = tax.rate;
+      orderTax.amount = taxAmount;
+
+      orderTaxes.push(orderTax);
+    }
+
+    // Compute final total including subtotal, taxes, discounts, and delivery fee
+    const total = computeOrderTotal(
+      subtotal,
+      order.discount_total,
+      taxTotal,
+      0,
+      order.delivery_fee,
+    );
+
+    order.subtotal = subtotal;
+    order.tax_total = taxTotal;
+    order.total = total;
+    order.balance_due = total;
+    order.status = OrderBusinessStatus.COMPLETED;
+
+    order.merchant_tax_rule_ids = dto.merchantTaxRuleIds;
+
+    applyPaidDerivedFields(order);
+
+    const savedOrder = await this.orderRepo.save(order);
+
+    // Save order taxes with the correct order_id
+    for (const tax of orderTaxes) {
+      tax.order = savedOrder;
+    }
+
+    await this.orderTaxRepo.save(orderTaxes);
+
+    const result = await this.orderRepo.findOne({
+      where: { id: savedOrder.id },
+      relations: [
+        'orderItems',
+        'orderItems.product',
+        'orderItems.variant',
+        'orderTaxes',
+      ],
+    });
+
+    if (!result) {
+      throw new NotFoundException('Order not found after completion');
+    }
+
+    return {
+      statusCode: 200,
+      message: 'Order completed successfully',
+      data: this.format(result),
+    };
+  }
+
+  // Procces Payment for an order, creating OrderPayment records, updating order status to PAID, and handling tip settlements based on the provided tip type and configuration
+  async processPayment(dto: ProcessPaymentDto, merchantId: number, user: User) {
+    const order = await this.orderRepo.findOne({
+      where: { id: dto.orderId },
+      relations: ['merchant', 'orderItems', 'orderItems.product'],
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (Number(order.merchant.id) !== Number(merchantId)) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    if (order.status !== OrderBusinessStatus.COMPLETED) {
+      throw new BadRequestException('Only completed orders can be paid');
+    }
+
+    if (!dto.payments || dto.payments.length === 0) {
+      throw new BadRequestException('At least one payment is required');
+    }
+
+    if (!dto.source) {
+      throw new BadRequestException('Source is required');
+    }
+
+    dto.payments.forEach((p) => {
+      if (p.amount <= 0) {
+        throw new BadRequestException('Payment amount must be greater than 0');
+      }
+
+      if (p.tipAmount && p.tipAmount < 0) {
+        throw new BadRequestException('Tip amount cannot be negative');
+      }
+    });
+
+    // Calculate total payments and compare to order total for validation
+    const totalPayments = roundMoney(
+      dto.payments.reduce((sum, p) => sum + p.amount, 0),
+    );
+
+    const orderTotal = roundMoney(order.total);
+
+    const difference = roundMoney(totalPayments - orderTotal);
+
+    if (Math.abs(difference) > 0.01) {
+      throw new BadRequestException('Payment total does not match order total');
+    }
+
+    // Find active shift for merchant to associate payments and tips
+    const shift = await this.shiftService.findActiveShiftByMerchant(merchantId);
+
+    if (!shift) {
+      throw new BadRequestException('No active shift found');
+    }
+
+    const existingReceipt = await this.receiptRepo.findOne({
+      where: { order_id: order.id },
+    });
+
+    if (existingReceipt) {
+      throw new BadRequestException('Receipt already exists for this order');
+    }
+
+    // Use a transaction to ensure all payment and tip records are created atomically
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      for (const payment of dto.payments) {
+        await queryRunner.manager.save(OrderPayment, {
+          order_id: order.id,
+          amount: payment.amount,
+          method: payment.method,
+          tip_amount: payment.tipAmount || 0,
+          is_refund: false,
+          shift_id: shift.id,
+          source: dto.source,
+        });
+      }
+
+      const merchantTipRule = dto.merchantTipRuleId
+        ? await this.merchantTipRuleRepo.findOne({
+            where: {
+              id: dto.merchantTipRuleId,
+              merchant_id: merchantId,
+              status: 'active',
+            },
+          })
+        : await this.merchantTipRuleRepo.findOne({
+            where: {
+              merchant_id: merchantId,
+              status: 'active',
+            },
+          });
+
+      if (!merchantTipRule) {
+        throw new BadRequestException('No active merchant tip rule found');
+      }
+
+      const totalTip = roundMoney(
+        dto.payments.reduce((sum, p) => sum + (p.tipAmount || 0), 0),
+      );
+
+      order.tip_total = totalTip;
+      order.paid_total = totalPayments;
+
+      applyPaidDerivedFields(order);
+
+      order.status = OrderBusinessStatus.PAID;
+
+      order.merchant_tip_rule_id = merchantTipRule.id;
+
+      await queryRunner.manager.save(order);
+
+      const invoiceNumber =
+        await this.receiptService.generateInvoiceNumber(merchantId);
+
+      const receipt = queryRunner.manager.create(Receipt, {
+        order_id: order.id,
+        merchant_id: merchantId,
+
+        invoice_number: invoiceNumber,
+
+        type: ReceiptType.INVOICE,
+
+        subtotal: order.subtotal,
+        total_tax: order.tax_total,
+        total_discount: order.discount_total,
+        grand_total: order.total,
+
+        fiscal_data: JSON.stringify({
+          taxId: order.merchant_tax_rule_ids,
+          businessName: order.merchant.name,
+          address: order.merchant.address,
+        }),
+
+        currency: dto.currency,
+
+        processed_by_user_id: user.id,
+        processed_by_role: user.role,
+
+        is_locked: true,
+
+        order_snapshot: {
+          orderId: order.id,
+          orderNumber: order.order_number,
+
+          subtotal: order.subtotal,
+          taxTotal: order.tax_total,
+          discountTotal: order.discount_total,
+          total: order.total,
+
+          paidTotal: totalPayments,
+          tipTotal: totalTip,
+
+          items: order.orderItems?.map((item) => ({
+            product_id: item.product_id,
+            productName: item.product?.name,
+
+            quantity: item.quantity,
+            price: item.price,
+
+            totalPrice: item.total_price,
+            notes: item.notes,
+          })),
+
+          payments: dto.payments.map((p) => ({
+            method: p.method,
+            amount: p.amount,
+            tipAmount: p.tipAmount || 0,
+          })),
+        },
+      });
+
+      await queryRunner.manager.save(receipt);
+
+      // Handle tip settlements based on the provided tip type and configuration
+      for (const payment of dto.payments) {
+        const tipAmount = roundMoney(payment.tipAmount || 0);
+
+        if (tipAmount <= 0) {
+          continue;
+        }
+
+        const settlementMethod =
+          payment.method === 'cash'
+            ? SettlementMethod.CASH
+            : SettlementMethod.BANK_TRANSFER;
+
+        switch (merchantTipRule.tipDistributionMethod) {
+          case TipDistributionMethod.INDIVIDUAL: {
+            const collaboratorId = order.collaborator_id;
+
+            if (!collaboratorId) {
+              throw new BadRequestException(
+                'Order has no assigned collaborator',
+              );
+            }
+
+            await queryRunner.manager.save(TipSettlement, {
+              shift_id: shift.id,
+              collaborator_id: collaboratorId,
+              company_id: order.merchant.companyId,
+              total_amount: tipAmount,
+              settlement_method: settlementMethod,
+              type: 'Direct',
+              merchant_id: merchantId,
+              settled_by: null,
+              settled_at: null,
+
+              status: SettlementStatus.PENDING,
+
+              order_id: order.id,
+            });
+
+            break;
+          }
+
+          case TipDistributionMethod.POOL: {
+            const collaborators = await this.shiftService.getShiftCollaborators(
+              shift.id,
+            );
+
+            if (!collaborators || collaborators.length === 0) {
+              throw new BadRequestException('No collaborators found for shift');
+            }
+
+            const baseAmount = tipAmount / collaborators.length;
+
+            const amounts = collaborators.map(() => roundMoney(baseAmount));
+
+            const sum = amounts.reduce((a, b) => a + b, 0);
+            const diff = roundMoney(tipAmount - sum);
+
+            amounts[amounts.length - 1] += diff;
+
+            for (let i = 0; i < collaborators.length; i++) {
+              await queryRunner.manager.save(TipSettlement, {
+                collaborator_id: collaborators[i].id,
+                shift_id: shift.id,
+                total_amount: amounts[i],
+                settlement_method: settlementMethod,
+                type: 'Shared',
+                merchant_id: merchantId,
+                company_id: order.merchant.companyId,
+                settled_by: null,
+                settled_at: null,
+
+                status: SettlementStatus.PENDING,
+
+                order_id: order.id,
+              });
+            }
+
+            break;
+          }
+
+          case TipDistributionMethod.ROLE_BASED: {
+            const allCollaborators =
+              await this.shiftService.getShiftCollaborators(shift.id);
+
+            const STAFF_ROLES = [ShiftRole.WAITER, ShiftRole.BARTENDER];
+
+            const KITCHEN_ROLES = [ShiftRole.COOK];
+
+            const MANAGER_ROLES = [ShiftRole.MANAGER];
+
+            const staff = allCollaborators.filter((c) =>
+              STAFF_ROLES.includes(c.role),
+            );
+
+            const kitchen = allCollaborators.filter((c) =>
+              KITCHEN_ROLES.includes(c.role),
+            );
+
+            const managers = allCollaborators.filter((c) =>
+              MANAGER_ROLES.includes(c.role),
+            );
+
+            const groups = [
+              {
+                collaborators: staff,
+                percentage: Number(merchantTipRule.staffPercentage ?? 0),
+                type: 'Divided-Staff',
+              },
+              {
+                collaborators: kitchen,
+                percentage: Number(merchantTipRule.kitchenPercentage ?? 0),
+                type: 'Divided-Kitchen',
+              },
+              {
+                collaborators: managers,
+                percentage: Number(merchantTipRule.managerPercentage ?? 0),
+                type: 'Divided-Manager',
+              },
+            ];
+
+            // Only groups with collaborators and percentage > 0
+            const activeGroups = groups.filter(
+              (g) => g.collaborators.length > 0 && g.percentage > 0,
+            );
+
+            if (activeGroups.length === 0) {
+              throw new BadRequestException(
+                'No collaborators available for tip distribution',
+              );
+            }
+
+            // Total percentage of active groups
+            const totalPct = activeGroups.reduce(
+              (sum, g) => sum + g.percentage,
+              0,
+            );
+
+            if (totalPct <= 0) {
+              throw new BadRequestException(
+                'Invalid tip distribution percentages',
+              );
+            }
+
+            let distributedTotal = 0;
+
+            for (
+              let groupIndex = 0;
+              groupIndex < activeGroups.length;
+              groupIndex++
+            ) {
+              const group = activeGroups[groupIndex];
+
+              // Normalize percentage
+              const normalizedPct = group.percentage / totalPct;
+
+              let groupAmount = roundMoney(tipAmount * normalizedPct);
+
+              // Adjust last group to avoid rounding issues
+              if (groupIndex === activeGroups.length - 1) {
+                groupAmount = roundMoney(tipAmount - distributedTotal);
+              }
+
+              distributedTotal += groupAmount;
+
+              const baseAmount = groupAmount / group.collaborators.length;
+
+              const amounts = group.collaborators.map(() =>
+                roundMoney(baseAmount),
+              );
+
+              // Adjust collaborator rounding
+              const amountsSum = amounts.reduce((a, b) => a + b, 0);
+
+              const diff = roundMoney(groupAmount - amountsSum);
+
+              amounts[amounts.length - 1] += diff;
+
+              for (let i = 0; i < group.collaborators.length; i++) {
+                await queryRunner.manager.save(TipSettlement, {
+                  collaborator_id: group.collaborators[i].id,
+                  shift_id: shift.id,
+                  total_amount: amounts[i],
+                  settlement_method: settlementMethod,
+                  type: group.type,
+                  merchant_id: merchantId,
+                  company_id: order.merchant.companyId,
+                  settled_at: null,
+                  settled_by: null,
+
+                  status: SettlementStatus.PENDING,
+
+                  order_id: order.id,
+                });
+              }
+            }
+
+            break;
+          }
+          default:
+            throw new BadRequestException('Invalid tip type');
+        }
+      }
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: 'Payment processed successfully',
+        data: {
+          orderId: order.id,
+          invoiceNumber: receipt.invoice_number,
+          orderNumber: order.order_number,
+          status: OrderBusinessStatus.PAID,
+
+          total: order.total,
+          paid: totalPayments,
+          tip: totalTip,
+
+          paymentMethods: dto.payments.map((p) => ({
+            method: p.method,
+            amount: p.amount,
+            tipAmount: p.tipAmount || 0,
+          })),
+
+          merchantId,
+          shiftId: shift.id,
+
+          paidAt: new Date(),
+        },
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findAll(
@@ -279,22 +940,6 @@ export class OrdersService {
         );
       }
       where.collaborator_id = query.collaboratorId;
-    }
-
-    if (query.subscriptionId) {
-      // Validate subscription belongs to user merchant
-      const subscription = await this.subscriptionRepo.findOne({
-        where: { id: query.subscriptionId },
-      });
-      if (
-        !subscription ||
-        subscription.merchant.id !== authenticatedUserMerchantId
-      ) {
-        throw new ForbiddenException(
-          'Subscription does not belong to your merchant',
-        );
-      }
-      where.subscription_id = query.subscriptionId;
     }
 
     if (query.customerId) {
@@ -493,24 +1138,6 @@ export class OrdersService {
         );
       }
       updateData.collaborator_id = dto.collaboratorId;
-    }
-
-    if (dto.subscriptionId !== undefined) {
-      // Validate subscription exists and belongs to user merchant
-      const subscription = await this.subscriptionRepo.findOne({
-        where: { id: dto.subscriptionId },
-      });
-      if (!subscription) {
-        throw new NotFoundException(
-          `Subscription with ID ${dto.subscriptionId} not found`,
-        );
-      }
-      if (subscription.merchant.id !== authenticatedUserMerchantId) {
-        throw new ForbiddenException(
-          'Subscription does not belong to your merchant',
-        );
-      }
-      updateData.subscription_id = dto.subscriptionId;
     }
 
     if (dto.businessStatus !== undefined) {
@@ -731,7 +1358,6 @@ export class OrdersService {
     order.merchant_id = params.merchantId;
     order.table_id = table.id;
     order.collaborator_id = collaborator.id;
-    order.subscription_id = subscription.id;
     order.status = OrderBusinessStatus.PENDING;
     order.type = params.orderType;
     order.customer_id = params.customerId;
@@ -811,7 +1437,6 @@ export class OrdersService {
     order.merchant_id = params.merchantId;
     order.table_id = table.id;
     order.collaborator_id = collaborator.id;
-    order.subscription_id = subscription.id;
     order.status = OrderBusinessStatus.PENDING;
     order.type = params.orderType;
     order.customer_id = params.customerId;

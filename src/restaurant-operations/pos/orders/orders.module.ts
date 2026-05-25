@@ -16,11 +16,21 @@ import { OrderTax } from '../order-taxes/entities/order-tax.entity';
 import { OrderItemModifier } from '../order-item-modifiers/entities/order-item-modifier.entity';
 import { OnlineOrderSyncModule } from '../../../commerce/online-ordering-system/online-order/online-order-sync.module';
 import { AuthModule } from '../../../auth/auth.module';
+import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { ShiftsModule } from 'src/restaurant-operations/shift/shifts/shifts.module';
+import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
+import { MerchantTipRule } from 'src/core/configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
+import { MerchantTaxRule } from 'src/core/configuration/merchant-tax-rule/entity/merchant-tax-rule.entity';
+import { Receipt } from 'src/core/billing-transactions/receipts/entities/receipt.entity';
+import { ReceiptsModule } from 'src/core/billing-transactions/receipts/receipts.module';
 
 @Module({
   imports: [
     AuthModule,
     OnlineOrderSyncModule,
+    ShiftsModule,
+    ReceiptsModule,
     TypeOrmModule.forFeature([
       Order,
       OrderItem,
@@ -34,6 +44,12 @@ import { AuthModule } from '../../../auth/auth.module';
       Customer,
       LoyaltyRewardsRedemption,
       LoyaltyCoupon,
+      Shift,
+      Product,
+      TipSettlement,
+      MerchantTipRule,
+      MerchantTaxRule,
+      Receipt,
     ]),
   ],
   controllers: [OrdersController],

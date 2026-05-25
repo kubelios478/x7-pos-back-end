@@ -43,12 +43,6 @@ export class GetOrdersQueryDto {
   @IsOptional()
   @IsNumber()
   @IsPositive()
-  subscriptionId?: number;
-
-  @ApiPropertyOptional({ example: 1 })
-  @IsOptional()
-  @IsNumber()
-  @IsPositive()
   customerId?: number;
 
   @ApiPropertyOptional({

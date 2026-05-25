@@ -48,6 +48,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { KitchenOrderBusinessStatus } from './constants/kitchen-order-business-status.enum';
+import { CancelKitchenOrderDto } from './dto/cancel-kitchen-order.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
@@ -405,5 +406,22 @@ export class KitchenOrderController {
   ) {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     return this.kitchenOrderService.remove(id, authenticatedUserMerchantId);
+  }
+
+  @Put(':id/cancel')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  async cancelKitchenOrder(
+    @Param('id') id: number,
+    @Body() dto: CancelKitchenOrderDto,
+    @Request() req,
+  ) {
+    return this.kitchenOrderService.cancelKitchenOrder(id, dto, req.user);
   }
 }

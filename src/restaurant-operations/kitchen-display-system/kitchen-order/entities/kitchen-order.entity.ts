@@ -17,6 +17,7 @@ import { KitchenStation } from '../../kitchen-station/entities/kitchen-station.e
 import { KitchenOrderStatus } from '../constants/kitchen-order-status.enum';
 import { KitchenOrderBusinessStatus } from '../constants/kitchen-order-business-status.enum';
 import { KitchenOrderItem } from '../../kitchen-order-item/entities/kitchen-order-item.entity';
+import { KitchenCancellationReason } from '../constants/kitchen-order-cancellation-reason.dto';
 
 @Entity('kitchen_order')
 @Index(['merchant_id'])
@@ -158,4 +159,17 @@ export class KitchenOrder {
 
   @OneToMany(() => KitchenOrderItem, (item) => item.kitchenOrder)
   kitchenOrderItems: KitchenOrderItem[];
+
+  @Column({
+    type: 'enum',
+    enum: KitchenCancellationReason,
+    nullable: true,
+  })
+  cancellation_reason: KitchenCancellationReason;
+
+  @Column({ type: 'int', nullable: true })
+  cancelled_by_user_id: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  cancelled_at: Date;
 }

@@ -405,4 +405,23 @@ export class ReceiptsService {
       data: dataForResponse,
     };
   }
+
+  async generateInvoiceNumber(merchantId: number): Promise<string> {
+    const lastReceipt = await this.receiptRepo.findOne({
+      where: { merchant_id: merchantId },
+      order: { id: 'DESC' },
+    });
+
+    if (!lastReceipt || !lastReceipt.invoice_number) {
+      return 'INV-000001';
+    }
+
+    const lastNumber = lastReceipt.invoice_number;
+
+    const numericPart = Number(lastNumber.replace('INV-', ''));
+
+    const nextNumber = numericPart + 1;
+
+    return `INV-${nextNumber.toString().padStart(6, '0')}`;
+  }
 }

@@ -6,15 +6,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager, Not, Between, Like } from 'typeorm';
+import { Repository, EntityManager, Not, Between } from 'typeorm';
 import { Shift } from './entities/shift.entity';
 import { CreateShiftDto } from './dto/create-shift.dto';
 import { UpdateShiftDto } from './dto/update-shift.dto';
-import {
-  ShiftResponseDto,
-  OneShiftResponseDto,
-  AllShiftsResponseDto,
-} from './dto/shift-response.dto';
+import { OneShiftResponseDto } from './dto/shift-response.dto';
 import { GetShiftsQueryDto } from './dto/get-shifts-query.dto';
 import {
   PaginatedShiftsResponseDto,
@@ -24,6 +20,7 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { ShiftRole } from './constants/shift-role.enum';
 import { ShiftStatus } from './constants/shift-status.enum';
 import { ShiftAssignment } from '../shift-assignments/entities/shift-assignment.entity';
+import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 
 @Injectable()
 export class ShiftsService {
@@ -35,6 +32,8 @@ export class ShiftsService {
     @InjectRepository(ShiftAssignment)
     private readonly shiftAssignmentRepo: Repository<ShiftAssignment>,
     private readonly entityManager: EntityManager,
+    @InjectRepository(Collaborator)
+    private readonly collaboratorRepo: Repository<Collaborator>,
   ) {}
 
   private formatShiftResponse(shift: Shift, merchant?: any): any {
@@ -52,6 +51,27 @@ export class ShiftsService {
           }
         : undefined,
     };
+  }
+
+  async getShiftCollaborators(shiftId: number) {
+    return this.collaboratorRepo.find({
+      where: {
+        shift_id: shiftId,
+      },
+    });
+  }
+
+  async getCollaboratorsByRole(shiftId: number, role: ShiftRole) {
+    const shift = await this.shiftRepo.findOne({
+      where: { id: shiftId },
+      relations: ['collaborators'],
+    });
+
+    if (!shift) {
+      throw new NotFoundException('Shift not found');
+    }
+
+    return shift.collaborators.filter((c) => c.role === role);
   }
 
   async create(
@@ -123,6 +143,15 @@ export class ShiftsService {
       message: 'Shift created successfully',
       data: this.formatShiftResponse(savedShift, merchant),
     };
+  }
+
+  async findActiveShiftByMerchant(merchantId: number): Promise<Shift | null> {
+    return await this.shiftRepo.findOne({
+      where: {
+        merchant: { id: merchantId },
+        status: ShiftStatus.ACTIVE,
+      },
+    });
   }
 
   async findAll(

@@ -11,6 +11,8 @@ import { MerchantTipRule } from './entity/merchant-tip-rule-entity';
 import { QueryMerchantTipRuleDto } from './dto/query-merchant-tip-rule.dto';
 import { PaginatedMerchantTipRuleResponseDto } from './dto/paginated-merchant-tip-rule-response.dto';
 import { UpdateMerchantTipRuleDto } from './dto/update-merchant-tip-rule.dto';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { TipDistributionMethod } from '../constants/tip-distribution-method.enum';
 
 @Injectable()
 export class MerchantTipRuleService {
@@ -20,6 +22,9 @@ export class MerchantTipRuleService {
 
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+
+    @InjectRepository(Merchant)
+    private readonly merchantRepository: Repository<Merchant>,
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -32,6 +37,27 @@ export class MerchantTipRuleService {
       ErrorHandler.invalidId('Company ID must be a positive integer');
     }
 
+    if (dto.tipDistributionMethod === TipDistributionMethod.ROLE_BASED) {
+      if (
+        dto.staffPercentage == null ||
+        dto.kitchenPercentage == null ||
+        dto.managerPercentage == null
+      ) {
+        ErrorHandler.invalidInput(
+          'Role based distribution requires all percentage fields',
+        );
+      }
+
+      const pctTotal =
+        Number(dto.staffPercentage) +
+        Number(dto.kitchenPercentage) +
+        Number(dto.managerPercentage);
+
+      if (Math.abs(pctTotal - 1) > 0.01) {
+        ErrorHandler.invalidInput('Tip distribution percentages must total 1');
+      }
+    }
+
     let company: Company | null = null;
     if (dto.companyId) {
       company = await this.companyRepository.findOne({
@@ -39,6 +65,16 @@ export class MerchantTipRuleService {
       });
       if (!company) {
         ErrorHandler.notFound('Company not found');
+      }
+    }
+
+    let merchant: Merchant | null = null;
+    if (dto.merchantId) {
+      merchant = await this.merchantRepository.findOne({
+        where: { id: dto.merchantId },
+      });
+      if (!merchant) {
+        ErrorHandler.notFound('Merchant not found');
       }
     }
 
@@ -60,6 +96,7 @@ export class MerchantTipRuleService {
 
     const merchantTipRule = this.merchantTipRuleRepository.create({
       company: company,
+      merchant: merchant,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,
       createdBy: createdByUser,
@@ -72,9 +109,11 @@ export class MerchantTipRuleService {
       fixedAmountOptions: dto.fixedAmountOptions,
       allowCustomTip: dto.allowCustomTip,
       maximumTipPercentage: dto.maximumTipPercentage,
-      includeKitchenStaff: dto.includeKitchenStaff,
-      includeManagers: dto.includeManagers,
       autoDistribute: dto.autoDistribute,
+
+      staffPercentage: dto.staffPercentage,
+      kitchenPercentage: dto.kitchenPercentage,
+      managerPercentage: dto.managerPercentage,
     } as Partial<MerchantTipRule>);
 
     const savedMerchantTipRule =
@@ -106,6 +145,7 @@ export class MerchantTipRuleService {
       .leftJoin('merchantTipRule.company', 'company')
       .leftJoin('merchantTipRule.createdBy', 'createdBy')
       .leftJoin('merchantTipRule.updatedBy', 'updatedBy')
+      .leftJoin('merchantTipRule.merchant', 'merchant')
       .select([
         'merchantTipRule',
         'company.id',
@@ -113,6 +153,8 @@ export class MerchantTipRuleService {
         'createdBy.email',
         'updatedBy.id',
         'updatedBy.email',
+        'merchant.id',
+        'merchant.name',
       ]);
     if (status) {
       qb.andWhere('merchantTipRule.status = :status', { status });
@@ -150,7 +192,7 @@ export class MerchantTipRuleService {
 
     const merchantTipRule = await this.merchantTipRuleRepository.findOne({
       where: { id, status: In(['active', 'inactive']) },
-      relations: ['company', 'createdBy', 'updatedBy'],
+      relations: ['company', 'createdBy', 'updatedBy', 'merchant'],
     });
     if (!merchantTipRule) {
       ErrorHandler.merchantTipRuleNotFound();
@@ -171,7 +213,7 @@ export class MerchantTipRuleService {
     }
     const merchantTipRule = await this.merchantTipRuleRepository.findOne({
       where: { id, status: In(['active', 'inactive']) },
-      relations: ['company'],
+      relations: ['company', 'merchant'],
     });
     if (!merchantTipRule) {
       ErrorHandler.merchantTipRuleNotFound();

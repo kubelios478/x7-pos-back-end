@@ -11,6 +11,7 @@ import { MerchantOvertimeRule } from './entity/merchant-overtime-rule.entity';
 import { QueryMerchantOvertimeRuleDto } from './dto/query-merchant-overtime-rule.dto';
 import { PaginatedMerchantOvertimeRuleResponseDto } from './dto/paginated-merchant-overtime-rule-response.dto';
 import { UpdateMerchantOvertimeRuleDto } from './dto/update-merchant-overtime-rule.dto';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Injectable()
 export class MerchantOvertimeRuleService {
@@ -20,6 +21,9 @@ export class MerchantOvertimeRuleService {
 
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+
+    @InjectRepository(Merchant)
+    private readonly merchantRepository: Repository<Merchant>,
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -42,6 +46,16 @@ export class MerchantOvertimeRuleService {
       }
     }
 
+    let merchant: Merchant | null = null;
+    if (dto.merchantId) {
+      merchant = await this.merchantRepository.findOne({
+        where: { id: dto.merchantId },
+      });
+      if (!merchant) {
+        ErrorHandler.notFound('Merchant not found');
+      }
+    }
+
     const createdByUser = await this.userRepository.findOne({
       where: { id: dto.createdById },
     });
@@ -60,6 +74,7 @@ export class MerchantOvertimeRuleService {
 
     const merchantOvertimeRule = this.merchantOvertimeRuleRepository.create({
       company: company,
+      merchant: merchant,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,
       createdBy: createdByUser,
@@ -106,6 +121,7 @@ export class MerchantOvertimeRuleService {
       .leftJoin('merchantOvertimeRule.company', 'company')
       .leftJoin('merchantOvertimeRule.createdBy', 'createdBy')
       .leftJoin('merchantOvertimeRule.updatedBy', 'updatedBy')
+      .leftJoin('merchantOvertimeRule.merchant', 'merchant')
       .select([
         'merchantOvertimeRule',
         'company.id',
@@ -113,6 +129,8 @@ export class MerchantOvertimeRuleService {
         'createdBy.email',
         'updatedBy.id',
         'updatedBy.email',
+        'merchant.id',
+        'merchant.name',
       ]);
     if (status) {
       qb.andWhere('merchantOvertimeRule.status = :status', { status });
@@ -152,7 +170,7 @@ export class MerchantOvertimeRuleService {
     const merchantOvertimeRule =
       await this.merchantOvertimeRuleRepository.findOne({
         where: { id, status: In(['active', 'inactive']) },
-        relations: ['company', 'createdBy', 'updatedBy'],
+        relations: ['company', 'createdBy', 'updatedBy', 'merchant'],
       });
     if (!merchantOvertimeRule) {
       ErrorHandler.merchantOvertimeRuleNotFound();
@@ -174,7 +192,7 @@ export class MerchantOvertimeRuleService {
     const merchantOvertimeRule =
       await this.merchantOvertimeRuleRepository.findOne({
         where: { id, status: In(['active', 'inactive']) },
-        relations: ['company'],
+        relations: ['company', 'merchant'],
       });
     if (!merchantOvertimeRule) {
       ErrorHandler.merchantOvertimeRuleNotFound();

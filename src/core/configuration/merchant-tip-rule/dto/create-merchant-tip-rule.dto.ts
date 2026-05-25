@@ -10,6 +10,7 @@ import {
   IsNotEmpty,
   IsIn,
   IsDate,
+  IsOptional,
 } from 'class-validator';
 import { TipCalculationMethod } from '../../constants/tip-calculation-method.enum';
 import { TipDistributionMethod } from '../../constants/tip-distribution-method.enum';
@@ -22,6 +23,13 @@ export class CreateMerchantTipRuleDto {
   })
   @IsInt()
   companyId: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'Identifier of the related merchant',
+  })
+  @IsInt()
+  merchantId: number;
 
   @ApiProperty({
     example: '26-09-2023',
@@ -90,7 +98,7 @@ export class CreateMerchantTipRuleDto {
   tipDistributionMethod: TipDistributionMethod;
 
   @ApiProperty({
-    example: [10, 15, 20],
+    example: [0.08, 0.02, 0.01],
     description: 'Suggested tip percentages for customers to choose from',
   })
   @IsArray()
@@ -125,22 +133,6 @@ export class CreateMerchantTipRuleDto {
   maximumTipPercentage: number;
 
   @ApiProperty({
-    example: false,
-    description: 'Whether to include kitchen staff in tip distribution',
-  })
-  @IsBoolean()
-  @IsNotEmpty()
-  includeKitchenStaff: boolean;
-
-  @ApiProperty({
-    example: true,
-    description: 'Whether to include managers in tip distribution',
-  })
-  @IsBoolean()
-  @IsNotEmpty()
-  includeManagers: boolean;
-
-  @ApiProperty({
     example: true,
     description:
       'Whether to automatically distribute tips to staff based on the defined rules',
@@ -148,4 +140,16 @@ export class CreateMerchantTipRuleDto {
   @IsBoolean()
   @IsNotEmpty()
   autoDistribute: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  staffPercentage?: number;
+
+  @IsOptional()
+  @IsNumber()
+  kitchenPercentage?: number;
+
+  @IsOptional()
+  @IsNumber()
+  managerPercentage?: number;
 }

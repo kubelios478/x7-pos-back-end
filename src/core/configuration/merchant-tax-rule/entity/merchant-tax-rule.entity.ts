@@ -31,7 +31,12 @@ export class MerchantTaxRule extends Configuration {
     example: 19,
     description: 'Rate of the tax',
   })
-  @Column({ type: 'int', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 5,
+    scale: 4,
+    nullable: true,
+  })
   rate: number;
 
   @ApiProperty({

@@ -5,6 +5,7 @@ import { MerchantTipRule } from '../entity/merchant-tip-rule-entity';
 import { Configuration } from '../../entity/configuration-entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 export class MerchantTipRuleResponseDto extends Configuration {
   @ApiProperty({
     example: 'default',
@@ -17,6 +18,12 @@ export class MerchantTipRuleResponseDto extends Configuration {
     description: 'id of the company related to the merchant tip rule',
   })
   company: Company;
+
+  @ApiProperty({
+    example: 'name',
+    description: 'id of the merchant related to the merchant tip rule',
+  })
+  merchant: Merchant;
 
   @ApiProperty({
     example: '26-09-2023',
@@ -85,18 +92,6 @@ export class MerchantTipRuleResponseDto extends Configuration {
     description: 'Maximum tip percentage allowed for customers',
   })
   maximumTipPercentage: number;
-
-  @ApiProperty({
-    example: true,
-    description: 'Whether to include kitchen staff in tip distribution',
-  })
-  includeKitchenStaff: boolean;
-
-  @ApiProperty({
-    example: true,
-    description: 'Whether to include managers in tip distribution',
-  })
-  includeManagers: boolean;
 
   @ApiProperty({
     example: true,

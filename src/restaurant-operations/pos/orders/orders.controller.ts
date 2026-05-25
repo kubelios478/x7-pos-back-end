@@ -5,6 +5,8 @@ import {
   Body,
   Param,
   Delete,
+  Patch,
+  Req,
   UseGuards,
   Query,
   Request,
@@ -48,6 +50,8 @@ import {
 import { GetOrdersQueryDto, OrderSortBy } from './dto/get-orders-query.dto';
 import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
+import { CompletePurchaseDto } from './dto/complete-purchase.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
@@ -557,5 +561,31 @@ export class OrdersController {
   ): Promise<OneOrderResponseDto> {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     return this.ordersService.remove(id, authenticatedUserMerchantId);
+  }
+
+  @Patch(':id/complete')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  async completePurchase(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CompletePurchaseDto,
+    @Req() req: any,
+  ) {
+    return this.ordersService.completePurchase(id, dto, req.user);
+  }
+
+  @Post('payment')
+  async processPayment(@Body() dto: ProcessPaymentDto, @Req() req) {
+    return this.ordersService.processPayment(
+      dto,
+      req.user.merchant.id,
+      req.user,
+    );
   }
 }

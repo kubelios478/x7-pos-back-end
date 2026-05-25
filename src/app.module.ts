@@ -143,6 +143,9 @@ import { DeliveryFee } from './commerce/delivery-system/delivery-fee/entity/deli
 import { DeliveryDriver } from './commerce/delivery-system/delivery-driver/entity/delivery-driver.entity';
 import { DeliveryAssignment } from './commerce/delivery-system/delivery-assignment/entity/delivery-assignment.entity';
 import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/entity/delivery-tracking.entity';
+import { MerchantTaxRuleModule } from './core/configuration/merchant-tax-rule/merchant-tax-rule.module';
+import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
+import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-analytics/modifier-analytics.module';
 
 @Module({
   imports: [
@@ -304,6 +307,9 @@ import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/e
     DeliveryDriverModule,
     DeliveryTrackingModule,
     DeliveryAssignmentModule,
+    MerchantTaxRuleModule,
+    KitchenAnalyticsModule,
+    ModifierAnalyticsModule,
   ],
 })
 export class AppModule { }

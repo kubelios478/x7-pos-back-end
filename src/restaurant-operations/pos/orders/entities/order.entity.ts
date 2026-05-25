@@ -33,6 +33,8 @@ import { OrderTax } from '../../order-taxes/entities/order-tax.entity';
 import { OrderSource } from '../constants/order-source.enum';
 import { DeliveryStatus } from '../constants/delivery-status.enum';
 import { KitchenStatus } from '../constants/kitchen-status.enum';
+import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
+import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
 
 @Entity('orders') 
 @Index(['merchant_id', 'status', 'created_at'])
@@ -81,11 +83,7 @@ export class Order {
   @JoinColumn({ name: 'collaborator_id' })
   collaborator: Collaborator;
 
-  @ApiProperty({
-    example: 1,
-    description: 'Identifier of the Subscription associated with the Order',
-  })
-  @Column({ name: 'subscription_id' })
+  @Column({ nullable: true })
   subscription_id: number;
 
   @ManyToOne(
@@ -102,12 +100,12 @@ export class Order {
     example: 1,
     description: 'Identifier of the Cash Shift associated with the Order',
   })
-  @Column({ type: 'int', name: 'shift_id', nullable: true })
-  shift_id: number | null;
+  @Column({ type: 'int', name: 'cash_shift_id', nullable: true })
+  cash_shift_id: number | null;
 
   @ManyToOne(() => CashShift, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'shift_id' })
-  shift: CashShift;
+  @JoinColumn({ name: 'cash_shift_id' })
+  cash_shift: CashShift;
 
   @ApiProperty({
     example: OrderType.DINE_IN,
@@ -253,9 +251,6 @@ export class Order {
   @Column({ type: 'timestamp', name: 'preparing_at', nullable: true })
   preparing_at: Date | null;
 
-  @OneToMany(() => OrderItem, (item) => item.order)
-  orderItems: OrderItem[];
-
   @OneToMany(() => KitchenOrder, (ko) => ko.order)
   kitchenOrders: KitchenOrder[];
 
@@ -265,7 +260,7 @@ export class Order {
   @OneToMany(() => OrderPayment, (payment) => payment.order)
   orderPayments: OrderPayment[];
 
-  @OneToMany(() => OrderTax, (tax) => tax.order)
+  @OneToMany(() => OrderTax, (tax) => tax.order, { cascade: true })
   orderTaxes: OrderTax[];
 
   @ApiProperty({
@@ -322,4 +317,26 @@ export class Order {
 
   @OneToMany(() => LoyaltyCoupon, (loyaltyCoupon) => loyaltyCoupon.order)
   loyaltyCoupons: LoyaltyCoupon[];
+
+  @Column({ name: 'shift_id', nullable: true })
+  shift_id: number;
+
+  @Column({ name: 'display_id', nullable: true })
+  displayId: string;
+
+  @ManyToOne(() => Shift, { nullable: true })
+  @JoinColumn({ name: 'shift_id' })
+  shift: Shift;
+
+  @OneToMany(() => OrderItem, (item) => item.order, { cascade: true })
+  orderItems: OrderItem[];
+
+  @Column({ nullable: true })
+  merchant_tip_rule_id?: number;
+
+  @Column('int', { array: true, nullable: true })
+  merchant_tax_rule_ids?: number[];
+
+  @OneToMany(() => TipSettlement, (tipSettlement) => tipSettlement.order)
+  tipSettlements: TipSettlement[];
 }

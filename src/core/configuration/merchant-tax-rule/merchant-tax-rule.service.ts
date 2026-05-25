@@ -11,6 +11,7 @@ import { OneMerchantTaxRuleResponseDto } from './dto/merchant-tax-rule-response.
 import { QueryMerchantTaxRuleDto } from './dto/query-merchant-tax-rule.dto';
 import { PaginatedMerchantTaxRuleResponseDto } from './dto/paginated-merchant-tax-rule-response.dto';
 import { UpdateMerchantTaxRuleDto } from './dto/update-merchant-tax-rule.dto';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Injectable()
 export class MerchantTaxRuleService {
@@ -20,6 +21,9 @@ export class MerchantTaxRuleService {
 
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
+
+    @InjectRepository(Merchant)
+    private readonly merchantRepository: Repository<Merchant>,
 
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -42,6 +46,16 @@ export class MerchantTaxRuleService {
       }
     }
 
+    let merchant: Merchant | null = null;
+    if (dto.merchantId) {
+      merchant = await this.merchantRepository.findOne({
+        where: { id: dto.merchantId },
+      });
+      if (!merchant) {
+        ErrorHandler.notFound('Merchant not found');
+      }
+    }
+
     const createdByUser = await this.userRepository.findOne({
       where: { id: dto.createdById },
     });
@@ -60,6 +74,7 @@ export class MerchantTaxRuleService {
 
     const merchantTaxRule = this.merchantTaxRuleRepository.create({
       company: company,
+      merchant: merchant,
       createdAt: dto.createdAt,
       updatedAt: dto.updatedAt,
       createdBy: createdByUser,
@@ -104,6 +119,7 @@ export class MerchantTaxRuleService {
       .leftJoin('merchantTaxRule.company', 'company')
       .leftJoin('merchantTaxRule.createdBy', 'createdBy')
       .leftJoin('merchantTaxRule.updatedBy', 'updatedBy')
+      .leftJoin('merchantTaxRule.merchant', 'merchant')
       .select([
         'merchantTaxRule',
         'company.id',
@@ -111,6 +127,8 @@ export class MerchantTaxRuleService {
         'createdBy.email',
         'updatedBy.id',
         'updatedBy.email',
+        'merchant.id',
+        'merchant.name',
       ]);
     if (status) {
       qb.andWhere('merchantTaxRule.status = :status', { status });
@@ -149,7 +167,7 @@ export class MerchantTaxRuleService {
 
     const merchantTaxRule = await this.merchantTaxRuleRepository.findOne({
       where: { id, status: In(['active', 'inactive']) },
-      relations: ['company', 'createdBy', 'updatedBy'],
+      relations: ['company', 'createdBy', 'updatedBy', 'merchant'],
     });
     if (!merchantTaxRule) {
       ErrorHandler.merchantTaxRuleNotFound();
@@ -170,7 +188,7 @@ export class MerchantTaxRuleService {
     }
     const merchantTaxRule = await this.merchantTaxRuleRepository.findOne({
       where: { id, status: In(['active', 'inactive']) },
-      relations: ['company'],
+      relations: ['company', 'merchant'],
     });
     if (!merchantTaxRule) {
       ErrorHandler.merchantTaxRuleNotFound();

@@ -5,6 +5,7 @@ import { MerchantTaxRule } from '../entity/merchant-tax-rule.entity';
 import { Configuration } from '../../entity/configuration-entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 export class MerchantTaxRuleResponseDto extends Configuration {
   @ApiProperty({
@@ -18,6 +19,12 @@ export class MerchantTaxRuleResponseDto extends Configuration {
     description: 'id of the company related to the merchant tax rule',
   })
   company: Company;
+
+  @ApiProperty({
+    example: 'name',
+    description: 'id of the merchant related to the merchant tax rule',
+  })
+  merchant: Merchant;
 
   @ApiProperty({
     example: '26-09-2023',
@@ -62,7 +69,7 @@ export class MerchantTaxRuleResponseDto extends Configuration {
   taxType: string;
 
   @ApiProperty({
-    example: 19,
+    example: 0.19,
     description: 'Rate of the tax',
   })
   rate: number;

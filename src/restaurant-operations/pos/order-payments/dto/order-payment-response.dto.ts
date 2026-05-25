@@ -28,6 +28,12 @@ export class OrderPaymentResponseDto {
 
   @ApiProperty()
   createdAt: Date;
+
+  @ApiProperty()
+  source: string;
+
+  @ApiProperty()
+  shift_id: number;
 }
 
 export class OneOrderPaymentResponseDto extends SuccessResponse {
