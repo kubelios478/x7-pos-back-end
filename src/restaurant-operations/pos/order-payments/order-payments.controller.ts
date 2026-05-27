@@ -84,7 +84,11 @@ export class OrderPaymentsController {
     @Body() dto: CreateOrderPaymentDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderPaymentResponseDto> {
-    return this.orderPaymentsService.create(dto, req.user?.merchant?.id);
+    return this.orderPaymentsService.create(
+      dto,
+      req.user?.merchant?.id,
+      req.user?.id,
+    );
   }
 
   @Get()

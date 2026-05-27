@@ -27,6 +27,16 @@ export class CreateOrderPaymentDto {
   @MaxLength(50)
   method: string;
 
+  @ApiPropertyOptional({
+    example: 123,
+    description:
+      'Required when method is loyalty. A server-side lock id created via POST /loyalty-points-redemption/locks.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  loyaltyPointsLockId?: number;
+
   @ApiPropertyOptional({ example: 'stripe' })
   @IsOptional()
   @IsString()

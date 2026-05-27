@@ -61,7 +61,11 @@ export class RecipesController {
     description:
       'Returns all recipes for the finished product, including lines and cached theoreticalCostCached.',
   })
-  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiParam({
+    name: 'productId',
+    type: Number,
+    description: 'Finished product ID',
+  })
   @ApiOkResponse({ type: ProductRecipe, isArray: true })
   findAll(
     @CurrentUser() user: AuthenticatedUser,
@@ -84,7 +88,11 @@ export class RecipesController {
     description:
       'Use POST for the first recipe. Lines use supplyProductId/supplyVariantId and quantityPerSoldUnit per one sold unit. Deduction runs when the order is fully paid.',
   })
-  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiParam({
+    name: 'productId',
+    type: Number,
+    description: 'Finished product ID',
+  })
   @ApiBody({ type: UpsertProductRecipeDto })
   @ApiCreatedResponse({ type: ProductRecipe })
   create(
@@ -106,9 +114,14 @@ export class RecipesController {
   )
   @ApiOperation({
     summary: 'Replace recipe lines (atomic)',
-    description: 'Replaces all lines for an existing recipe. Requires recipeId from GET.',
+    description:
+      'Replaces all lines for an existing recipe. Requires recipeId from GET.',
   })
-  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiParam({
+    name: 'productId',
+    type: Number,
+    description: 'Finished product ID',
+  })
   @ApiParam({ name: 'recipeId', type: Number, description: 'Recipe ID' })
   @ApiBody({ type: UpsertProductRecipeDto })
   @ApiOkResponse({ type: ProductRecipe })
@@ -137,7 +150,11 @@ export class RecipesController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({ summary: 'Delete a recipe' })
-  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiParam({
+    name: 'productId',
+    type: Number,
+    description: 'Finished product ID',
+  })
   @ApiParam({ name: 'recipeId', type: Number, description: 'Recipe ID' })
   @ApiNoContentResponse({ description: 'Recipe deleted' })
   async remove(

@@ -28,6 +28,10 @@ import { PaginatedOrderPaymentResponseDto } from './dto/paginated-order-payment-
 import { OrderStatus } from '../orders/constants/order-status.enum';
 import { OrdersService } from '../orders/orders.service';
 import { roundMoney } from '../orders/order-aggregation.util';
+import {
+  LoyaltyPointsRedemptionService,
+  PAYMENT_METHOD_LOYALTY,
+} from 'src/growth/loyalty/loyalty-points-redemption/loyalty-points-redemption.service';
 
 const ORDER_PAYMENT_RELATIONS = ['order', 'order.merchant'] as const;
 
@@ -40,11 +44,13 @@ export class OrderPaymentsService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
+    private readonly loyaltyPointsRedemptionService: LoyaltyPointsRedemptionService,
   ) {}
 
   async create(
     dto: CreateOrderPaymentDto,
     authenticatedUserMerchantId: number,
+    cashierUserId?: number,
   ): Promise<OneOrderPaymentResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
@@ -79,10 +85,21 @@ export class OrderPaymentsService {
       );
     }
 
+    const isLoyalty = dto.method === PAYMENT_METHOD_LOYALTY;
+    if (isLoyalty && !cashierUserId) {
+      throw new ForbiddenException('Missing cashier identity');
+    }
+
+    if (isLoyalty && !dto.loyaltyPointsLockId) {
+      throw new BadRequestException(
+        'loyaltyPointsLockId is required when method is loyalty',
+      );
+    }
+
     const row = new OrderPayment();
     row.order_id = dto.orderId;
     row.amount = roundMoney(dto.amount);
-    row.method = dto.method;
+    row.method = isLoyalty ? PAYMENT_METHOD_LOYALTY : dto.method;
     row.provider = dto.provider ?? null;
     row.reference = dto.reference ?? null;
     row.tip_amount = roundMoney(tip);
@@ -97,6 +114,18 @@ export class OrderPaymentsService {
     let becameUnpaid = false;
     try {
       saved = await queryRunner.manager.save(OrderPayment, row);
+
+      if (isLoyalty) {
+        await this.loyaltyPointsRedemptionService.consumeLockWithManager({
+          manager: queryRunner.manager,
+          lockId: dto.loyaltyPointsLockId!,
+          authenticatedUserMerchantId,
+          cashierUserId: cashierUserId!,
+          orderId: dto.orderId,
+          paymentId: saved.id,
+        });
+      }
+
       const syncResult =
         await this.ordersService.syncOrderAggregatesWithManager(
           queryRunner.manager,
