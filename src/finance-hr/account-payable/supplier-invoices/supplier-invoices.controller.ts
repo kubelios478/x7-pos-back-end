@@ -71,6 +71,8 @@ export class SupplierInvoicesController {
   @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)
   @ApiOperation({
     summary: 'Receive supplier invoice into stock (WACC + PURCHASE_ENTRY)',
+    description:
+      'Idempotent per invoice. Invoice lines must include product_id and variant_id. Uses locationId from the body or merchant defaultSalesStockLocationId. Updates weighted average cost and may trigger inventory stock alerts.',
   })
   @ApiParam({ name: 'id', type: Number })
   @ApiBody({ type: ReceiveSupplierInventoryDto })

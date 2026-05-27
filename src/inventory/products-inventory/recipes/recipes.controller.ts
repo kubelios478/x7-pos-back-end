@@ -13,11 +13,13 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiCreatedResponse,
   ApiExtraModels,
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -37,7 +39,7 @@ import { UpsertProductRecipeDto } from './dto/upsert-product-recipe.dto';
 import { ProductRecipe } from './entities/product-recipe.entity';
 
 @ApiTags('recipes')
-@ApiExtraModels(ErrorResponse)
+@ApiExtraModels(ErrorResponse, UpsertProductRecipeDto)
 @ApiBearerAuth()
 @Controller('products/:productId/recipes')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PRODUCT_MANAGEMENT)
@@ -54,7 +56,12 @@ export class RecipesController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'List product recipes (BOM) for the merchant' })
+  @ApiOperation({
+    summary: 'List product recipes (BOM) for the merchant',
+    description:
+      'Returns all recipes for the finished product, including lines and cached theoreticalCostCached.',
+  })
+  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
   @ApiOkResponse({ type: ProductRecipe, isArray: true })
   findAll(
     @CurrentUser() user: AuthenticatedUser,
@@ -72,7 +79,13 @@ export class RecipesController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Create a recipe with lines (atomic)' })
+  @ApiOperation({
+    summary: 'Create a recipe with lines (atomic)',
+    description:
+      'Use POST for the first recipe. Lines use supplyProductId/supplyVariantId and quantityPerSoldUnit per one sold unit. Deduction runs when the order is fully paid.',
+  })
+  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiBody({ type: UpsertProductRecipeDto })
   @ApiCreatedResponse({ type: ProductRecipe })
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -91,7 +104,13 @@ export class RecipesController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Replace recipe lines (atomic)' })
+  @ApiOperation({
+    summary: 'Replace recipe lines (atomic)',
+    description: 'Replaces all lines for an existing recipe. Requires recipeId from GET.',
+  })
+  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiParam({ name: 'recipeId', type: Number, description: 'Recipe ID' })
+  @ApiBody({ type: UpsertProductRecipeDto })
   @ApiOkResponse({ type: ProductRecipe })
   update(
     @CurrentUser() user: AuthenticatedUser,
@@ -118,6 +137,8 @@ export class RecipesController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({ summary: 'Delete a recipe' })
+  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiParam({ name: 'recipeId', type: Number, description: 'Recipe ID' })
   @ApiNoContentResponse({ description: 'Recipe deleted' })
   async remove(
     @CurrentUser() user: AuthenticatedUser,

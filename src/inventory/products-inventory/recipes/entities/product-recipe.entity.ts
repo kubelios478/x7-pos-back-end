@@ -48,6 +48,11 @@ export class ProductRecipe {
   @JoinColumn({ name: 'finished_variant_id' })
   finishedVariant: Variant | null;
 
+  @ApiProperty({
+    type: () => ProductRecipeLine,
+    isArray: true,
+    description: 'Bill of materials lines for this recipe',
+  })
   @OneToMany(() => ProductRecipeLine, (line) => line.recipe, { cascade: true })
   lines: ProductRecipeLine[];
 

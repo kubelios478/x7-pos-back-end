@@ -31,6 +31,11 @@ export class CreateLoyaltyProgramDto {
   @IsOptional()
   description?: string;
 
+  @ApiProperty({
+    example: true,
+    description: 'Whether the loyalty program is active',
+    required: false,
+  })
   @IsBoolean()
   @IsOptional()
   is_active?: boolean;

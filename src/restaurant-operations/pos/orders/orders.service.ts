@@ -979,6 +979,8 @@ export class OrdersService {
       createdAt: row.created_at,
       closedAt: row.closed_at,
       updatedAt: row.updated_at,
+      inventoryConsumedAt: row.inventory_consumed_at,
+      loyaltyPointsAwardedAt: row.loyalty_points_awarded_at,
     };
 
     if (row.orderItems?.length) {

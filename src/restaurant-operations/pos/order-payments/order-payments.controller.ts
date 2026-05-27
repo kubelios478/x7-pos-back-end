@@ -69,7 +69,11 @@ export class OrderPaymentsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Create an order payment' })
+  @ApiOperation({
+    summary: 'Create an order payment',
+    description:
+      'When the order becomes fully paid (balanceDue = 0, including tips), triggers async inventory deduction (recipes), loyalty accrual (if customerId and active program), and stock level evaluation. Include tipAmount in the payment or pay the remaining balanceDue.',
+  })
   @ApiBody({ type: CreateOrderPaymentDto })
   @ApiCreatedResponse({ type: OneOrderPaymentResponseDto })
   @ApiBadRequestResponse({ type: ErrorResponse })
