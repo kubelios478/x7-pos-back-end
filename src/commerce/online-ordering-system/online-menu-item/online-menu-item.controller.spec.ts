@@ -7,6 +7,8 @@ import { GetOnlineMenuItemQueryDto } from './dto/get-online-menu-item-query.dto'
 import { OneOnlineMenuItemResponseDto } from './dto/online-menu-item-response.dto';
 import { PaginatedOnlineMenuItemResponseDto } from './dto/paginated-online-menu-item-response.dto';
 import { OnlineMenuItemStatus } from './constants/online-menu-item-status.enum';
+import { UserRole } from '../../../platform-saas/users/constants/role.enum';
+import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { Request as ExpressRequest } from 'express';
 
@@ -27,6 +29,8 @@ describe('OnlineMenuItemController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },

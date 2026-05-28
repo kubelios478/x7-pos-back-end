@@ -7,6 +7,10 @@ import { MarketingCouponType } from './constants/marketing-coupon-type.enum';
 import { MarketingCouponStatus } from './constants/marketing-coupon-status.enum';
 import { MarketingCouponAppliesTo } from './constants/marketing-coupon-applies-to.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('MarketingCouponsController', () => {
   let controller: MarketingCouponsController;
   let service: MarketingCouponsService;
@@ -19,11 +23,13 @@ describe('MarketingCouponsController', () => {
     remove: jest.fn(),
   };
 
-  const mockRequest = {
-    user: {
-      merchant: {
-        id: 1,
-      },
+  const mockRequest: AuthenticatedUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: {
+      id: 1,
     },
   };
 

@@ -17,6 +17,7 @@ import { ShiftAssignment } from 'src/restaurant-operations/shift/shift-assignmen
 import { TableAssignment } from 'src/restaurant-operations/dining-system/table-assignments/entities/table-assignment.entity';
 import { CashDrawer } from 'src/restaurant-operations/cashdrawer/cash-drawers/entities/cash-drawer.entity';
 import { Order } from '../../../../restaurant-operations/pos/orders/entities/order.entity';
+import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 
 @Entity('collaborator')
 @Index(['user_id'], { unique: true })
@@ -144,4 +145,11 @@ export class Collaborator {
   })
   @OneToMany(() => Order, (order) => order.collaborator)
   orders: Order[];
+
+  @Column({ nullable: true })
+  shift_id: number;
+
+  @ManyToOne(() => Shift, (shift) => shift.collaborators)
+  @JoinColumn({ name: 'shift_id' })
+  shift: Shift;
 }

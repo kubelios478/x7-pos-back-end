@@ -9,12 +9,15 @@ import { Order } from '../orders/entities/order.entity';
 import { OrdersModule } from '../orders/orders.module';
 import { LoyaltyPointsRedemptionModule } from 'src/growth/loyalty/loyalty-points-redemption/loyalty-points-redemption.module';
 
+import { CashShiftsModule } from '../../cashdrawer/cash-shifts/cash-shifts.module';
+
 @Module({
   imports: [
     AuthModule,
     TypeOrmModule.forFeature([OrderPayment, Order]),
     OrdersModule,
     LoyaltyPointsRedemptionModule,
+    CashShiftsModule,
   ],
   controllers: [OrderPaymentsController],
   providers: [OrderPaymentsService],

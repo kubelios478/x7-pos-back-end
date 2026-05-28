@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { TipSettlement } from './entities/tip-settlement.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 import { Shift } from '../../shift/shifts/entities/shift.entity';
@@ -22,6 +22,11 @@ import {
   OneTipSettlementResponseDto,
   PaginatedTipSettlementResponseDto,
 } from './dto/tip-settlement-response.dto';
+import { QueryTipSettlementReportDto } from './dto/query-tip-settlement-report.dto';
+import { SettlementMethod } from './constants/settlement-method.enum';
+import { SettlementStatus } from './constants/settlement-status.enum';
+import { LiquidatedTipSettlementsDto } from './dto/liquidated-tip-settlement.dto';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 
 @Injectable()
 export class TipSettlementsService {
@@ -414,6 +419,85 @@ export class TipSettlementsService {
         : null,
       settledAt: settlement.settled_at,
       createdAt: settlement.created_at,
+    };
+  }
+
+  async getSettlementReport(query: QueryTipSettlementReportDto, user: User) {
+    if (!user.merchant) {
+      throw new ForbiddenException('Merchant not found');
+    }
+    const qb = this.tipSettlementRepository
+      .createQueryBuilder('tipSettlement')
+      .where('tipSettlement.merchant_id = :merchantId', {
+        merchantId: user.merchant.id,
+      });
+
+    if (query.collaboratorId) {
+      qb.andWhere('tipSettlement.collaborator_id = :collaboratorId', {
+        collaboratorId: query.collaboratorId,
+      });
+    }
+
+    if (query.shiftId) {
+      qb.andWhere('tipSettlement.shift_id = :shiftId', {
+        shiftId: query.shiftId,
+      });
+    }
+
+    if (query.status) {
+      qb.andWhere('tipSettlement.status = :status', {
+        status: query.status,
+      });
+    }
+
+    const settlements = await qb.getMany();
+
+    const cashTips = settlements
+      .filter((s) => s.settlement_method === SettlementMethod.CASH)
+      .reduce((sum, s) => sum + Number(s.total_amount), 0);
+
+    const cardTips = settlements
+      .filter((s) => s.settlement_method === SettlementMethod.BANK_TRANSFER)
+      .reduce((sum, s) => sum + Number(s.total_amount), 0);
+
+    return {
+      totalCashTips: cashTips,
+      totalCardTips: cardTips,
+      totalTips: cashTips + cardTips,
+      settlements,
+    };
+  }
+
+  async liquidatedTipSettlements(dto: LiquidatedTipSettlementsDto, user: User) {
+    if (user.role !== UserRole.MERCHANT_ADMIN) {
+      throw new ForbiddenException('Only merchant admins can settle tips');
+    }
+
+    const settlements = await this.tipSettlementRepository.find({
+      where: {
+        id: In(dto.settlementIds),
+        merchant_id: user.merchant!.id,
+      },
+    });
+
+    if (!settlements.length) {
+      throw new NotFoundException('No settlements found');
+    }
+
+    for (const settlement of settlements) {
+      settlement.status = SettlementStatus.LIQUIDATED;
+
+      settlement.settled_at = new Date();
+
+      settlement.settled_by = user.id;
+    }
+
+    await this.tipSettlementRepository.save(settlements);
+
+    return {
+      success: true,
+      message: 'Tip settlements liquidated successfully',
+      data: settlements,
     };
   }
 }

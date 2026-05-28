@@ -10,6 +10,7 @@ import {
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from 'src/platform-saas/users/entities/user.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Entity({ name: 'configuration' })
 @TableInheritance({ column: { type: 'varchar', name: 'type' } })
@@ -20,6 +21,13 @@ export class Configuration {
   @ManyToOne(() => Company, (company) => company.configurations)
   @JoinColumn({ name: 'company_id' })
   company: Company;
+
+  @Column()
+  merchant_id: number;
+
+  @ManyToOne(() => Merchant, { nullable: false })
+  @JoinColumn({ name: 'merchant_id' })
+  merchant: Merchant;
 
   @ApiProperty({
     example: '26-09-2023',

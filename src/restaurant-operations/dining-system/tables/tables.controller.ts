@@ -52,7 +52,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.TABLES)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class TablesController {
-  constructor(private readonly tableService: TablesService) {}
+  constructor(private readonly tableService: TablesService) { }
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)

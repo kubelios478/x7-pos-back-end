@@ -12,6 +12,8 @@ import { OrderStatus } from '../orders/constants/order-status.enum';
 import { OrderBusinessStatus } from '../orders/constants/order-business-status.enum';
 import { OrderType } from '../orders/constants/order-type.enum';
 import { CreateOrderPaymentDto } from './dto/create-order-payment.dto';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
+import { LoyaltyPointsRedemptionService } from 'src/growth/loyalty/loyalty-points-redemption/loyalty-points-redemption.service';
 
 describe('OrderPaymentsService', () => {
   let service: OrderPaymentsService;
@@ -34,10 +36,11 @@ describe('OrderPaymentsService', () => {
   const mockOrdersService = {
     syncOrderAggregatesWithManager: jest
       .fn()
-      .mockResolvedValue({ becameFullyPaid: false }),
+      .mockResolvedValue({ becameFullyPaid: false, becameUnpaid: false }),
     syncOnlineOrderFromPosOrder: jest.fn().mockResolvedValue(undefined),
     syncOrderAggregates: jest.fn().mockResolvedValue(undefined),
     emitOrderFullyPaid: jest.fn(),
+    emitOrderLoyaltyReversal: jest.fn(),
   };
 
   const mockQueryRunner = {
@@ -47,12 +50,23 @@ describe('OrderPaymentsService', () => {
     rollbackTransaction: jest.fn().mockResolvedValue(undefined),
     release: jest.fn().mockResolvedValue(undefined),
     manager: {
-      save: jest.fn().mockResolvedValue({ id: 1 }),
+      findOne: jest
+        .fn()
+        .mockResolvedValue({ id: 1, cashDrawerId: 1, status: 'OPEN' }),
+      save: jest.fn().mockResolvedValue({ id: 1, amount: 50, tip_amount: 0 }),
     },
   };
 
   const mockDataSource = {
-    createQueryRunner: jest.fn(() => mockQueryRunner),
+    createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+  };
+
+  const mockCashFlowService = {
+    addMovement: jest.fn(),
+  };
+
+  const mockLoyaltyPointsRedemptionService = {
+    consumeLockWithManager: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockOrder = {
@@ -91,6 +105,11 @@ describe('OrderPaymentsService', () => {
           useValue: mockOrderRepository,
         },
         { provide: OrdersService, useValue: mockOrdersService },
+        { provide: CashFlowService, useValue: mockCashFlowService },
+        {
+          provide: LoyaltyPointsRedemptionService,
+          useValue: mockLoyaltyPointsRedemptionService,
+        },
       ],
     }).compile();
 
@@ -110,6 +129,7 @@ describe('OrderPaymentsService', () => {
   describe('create', () => {
     const dto: CreateOrderPaymentDto = {
       orderId: 1,
+      collaboratorId: 1,
       amount: 50,
       method: 'card',
       provider: 'stripe',
@@ -124,7 +144,7 @@ describe('OrderPaymentsService', () => {
         .spyOn(orderPaymentRepository, 'findOne')
         .mockResolvedValue(mockPaymentRow as unknown as OrderPayment);
 
-      const result = await service.create(dto, 1);
+      const result = await service.create(dto, 1, 1, 1);
 
       expect(result.statusCode).toBe(201);
       expect(
@@ -136,12 +156,16 @@ describe('OrderPaymentsService', () => {
     });
 
     it('should throw if no merchant', async () => {
-      await expect(service.create(dto, 0)).rejects.toThrow(ForbiddenException);
+      await expect(service.create(dto, 0, 1, 1)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw if order not found', async () => {
       jest.spyOn(orderRepository, 'findOne').mockResolvedValue(null);
-      await expect(service.create(dto, 1)).rejects.toThrow(NotFoundException);
+      await expect(service.create(dto, 1, 1, 1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

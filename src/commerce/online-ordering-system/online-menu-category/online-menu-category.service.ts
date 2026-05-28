@@ -6,7 +6,8 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Not, type QueryDeepPartialEntity } from 'typeorm';
+import { Repository, Between, Not } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OnlineMenuCategory } from './entities/online-menu-category.entity';
 import { OnlineMenu } from '../online-menu/entities/online-menu.entity';
 import { Category } from '../../../inventory/products-inventory/category/entities/category.entity';
@@ -33,7 +34,7 @@ export class OnlineMenuCategoryService {
     private readonly onlineMenuRepository: Repository<OnlineMenu>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
-  ) {}
+  ) { }
 
   async create(
     createOnlineMenuCategoryDto: CreateOnlineMenuCategoryDto,

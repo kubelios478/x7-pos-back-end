@@ -68,8 +68,8 @@ export class KitchenOrderSyncService {
   ) {}
 
   /**
-   * Espeja estados KOI → líneas POS, actualiza business_status de cada kitchen order
-   * y recalcula agregados de la orden (`Order.kitchen_status`, etc.).
+   * Mirrors KOI statuses into POS lines, updates each kitchen order business_status,
+   * and recomputes order aggregates (Order.kitchen_status, etc).
    */
   async syncPosOrderFromKitchenOrders(orderId: number): Promise<void> {
     const { becameFullyPaid } =
@@ -145,7 +145,9 @@ export class KitchenOrderSyncService {
     return this.ordersService.syncOrderAggregatesWithManager(manager, orderId);
   }
 
-  /** Si ya no hay KOI activos para una línea POS, vuelve el estado de cocina de la línea a pending. */
+  /**
+   * If there are no active KOIs for a POS line, resets its kitchen status to pending.
+   */
   async resetOrderLineIfNoActiveKoi(orderItemId: number | null): Promise<void> {
     await this.resetOrderLineIfNoActiveKoiWithManager(
       this.kitchenOrderItemRepository.manager,

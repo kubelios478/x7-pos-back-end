@@ -10,8 +10,8 @@ import {
   In,
   type FindOptionsOrder,
   type FindOptionsWhere,
-  type QueryDeepPartialEntity,
 } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { CreateCashTransactionDto } from './dto/create-cash-transaction.dto';
 import { UpdateCashTransactionDto } from './dto/update-cash-transaction.dto';
 import {
@@ -45,7 +45,7 @@ export class CashTransactionsService {
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
     private readonly cashDrawerHistoryService: CashDrawerHistoryService,
-  ) {}
+  ) { }
 
   async create(
     dto: CreateCashTransactionDto,

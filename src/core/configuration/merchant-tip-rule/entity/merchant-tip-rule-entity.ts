@@ -30,7 +30,7 @@ export class MerchantTipRule extends Configuration {
   @Column({ type: 'enum', enum: TipDistributionMethod })
   tipDistributionMethod: TipDistributionMethod;
 
-  @Column({ type: 'int', array: true })
+  @Column({ type: 'decimal', precision: 5, scale: 4, array: true })
   suggestedPercentages?: number[];
 
   @Column({ type: 'int', array: true })
@@ -43,11 +43,14 @@ export class MerchantTipRule extends Configuration {
   maximumTipPercentage: number;
 
   @Column({ type: 'boolean' })
-  includeKitchenStaff: boolean;
-
-  @Column({ type: 'boolean' })
-  includeManagers: boolean;
-
-  @Column({ type: 'boolean' })
   autoDistribute: boolean;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  staffPercentage?: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  kitchenPercentage?: number;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  managerPercentage?: number;
 }

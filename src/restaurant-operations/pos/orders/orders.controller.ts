@@ -5,6 +5,8 @@ import {
   Body,
   Param,
   Delete,
+  Patch,
+  Req,
   UseGuards,
   Query,
   Request,
@@ -13,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
+import { RequireActiveShift } from 'src/auth/decorators/active-shift.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
 
 import { Request as ExpressRequest } from 'express';
@@ -47,6 +50,8 @@ import {
 import { GetOrdersQueryDto, OrderSortBy } from './dto/get-orders-query.dto';
 import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
+import { CompletePurchaseDto } from './dto/complete-purchase.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
@@ -57,7 +62,7 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @Controller('orders')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDERS)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -67,6 +72,7 @@ export class OrdersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @RequireActiveShift()
   @ApiOperation({
     summary: 'Create a new order',
     description:
@@ -146,7 +152,11 @@ export class OrdersController {
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderResponseDto> {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
-    return this.ordersService.create(dto, authenticatedUserMerchantId);
+    return this.ordersService.create(
+      dto,
+      authenticatedUserMerchantId,
+      req.user?.activeShiftId,
+    );
   }
 
   @Get()
@@ -551,5 +561,31 @@ export class OrdersController {
   ): Promise<OneOrderResponseDto> {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     return this.ordersService.remove(id, authenticatedUserMerchantId);
+  }
+
+  @Patch(':id/complete')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  async completePurchase(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CompletePurchaseDto,
+    @Req() req: any,
+  ) {
+    return this.ordersService.completePurchase(id, dto, req.user);
+  }
+
+  @Post('payment')
+  async processPayment(@Body() dto: ProcessPaymentDto, @Req() req) {
+    return this.ordersService.processPayment(
+      dto,
+      req.user.merchant.id,
+      req.user,
+    );
   }
 }

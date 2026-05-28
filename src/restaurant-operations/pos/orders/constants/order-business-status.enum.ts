@@ -3,4 +3,5 @@ export enum OrderBusinessStatus {
   IN_PROGRESS = 'in_progress',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  PAID = 'paid',
 }

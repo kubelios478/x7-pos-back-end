@@ -14,6 +14,10 @@ import {
 } from '@nestjs/common';
 import { CashDrawerHistoryStatus } from './constants/cash-drawer-history-status.enum';
 
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+
 describe('CashDrawerHistoryController', () => {
   let controller: CashDrawerHistoryController;
   let service: CashDrawerHistoryService;
@@ -29,21 +33,24 @@ describe('CashDrawerHistoryController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
       name: 'Test Merchant',
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
+  const mockRequest: AuthenticatedUser = {
+    ...mockUser,
   };
 
-  const mockRequestWithoutMerchant = {
-    user: {
-      id: 1,
-      email: 'test@example.com',
-    },
+  const mockRequestWithoutMerchant: AuthenticatedUser = {
+    id: 1,
+    email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: null as any,
   };
 
   const createDto: CreateCashDrawerHistoryDto = {

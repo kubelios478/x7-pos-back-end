@@ -13,6 +13,9 @@ import {
 } from './dto/receipt-tax-response.dto';
 import { AllPaginatedReceiptTaxes } from './dto/all-paginated-receipt-taxes.dto';
 import { ReceiptTaxScope } from './constants/receipt-tax-scope.enum';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ForbiddenException } from '@nestjs/common';
 
 const MERCHANT_ID = 1;
@@ -20,9 +23,11 @@ const MERCHANT_ID = 1;
 const mockUser = {
   id: 1,
   email: 'test@example.com',
+  role: UserRole.MERCHANT_ADMIN,
+  scope: Scope.MERCHANT_WEB,
   merchant: { id: MERCHANT_ID },
 };
-const mockRequest = { user: mockUser };
+const mockRequest = mockUser;
 
 const mockTaxResponse: ReceiptTaxResponseDto = {
   id: 1,

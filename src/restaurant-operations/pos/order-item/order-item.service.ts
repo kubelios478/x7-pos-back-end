@@ -13,8 +13,8 @@ import {
   In,
   type FindOptionsOrder,
   type FindOptionsWhere,
-  type QueryDeepPartialEntity,
 } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OrderItem } from './entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
 import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
@@ -797,11 +797,11 @@ export class OrderItemService {
       variantId: orderItem.variant_id,
       variant: orderItem.variant
         ? {
-            id: orderItem.variant.id,
-            name: orderItem.variant.name,
-            price: Number(orderItem.variant.price),
-            sku: orderItem.variant.sku,
-          }
+          id: orderItem.variant.id,
+          name: orderItem.variant.name,
+          price: Number(orderItem.variant.price),
+          sku: orderItem.variant.sku,
+        }
         : null,
       quantity: orderItem.quantity,
       price: Number(orderItem.price),

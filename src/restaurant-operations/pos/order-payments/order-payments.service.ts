@@ -32,6 +32,10 @@ import {
   LoyaltyPointsRedemptionService,
   PAYMENT_METHOD_LOYALTY,
 } from 'src/growth/loyalty/loyalty-points-redemption/loyalty-points-redemption.service';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashShiftStatus } from '../../cashdrawer/cash-shifts/constants/cash-shift-status.enum';
+import { CashShiftMovementType } from '../../cashdrawer/cash-shifts/constants/cash-shift-movement-type.enum';
 
 const ORDER_PAYMENT_RELATIONS = ['order', 'order.merchant'] as const;
 
@@ -45,16 +49,28 @@ export class OrderPaymentsService {
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
     private readonly loyaltyPointsRedemptionService: LoyaltyPointsRedemptionService,
+    private readonly cashFlowService: CashFlowService,
+    private readonly loyaltyPointsRedemptionService: LoyaltyPointsRedemptionService,
   ) {}
 
   async create(
     dto: CreateOrderPaymentDto,
     authenticatedUserMerchantId: number,
     cashierUserId?: number,
+    activeShiftId?: number,
   ): Promise<OneOrderPaymentResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'You must be associated with a merchant to create order payments',
+      );
+    }
+
+    const precheck = await this.orderRepository.findOne({
+    // CAT 1 requires the shift to be open prior to payment. The interceptor enforces it,
+    // but we still validate presence and lock the shift row for correctness under concurrency.
+    if (!activeShiftId) {
+      throw new BadRequestException(
+        'Cash shift opening required. There is no active shift.',
       );
     }
 
@@ -96,15 +112,6 @@ export class OrderPaymentsService {
       );
     }
 
-    const row = new OrderPayment();
-    row.order_id = dto.orderId;
-    row.amount = roundMoney(dto.amount);
-    row.method = isLoyalty ? PAYMENT_METHOD_LOYALTY : dto.method;
-    row.provider = dto.provider ?? null;
-    row.reference = dto.reference ?? null;
-    row.tip_amount = roundMoney(tip);
-    row.is_refund = dto.isRefund ?? false;
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -112,9 +119,39 @@ export class OrderPaymentsService {
     let saved: OrderPayment;
     let becameFullyPaid = false;
     let becameUnpaid = false;
+
     try {
+      // Step A: Validate that the shift is still open (row lock)
+      const shift = await queryRunner.manager.findOne(CashShift, {
+        where: {
+          id: activeShiftId,
+          merchantId: authenticatedUserMerchantId,
+          status: CashShiftStatus.OPEN,
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!shift) {
+        throw new BadRequestException(
+          'The active cash shift has been closed. Operation cancelled.',
+        );
+      }
+
+      // Step B: Register the payment
+      const row = new OrderPayment();
+      row.order_id = dto.orderId;
+      row.amount = roundMoney(dto.amount);
+      row.method = isLoyalty ? PAYMENT_METHOD_LOYALTY : dto.method;
+      row.provider = dto.provider ?? null;
+      row.reference = dto.reference ?? null;
+      row.tip_amount = roundMoney(tip);
+      row.is_refund = dto.isRefund ?? false;
+      row.source = dto.source ?? null;
+      row.shift_id = dto.shiftId ?? activeShiftId;
+
       saved = await queryRunner.manager.save(OrderPayment, row);
 
+      // Step C: Loyalty lock consumption (inside the same transaction)
       if (isLoyalty) {
         await this.loyaltyPointsRedemptionService.consumeLockWithManager({
           manager: queryRunner.manager,
@@ -126,13 +163,32 @@ export class OrderPaymentsService {
         });
       }
 
-      const syncResult =
-        await this.ordersService.syncOrderAggregatesWithManager(
-          queryRunner.manager,
+      // Step D: Register the financial transaction linked to the shiftId (cash only)
+      if (dto.method.toLowerCase() === 'cash') {
+        const movementType = dto.isRefund
+          ? CashShiftMovementType.OUT
+          : CashShiftMovementType.IN;
+        const totalAmount = Number(saved.amount) + Number(saved.tip_amount);
+
+        await this.cashFlowService.addMovement(
+          shift.id,
+          totalAmount,
+          movementType,
           dto.orderId,
+          dto.collaboratorId,
+          shift.cashDrawerId,
+          queryRunner.manager,
         );
+      }
+
+      // Step E: Sync order aggregates inside the same transaction
+      const syncResult = await this.ordersService.syncOrderAggregatesWithManager(
+        queryRunner.manager,
+        dto.orderId,
+      );
       becameFullyPaid = syncResult.becameFullyPaid;
       becameUnpaid = syncResult.becameUnpaid;
+
       await queryRunner.commitTransaction();
     } catch (e) {
       await queryRunner.rollbackTransaction();
@@ -141,6 +197,7 @@ export class OrderPaymentsService {
       await queryRunner.release();
     }
 
+    // Events must run after commit (avoid side-effects inside the transaction)
     if (becameFullyPaid) {
       this.ordersService.emitOrderFullyPaid(dto.orderId, dto.shiftId);
     }
@@ -152,6 +209,7 @@ export class OrderPaymentsService {
       where: { id: saved.id },
       relations: [...ORDER_PAYMENT_RELATIONS],
     });
+
     if (!complete) {
       throw new NotFoundException('Order payment not found after creation');
     }
@@ -162,7 +220,7 @@ export class OrderPaymentsService {
     return {
       statusCode: 201,
       message: 'Order payment created successfully',
-      data: this.format(complete),
+      data: this.format(complete!),
     };
   }
 
@@ -379,6 +437,7 @@ export class OrderPaymentsService {
     if (dto.method !== undefined) patch.method = dto.method;
     if (dto.provider !== undefined) patch.provider = dto.provider ?? null;
     if (dto.reference !== undefined) patch.reference = dto.reference ?? null;
+    if (dto.source !== undefined) patch.source = dto.source ?? null;
     if (dto.tipAmount !== undefined) {
       if (dto.tipAmount < 0) {
         throw new BadRequestException('Tip amount must be non-negative');
@@ -475,6 +534,8 @@ export class OrderPaymentsService {
       tipAmount: Number(row.tip_amount),
       isRefund: row.is_refund,
       createdAt: row.created_at,
+      source: row.source,
+      shift_id: row.shift_id,
     };
   }
 }

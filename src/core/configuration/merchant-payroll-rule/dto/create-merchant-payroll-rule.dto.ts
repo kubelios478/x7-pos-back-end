@@ -21,6 +21,13 @@ export class CreateMerchantPayrollRuleDto {
   companyId: number;
 
   @ApiProperty({
+    example: 1,
+    description: 'Identifier of the related merchant',
+  })
+  @IsInt()
+  merchantId: number;
+
+  @ApiProperty({
     example: '26-09-2023',
     description: 'Date when the merchant payroll rule was created',
   })

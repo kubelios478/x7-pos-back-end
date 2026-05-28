@@ -12,6 +12,8 @@ import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collabora
 import { Shift } from '../../../shift/shifts/entities/shift.entity';
 import { User } from '../../../../platform-saas/users/entities/user.entity';
 import { SettlementMethod } from '../constants/settlement-method.enum';
+import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
+import { SettlementStatus } from '../constants/settlement-status.enum';
 
 @Entity('tip_settlements')
 @Index(['company_id', 'merchant_id', 'settled_at'])
@@ -99,4 +101,21 @@ export class TipSettlement {
   })
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   created_at: Date;
+
+  @ManyToOne(() => Order, (order) => order.tipSettlements, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'order_id' })
+  order: Order;
+
+  @Column({ nullable: true })
+  order_id: number;
+
+  @Column({
+    type: 'enum',
+    enum: SettlementStatus,
+    default: SettlementStatus.PENDING,
+  })
+  status: SettlementStatus;
 }

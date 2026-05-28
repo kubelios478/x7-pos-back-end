@@ -29,6 +29,7 @@ import { CashDrawer } from './restaurant-operations/cashdrawer/cash-drawers/enti
 import { CashDrawerHistory } from './restaurant-operations/cashdrawer/cash-drawer-history/entities/cash-drawer-history.entity';
 import { CashTipMovement } from './restaurant-operations/tips/cash-tip-movements/entities/cash-tip-movement.entity';
 import { CashTransaction } from './restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
+import { CashShift } from './restaurant-operations/cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { Category } from './inventory/products-inventory/category/entities/category.entity';
 import { Input } from './inventory/inputs/entities/input.entity';
 import { InputSupplier } from './inventory/inputs/entities/input-supplier.entity';
@@ -132,6 +133,11 @@ import { Variant } from './inventory/products-inventory/variants/entities/varian
 import { FinanceHrModule } from './finance-hr/finance-hr.module';
 import { FloorZone } from './restaurant-operations/dining-system/floor-zone/entity/floor-zone.entity';
 import { FloorPlan } from './restaurant-operations/dining-system/floor-plan/entity/floor-plan.entity';
+import { Reservation } from './restaurant-operations/reservations/reservation/entities/reservation.entity';
+import { ReservationTable } from './restaurant-operations/reservations/reservation-table/entities/reservation-table.entity';
+import { ReservationStatusHistory } from './restaurant-operations/reservations/reservation-status-history/entities/reservation-status-history.entity';
+import { ReservationGuest } from './restaurant-operations/reservations/reservation-guest/entities/reservation-guest.entity';
+import { ReservationNote } from './restaurant-operations/reservations/reservation-note/entities/reservation-note.entity';
 import { DeliverySystemModule } from './commerce/delivery-system/delivery-system.module';
 import { DeliveryZoneModule } from './commerce/delivery-system/delivery-zone/delivery-zone.module';
 import { DeliveryFeeModule } from './commerce/delivery-system/delivery-fee/delivery-fee.module';
@@ -145,6 +151,9 @@ import { DeliveryAssignment } from './commerce/delivery-system/delivery-assignme
 import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/entity/delivery-tracking.entity';
 import { RealtimeModule } from './realtime/realtime.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { MerchantTaxRuleModule } from './core/configuration/merchant-tax-rule/merchant-tax-rule.module';
+import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
+import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-analytics/modifier-analytics.module';
 
 @Module({
   imports: [
@@ -166,6 +175,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
           CashDrawerHistory,
           CashTipMovement,
           CashTransaction,
+          CashShift,
           Category,
           Input,
           InputSupplier,
@@ -246,6 +256,11 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
           QRMenuSection,
           QROrder,
           QROrderItem,
+          Reservation,
+          ReservationTable,
+          ReservationStatusHistory,
+          ReservationGuest,
+          ReservationNote,
           Shift,
           ShiftAssignment,
           SubscriptionApplication,
@@ -308,6 +323,9 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     DeliveryTrackingModule,
     DeliveryAssignmentModule,
     RealtimeModule,
+    MerchantTaxRuleModule,
+    KitchenAnalyticsModule,
+    ModifierAnalyticsModule,
   ],
 })
 export class AppModule {}

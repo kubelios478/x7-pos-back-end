@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
+import { RequireActiveShift } from 'src/auth/decorators/active-shift.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
 
 import { Request as ExpressRequest } from 'express';
@@ -69,6 +70,7 @@ export class OrderPaymentsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @RequireActiveShift()
   @ApiOperation({
     summary: 'Create an order payment',
     description:
@@ -88,6 +90,7 @@ export class OrderPaymentsController {
       dto,
       req.user?.merchant?.id,
       req.user?.id,
+      req.user?.activeShiftId,
     );
   }
 

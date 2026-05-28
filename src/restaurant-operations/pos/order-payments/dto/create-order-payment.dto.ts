@@ -12,9 +12,15 @@ import {
 
 export class CreateOrderPaymentDto {
   @ApiProperty({ example: 1 })
+  @IsOptional()
   @IsNumber()
   @IsPositive()
   orderId: number;
+
+  @ApiProperty({ example: 5, description: 'ID of the collaborator processing the payment' })
+  @IsNumber()
+  @IsPositive()
+  collaboratorId: number;
 
   @ApiProperty({ example: 50.25 })
   @IsNumber()
@@ -59,6 +65,12 @@ export class CreateOrderPaymentDto {
   @IsOptional()
   @IsBoolean()
   isRefund?: boolean;
+
+  @ApiPropertyOptional({ example: 'mobile_app' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  source?: string;
 
   @ApiPropertyOptional({
     example: 12,

@@ -9,6 +9,7 @@ import { User } from 'src/platform-saas/users/entities/user.entity';
 import { MerchantPayrollRule } from './entity/merchant-payroll-rule.entity';
 import { MerchantPayrollRuleController } from './merchant-payroll-rule.controller';
 import { MerchantPayrollRuleService } from './merchant-payroll-rule.service';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MerchantPayrollRuleService } from './merchant-payroll-rule.service';
       MerchantPayrollRule,
       Configuration,
       User,
+      Merchant,
     ]),
   ],
   controllers: [MerchantPayrollRuleController],
