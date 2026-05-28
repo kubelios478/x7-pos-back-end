@@ -1,4 +1,4 @@
 export enum CashShiftStatus {
-    OPEN = 'OPEN',
-    CLOSED = 'CLOSED',
+  OPEN = 'OPEN',
+  CLOSED = 'CLOSED',
 }

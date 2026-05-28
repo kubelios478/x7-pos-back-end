@@ -1,8 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ReservationNoteService } from './reservation-note.service';
 import { CreateReservationNoteDto } from './dto/create-reservation-note.dto';
 import { UpdateReservationNoteDto } from './dto/update-reservation-note.dto';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -20,7 +37,9 @@ import { GetReservationNotesQueryDto } from './dto/get-reservation-notes-query.d
 @Controller('reservation-note')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationNoteController {
-  constructor(private readonly reservationNoteService: ReservationNoteService) { }
+  constructor(
+    private readonly reservationNoteService: ReservationNoteService,
+  ) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
@@ -29,10 +48,13 @@ export class ReservationNoteController {
   @ApiResponse({ status: 201, type: OneReservationNoteResponse })
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() createNoteDto: CreateReservationNoteDto
+    @Body() createNoteDto: CreateReservationNoteDto,
   ): Promise<OneReservationNoteResponse> {
     const creatorId = user.id;
-    return this.reservationNoteService.create({ ...createNoteDto, created_by: creatorId }, user.merchant.id);
+    return this.reservationNoteService.create(
+      { ...createNoteDto, created_by: creatorId },
+      user.merchant.id,
+    );
   }
 
   @Get()
@@ -44,7 +66,10 @@ export class ReservationNoteController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() queryDto: GetReservationNotesQueryDto,
   ): Promise<AllPaginatedReservationNotes> {
-    return this.reservationNoteService.findAllGlobal(user.merchant.id, queryDto);
+    return this.reservationNoteService.findAllGlobal(
+      user.merchant.id,
+      queryDto,
+    );
   }
 
   @Get('by-reservation/:reservationId')
@@ -60,7 +85,12 @@ export class ReservationNoteController {
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<AllPaginatedReservationNotes> {
-    return this.reservationNoteService.findAll(reservationId, user.merchant.id, page, limit);
+    return this.reservationNoteService.findAll(
+      reservationId,
+      user.merchant.id,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
@@ -70,7 +100,7 @@ export class ReservationNoteController {
   @ApiResponse({ status: 200, type: OneReservationNoteResponse })
   findOne(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<OneReservationNoteResponse> {
     return this.reservationNoteService.findOne(id, user.merchant.id);
   }
@@ -83,9 +113,13 @@ export class ReservationNoteController {
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateNoteDto: UpdateReservationNoteDto
+    @Body() updateNoteDto: UpdateReservationNoteDto,
   ): Promise<OneReservationNoteResponse> {
-    return this.reservationNoteService.update(id, updateNoteDto, user.merchant.id);
+    return this.reservationNoteService.update(
+      id,
+      updateNoteDto,
+      user.merchant.id,
+    );
   }
 
   @Delete(':id')
@@ -95,7 +129,7 @@ export class ReservationNoteController {
   @ApiResponse({ status: 200, type: OneReservationNoteResponse })
   remove(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<OneReservationNoteResponse> {
     return this.reservationNoteService.remove(id, user.merchant.id);
   }

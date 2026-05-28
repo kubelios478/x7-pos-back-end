@@ -797,11 +797,11 @@ export class OrderItemService {
       variantId: orderItem.variant_id,
       variant: orderItem.variant
         ? {
-          id: orderItem.variant.id,
-          name: orderItem.variant.name,
-          price: Number(orderItem.variant.price),
-          sku: orderItem.variant.sku,
-        }
+            id: orderItem.variant.id,
+            name: orderItem.variant.name,
+            price: Number(orderItem.variant.price),
+            sku: orderItem.variant.sku,
+          }
         : null,
       quantity: orderItem.quantity,
       price: Number(orderItem.price),

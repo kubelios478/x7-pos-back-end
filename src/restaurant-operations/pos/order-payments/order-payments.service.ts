@@ -50,7 +50,6 @@ export class OrderPaymentsService {
     private readonly ordersService: OrdersService,
     private readonly loyaltyPointsRedemptionService: LoyaltyPointsRedemptionService,
     private readonly cashFlowService: CashFlowService,
-    private readonly loyaltyPointsRedemptionService: LoyaltyPointsRedemptionService,
   ) {}
 
   async create(
@@ -65,7 +64,6 @@ export class OrderPaymentsService {
       );
     }
 
-    const precheck = await this.orderRepository.findOne({
     // CAT 1 requires the shift to be open prior to payment. The interceptor enforces it,
     // but we still validate presence and lock the shift row for correctness under concurrency.
     if (!activeShiftId) {
@@ -146,7 +144,9 @@ export class OrderPaymentsService {
       row.reference = dto.reference ?? null;
       row.tip_amount = roundMoney(tip);
       row.is_refund = dto.isRefund ?? false;
-      row.source = dto.source ?? null;
+      if (dto.source !== undefined) {
+        row.source = dto.source;
+      }
       row.shift_id = dto.shiftId ?? activeShiftId;
 
       saved = await queryRunner.manager.save(OrderPayment, row);
@@ -182,10 +182,11 @@ export class OrderPaymentsService {
       }
 
       // Step E: Sync order aggregates inside the same transaction
-      const syncResult = await this.ordersService.syncOrderAggregatesWithManager(
-        queryRunner.manager,
-        dto.orderId,
-      );
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          dto.orderId,
+        );
       becameFullyPaid = syncResult.becameFullyPaid;
       becameUnpaid = syncResult.becameUnpaid;
 
@@ -220,7 +221,7 @@ export class OrderPaymentsService {
     return {
       statusCode: 201,
       message: 'Order payment created successfully',
-      data: this.format(complete!),
+      data: this.format(complete),
     };
   }
 

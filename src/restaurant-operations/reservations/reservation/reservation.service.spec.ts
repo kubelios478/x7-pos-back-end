@@ -39,7 +39,9 @@ describe('ReservationService', () => {
 
   const mockResTableRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 1, ...dto })),
+    save: jest
+      .fn()
+      .mockImplementation((dto) => Promise.resolve({ id: 1, ...dto })),
     findBy: jest.fn().mockResolvedValue([]),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
@@ -47,7 +49,9 @@ describe('ReservationService', () => {
 
   const mockGenericRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 1, ...dto })),
+    save: jest
+      .fn()
+      .mockImplementation((dto) => Promise.resolve({ id: 1, ...dto })),
     findOneBy: jest.fn(),
     findBy: jest.fn().mockResolvedValue([]),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
@@ -85,8 +89,12 @@ describe('ReservationService', () => {
     }).compile();
 
     service = module.get<ReservationService>(ReservationService);
-    reservationRepository = module.get<Repository<Reservation>>(getRepositoryToken(Reservation));
-    resTableRepository = module.get<Repository<ReservationTable>>(getRepositoryToken(ReservationTable));
+    reservationRepository = module.get<Repository<Reservation>>(
+      getRepositoryToken(Reservation),
+    );
+    resTableRepository = module.get<Repository<ReservationTable>>(
+      getRepositoryToken(ReservationTable),
+    );
 
     jest.clearAllMocks();
   });
@@ -107,12 +115,14 @@ describe('ReservationService', () => {
         id: 10,
         ...createDto,
         reservation_date: new Date(createDto.reservation_date),
-        status: ReservationStatus.PENDING
+        status: ReservationStatus.PENDING,
       };
       mockReservationRepository.create.mockReturnValue(reservation);
       mockReservationRepository.save.mockResolvedValue(reservation);
 
-      jest.spyOn(service, 'findOne').mockResolvedValue({ data: reservation } as any);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: reservation } as any);
 
       const result = await service.create(merchantId, createDto);
 
@@ -131,15 +141,23 @@ describe('ReservationService', () => {
       mockQueryBuilder.getOne.mockResolvedValue(null); // No booking conflict
       mockGenericRepository.findBy.mockResolvedValue([{ id: 1 }]); // Only 1 table found instead of 2
 
-      await expect(service.create(merchantId, createDto)).rejects.toThrow('One or more tables not found or do not belong to your merchant');
+      await expect(service.create(merchantId, createDto)).rejects.toThrow(
+        'One or more tables not found or do not belong to your merchant',
+      );
     });
 
     it('should create a reservation without tables', async () => {
       const dtoWithoutTables = { ...createDto, table_ids: [] };
-      const reservation = { id: 11, ...dtoWithoutTables, reservation_date: new Date() };
+      const reservation = {
+        id: 11,
+        ...dtoWithoutTables,
+        reservation_date: new Date(),
+      };
       mockReservationRepository.create.mockReturnValue(reservation);
       mockReservationRepository.save.mockResolvedValue(reservation);
-      jest.spyOn(service, 'findOne').mockResolvedValue({ data: reservation } as any);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: reservation } as any);
 
       const result = await service.create(merchantId, dtoWithoutTables);
 
@@ -158,11 +176,11 @@ describe('ReservationService', () => {
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('DATE(reservation.reservation_date) = :date'),
-        { date: query.date }
+        { date: query.date },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('reservation.status = :status'),
-        { status: query.status }
+        { status: query.status },
       );
     });
 
@@ -175,7 +193,7 @@ describe('ReservationService', () => {
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('reservation.customer_id = :customer_id'),
-        { customer_id: 50 }
+        { customer_id: 50 },
       );
     });
 
@@ -188,7 +206,7 @@ describe('ReservationService', () => {
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('LOWER(guests.name) LIKE LOWER(:guestName)'),
-        { guestName: '%John%' }
+        { guestName: '%John%' },
       );
     });
 
@@ -206,20 +224,35 @@ describe('ReservationService', () => {
 
   describe('findOne', () => {
     it('should return enriched reservation with relations', async () => {
-      const reservation = { id: 1, merchant_id: 1, guests: [], tables: [], notes: [], statusHistory: [] };
+      const reservation = {
+        id: 1,
+        merchant_id: 1,
+        guests: [],
+        tables: [],
+        notes: [],
+        statusHistory: [],
+      };
       mockReservationRepository.findOne.mockResolvedValue(reservation);
 
       const result = await service.findOne(1, 1);
 
       expect(result.data).toBeDefined();
-      expect(mockReservationRepository.findOne).toHaveBeenCalledWith(expect.objectContaining({
-        relations: expect.arrayContaining(['guests', 'tables', 'notes', 'statusHistory'])
-      }));
+      expect(mockReservationRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relations: expect.arrayContaining([
+            'guests',
+            'tables',
+            'notes',
+            'statusHistory',
+          ]),
+        }),
+      );
     });
 
     it('should throw not found if reservation belongs to another merchant', async () => {
       mockReservationRepository.findOne.mockImplementation(({ where }) => {
-        if (where.merchant_id === 1) return Promise.resolve({ id: 1, merchant_id: 1 });
+        if (where.merchant_id === 1)
+          return Promise.resolve({ id: 1, merchant_id: 1 });
         return Promise.resolve(null);
       });
 
@@ -229,18 +262,26 @@ describe('ReservationService', () => {
     it('should throw not found if reservation does not exist', async () => {
       mockReservationRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne(999, 1)).rejects.toThrow('Reservation not found');
+      await expect(service.findOne(999, 1)).rejects.toThrow(
+        'Reservation not found',
+      );
     });
   });
 
   describe('update', () => {
     it('should check availability if date changes', async () => {
-      const existing = { id: 1, merchant_id: 1, reservation_date: new Date('2026-04-16T19:00:00Z') };
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        reservation_date: new Date('2026-04-16T19:00:00Z'),
+      };
       mockReservationRepository.findOneBy.mockResolvedValue(existing);
       mockResTableRepository.findBy.mockResolvedValue([{ table_id: 1 }]); // Return tables to trigger check
       mockQueryBuilder.getOne.mockResolvedValue(null);
 
-      jest.spyOn(service, 'findOne').mockResolvedValue({ data: existing } as any);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: existing } as any);
 
       await service.update(1, 1, { reservation_date: '2026-04-16T20:00:00Z' });
 
@@ -248,10 +289,16 @@ describe('ReservationService', () => {
     });
 
     it('should update and log status change if status updated', async () => {
-      const existing = { id: 1, merchant_id: 1, status: ReservationStatus.PENDING };
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.PENDING,
+      };
       mockReservationRepository.findOneBy.mockResolvedValue(existing);
 
-      jest.spyOn(service, 'findOne').mockResolvedValue({ data: { ...existing, status: ReservationStatus.CONFIRMED } } as any);
+      jest.spyOn(service, 'findOne').mockResolvedValue({
+        data: { ...existing, status: ReservationStatus.CONFIRMED },
+      } as any);
 
       await service.update(1, 1, { status: ReservationStatus.CONFIRMED });
 
@@ -261,12 +308,16 @@ describe('ReservationService', () => {
     it('should update party_size without checking availability', async () => {
       const existing = { id: 1, merchant_id: 1, reservation_date: new Date() };
       mockReservationRepository.findOneBy.mockResolvedValue(existing);
-      jest.spyOn(service, 'findOne').mockResolvedValue({ data: existing } as any);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: existing } as any);
 
       await service.update(1, 1, { party_size: 10 });
 
       expect(mockQueryBuilder.getOne).not.toHaveBeenCalled();
-      expect(mockReservationRepository.save).toHaveBeenCalledWith(expect.objectContaining({ party_size: 10 }));
+      expect(mockReservationRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ party_size: 10 }),
+      );
     });
   });
 
@@ -282,12 +333,12 @@ describe('ReservationService', () => {
       expect(mockReservationRepository.save).toHaveBeenCalledWith(reservation);
       expect(mockResTableRepository.update).toHaveBeenCalledWith(
         { reservation_id: 1 },
-        { is_active: false }
+        { is_active: false },
       );
       expect(mockGenericRepository.update).toHaveBeenCalledTimes(2);
       expect(mockGenericRepository.update).toHaveBeenCalledWith(
         { reservation_id: 1 },
-        { is_active: false }
+        { is_active: false },
       );
     });
 

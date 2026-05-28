@@ -5,13 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  Repository,
-  Between,
-  In,
-  Like,
-} from 'typeorm';
+import { DataSource, Repository, Between, In, Like } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OrderTax } from './entities/order-tax.entity';
 import { Order } from '../orders/entities/order.entity';
@@ -41,7 +35,7 @@ export class OrderTaxesService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
-  ) { }
+  ) {}
 
   async create(
     dto: CreateOrderTaxDto,

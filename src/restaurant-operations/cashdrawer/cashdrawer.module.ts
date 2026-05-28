@@ -5,7 +5,17 @@ import { CashTransactionsModule } from './cash-transactions/cash-transactions.mo
 import { CashShiftsModule } from './cash-shifts/cash-shifts.module';
 
 @Module({
-  imports: [CashDrawersModule, CashDrawerHistoryModule, CashTransactionsModule, CashShiftsModule],
-  exports: [CashDrawersModule, CashDrawerHistoryModule, CashTransactionsModule, CashShiftsModule],
+  imports: [
+    CashDrawersModule,
+    CashDrawerHistoryModule,
+    CashTransactionsModule,
+    CashShiftsModule,
+  ],
+  exports: [
+    CashDrawersModule,
+    CashDrawerHistoryModule,
+    CashTransactionsModule,
+    CashShiftsModule,
+  ],
 })
-export class CashdrawerModule { }
+export class CashdrawerModule {}

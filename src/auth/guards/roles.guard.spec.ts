@@ -44,7 +44,8 @@ describe('RolesGuard', () => {
     };
     reflector.get.mockImplementation((key: string) => {
       if (key === ROLES_KEY) return undefined;
-      if (key === SCOPES_KEY) return [Scope.MERCHANT_ANDROID, Scope.MERCHANT_WEB];
+      if (key === SCOPES_KEY)
+        return [Scope.MERCHANT_ANDROID, Scope.MERCHANT_WEB];
       return undefined;
     });
 

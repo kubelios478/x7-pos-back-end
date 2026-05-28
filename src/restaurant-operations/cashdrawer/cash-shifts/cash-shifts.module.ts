@@ -11,11 +11,17 @@ import { CashShiftsService } from './cash-shifts.service';
 import { CashShiftsController } from './cash-shifts.controller';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([CashShift, CashDrawer, CashTransaction, Merchant, Collaborator]),
-    ],
-    controllers: [CashShiftsController],
-    providers: [CashShiftRepository, CashFlowService, CashShiftsService],
-    exports: [CashShiftRepository, CashFlowService, CashShiftsService],
+  imports: [
+    TypeOrmModule.forFeature([
+      CashShift,
+      CashDrawer,
+      CashTransaction,
+      Merchant,
+      Collaborator,
+    ]),
+  ],
+  controllers: [CashShiftsController],
+  providers: [CashShiftRepository, CashFlowService, CashShiftsService],
+  exports: [CashShiftRepository, CashFlowService, CashShiftsService],
 })
-export class CashShiftsModule { }
+export class CashShiftsModule {}

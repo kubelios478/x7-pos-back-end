@@ -1,8 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ReservationTableService } from './reservation-table.service';
 import { CreateReservationTableDto } from './dto/create-reservation-table.dto';
 import { UpdateReservationTableDto } from './dto/update-reservation-table.dto';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -20,7 +37,9 @@ import { GetReservationTablesQueryDto } from './dto/get-reservation-tables-query
 @Controller('reservation-table')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationTableController {
-  constructor(private readonly reservationTableService: ReservationTableService) { }
+  constructor(
+    private readonly reservationTableService: ReservationTableService,
+  ) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
@@ -29,9 +48,12 @@ export class ReservationTableController {
   @ApiResponse({ status: 201, type: OneReservationTableResponse })
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() createReservationTableDto: CreateReservationTableDto
+    @Body() createReservationTableDto: CreateReservationTableDto,
   ): Promise<OneReservationTableResponse> {
-    return this.reservationTableService.create(createReservationTableDto, user.merchant.id);
+    return this.reservationTableService.create(
+      createReservationTableDto,
+      user.merchant.id,
+    );
   }
 
   @Get()
@@ -43,7 +65,10 @@ export class ReservationTableController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() queryDto: GetReservationTablesQueryDto,
   ): Promise<AllPaginatedReservationTables> {
-    return this.reservationTableService.findAllGlobal(user.merchant.id, queryDto);
+    return this.reservationTableService.findAllGlobal(
+      user.merchant.id,
+      queryDto,
+    );
   }
 
   @Get('by-reservation/:reservationId')
@@ -59,7 +84,12 @@ export class ReservationTableController {
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<AllPaginatedReservationTables> {
-    return this.reservationTableService.findAll(reservationId, user.merchant.id, page, limit);
+    return this.reservationTableService.findAll(
+      reservationId,
+      user.merchant.id,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
@@ -69,7 +99,7 @@ export class ReservationTableController {
   @ApiResponse({ status: 200, type: OneReservationTableResponse })
   findOne(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<OneReservationTableResponse> {
     return this.reservationTableService.findOne(id, user.merchant.id);
   }
@@ -82,7 +112,7 @@ export class ReservationTableController {
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateDto: UpdateReservationTableDto
+    @Body() updateDto: UpdateReservationTableDto,
   ): Promise<OneReservationTableResponse> {
     return this.reservationTableService.update(id, updateDto, user.merchant.id);
   }
@@ -109,6 +139,10 @@ export class ReservationTableController {
     @Param('reservationId', ParseIntPipe) reservationId: number,
     @Param('tableId', ParseIntPipe) tableId: number,
   ): Promise<OneReservationTableResponse> {
-    return this.reservationTableService.remove(reservationId, tableId, user.merchant.id);
+    return this.reservationTableService.remove(
+      reservationId,
+      tableId,
+      user.merchant.id,
+    );
   }
 }

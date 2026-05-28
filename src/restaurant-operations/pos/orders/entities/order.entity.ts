@@ -36,7 +36,7 @@ import { KitchenStatus } from '../constants/kitchen-status.enum';
 import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
 
-@Entity('orders') 
+@Entity('orders')
 @Index(['merchant_id', 'status', 'created_at'])
 @Index(['merchant_id', 'order_number'], { unique: true })
 export class Order {

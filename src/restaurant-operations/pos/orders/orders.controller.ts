@@ -62,7 +62,7 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @Controller('orders')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDERS)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)

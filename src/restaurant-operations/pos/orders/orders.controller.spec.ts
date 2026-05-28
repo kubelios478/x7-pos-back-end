@@ -146,7 +146,11 @@ describe('OrdersController', () => {
 
       const result = await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id, undefined);
+      expect(createSpy).toHaveBeenCalledWith(
+        createDto,
+        mockUser.merchant.id,
+        undefined,
+      );
       expect(result).toEqual(mockOneOrderResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Order created successfully');
@@ -161,7 +165,11 @@ describe('OrdersController', () => {
       await expect(controller.create(createDto, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id, undefined);
+      expect(createSpy).toHaveBeenCalledWith(
+        createDto,
+        mockUser.merchant.id,
+        undefined,
+      );
     });
 
     it('should throw ForbiddenException if user has no merchant_id', async () => {

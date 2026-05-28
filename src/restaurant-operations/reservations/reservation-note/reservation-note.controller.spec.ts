@@ -35,7 +35,9 @@ describe('ReservationNoteController', () => {
       ],
     }).compile();
 
-    controller = module.get<ReservationNoteController>(ReservationNoteController);
+    controller = module.get<ReservationNoteController>(
+      ReservationNoteController,
+    );
     service = module.get<ReservationNoteService>(ReservationNoteService);
   });
 

@@ -125,7 +125,7 @@ describe('TableAssignmentsController', () => {
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockResolvedValue(mockOneTableAssignmentResponse);
 
-      const result = await controller.create(createDto, mockRequest as any);
+      const result = await controller.create(createDto, mockRequest);
 
       expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
       expect(result).toEqual(mockOneTableAssignmentResponse);
@@ -138,9 +138,9 @@ describe('TableAssignmentsController', () => {
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(
-        controller.create(createDto, mockRequest as any),
-      ).rejects.toThrow(errorMessage);
+      await expect(controller.create(createDto, mockRequest)).rejects.toThrow(
+        errorMessage,
+      );
       expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
     });
 
@@ -168,7 +168,7 @@ describe('TableAssignmentsController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll(query, mockRequest as any);
+      const result = await controller.findAll(query, mockRequest);
 
       expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
       expect(result).toEqual(mockPaginatedResponse);
@@ -181,9 +181,9 @@ describe('TableAssignmentsController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(
-        controller.findAll(query, mockRequest as any),
-      ).rejects.toThrow(errorMessage);
+      await expect(controller.findAll(query, mockRequest)).rejects.toThrow(
+        errorMessage,
+      );
       expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
     });
 
@@ -201,7 +201,7 @@ describe('TableAssignmentsController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      await controller.findAll(queryWithFilters, mockRequest as any);
+      await controller.findAll(queryWithFilters, mockRequest);
 
       expect(findAllSpy).toHaveBeenCalledWith(
         queryWithFilters,
@@ -233,7 +233,7 @@ describe('TableAssignmentsController', () => {
       };
       findOneSpy.mockResolvedValue(response);
 
-      const result = await controller.findOne(1, mockRequest as any);
+      const result = await controller.findOne(1, mockRequest);
 
       expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
       expect(result).toEqual(response);
@@ -246,7 +246,7 @@ describe('TableAssignmentsController', () => {
       const findOneSpy = jest.spyOn(service, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(1, mockRequest as any)).rejects.toThrow(
+      await expect(controller.findOne(1, mockRequest)).rejects.toThrow(
         errorMessage,
       );
       expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
@@ -261,7 +261,7 @@ describe('TableAssignmentsController', () => {
       };
       findOneSpy.mockResolvedValue(response);
 
-      await controller.findOne(123, mockRequest as any);
+      await controller.findOne(123, mockRequest);
 
       expect(findOneSpy).toHaveBeenCalledWith(123, mockUser.merchant.id);
     });
@@ -299,7 +299,7 @@ describe('TableAssignmentsController', () => {
       };
       updateSpy.mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, updateDto, mockRequest as any);
+      const result = await controller.update(1, updateDto, mockRequest);
 
       expect(updateSpy).toHaveBeenCalledWith(
         1,
@@ -317,7 +317,7 @@ describe('TableAssignmentsController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, updateDto, mockRequest as any),
+        controller.update(1, updateDto, mockRequest),
       ).rejects.toThrow(errorMessage);
       expect(updateSpy).toHaveBeenCalledWith(
         1,
@@ -343,7 +343,7 @@ describe('TableAssignmentsController', () => {
       };
       updateSpy.mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, partialDto, mockRequest as any);
+      const result = await controller.update(1, partialDto, mockRequest);
 
       expect(updateSpy).toHaveBeenCalledWith(
         1,
@@ -377,7 +377,7 @@ describe('TableAssignmentsController', () => {
       };
       removeSpy.mockResolvedValue(deletedResponse);
 
-      const result = await controller.remove(1, mockRequest as any);
+      const result = await controller.remove(1, mockRequest);
 
       expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
       expect(result).toEqual(deletedResponse);
@@ -390,7 +390,7 @@ describe('TableAssignmentsController', () => {
       const removeSpy = jest.spyOn(service, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(1, mockRequest as any)).rejects.toThrow(
+      await expect(controller.remove(1, mockRequest)).rejects.toThrow(
         errorMessage,
       );
       expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
@@ -405,7 +405,7 @@ describe('TableAssignmentsController', () => {
       };
       removeSpy.mockResolvedValue(deletedResponse);
 
-      await controller.remove(456, mockRequest as any);
+      await controller.remove(456, mockRequest);
 
       expect(removeSpy).toHaveBeenCalledWith(456, mockUser.merchant.id);
     });

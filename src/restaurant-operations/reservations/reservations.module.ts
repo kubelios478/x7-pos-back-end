@@ -6,6 +6,12 @@ import { ReservationNoteModule } from './reservation-note/reservation-note.modul
 import { ReservationStatusHistoryModule } from './reservation-status-history/reservation-status-history.module';
 
 @Module({
-  imports: [ReservationModule, ReservationGuestModule, ReservationTableModule, ReservationNoteModule, ReservationStatusHistoryModule]
+  imports: [
+    ReservationModule,
+    ReservationGuestModule,
+    ReservationTableModule,
+    ReservationNoteModule,
+    ReservationStatusHistoryModule,
+  ],
 })
 export class ReservationsModule {}

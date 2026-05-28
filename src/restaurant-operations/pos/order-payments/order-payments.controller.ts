@@ -113,7 +113,7 @@ export class OrderPaymentsController {
   @ApiQuery({ name: 'sortBy', required: false, enum: OrderPaymentSortBy })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'] })
   @ApiOkResponse({ type: PaginatedOrderPaymentResponseDto })
-  async findAll(
+  findAll(
     @Query() query: GetOrderPaymentQueryDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<PaginatedOrderPaymentResponseDto> {
@@ -132,7 +132,7 @@ export class OrderPaymentsController {
   @ApiOperation({ summary: 'Get one order payment' })
   @ApiParam({ name: 'id' })
   @ApiOkResponse({ type: OneOrderPaymentResponseDto })
-  async findOne(
+  findOne(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderPaymentResponseDto> {
@@ -152,7 +152,7 @@ export class OrderPaymentsController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateOrderPaymentDto })
   @ApiOkResponse({ type: OneOrderPaymentResponseDto })
-  async update(
+  update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderPaymentDto,
     @Request() req: AuthenticatedRequest,
@@ -173,7 +173,7 @@ export class OrderPaymentsController {
   @ApiOperation({ summary: 'Delete an order payment' })
   @ApiParam({ name: 'id' })
   @ApiOkResponse({ type: OneOrderPaymentResponseDto })
-  async remove(
+  remove(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderPaymentResponseDto> {

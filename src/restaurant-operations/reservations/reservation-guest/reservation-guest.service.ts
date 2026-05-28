@@ -7,7 +7,10 @@ import { ReservationGuest } from './entities/reservation-guest.entity';
 import { Reservation } from 'src/restaurant-operations/reservations/reservation/entities/reservation.entity';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { AllPaginatedReservationGuests } from './dto/all-paginated-reservation-guests.dto';
-import { OneReservationGuestResponse, ReservationGuestResponseDto } from './dto/reservation-guest-response.dto';
+import {
+  OneReservationGuestResponse,
+  ReservationGuestResponseDto,
+} from './dto/reservation-guest-response.dto';
 import { GetReservationGuestsQueryDto } from './dto/get-reservation-guests-query.dto';
 
 @Injectable()
@@ -17,10 +20,16 @@ export class ReservationGuestService {
     private readonly guestRepository: Repository<ReservationGuest>,
     @InjectRepository(Reservation)
     private readonly reservationRepository: Repository<Reservation>,
-  ) { }
+  ) {}
 
-  async create(createGuestDto: CreateReservationGuestDto, merchantId: number): Promise<OneReservationGuestResponse> {
-    await this.validateReservationOwnership(createGuestDto.reservation_id, merchantId);
+  async create(
+    createGuestDto: CreateReservationGuestDto,
+    merchantId: number,
+  ): Promise<OneReservationGuestResponse> {
+    await this.validateReservationOwnership(
+      createGuestDto.reservation_id,
+      merchantId,
+    );
 
     try {
       const guest = this.guestRepository.create(createGuestDto);
@@ -35,17 +44,29 @@ export class ReservationGuestService {
     }
   }
 
-  async findAll(reservationId: number, merchantId: number, page = 1, limit = 10): Promise<AllPaginatedReservationGuests> {
-    return this.findAllGlobal(merchantId, { reservation_id: reservationId, page, limit });
+  async findAll(
+    reservationId: number,
+    merchantId: number,
+    page = 1,
+    limit = 10,
+  ): Promise<AllPaginatedReservationGuests> {
+    return this.findAllGlobal(merchantId, {
+      reservation_id: reservationId,
+      page,
+      limit,
+    });
   }
 
-  async findAllGlobal(merchantId: number, queryDto: GetReservationGuestsQueryDto): Promise<AllPaginatedReservationGuests> {
+  async findAllGlobal(
+    merchantId: number,
+    queryDto: GetReservationGuestsQueryDto,
+  ): Promise<AllPaginatedReservationGuests> {
     const { page = 1, limit = 10, reservation_id, name } = queryDto;
     const skip = (page - 1) * limit;
 
     const where: any = {
       is_active: true,
-      reservation: { merchant_id: merchantId }
+      reservation: { merchant_id: merchantId },
     };
 
     if (reservation_id) where.reservation_id = reservation_id;
@@ -64,7 +85,7 @@ export class ReservationGuestService {
     return {
       statusCode: 200,
       message: 'All merchant guests retrieved successfully',
-      data: guests.map(guest => this.mapToResponseDto(guest)),
+      data: guests.map((guest) => this.mapToResponseDto(guest)),
       page,
       limit,
       total,
@@ -74,7 +95,11 @@ export class ReservationGuestService {
     };
   }
 
-  async findOne(id: number, merchantId: number, action?: string): Promise<OneReservationGuestResponse> {
+  async findOne(
+    id: number,
+    merchantId: number,
+    action?: string,
+  ): Promise<OneReservationGuestResponse> {
     const guest = await this.guestRepository.findOne({
       where: { id, is_active: true },
       relations: ['reservation'],
@@ -91,7 +116,11 @@ export class ReservationGuestService {
     };
   }
 
-  async update(id: number, updateGuestDto: UpdateReservationGuestDto, merchantId: number): Promise<OneReservationGuestResponse> {
+  async update(
+    id: number,
+    updateGuestDto: UpdateReservationGuestDto,
+    merchantId: number,
+  ): Promise<OneReservationGuestResponse> {
     await this.findOne(id, merchantId);
     const guest = await this.guestRepository.findOneBy({ id });
 
@@ -112,7 +141,10 @@ export class ReservationGuestService {
     }
   }
 
-  async remove(id: number, merchantId: number): Promise<OneReservationGuestResponse> {
+  async remove(
+    id: number,
+    merchantId: number,
+  ): Promise<OneReservationGuestResponse> {
     const guestRes = await this.findOne(id, merchantId);
     const guest = await this.guestRepository.findOneBy({ id });
 
@@ -129,7 +161,9 @@ export class ReservationGuestService {
     };
   }
 
-  private mapToResponseDto(guest: ReservationGuest): ReservationGuestResponseDto {
+  private mapToResponseDto(
+    guest: ReservationGuest,
+  ): ReservationGuestResponseDto {
     return {
       id: guest.id,
       reservation_id: guest.reservation_id,
@@ -141,7 +175,10 @@ export class ReservationGuestService {
     };
   }
 
-  private async validateReservationOwnership(reservationId: number, merchantId: number) {
+  private async validateReservationOwnership(
+    reservationId: number,
+    merchantId: number,
+  ) {
     const reservation = await this.reservationRepository.findOneBy({
       id: reservationId,
       merchant_id: merchantId,
@@ -149,7 +186,9 @@ export class ReservationGuestService {
     });
 
     if (!reservation) {
-      ErrorHandler.notFound('Reservation not found or does not belong to your merchant');
+      ErrorHandler.notFound(
+        'Reservation not found or does not belong to your merchant',
+      );
     }
   }
 }
