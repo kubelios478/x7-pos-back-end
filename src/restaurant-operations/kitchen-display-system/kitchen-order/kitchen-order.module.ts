@@ -12,6 +12,7 @@ import { Order } from '../../pos/orders/entities/order.entity';
 import { OrderItem } from '../../pos/order-item/entities/order-item.entity';
 import { KitchenStation } from '../kitchen-station/entities/kitchen-station.entity';
 import { OrdersModule } from '../../pos/orders/orders.module';
+import { ProductsInventoryModule } from 'src/inventory/products-inventory/products-inventory.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { OrdersModule } from '../../pos/orders/orders.module';
       KitchenStation,
     ]),
     forwardRef(() => OrdersModule),
+    ProductsInventoryModule,
   ],
   controllers: [KitchenOrderController],
   providers: [KitchenOrderService, KitchenOrderSyncService],
