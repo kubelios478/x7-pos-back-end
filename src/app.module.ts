@@ -29,6 +29,7 @@ import { CashDrawer } from './restaurant-operations/cashdrawer/cash-drawers/enti
 import { CashDrawerHistory } from './restaurant-operations/cashdrawer/cash-drawer-history/entities/cash-drawer-history.entity';
 import { CashTipMovement } from './restaurant-operations/tips/cash-tip-movements/entities/cash-tip-movement.entity';
 import { CashTransaction } from './restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
+import { CashShift } from './restaurant-operations/cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { Category } from './inventory/products-inventory/category/entities/category.entity';
 import { Collaborator } from './finance-hr/hr/collaborators/entities/collaborator.entity';
 import { CollaboratorContract } from './finance-hr/hr/collaborator-contracts/entities/collaborator-contract.entity';
@@ -126,6 +127,11 @@ import { Variant } from './inventory/products-inventory/variants/entities/varian
 import { FinanceHrModule } from './finance-hr/finance-hr.module';
 import { FloorZone } from './restaurant-operations/dining-system/floor-zone/entity/floor-zone.entity';
 import { FloorPlan } from './restaurant-operations/dining-system/floor-plan/entity/floor-plan.entity';
+import { Reservation } from './restaurant-operations/reservations/reservation/entities/reservation.entity';
+import { ReservationTable } from './restaurant-operations/reservations/reservation-table/entities/reservation-table.entity';
+import { ReservationStatusHistory } from './restaurant-operations/reservations/reservation-status-history/entities/reservation-status-history.entity';
+import { ReservationGuest } from './restaurant-operations/reservations/reservation-guest/entities/reservation-guest.entity';
+import { ReservationNote } from './restaurant-operations/reservations/reservation-note/entities/reservation-note.entity';
 import { DeliverySystemModule } from './commerce/delivery-system/delivery-system.module';
 import { DeliveryZoneModule } from './commerce/delivery-system/delivery-zone/delivery-zone.module';
 import { DeliveryFeeModule } from './commerce/delivery-system/delivery-fee/delivery-fee.module';
@@ -160,6 +166,7 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           CashDrawerHistory,
           CashTipMovement,
           CashTransaction,
+          CashShift,
           Category,
           Variant,
           Modifier,
@@ -234,6 +241,11 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           QRMenuSection,
           QROrder,
           QROrderItem,
+          Reservation,
+          ReservationTable,
+          ReservationStatusHistory,
+          ReservationGuest,
+          ReservationNote,
           Shift,
           ShiftAssignment,
           SubscriptionApplication,
@@ -300,4 +312,4 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
     ModifierAnalyticsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

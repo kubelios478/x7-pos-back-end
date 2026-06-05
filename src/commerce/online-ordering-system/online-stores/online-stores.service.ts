@@ -12,8 +12,8 @@ import {
   Like,
   type FindOptionsOrder,
   type FindOptionsWhere,
-  type QueryDeepPartialEntity,
 } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OnlineStore } from './entities/online-store.entity';
 import { Merchant } from '../../../platform-saas/merchants/entities/merchant.entity';
 import { CreateOnlineStoreDto } from './dto/create-online-store.dto';
@@ -36,7 +36,7 @@ export class OnlineStoresService {
     private readonly onlineStoreRepository: Repository<OnlineStore>,
     @InjectRepository(Merchant)
     private readonly merchantRepository: Repository<Merchant>,
-  ) {}
+  ) { }
 
   async create(
     createOnlineStoreDto: CreateOnlineStoreDto,

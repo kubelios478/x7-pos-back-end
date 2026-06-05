@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { KitchenOrder } from '../../../kitchen-display-system/kitchen-order/entities/kitchen-order.entity';
 import { OnlineOrder } from '../../../../commerce/online-ordering-system/online-order/entities/online-order.entity';
+import { CashShift } from '../../../../restaurant-operations/cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 // import { ApiProperty } from '@nestjs/swagger';
 import { Merchant } from '../../../../platform-saas/merchants/entities/merchant.entity';
@@ -35,7 +36,7 @@ import { KitchenStatus } from '../constants/kitchen-status.enum';
 import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
 
-@Entity('orders')
+@Entity('orders') 
 @Index(['merchant_id', 'status', 'created_at'])
 @Index(['merchant_id', 'order_number'], { unique: true })
 export class Order {
@@ -95,6 +96,17 @@ export class Order {
   @JoinColumn({ name: 'subscription_id' })
   subscription: MerchantSubscription;
 
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Identifier of the Cash Shift associated with the Order',
+  })
+  @Column({ type: 'int', name: 'cash_shift_id', nullable: true })
+  cash_shift_id: number | null;
+
+  @ManyToOne(() => CashShift, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'cash_shift_id' })
+  cash_shift: CashShift;
+
   @ApiProperty({
     example: OrderType.DINE_IN,
     enum: OrderType,
@@ -142,7 +154,7 @@ export class Order {
     example: '000001',
     description: 'Unique order number within the merchant',
   })
-  @Column({ type: 'varchar', length: 20 })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   order_number: string;
 
   @ApiProperty({ enum: OrderSource, default: OrderSource.POS })

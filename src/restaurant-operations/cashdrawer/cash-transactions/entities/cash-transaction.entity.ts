@@ -15,6 +15,7 @@ import { Order } from '../../../../restaurant-operations/pos/orders/entities/ord
 import { CashTransactionType } from '../constants/cash-transaction-type.enum';
 import { CashTransactionStatus } from '../constants/cash-transaction-status.enum';
 import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
+import type { CashShift } from '../../cash-shifts/entities/cash-shift.entity';
 
 @Entity('cash_transactions')
 export class CashTransaction {
@@ -70,6 +71,15 @@ export class CashTransaction {
   @Column({ type: 'text', nullable: true })
   notes?: string | null;
 
+  @ApiProperty({
+    example: 1,
+    description: 'Cash shift ID this transaction belongs to',
+    required: false,
+    nullable: true,
+  })
+  @Column({ type: 'int', name: 'shift_id', nullable: true })
+  shift_id: number | null;
+
   @ApiProperty({ example: '2024-01-15T08:00:00Z' })
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   created_at: Date;
@@ -106,6 +116,10 @@ export class CashTransaction {
   })
   @JoinColumn({ name: 'order_id' })
   order: Order;
+
+  @ManyToOne('CashShift', (cs: CashShift) => cs.cashTransactions, { nullable: true })
+  @JoinColumn({ name: 'shift_id' })
+  cashShift: CashShift | null;
 
   @OneToMany(
     () => LoyaltyPointTransaction,

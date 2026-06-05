@@ -10,8 +10,8 @@ import {
   Repository,
   IsNull,
   type FindOptionsWhere,
-  type QueryDeepPartialEntity,
 } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OnlineMenuItem } from './entities/online-menu-item.entity';
 import { OnlineMenu } from '../online-menu/entities/online-menu.entity';
 import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
@@ -41,7 +41,7 @@ export class OnlineMenuItemService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
-  ) {}
+  ) { }
 
   async create(
     createOnlineMenuItemDto: CreateOnlineMenuItemDto,
@@ -627,11 +627,11 @@ export class OnlineMenuItemService {
       },
       variant: onlineMenuItem.variant
         ? {
-            id: onlineMenuItem.variant.id,
-            name: onlineMenuItem.variant.name,
-            price: parseFloat(onlineMenuItem.variant.price.toString()),
-            sku: onlineMenuItem.variant.sku,
-          }
+          id: onlineMenuItem.variant.id,
+          name: onlineMenuItem.variant.name,
+          price: parseFloat(onlineMenuItem.variant.price.toString()),
+          sku: onlineMenuItem.variant.sku,
+        }
         : null,
     };
   }

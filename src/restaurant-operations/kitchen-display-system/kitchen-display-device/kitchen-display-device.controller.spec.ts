@@ -8,6 +8,8 @@ import { OneKitchenDisplayDeviceResponseDto } from './dto/kitchen-display-device
 import { PaginatedKitchenDisplayDeviceResponseDto } from './dto/paginated-kitchen-display-device-response.dto';
 import { KitchenDisplayDeviceStatus } from './constants/kitchen-display-device-status.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { Request as ExpressRequest } from 'express';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
@@ -27,6 +29,8 @@ describe('KitchenDisplayDeviceController', () => {
   const mockUser = {
     id: 1,
     email: 'test@example.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
     merchant: {
       id: 1,
     },

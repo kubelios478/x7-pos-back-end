@@ -66,4 +66,5 @@ docker-compose.yml
 /prueba
 *.txt
 *.png
+*.md
 /.agent

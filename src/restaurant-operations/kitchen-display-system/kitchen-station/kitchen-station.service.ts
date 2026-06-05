@@ -11,8 +11,8 @@ import {
   Between,
   type FindOptionsOrder,
   type FindOptionsWhere,
-  type QueryDeepPartialEntity,
 } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { KitchenStation } from './entities/kitchen-station.entity';
 import { Merchant } from '../../../platform-saas/merchants/entities/merchant.entity';
 import { CreateKitchenStationDto } from './dto/create-kitchen-station.dto';
@@ -35,7 +35,7 @@ export class KitchenStationService {
     private readonly kitchenStationRepository: Repository<KitchenStation>,
     @InjectRepository(Merchant)
     private readonly merchantRepository: Repository<Merchant>,
-  ) {}
+  ) { }
 
   async create(
     createKitchenStationDto: CreateKitchenStationDto,
