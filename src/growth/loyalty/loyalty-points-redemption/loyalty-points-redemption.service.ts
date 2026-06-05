@@ -236,10 +236,11 @@ export class LoyaltyPointsRedemptionService {
       .getOne();
 
     if (!lock) throw new NotFoundException('Loyalty points lock not found');
-    if (lock.merchant_id !== authenticatedUserMerchantId) {
+    // bigint columns may be returned as strings by the driver; normalize before compare
+    if (Number(lock.merchant_id) !== Number(authenticatedUserMerchantId)) {
       throw new ForbiddenException('Lock does not belong to your merchant');
     }
-    if (lock.order_id !== orderId) {
+    if (Number(lock.order_id) !== Number(orderId)) {
       throw new BadRequestException('Lock does not belong to this order');
     }
     if (lock.status !== LoyaltyPointsLockStatus.RESERVED) {
@@ -293,7 +294,6 @@ export class LoyaltyPointsRedemptionService {
       description: `Points redeemed for order #${orderId}`,
       loyaltyCustomerId: loyaltyCustomer.id,
       orderId,
-      paymentId,
       is_active: true,
     });
     await manager.save(txn);

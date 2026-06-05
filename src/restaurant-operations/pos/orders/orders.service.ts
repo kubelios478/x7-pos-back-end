@@ -125,7 +125,7 @@ export class OrdersService {
     activeShiftId?: number,
   ): Promise<OneOrderResponseDto> {
     let subtotal = 0;
-    const orderItems: any[] = [];
+    const orderItems: OrderItem[] = [];
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
     }
@@ -207,8 +207,8 @@ export class OrdersService {
         throw new BadRequestException('Invalid closedAt date format');
       }
     }
-    // Validate items
-    for (const item of dto.items) {
+    // Optional line items; POS can add more later via order-item endpoints
+    for (const item of dto.items ?? []) {
       const product = await this.productsRepo.findOne({
         where: { id: item.productId, merchantId: merchant.id },
       });
@@ -261,7 +261,7 @@ export class OrdersService {
     order.displayId = displayId;
     order.shift = activeShift;
     order.shift_id = activeShift.id;
-    order.status = OrderBusinessStatus.PENDING;
+    order.status = dto.businessStatus ?? OrderBusinessStatus.PENDING;
     order.subtotal = subtotal;
 
     order.order_number = await this.nextOrderNumber(dto.merchantId);

@@ -37,6 +37,13 @@ export class LoyaltyProgramResponseDto {
 
   @ApiProperty({
     example: 100,
+    description:
+      'Points required to redeem 1 currency unit (e.g., 100 points = $1.00)',
+  })
+  redeem_points_per_currency: number;
+
+  @ApiProperty({
+    example: 100,
     description: 'Minimum points required to redeem a reward',
   })
   min_points_to_redeem: number;

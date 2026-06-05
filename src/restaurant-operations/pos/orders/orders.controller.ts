@@ -76,7 +76,7 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Create a new order',
     description:
-      'Creates a new order for the authenticated merchant. Validates that all related entities (table, collaborator, subscription, customer) belong to the merchant.',
+      'Creates a new order for the authenticated merchant. Validates that all related entities (table, collaborator, subscription, customer) belong to the merchant. businessStatus defaults to pending; items are optional and can be added later via POST /order-item.',
   })
   @ApiBody({ type: CreateOrderDto })
   @ApiCreatedResponse({

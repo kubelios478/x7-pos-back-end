@@ -8,6 +8,7 @@ import { LoyaltyRewardsRedemptionsModule } from './loyalty-rewards-redemptions/l
 import { LoyaltyCouponsModule } from './loyalty-coupons/loyalty-coupons.module';
 import { OrderLoyaltyWalletModule } from './order-loyalty-wallet/order-loyalty-wallet.module';
 import { LoyaltyPointsRedemptionModule } from './loyalty-points-redemption/loyalty-points-redemption.module';
+import { LoyaltyAnalyticsModule } from './loyalty-analytics/loyalty-analytics.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { LoyaltyPointsRedemptionModule } from './loyalty-points-redemption/loyal
     LoyaltyCouponsModule,
     OrderLoyaltyWalletModule,
     LoyaltyPointsRedemptionModule,
+    LoyaltyAnalyticsModule,
   ],
 })
 export class LoyaltyModule {}

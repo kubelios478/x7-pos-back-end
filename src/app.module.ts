@@ -53,6 +53,8 @@ import { Location } from './inventory/products-inventory/stocks/locations/entiti
 import { LoyaltyCoupon } from './growth/loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
 import { LoyaltyCustomer } from './growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
 import { LoyaltyPointTransaction } from './growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
+import { LoyaltyPointsLock } from './growth/loyalty/loyalty-points-redemption/entities/loyalty-points-lock.entity';
+import { LoyaltyRedemptionAuditLog } from './growth/loyalty/loyalty-points-redemption/entities/loyalty-redemption-audit-log.entity';
 import { LoyaltyProgram } from './growth/loyalty/loyalty-programs/entities/loyalty-program.entity';
 import { LoyaltyReward } from './growth/loyalty/loyalty-reward/entities/loyalty-reward.entity';
 import { LoyaltyRewardsRedemption } from './growth/loyalty/loyalty-rewards-redemptions/entities/loyalty-rewards-redemption.entity';
@@ -207,6 +209,8 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           LoyaltyCoupon,
           LoyaltyCustomer,
           LoyaltyPointTransaction,
+          LoyaltyPointsLock,
+          LoyaltyRedemptionAuditLog,
           LoyaltyProgram,
           LoyaltyReward,
           LoyaltyRewardsRedemption,
