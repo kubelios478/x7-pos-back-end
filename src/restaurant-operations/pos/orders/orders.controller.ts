@@ -52,6 +52,7 @@ import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
 import { CompletePurchaseDto } from './dto/complete-purchase.dto';
+import { RefundOrderDto } from './dto/refund-order.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
@@ -581,11 +582,32 @@ export class OrdersController {
   }
 
   @Post('payment')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   async processPayment(@Body() dto: ProcessPaymentDto, @Req() req) {
     return this.ordersService.processPayment(
       dto,
       req.user.merchant.id,
       req.user,
     );
+  }
+
+  @Post('refund')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  async refundOrder(@Body() dto: RefundOrderDto, @Req() req) {
+    return this.ordersService.refundOrder(dto, req.user.merchant?.id, req.user);
   }
 }

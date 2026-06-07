@@ -24,6 +24,8 @@ import { MerchantTipRule } from 'src/core/configuration/merchant-tip-rule/entity
 import { MerchantTaxRule } from 'src/core/configuration/merchant-tax-rule/entity/merchant-tax-rule.entity';
 import { Receipt } from 'src/core/billing-transactions/receipts/entities/receipt.entity';
 import { ReceiptsModule } from 'src/core/billing-transactions/receipts/receipts.module';
+import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
+import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { ReceiptsModule } from 'src/core/billing-transactions/receipts/receipts.
       Customer,
       LoyaltyRewardsRedemption,
       LoyaltyCoupon,
+      LoyaltyCustomer,
+      LoyaltyPointTransaction,
       Shift,
       Product,
       TipSettlement,

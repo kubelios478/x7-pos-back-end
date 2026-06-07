@@ -133,7 +133,7 @@ export class CreateOrderDto {
   @Min(0)
   tipTotal?: number;
 
-  @ApiProperty({ type: [CreateOrderItemDto] }) // Añade esto
+  @ApiProperty({ type: [CreateOrderItemDto] })
   @IsNotEmpty()
   items: CreateOrderItemDto[];
 
@@ -146,4 +146,14 @@ export class CreateOrderDto {
   @IsOptional()
   @IsNumber()
   merchantTipRuleId?: number;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsString()
+  refund_reason?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsNumber()
+  refunded_by_user_id?: number;
 }

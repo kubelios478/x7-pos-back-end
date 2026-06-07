@@ -3,4 +3,5 @@ export enum ShiftStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   DELETED = 'deleted',
+  CLOSED = 'closed',
 }

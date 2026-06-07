@@ -339,4 +339,10 @@ export class Order {
 
   @OneToMany(() => TipSettlement, (tipSettlement) => tipSettlement.order)
   tipSettlements: TipSettlement[];
+
+  @Column({ nullable: true })
+  refund_reason: string;
+
+  @Column({ nullable: true })
+  refunded_by_user_id: number;
 }
