@@ -1,3 +1,4 @@
+// Cash Shifts Service implementation for drawer and shift management
 import {
     Injectable,
     BadRequestException,
@@ -26,6 +27,8 @@ import {
 } from './dto/cash-shift-response.dto';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { UserRole } from '../../../platform-saas/users/constants/role.enum';
+import { CashMovement } from '../cash-movements/entities/cash-movement.entity';
+import { CashMovementType } from '../cash-movements/constants/cash-movement-type.enum';
 
 @Injectable()
 export class CashShiftsService {
@@ -46,7 +49,27 @@ export class CashShiftsService {
     private format(
         shift: CashShift,
         salesSummary?: { method: string; amount: number }[],
+        movements?: CashMovement[],
     ): CashShiftResponseDto {
+        const mappedMovements = (movements || shift.cashMovements) || [];
+        
+        const expenses = mappedMovements.filter((m) => m.type === CashMovementType.OUTFLOW);
+        const totalExpenses = expenses.reduce((sum, m) => sum + Number(m.amount), 0);
+
+        const manualInflows = mappedMovements.filter((m) => m.type === CashMovementType.INFLOW);
+        const totalManualInflows = manualInflows.reduce((sum, m) => sum + Number(m.amount), 0);
+
+        const formatMovement = (m: CashMovement) => ({
+            id: m.id,
+            shiftId: m.shiftId,
+            amount: Number(m.amount),
+            reason: m.reason,
+            receiptPhoto: m.receiptPhoto,
+            userId: m.userId,
+            type: m.type,
+            createdAt: m.createdAt,
+        });
+
         return {
             id: shift.id,
             merchantId: shift.merchantId,
@@ -61,10 +84,14 @@ export class CashShiftsService {
             openedAt: shift.openedAt,
             closedAt: shift.closedAt,
             salesSummary,
+            totalExpenses,
+            expenses: expenses.map(formatMovement),
+            manualInflows: manualInflows.map(formatMovement),
+            totalManualInflows,
         };
     }
 
-    // ── Operaciones ──────────────────────────────────────────────────────────────
+    // ── Operations ──────────────────────────────────────────────────────────────
 
     /**
      * Opens a new cash shift for the merchant.
@@ -229,12 +256,16 @@ export class CashShiftsService {
         shift.status = CashShiftStatus.CLOSED;
 
         const closed = await this.cashShiftRepo.save(shift);
+        const shiftWithRelations = await this.cashShiftRepo.findOne({
+            where: { id: shiftId },
+            relations: ['cashMovements'],
+        });
         const salesSummary = await this.cashShiftRepo.getSalesSummary(shiftId);
 
         return {
             statusCode: 200,
             message: 'Cash shift closed successfully',
-            data: this.format(closed, salesSummary),
+            data: this.format(shiftWithRelations || closed, salesSummary),
         };
     }
 
@@ -296,7 +327,7 @@ export class CashShiftsService {
 
             // CAT 1: Ensure OUT flows do not exceed current live balance
             if (dto.type === CashShiftMovementType.OUT) {
-                // En una transacción, usamos el QueryBuilder asociado al EntityManager transaccional
+                // In a transaction, we use the QueryBuilder associated with the transactional EntityManager
                 const result = await queryRunner.manager
                     .createQueryBuilder(CashShift, 'cs')
                     .leftJoin(
@@ -359,13 +390,14 @@ export class CashShiftsService {
 
         const shift = await this.cashShiftRepo.findOne({
             where: { merchantId, status: CashShiftStatus.OPEN },
+            relations: ['cashMovements'],
         });
 
         if (!shift) {
             throw new NotFoundException('No active cash shift found for this merchant');
         }
 
-        // Calcular el saldo teórico en tiempo real
+        // Calculate the theoretical balance in real time
         shift.systemAmount = await this.cashShiftRepo.getLiveBalance(shift.id);
 
         const salesSummary = await this.cashShiftRepo.getSalesSummary(shift.id);
@@ -385,10 +417,11 @@ export class CashShiftsService {
 
         const shifts = await this.cashShiftRepo.find({
             where: { merchantId },
+            relations: ['cashMovements'],
             order: { openedAt: 'DESC' },
         });
 
-        // Calcular dinámicamente el saldo teórico para turnos abiertos
+        // Dynamically calculate the theoretical balance for open shifts
         for (const shift of shifts) {
             if (shift.status === CashShiftStatus.OPEN) {
                 shift.systemAmount = await this.cashShiftRepo.getLiveBalance(shift.id);
@@ -408,7 +441,10 @@ export class CashShiftsService {
             throw new ForbiddenException('User must belong to a merchant');
         }
 
-        const shift = await this.cashShiftRepo.findOne({ where: { id } });
+        const shift = await this.cashShiftRepo.findOne({
+            where: { id },
+            relations: ['cashMovements'],
+        });
 
         if (!shift) {
             throw new NotFoundException(`Cash shift with ID ${id} not found`);
@@ -418,7 +454,7 @@ export class CashShiftsService {
             throw new ForbiddenException('You can only view cash shifts belonging to your merchant');
         }
 
-        // Calcular dinámicamente el saldo teórico si el turno está abierto
+        // Dynamically calculate the theoretical balance if the shift is open
         if (shift.status === CashShiftStatus.OPEN) {
             shift.systemAmount = await this.cashShiftRepo.getLiveBalance(id);
         }

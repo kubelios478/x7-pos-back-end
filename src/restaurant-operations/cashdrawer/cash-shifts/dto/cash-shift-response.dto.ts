@@ -1,4 +1,6 @@
+// Response DTO for Cash Shift entity and calculations
 import { CashShiftStatus } from '../constants/cash-shift-status.enum';
+import { CashMovementResponseDto } from '../../cash-movements/dto/cash-movement-response.dto';
 
 export class CashShiftResponseDto {
     id: number;
@@ -14,6 +16,10 @@ export class CashShiftResponseDto {
     openedAt: Date;
     closedAt: Date | null;
     salesSummary?: { method: string; amount: number }[];
+    expenses?: CashMovementResponseDto[];
+    totalExpenses?: number;
+    manualInflows?: CashMovementResponseDto[];
+    totalManualInflows?: number;
 }
 
 export class OneCashShiftResponseDto {

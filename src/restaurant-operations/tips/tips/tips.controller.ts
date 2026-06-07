@@ -14,6 +14,7 @@ import {
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 import { TipsService } from './tips.service';
 import { CreateTipDto } from './dto/create-tip.dto';
@@ -121,8 +122,8 @@ export class TipsController {
       },
     },
   })
-  async create(@Body() dto: CreateTipDto, @Request() req: AuthenticatedUser) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+  async create(@Body() dto: CreateTipDto, @CurrentUser() user: AuthenticatedUser) {
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipsService.create(dto, authenticatedUserMerchantId);
   }
 
@@ -217,9 +218,9 @@ export class TipsController {
   })
   async findAll(
     @Query() query: GetTipQueryDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipsService.findAll(query, authenticatedUserMerchantId);
   }
 
@@ -248,9 +249,9 @@ export class TipsController {
   @ApiBadRequestResponse({ description: 'Invalid tip ID', type: ErrorResponse })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipsService.findOne(id, authenticatedUserMerchantId);
   }
 
@@ -287,9 +288,9 @@ export class TipsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTipDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipsService.update(id, dto, authenticatedUserMerchantId);
   }
 
@@ -322,9 +323,9 @@ export class TipsController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipsService.remove(id, authenticatedUserMerchantId);
   }
 }
