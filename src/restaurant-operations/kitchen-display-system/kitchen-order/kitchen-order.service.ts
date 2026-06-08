@@ -36,6 +36,8 @@ import { KitchenStationStatus } from '../kitchen-station/constants/kitchen-stati
 import { OnlineOrderStatus } from '../../../commerce/online-ordering-system/online-order/constants/online-order-status.enum';
 import { OrderStatus } from '../../../restaurant-operations/pos/orders/constants/order-status.enum';
 import { CancelKitchenOrderDto } from './dto/cancel-kitchen-order.dto';
+import { StockAdjustmentType } from './constants/stock-adjustment-type.enum';
+import { ProductsInventoryService } from 'src/inventory/products-inventory/products-inventory.service';
 
 const KITCHEN_ORDER_DETAIL_RELATIONS = {
   merchant: true,
@@ -64,6 +66,7 @@ export class KitchenOrderService {
     private readonly kitchenStationRepository: Repository<KitchenStation>,
     private readonly dataSource: DataSource,
     private readonly kitchenOrderSyncService: KitchenOrderSyncService,
+    private readonly productsInventoryService: ProductsInventoryService,
   ) {}
 
   async create(
@@ -652,13 +655,82 @@ export class KitchenOrderService {
     };
   }
 
+  private suggestStockAction(product: any): StockAdjustmentType {
+    if (product.isPrepared) {
+      return StockAdjustmentType.WASTE;
+    }
+    return StockAdjustmentType.RETURN_TO_INVENTORY;
+  }
+
   async cancelKitchenOrder(id: number, dto: CancelKitchenOrderDto, user: any) {
     const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
       where: { id },
+      relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
     });
 
     if (!existingKitchenOrder) {
       throw new NotFoundException('Kitchen order not found');
+    }
+
+    if (existingKitchenOrder.status === KitchenOrderStatus.CANCELLED) {
+      throw new BadRequestException('Kitchen order already cancelled');
+    }
+
+    if (!existingKitchenOrder.started_at) {
+      throw new BadRequestException(
+        'Only orders already in preparation can be cancelled',
+      );
+    }
+
+    for (const item of existingKitchenOrder.kitchenOrderItems || []) {
+      const product = item.product;
+      if (!product) continue;
+
+      const preparedQty = item.prepared_quantity || 0;
+      const rawQty = Math.max(0, item.quantity - preparedQty);
+
+      const stockAction = dto.stockAction || this.suggestStockAction(product);
+
+      console.log('CANCEL ITEM', {
+        quantity: item.quantity,
+        prepared: item.prepared_quantity,
+        rawQty,
+        stockAction,
+      });
+      if (stockAction === StockAdjustmentType.RETURN_TO_INVENTORY) {
+        if (rawQty > 0) {
+          await this.productsInventoryService.returnToStock(
+            product.id,
+            rawQty,
+            {
+              reason: dto.reason,
+              referenceId: existingKitchenOrder.id,
+            },
+          );
+        }
+
+        if (preparedQty > 0) {
+          await this.productsInventoryService.registerWaste(
+            product.id,
+            preparedQty,
+            {
+              reason: dto.reason,
+              referenceId: existingKitchenOrder.id,
+            },
+          );
+        }
+      }
+
+      if (stockAction === StockAdjustmentType.WASTE) {
+        await this.productsInventoryService.registerWaste(
+          product.id,
+          item.quantity,
+          {
+            reason: dto.reason,
+            referenceId: existingKitchenOrder.id,
+          },
+        );
+      }
     }
 
     existingKitchenOrder.status = KitchenOrderStatus.CANCELLED;

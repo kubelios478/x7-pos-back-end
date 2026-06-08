@@ -136,7 +136,7 @@ export class CreateOrderDto {
   @Min(0)
   tipTotal?: number;
 
-  @ApiPropertyOptional({
+Mark  @ApiPropertyOptional({
     type: [CreateOrderItemDto],
     description:
       'Optional line items at creation time. Omit or send an empty array to add items later via POST /order-item.',
@@ -156,4 +156,14 @@ export class CreateOrderDto {
   @IsOptional()
   @IsNumber()
   merchantTipRuleId?: number;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsString()
+  refund_reason?: string;
+
+  @ApiProperty()
+  @IsOptional()
+  @IsNumber()
+  refunded_by_user_id?: number;
 }

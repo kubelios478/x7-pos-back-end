@@ -93,6 +93,10 @@ export class TipsService {
     tip.record_status = TipRecordStatus.ACTIVE;
 
     const saved = await this.tipRepository.save(tip);
+
+    // Synchronize order's tip_total
+    await this.updateOrderTipTotal(createTipDto.orderId);
+
     const complete = await this.tipRepository.findOne({
       where: { id: saved.id },
       relations: ['company', 'merchant', 'order'],
@@ -316,6 +320,12 @@ export class TipsService {
 
     await this.tipRepository.update(id, updateData);
 
+    // Synchronize order's tip_total
+    await this.updateOrderTipTotal(existing.order_id);
+    if (updateTipDto.orderId && updateTipDto.orderId !== existing.order_id) {
+      await this.updateOrderTipTotal(updateTipDto.orderId);
+    }
+
     const updated = await this.tipRepository.findOne({
       where: { id },
       relations: ['company', 'merchant', 'order'],
@@ -358,11 +368,26 @@ export class TipsService {
     existing.record_status = TipRecordStatus.DELETED;
     await this.tipRepository.save(existing);
 
+    // Synchronize order's tip_total
+    await this.updateOrderTipTotal(existing.order_id);
+
     return {
       statusCode: 200,
       message: 'Tip deleted successfully',
       data: this.formatResponse(existing),
     };
+  }
+
+  private async updateOrderTipTotal(orderId: number): Promise<void> {
+    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    if (order) {
+      const allTips = await this.tipRepository.find({
+        where: { order_id: orderId, record_status: TipRecordStatus.ACTIVE }
+      });
+      const sum = allTips.reduce((acc, t) => acc + Number(t.amount), 0);
+      order.tip_total = sum;
+      await this.orderRepository.save(order);
+    }
   }
 
   private formatResponse(tip: Tip): TipResponseDto {

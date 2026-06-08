@@ -98,4 +98,7 @@ export class Product {
 
   @OneToMany(() => LoyaltyReward, (loyaltyReward) => loyaltyReward.freeProduct)
   loyaltyRewards: LoyaltyReward[];
+
+  @Column({ type: 'decimal', default: 0 })
+  stock: number;
 }

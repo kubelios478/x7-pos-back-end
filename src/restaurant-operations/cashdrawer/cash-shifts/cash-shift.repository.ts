@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { CashShift } from './entities/cash-shift.entity';
+import { CashMovement } from '../cash-movements/entities/cash-movement.entity';
+import { TipSettlement } from '../../tips/tip-settlements/entities/tip-settlement.entity';
+import { SettlementMethod } from '../../tips/tip-settlements/constants/settlement-method.enum';
 
 @Injectable()
 export class CashShiftRepository extends Repository<CashShift> {
@@ -9,37 +12,66 @@ export class CashShiftRepository extends Repository<CashShift> {
     super(CashShift, dataSource.createEntityManager());
   }
 
-  /**
-   * TAC 1: Calculates the live balance of the cash shift using a single
-   * SQL query with SUM. Bringing records into code to sum them is prohibited.
-   *
-   * Formula: opening_balance + SUM(sales + incomes) - SUM(outflows)
-   */
-  async getLiveBalance(shiftId: number): Promise<number> {
-    const result = await this.dataSource
-      .getRepository(CashShift)
-      .createQueryBuilder('cs')
-      .leftJoin(
-        'cash_transactions',
-        'ct',
-        'ct.shift_id = cs.id AND ct.status = :active',
-        { active: 'active' },
-      )
-      .select(
-        `(
-          COALESCE(cs.opening_balance, 0)
-          + COALESCE(SUM(CASE WHEN ct.type IN ('sale', 'adjustment_up') THEN ct.amount ELSE 0 END), 0)
-          - COALESCE(SUM(CASE WHEN ct.type IN ('refund', 'withdrawal', 'adjustment_down') THEN ct.amount ELSE 0 END), 0)
-        )`,
-        'liveBalance',
-      )
-      .where('cs.id = :shiftId', { shiftId })
-      .groupBy('cs.id')
-      .addGroupBy('cs.opening_balance')
-      .getRawOne<{ liveBalance: string }>();
+    /**
+     * TAC 1: Calculates the live balance of the cash shift using a single
+     * SQL query with SUM. Bringing records into code to sum them is prohibited.
+     *
+     * Formula: opening_balance + SUM(sales + incomes) - SUM(outflows)
+     */
+    async getLiveBalance(shiftId: number): Promise<number> {
+        // Calculate standard cash transactions balance
+        const txResult = await this.dataSource
+            .getRepository(CashShift)
+            .createQueryBuilder('cs')
+            .leftJoin(
+                'cash_transactions',
+                'ct',
+                'ct.shift_id = cs.id AND ct.status = :active',
+                { active: 'active' },
+            )
+            .select(
+                `(
+                  COALESCE(cs.opening_balance, 0)
+                  + COALESCE(SUM(CASE WHEN ct.type IN ('sale', 'adjustment_up') THEN ct.amount ELSE 0 END), 0)
+                  - COALESCE(SUM(CASE WHEN ct.type IN ('refund', 'withdrawal', 'adjustment_down') THEN ct.amount ELSE 0 END), 0)
+                )`,
+                'txBalance',
+            )
+            .where('cs.id = :shiftId', { shiftId })
+            .groupBy('cs.id')
+            .addGroupBy('cs.opening_balance')
+            .getRawOne<{ txBalance: string }>();
 
-    return Number(result?.liveBalance ?? 0);
-  }
+        const txBalance = Number(txResult?.txBalance ?? 0);
+
+        // Calculate the sum of expenses (outflows) recorded in cash_movements
+        const movementsResult = await this.dataSource
+            .getRepository(CashMovement)
+            .createQueryBuilder('cm')
+            .select(
+                `SUM(CASE WHEN cm.type = 'OUTFLOW' THEN cm.amount ELSE -cm.amount END)`,
+                'movementSum',
+            )
+            .where('cm.shift_id = :shiftId', { shiftId })
+            .getRawOne<{ movementSum: string | null }>();
+
+        const movementSum = Number(movementsResult?.movementSum ?? 0);
+
+        // Calculate the sum of tip settlements paid in cash during this shift
+        const tipSettlementsResult = await this.dataSource
+            .getRepository(TipSettlement)
+            .createQueryBuilder('ts')
+            .select('SUM(ts.total_amount)', 'tipSettlementSum')
+            .where('ts.shift_id = :shiftId AND ts.settlement_method = :method', {
+                shiftId,
+                method: SettlementMethod.CASH,
+            })
+            .getRawOne<{ tipSettlementSum: string | null }>();
+
+        const tipSettlementSum = Number(tipSettlementsResult?.tipSettlementSum ?? 0);
+
+        return txBalance - movementSum - tipSettlementSum;
+    }
 
   /**
    * Calculates the sales summary by payment method for a given shift.

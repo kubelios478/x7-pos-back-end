@@ -1,4 +1,4 @@
-import { IsOptional, IsDateString, IsString } from 'class-validator';
+import { IsOptional, IsDateString } from 'class-validator';
 
 export class GetCancelledOrdersDto {
   @IsOptional()

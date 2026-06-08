@@ -30,6 +30,7 @@ import { CashDrawerHistory } from './restaurant-operations/cashdrawer/cash-drawe
 import { CashTipMovement } from './restaurant-operations/tips/cash-tip-movements/entities/cash-tip-movement.entity';
 import { CashTransaction } from './restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
 import { CashShift } from './restaurant-operations/cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashMovement } from './restaurant-operations/cashdrawer/cash-movements/entities/cash-movement.entity';
 import { Category } from './inventory/products-inventory/category/entities/category.entity';
 import { Input } from './inventory/inputs/entities/input.entity';
 import { InputSupplier } from './inventory/inputs/entities/input-supplier.entity';
@@ -178,6 +179,7 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           CashTipMovement,
           CashTransaction,
           CashShift,
+          CashMovement,
           Category,
           Input,
           InputSupplier,

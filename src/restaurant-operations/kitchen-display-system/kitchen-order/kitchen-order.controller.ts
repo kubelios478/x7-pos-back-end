@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Put,
+  Patch,
   Delete,
   ParseIntPipe,
   HttpCode,
@@ -408,7 +409,7 @@ export class KitchenOrderController {
     return this.kitchenOrderService.remove(id, authenticatedUserMerchantId);
   }
 
-  @Put(':id/cancel')
+  @Patch(':id/cancel')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,

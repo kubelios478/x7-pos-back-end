@@ -20,6 +20,8 @@ import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-f
 import { TipSettlementsService } from './tip-settlements.service';
 import { CreateTipSettlementDto } from './dto/create-tip-settlement.dto';
 import { UpdateTipSettlementDto } from './dto/update-tip-settlement.dto';
+import { TipPayoutDto } from './dto/tip-payout.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import {
   ApiTags,
   ApiOperation,
@@ -111,9 +113,9 @@ export class TipSettlementsController {
   })
   async create(
     @Body() dto: CreateTipSettlementDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipSettlementsService.create(dto, authenticatedUserMerchantId);
   }
 
@@ -164,9 +166,9 @@ export class TipSettlementsController {
   })
   async findAll(
     @Query() query: GetTipSettlementQueryDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipSettlementsService.findAll(
       query,
       authenticatedUserMerchantId,
@@ -204,9 +206,9 @@ export class TipSettlementsController {
   @ApiBadRequestResponse({ description: 'Invalid ID', type: ErrorResponse })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipSettlementsService.findOne(id, authenticatedUserMerchantId);
   }
 
@@ -249,9 +251,9 @@ export class TipSettlementsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateTipSettlementDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipSettlementsService.update(
       id,
       dto,
@@ -290,9 +292,9 @@ export class TipSettlementsController {
   @ApiBadRequestResponse({ description: 'Invalid ID', type: ErrorResponse })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipSettlementsService.remove(id, authenticatedUserMerchantId);
   }
 
@@ -302,5 +304,50 @@ export class TipSettlementsController {
     @Req() req,
   ) {
     return this.tipSettlementsService.liquidatedTipSettlements(dto, req.user);
+  }
+
+  @Post('cash-shifts/:shiftId/payout')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Process the payout of cash tips collected during the shift to staff',
+    description: 'Validates distribution according to the active TipRule (POOL, ROLE_BASED), creates settlements in tip_settlements, updates tip status to PAID_OUT, and deducts the total from the current_balance of the cash drawer.',
+  })
+  @ApiCreatedResponse({ description: 'Tip payout registered successfully' })
+  @ApiBadRequestResponse({ description: 'Amount exceeds collected tips, shift closed, or incorrect distribution' })
+  async payoutTips(
+    @Param('shiftId', ParseIntPipe) shiftId: number,
+    @Body() dto: TipPayoutDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.tipSettlementsService.payoutTips(shiftId, dto, user.id, user.merchant.id);
+  }
+
+  @Get('cash-shifts/:shiftId/collected-tips')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Get the total cash tips collected during the shift that are pending payout',
+    description: 'Retrieves the sum and count of cash tips in COLLECTED status for the given shift.',
+  })
+  @ApiOkResponse({ description: 'Collected tips summary retrieved successfully' })
+  @ApiNotFoundResponse({ description: 'Shift not found' })
+  async getCollectedTips(
+    @Param('shiftId', ParseIntPipe) shiftId: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.tipSettlementsService.getCollectedTipsSummary(shiftId, user.merchant.id);
   }
 }
