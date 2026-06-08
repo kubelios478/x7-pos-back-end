@@ -36,7 +36,7 @@ export class MarketingCouponRedemptionsService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(Customer)
     private readonly customerRepository: Repository<Customer>,
-  ) { }
+  ) {}
 
   async create(
     createMarketingCouponRedemptionDto: CreateMarketingCouponRedemptionDto,

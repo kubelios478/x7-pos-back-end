@@ -23,13 +23,13 @@ export class CashShiftResponseDto {
 }
 
 export class OneCashShiftResponseDto {
-    statusCode: number;
-    message: string;
-    data: CashShiftResponseDto;
+  statusCode: number;
+  message: string;
+  data: CashShiftResponseDto;
 }
 
 export class AllCashShiftsResponseDto {
-    statusCode: number;
-    message: string;
-    data: CashShiftResponseDto[];
+  statusCode: number;
+  message: string;
+  data: CashShiftResponseDto[];
 }

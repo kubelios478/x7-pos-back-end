@@ -10,7 +10,8 @@ import { Table } from '../tables/entities/table.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([TableAssignment, Shift, Table, Collaborator]),
   ],
   controllers: [TableAssignmentsController],

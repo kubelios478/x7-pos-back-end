@@ -37,7 +37,9 @@ describe('SupplierInvoiceItemService', () => {
       ],
     }).compile();
 
-    service = module.get<SupplierInvoiceItemService>(SupplierInvoiceItemService);
+    service = module.get<SupplierInvoiceItemService>(
+      SupplierInvoiceItemService,
+    );
   });
 
   it('should be defined', () => {

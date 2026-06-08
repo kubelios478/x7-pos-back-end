@@ -5,12 +5,13 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  JoinColumn,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
 import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
 import { CustomerSummaryDto } from 'src/core/business-partners/customers/dtos/customer-summary.dto';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserSummaryDto } from 'src/platform-saas/users/dtos/user-summary.dto';
 import { Category } from 'src/inventory/products-inventory/category/entities/category.entity';
 import { Table } from 'src/restaurant-operations/dining-system/tables/entities/table.entity';
@@ -217,6 +218,26 @@ export class Merchant {
 
   @OneToMany(() => PurchaseOrder, (purchaseOrder) => purchaseOrder.merchant)
   purchaseOrders: PurchaseOrder[];
+
+  @ApiPropertyOptional({
+    example: 1,
+    description:
+      'Default stock location (warehouse) used for checkout sale deductions',
+  })
+  @Column({
+    type: 'int',
+    name: 'default_sales_stock_location_id',
+    nullable: true,
+  })
+  defaultSalesStockLocationId: number | null;
+
+  @ManyToOne(() => Location, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @JoinColumn({ name: 'default_sales_stock_location_id' })
+  defaultSalesStockLocation: Location | null;
 
   @OneToMany(() => Location, (location) => location.merchant)
   stockLocations: Location[];

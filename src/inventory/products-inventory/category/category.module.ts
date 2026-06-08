@@ -8,7 +8,8 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { ProductsInventoryModule } from '../products-inventory.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Category, Merchant]),
     forwardRef(() => ProductsInventoryModule),
   ],

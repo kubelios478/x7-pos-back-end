@@ -8,7 +8,8 @@ import { MarketingAutomationAction } from './entities/marketing-automation-actio
 import { MarketingAutomation } from '../marketing-automations/entities/marketing-automation.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([MarketingAutomationAction, MarketingAutomation]),
   ],
   controllers: [MarketingAutomationActionsController],

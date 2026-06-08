@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { CreateLoyaltyRewardsRedemptionDto } from './dto/create-loyalty-rewards-redemption.dto';
@@ -98,6 +98,8 @@ export class LoyaltyRewardsRedemptionsService {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    let redemptionId: number;
+
     try {
       // Check if active redemption with same key already exists
       const existingActive = await queryRunner.manager.findOne(
@@ -113,7 +115,6 @@ export class LoyaltyRewardsRedemptionsService {
       );
 
       if (existingActive) {
-        await queryRunner.rollbackTransaction();
         ErrorHandler.exists(
           'Redemption already exists for this customer, reward and order',
         );
@@ -154,51 +155,56 @@ export class LoyaltyRewardsRedemptionsService {
           },
         );
         await queryRunner.manager.save(pointTransaction);
-        await queryRunner.commitTransaction();
+        redemptionId = existingInactive.id;
+      } else {
+        // Create new
+        const newRedemption = queryRunner.manager.create(
+          LoyaltyRewardsRedemption,
+          {
+            loyaltyCustomer,
+            reward,
+            order,
+            redeemedPoints: pointsToDeduct,
+            redeemedAt: new Date(),
+          },
+        );
 
-        return this.findOne(existingInactive.id, merchantId, 'Created');
+        const savedRedemption =
+          await queryRunner.manager.save(newRedemption);
+
+        // Deduct Points
+        loyaltyCustomer.currentPoints -= pointsToDeduct;
+        await queryRunner.manager.save(loyaltyCustomer);
+
+        // Create Transaction Record
+        const pointTransaction = queryRunner.manager.create(
+          LoyaltyPointTransaction,
+          {
+            loyaltyCustomer,
+            order,
+            source: LoyaltyPointsSource.REDEMPTION,
+            points: -pointsToDeduct,
+            description: `Redemption of reward: ${reward.name}`,
+          },
+        );
+        await queryRunner.manager.save(pointTransaction);
+        redemptionId = savedRedemption.id;
       }
 
-      // Create new
-      const newRedemption = queryRunner.manager.create(
-        LoyaltyRewardsRedemption,
-        {
-          loyaltyCustomer,
-          reward,
-          order,
-          redeemedPoints: pointsToDeduct,
-          redeemedAt: new Date(),
-        },
-      );
-
-      const savedRedemption = await queryRunner.manager.save(newRedemption);
-
-      // Deduct Points
-      loyaltyCustomer.currentPoints -= pointsToDeduct;
-      await queryRunner.manager.save(loyaltyCustomer);
-
-      // Create Transaction Record
-      const pointTransaction = queryRunner.manager.create(
-        LoyaltyPointTransaction,
-        {
-          loyaltyCustomer,
-          order,
-          source: LoyaltyPointsSource.REDEMPTION,
-          points: -pointsToDeduct,
-          description: `Redemption of reward: ${reward.name}`,
-        },
-      );
-      await queryRunner.manager.save(pointTransaction);
-
       await queryRunner.commitTransaction();
-
-      return this.findOne(savedRedemption.id, merchantId, 'Created');
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
+    } catch (error: unknown) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      if (error instanceof HttpException) {
+        throw error;
+      }
       ErrorHandler.handleDatabaseError(error);
     } finally {
       await queryRunner.release();
     }
+
+    return this.findOne(redemptionId, merchantId, 'Created');
   }
 
   async findAll(
@@ -216,7 +222,7 @@ export class LoyaltyRewardsRedemptionsService {
       .leftJoinAndSelect('redemption.reward', 'reward')
       .leftJoinAndSelect('redemption.order', 'order')
       .where('program.merchantId = :merchantId', { merchantId })
-      .andWhere('redemption.is_active = :isActive', { isActive: true });
+      .andWhere('redemption.isActive = :isActive', { isActive: true });
 
     if (query.min_redeemed_points) {
       queryBuilder.andWhere('redemption.redeemedPoints >= :minPoints', {
@@ -301,7 +307,7 @@ export class LoyaltyRewardsRedemptionsService {
       .leftJoinAndSelect('redemption.order', 'order')
       .where('redemption.id = :id', { id })
       .andWhere('program.merchantId = :merchantId', { merchantId })
-      .andWhere('redemption.is_active = :isActive', { isActive: true });
+      .andWhere('redemption.isActive = :isActive', { isActive: true });
 
     const redemption = await queryBuilder.getOne();
 
@@ -387,7 +393,7 @@ export class LoyaltyRewardsRedemptionsService {
       .leftJoinAndSelect('loyaltyCustomer.loyaltyProgram', 'program')
       .where('redemption.id = :id', { id })
       .andWhere('program.merchantId = :merchantId', { merchantId })
-      .andWhere('redemption.is_active = :isActive', { isActive: true });
+      .andWhere('redemption.isActive = :isActive', { isActive: true });
 
     const redemption = await queryBuilder.getOne();
 
@@ -521,8 +527,13 @@ export class LoyaltyRewardsRedemptionsService {
         message: `Redemption Deleted successfully and points refunded`,
         data: dataForResponse,
       };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
+    } catch (error: unknown) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      if (error instanceof HttpException) {
+        throw error;
+      }
       ErrorHandler.handleDatabaseError(error);
     } finally {
       await queryRunner.release();

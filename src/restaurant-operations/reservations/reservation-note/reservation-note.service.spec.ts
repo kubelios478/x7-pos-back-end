@@ -10,7 +10,11 @@ describe('ReservationNoteService', () => {
 
   const mockNoteRepository = {
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 1, ...dto, created_at: new Date() })),
+    save: jest
+      .fn()
+      .mockImplementation((dto) =>
+        Promise.resolve({ id: 1, ...dto, created_at: new Date() }),
+      ),
     findAndCount: jest.fn(),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
@@ -55,7 +59,11 @@ describe('ReservationNoteService', () => {
     const merchantId = 1;
 
     it('should create a note successfully', async () => {
-      mockReservationRepository.findOneBy.mockResolvedValue({ id: 1, merchant_id: 1, is_active: true });
+      mockReservationRepository.findOneBy.mockResolvedValue({
+        id: 1,
+        merchant_id: 1,
+        is_active: true,
+      });
 
       const result = await service.create(createNoteDto, merchantId);
 
@@ -66,12 +74,16 @@ describe('ReservationNoteService', () => {
 
     it('should fail if reservation belongs to another merchant', async () => {
       mockReservationRepository.findOneBy.mockResolvedValue(null);
-      await expect(service.create(createNoteDto, merchantId)).rejects.toThrow('Reservation not found or does not belong to your merchant');
+      await expect(service.create(createNoteDto, merchantId)).rejects.toThrow(
+        'Reservation not found or does not belong to your merchant',
+      );
     });
 
     it('should fail if reservation is not active', async () => {
       mockReservationRepository.findOneBy.mockResolvedValue(null); // findOneBy matches is_active: true
-      await expect(service.create(createNoteDto, merchantId)).rejects.toThrow('Reservation not found');
+      await expect(service.create(createNoteDto, merchantId)).rejects.toThrow(
+        'Reservation not found',
+      );
     });
   });
 
@@ -79,10 +91,15 @@ describe('ReservationNoteService', () => {
     const merchantId = 1;
 
     it('should return paginated and mapped notes', async () => {
-      const notes = [{ id: 1, note: 'Note 1', reservation: { merchant_id: 1 } }];
+      const notes = [
+        { id: 1, note: 'Note 1', reservation: { merchant_id: 1 } },
+      ];
       mockNoteRepository.findAndCount.mockResolvedValue([notes, 1]);
 
-      const result = await service.findAllGlobal(merchantId, { page: 1, limit: 10 });
+      const result = await service.findAllGlobal(merchantId, {
+        page: 1,
+        limit: 10,
+      });
 
       expect(result.statusCode).toBe(200);
       expect(result.data).toHaveLength(1);
@@ -93,22 +110,26 @@ describe('ReservationNoteService', () => {
       mockNoteRepository.findAndCount.mockResolvedValue([[], 0]);
       await service.findAllGlobal(merchantId, { reservation_id: 10 });
 
-      expect(mockNoteRepository.findAndCount).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          reservation_id: 10
-        })
-      }));
+      expect(mockNoteRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            reservation_id: 10,
+          }),
+        }),
+      );
     });
 
     it('should filter by created_by if provided', async () => {
       mockNoteRepository.findAndCount.mockResolvedValue([[], 0]);
       await service.findAllGlobal(merchantId, { created_by: 5 });
 
-      expect(mockNoteRepository.findAndCount).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          created_by: 5
-        })
-      }));
+      expect(mockNoteRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            created_by: 5,
+          }),
+        }),
+      );
     });
   });
 
@@ -153,7 +174,9 @@ describe('ReservationNoteService', () => {
       const note = { id: 1, reservation: { merchant_id: 2 } };
       mockNoteRepository.findOne.mockResolvedValue(note);
 
-      await expect(service.update(1, { note: 'New' }, 1)).rejects.toThrow('Note not found');
+      await expect(service.update(1, { note: 'New' }, 1)).rejects.toThrow(
+        'Note not found',
+      );
     });
   });
 

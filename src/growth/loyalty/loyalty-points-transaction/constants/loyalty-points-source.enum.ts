@@ -5,5 +5,6 @@ export enum LoyaltyPointsSource {
   PROMOTION = 'PROMOTION', //REFERIDO
   MANUAL_ADJUST = 'MANUAL_ADJUST', //AJUSTE MANUAL
   REDEMPTION = 'REDEMPTION', //CANJE DE PUNTOS
-  REFUND_REVERSAL = 'REFUND_REVERSAL', //REVERSAL DE REEMBOLSO
+  /** Automatic reversal when an order is cancelled or no longer fully paid. */
+  ORDER_REVERSAL = 'ORDER_REVERSAL',
 }

@@ -35,7 +35,9 @@ describe('ReservationGuestController', () => {
       ],
     }).compile();
 
-    controller = module.get<ReservationGuestController>(ReservationGuestController);
+    controller = module.get<ReservationGuestController>(
+      ReservationGuestController,
+    );
     service = module.get<ReservationGuestService>(ReservationGuestService);
   });
 

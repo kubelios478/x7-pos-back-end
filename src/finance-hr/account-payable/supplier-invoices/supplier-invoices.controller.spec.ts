@@ -1,6 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Reflector } from '@nestjs/core';
 import { SupplierInvoicesController } from './supplier-invoices.controller';
 import { SupplierInvoicesService } from './supplier-invoices.service';
+import { SupplierInvoiceInventoryService } from 'src/inventory/supplier-invoice-inventory/supplier-invoice-inventory.service';
+import { SCOPES_KEY } from 'src/auth/decorators/scopes.decorator';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import type { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('SupplierInvoicesController', () => {
   let controller: SupplierInvoicesController;
@@ -13,6 +19,10 @@ describe('SupplierInvoicesController', () => {
     remove: jest.fn(),
   };
 
+  const mockSupplierInvoiceInventoryService = {
+    receiveForInvoice: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SupplierInvoicesController],
@@ -20,6 +30,10 @@ describe('SupplierInvoicesController', () => {
         {
           provide: SupplierInvoicesService,
           useValue: mockSupplierInvoicesService,
+        },
+        {
+          provide: SupplierInvoiceInventoryService,
+          useValue: mockSupplierInvoiceInventoryService,
         },
       ],
     }).compile();
@@ -52,6 +66,36 @@ describe('SupplierInvoicesController', () => {
       });
       await controller.create(dto);
       expect(mockSupplierInvoicesService.create).toHaveBeenCalledWith(dto);
+    });
+  });
+
+  describe('receiveInventory', () => {
+    it('is restricted to MERCHANT_WEB scope only', () => {
+      const reflector = new Reflector();
+      const scopes = reflector.get<Scope[]>(
+        SCOPES_KEY,
+        SupplierInvoicesController.prototype.receiveInventory,
+      );
+      expect(scopes).toEqual([Scope.MERCHANT_WEB]);
+    });
+
+    it('delegates to SupplierInvoiceInventoryService', async () => {
+      mockSupplierInvoiceInventoryService.receiveForInvoice.mockResolvedValue({
+        invoiceId: 3,
+        locationId: 5,
+        lines: [],
+      });
+      const user: AuthenticatedUser = {
+        id: 1,
+        email: 'a@b.c',
+        role: UserRole.MERCHANT_ADMIN,
+        scope: Scope.MERCHANT_WEB,
+        merchant: { id: 9 },
+      };
+      await controller.receiveInventory(3, {}, user);
+      expect(
+        mockSupplierInvoiceInventoryService.receiveForInvoice,
+      ).toHaveBeenCalledWith(9, 3, undefined);
     });
   });
 

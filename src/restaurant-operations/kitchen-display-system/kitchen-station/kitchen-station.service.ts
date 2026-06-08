@@ -35,7 +35,7 @@ export class KitchenStationService {
     private readonly kitchenStationRepository: Repository<KitchenStation>,
     @InjectRepository(Merchant)
     private readonly merchantRepository: Repository<Merchant>,
-  ) { }
+  ) {}
 
   async create(
     createKitchenStationDto: CreateKitchenStationDto,

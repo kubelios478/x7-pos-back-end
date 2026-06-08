@@ -11,7 +11,10 @@ import { FloorPlan } from '../floor-plan/entity/floor-plan.entity';
 import { FloorZone } from '../floor-zone/entity/floor-zone.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([Table, Merchant, FloorPlan, FloorZone])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([Table, Merchant, FloorPlan, FloorZone]),
+  ],
   controllers: [TablesController],
   providers: [TablesService, IsUniqueField],
   exports: [IsUniqueField],

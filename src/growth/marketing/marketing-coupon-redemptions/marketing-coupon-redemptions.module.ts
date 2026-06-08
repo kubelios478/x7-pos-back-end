@@ -10,7 +10,8 @@ import { Order } from '../../../restaurant-operations/pos/orders/entities/order.
 import { Customer } from '../../../core/business-partners/customers/entities/customer.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       MarketingCouponRedemption,
       MarketingCoupon,

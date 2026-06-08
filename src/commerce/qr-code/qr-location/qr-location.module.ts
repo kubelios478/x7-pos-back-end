@@ -11,7 +11,10 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { QRLocation } from './entity/qr-location.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([QRLocation, QRMenu, Table, Merchant])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([QRLocation, QRMenu, Table, Merchant]),
+  ],
   controllers: [QRLocationController],
   providers: [QRLocationService],
 })

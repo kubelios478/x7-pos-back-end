@@ -13,7 +13,8 @@ import { ProductsModule } from '../products/products.module';
 import { VariantsModule } from '../variants/variants.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       PurchaseOrderItem,
       PurchaseOrder,

@@ -6,7 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { KitchenOrderItem } from './entities/kitchen-order-item.entity';
 import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
 import { OrderItem } from '../../../restaurant-operations/pos/order-item/entities/order-item.entity';
@@ -32,10 +32,12 @@ import {
 import { KitchenOrderStatus } from '../kitchen-order/constants/kitchen-order-status.enum';
 import { OrderItemStatus } from '../../../restaurant-operations/pos/order-item/constants/order-item-status.enum';
 import { KitchenOrderSyncService } from '../kitchen-order/kitchen-order-sync.service';
+import { OrdersService } from '../../pos/orders/orders.service';
 
 @Injectable()
 export class KitchenOrderItemService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(KitchenOrderItem)
     private readonly kitchenOrderItemRepository: Repository<KitchenOrderItem>,
     @InjectRepository(KitchenOrder)
@@ -47,6 +49,7 @@ export class KitchenOrderItemService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly kitchenOrderSyncService: KitchenOrderSyncService,
+    private readonly ordersService: OrdersService,
   ) {}
 
   async create(
@@ -145,24 +148,56 @@ export class KitchenOrderItemService {
       kitchenOrderItem.preparation_status,
     );
 
-    const savedKitchenOrderItem =
-      await this.kitchenOrderItemRepository.save(kitchenOrderItem);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const completeKitchenOrderItem =
-      await this.kitchenOrderItemRepository.findOne({
-        where: { id: savedKitchenOrderItem.id },
-        relations: ['kitchenOrder', 'orderItem', 'product', 'variant'],
-      });
+    let completeKitchenOrderItem: KitchenOrderItem | null = null;
+    let becameFullyPaid = false;
+    let posOrderIdForEmit: number | null = null;
+    try {
+      const savedKitchenOrderItem = await queryRunner.manager.save(
+        KitchenOrderItem,
+        kitchenOrderItem,
+      );
+      completeKitchenOrderItem = await queryRunner.manager.findOne(
+        KitchenOrderItem,
+        {
+          where: { id: savedKitchenOrderItem.id },
+          relations: ['kitchenOrder', 'orderItem', 'product', 'variant'],
+        },
+      );
+      if (!completeKitchenOrderItem) {
+        throw new NotFoundException(
+          'Kitchen order item not found after creation',
+        );
+      }
+
+      if (completeKitchenOrderItem.kitchenOrder?.order_id) {
+        posOrderIdForEmit = completeKitchenOrderItem.kitchenOrder.order_id;
+        const syncResult =
+          await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrdersWithManager(
+            queryRunner.manager,
+            posOrderIdForEmit,
+          );
+        becameFullyPaid = syncResult.becameFullyPaid;
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    if (becameFullyPaid && posOrderIdForEmit != null) {
+      this.ordersService.emitOrderFullyPaid(posOrderIdForEmit);
+    }
 
     if (!completeKitchenOrderItem) {
       throw new NotFoundException(
         'Kitchen order item not found after creation',
-      );
-    }
-
-    if (completeKitchenOrderItem.kitchenOrder?.order_id) {
-      await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrders(
-        completeKitchenOrderItem.kitchenOrder.order_id,
       );
     }
 
@@ -555,17 +590,42 @@ export class KitchenOrderItemService {
     const orderItemIdBefore = existingKitchenOrderItem.order_item_id;
     const posOrderId = existingKitchenOrderItem.kitchenOrder?.order_id ?? null;
 
-    existingKitchenOrderItem.status = KitchenOrderItemStatus.DELETED;
-    await this.kitchenOrderItemRepository.save(existingKitchenOrderItem);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    await this.kitchenOrderSyncService.resetOrderLineIfNoActiveKoi(
-      orderItemIdBefore,
-    );
-    if (posOrderId) {
-      await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrders(
-        posOrderId,
+    let becameFullyPaid = false;
+    try {
+      await queryRunner.manager.update(KitchenOrderItem, id, {
+        status: KitchenOrderItemStatus.DELETED,
+      });
+
+      await this.kitchenOrderSyncService.resetOrderLineIfNoActiveKoiWithManager(
+        queryRunner.manager,
+        orderItemIdBefore,
       );
+      if (posOrderId) {
+        const syncResult =
+          await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrdersWithManager(
+            queryRunner.manager,
+            posOrderId,
+          );
+        becameFullyPaid = syncResult.becameFullyPaid;
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
     }
+
+    if (becameFullyPaid && posOrderId != null) {
+      this.ordersService.emitOrderFullyPaid(posOrderId);
+    }
+
+    existingKitchenOrderItem.status = KitchenOrderItemStatus.DELETED;
 
     const completeKitchenOrderItem =
       await this.kitchenOrderItemRepository.findOne({

@@ -8,7 +8,10 @@ import { LoyaltyTier } from './entities/loyalty-tier.entity';
 import { LoyaltyProgram } from '../loyalty-programs/entities/loyalty-program.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([LoyaltyTier, LoyaltyProgram])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([LoyaltyTier, LoyaltyProgram]),
+  ],
   controllers: [LoyaltyTierController],
   providers: [LoyaltyTierService],
   exports: [LoyaltyTierService],

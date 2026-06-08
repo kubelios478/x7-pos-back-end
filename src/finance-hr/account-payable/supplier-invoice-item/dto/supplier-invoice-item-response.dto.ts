@@ -11,6 +11,9 @@ export class SupplierInvoiceItemResponseDto {
   @ApiProperty({ example: 12, nullable: true })
   product_id: number | null;
 
+  @ApiProperty({ example: 3, nullable: true })
+  variant_id: number | null;
+
   @ApiProperty({ example: 'Flour 25kg bag' })
   description: string;
 

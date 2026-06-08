@@ -10,7 +10,8 @@ import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier
 import { SupplierCreditNote } from '../supplier-credit-notes/entities/supplier-credit-note.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       SupplierPaymentAllocation,
       SupplierPayment,

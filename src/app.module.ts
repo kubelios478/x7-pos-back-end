@@ -32,6 +32,8 @@ import { CashTransaction } from './restaurant-operations/cashdrawer/cash-transac
 import { CashShift } from './restaurant-operations/cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { CashMovement } from './restaurant-operations/cashdrawer/cash-movements/entities/cash-movement.entity';
 import { Category } from './inventory/products-inventory/category/entities/category.entity';
+import { Input } from './inventory/inputs/entities/input.entity';
+import { InputSupplier } from './inventory/inputs/entities/input-supplier.entity';
 import { Collaborator } from './finance-hr/hr/collaborators/entities/collaborator.entity';
 import { CollaboratorContract } from './finance-hr/hr/collaborator-contracts/entities/collaborator-contract.entity';
 import { Company } from './platform-saas/companies/entities/company.entity';
@@ -39,6 +41,7 @@ import { Configuration } from './core/configuration/entity/configuration-entity'
 import { Customer } from './core/business-partners/customers/entities/customer.entity';
 import { FeatureEntity } from './platform-saas/subscriptions/features/entity/features.entity';
 import { Item } from './inventory/products-inventory/stocks/items/entities/item.entity';
+import { InventoryStockAlert } from './inventory/stock-alerts/entities/inventory-stock-alert.entity';
 import { JournalEntry } from './core/financial-engine/journal-entry/entities/journal-entry.entity';
 import { JournalEntryLine } from './core/financial-engine/journal-entry-line/entities/journal-entry-line.entity';
 import { KitchenDisplayDevice } from './restaurant-operations/kitchen-display-system/kitchen-display-device/entities/kitchen-display-device.entity';
@@ -51,6 +54,8 @@ import { Location } from './inventory/products-inventory/stocks/locations/entiti
 import { LoyaltyCoupon } from './growth/loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
 import { LoyaltyCustomer } from './growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
 import { LoyaltyPointTransaction } from './growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
+import { LoyaltyPointsLock } from './growth/loyalty/loyalty-points-redemption/entities/loyalty-points-lock.entity';
+import { LoyaltyRedemptionAuditLog } from './growth/loyalty/loyalty-points-redemption/entities/loyalty-redemption-audit-log.entity';
 import { LoyaltyProgram } from './growth/loyalty/loyalty-programs/entities/loyalty-program.entity';
 import { LoyaltyReward } from './growth/loyalty/loyalty-reward/entities/loyalty-reward.entity';
 import { LoyaltyRewardsRedemption } from './growth/loyalty/loyalty-rewards-redemptions/entities/loyalty-rewards-redemption.entity';
@@ -68,6 +73,7 @@ import { Merchant } from './platform-saas/merchants/entities/merchant.entity';
 import { MerchantOvertimeRule } from './core/configuration/merchant-overtime-rule/entity/merchant-overtime-rule.entity';
 import { MerchantPayrollRule } from './core/configuration/merchant-payroll-rule/entity/merchant-payroll-rule.entity';
 import { MerchantSubscription } from './platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
+import { CompanySubscription } from './platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
 import { MerchantTaxRule } from './core/configuration/merchant-tax-rule/entity/merchant-tax-rule.entity';
 import { MerchantTipRule } from './core/configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
 import { Modifier } from './inventory/products-inventory/modifiers/entities/modifier.entity';
@@ -92,6 +98,8 @@ import { PayrollTaxDetail } from './finance-hr/payroll/payroll-tax-details/entit
 import { PlanApplication } from './platform-saas/subscriptions/plan-applications/entity/plan-applications.entity';
 import { PlanFeature } from './platform-saas/subscriptions/plan-features/entity/plan-features.entity';
 import { Product } from './inventory/products-inventory/products/entities/product.entity';
+import { ProductRecipe } from './inventory/products-inventory/recipes/entities/product-recipe.entity';
+import { ProductRecipeLine } from './inventory/products-inventory/recipes/entities/product-recipe-line.entity';
 import { PurchaseOrder } from './inventory/products-inventory/purchase-order/entities/purchase-order.entity';
 import { PurchaseOrderItem } from './inventory/products-inventory/purchase-order-item/entities/purchase-order-item.entity';
 import { QRLocation } from './commerce/qr-code/qr-location/entity/qr-location.entity';
@@ -144,6 +152,8 @@ import { DeliveryFee } from './commerce/delivery-system/delivery-fee/entity/deli
 import { DeliveryDriver } from './commerce/delivery-system/delivery-driver/entity/delivery-driver.entity';
 import { DeliveryAssignment } from './commerce/delivery-system/delivery-assignment/entity/delivery-assignment.entity';
 import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/entity/delivery-tracking.entity';
+import { RealtimeModule } from './realtime/realtime.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MerchantTaxRuleModule } from './core/configuration/merchant-tax-rule/merchant-tax-rule.module';
 import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
 import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-analytics/modifier-analytics.module';
@@ -151,6 +161,7 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    EventEmitterModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -170,10 +181,13 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           CashShift,
           CashMovement,
           Category,
+          Input,
+          InputSupplier,
           Variant,
           Modifier,
           Location,
           Item,
+          InventoryStockAlert,
           Movement,
           PurchaseOrder,
           PurchaseOrderItem,
@@ -197,6 +211,8 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           LoyaltyCoupon,
           LoyaltyCustomer,
           LoyaltyPointTransaction,
+          LoyaltyPointsLock,
+          LoyaltyRedemptionAuditLog,
           LoyaltyProgram,
           LoyaltyReward,
           LoyaltyRewardsRedemption,
@@ -214,6 +230,7 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           MerchantOvertimeRule,
           MerchantPayrollRule,
           MerchantSubscription,
+          CompanySubscription,
           MerchantTaxRule,
           MerchantTipRule,
           OnlineDeliveryInfo,
@@ -236,6 +253,8 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           PlanApplication,
           PlanFeature,
           Product,
+          ProductRecipe,
+          ProductRecipeLine,
           QRLocation,
           QRLocation,
           QRMenu,
@@ -309,9 +328,10 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
     DeliveryDriverModule,
     DeliveryTrackingModule,
     DeliveryAssignmentModule,
+    RealtimeModule,
     MerchantTaxRuleModule,
     KitchenAnalyticsModule,
     ModifierAnalyticsModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

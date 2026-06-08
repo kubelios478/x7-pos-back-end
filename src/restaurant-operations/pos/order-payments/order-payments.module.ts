@@ -7,13 +7,20 @@ import { OrderPaymentsController } from './order-payments.controller';
 import { OrderPayment } from './entities/order-payment.entity';
 import { Order } from '../orders/entities/order.entity';
 import { OrdersModule } from '../orders/orders.module';
+import { LoyaltyPointsRedemptionModule } from 'src/growth/loyalty/loyalty-points-redemption/loyalty-points-redemption.module';
 
 import { CashShiftsModule } from '../../cashdrawer/cash-shifts/cash-shifts.module';
 
 @Module({
-  imports: [AuthModule, TypeOrmModule.forFeature([OrderPayment, Order]), OrdersModule, CashShiftsModule],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([OrderPayment, Order]),
+    OrdersModule,
+    LoyaltyPointsRedemptionModule,
+    CashShiftsModule,
+  ],
   controllers: [OrderPaymentsController],
   providers: [OrderPaymentsService],
   exports: [OrderPaymentsService],
 })
-export class OrderPaymentsModule { }
+export class OrderPaymentsModule {}

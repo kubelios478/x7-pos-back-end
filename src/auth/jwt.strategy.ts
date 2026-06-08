@@ -11,6 +11,10 @@ import { UserRole } from '../platform-saas/users/constants/role.enum';
 import { Scope } from '../platform-saas/users/constants/scope.enum';
 import { SubscriptionAccessService } from './subscription-access.service';
 import { getAllSubscriptionFeatureIds } from 'src/common/subscription/subscription-feature-ids';
+import {
+  MSG_COMPANY_SUBSCRIPTION_OUTDATED,
+  MSG_NO_COMPANY_PLAN,
+} from './subscription-access.service';
 
 interface JwtPayload {
   sub: string | number;
@@ -29,7 +33,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken() as (
-        req: any,
+        req: unknown,
       ) => string,
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET') ?? '',
@@ -38,9 +42,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     const userId =
-      typeof payload.sub === 'string'
-        ? parseInt(payload.sub, 10)
-        : payload.sub;
+      typeof payload.sub === 'string' ? parseInt(payload.sub, 10) : payload.sub;
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['merchant'],
@@ -62,12 +64,29 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       planId = undefined;
       authorizedFeatureIds = getAllSubscriptionFeatureIds();
     } else {
-      const access =
-        await this.subscriptionAccessService.getSubscriptionAccessForMerchant(
-          user.merchant.id,
-        );
-      planId = access.planId;
-      authorizedFeatureIds = access.authorizedFeatureIds;
+      const companyId = user.merchant.companyId;
+      if (!companyId) {
+        throw new UnauthorizedException('Invalid token');
+      }
+      try {
+        const access =
+          await this.subscriptionAccessService.getSubscriptionAccessForCompany(
+            companyId,
+          );
+        planId = access.planId;
+        authorizedFeatureIds = access.authorizedFeatureIds;
+      } catch (err) {
+        const message = (err as { message?: string }).message ?? '';
+        if (
+          message === MSG_NO_COMPANY_PLAN ||
+          message === MSG_COMPANY_SUBSCRIPTION_OUTDATED
+        ) {
+          planId = undefined;
+          authorizedFeatureIds = [];
+        } else {
+          throw err;
+        }
+      }
     }
 
     return {

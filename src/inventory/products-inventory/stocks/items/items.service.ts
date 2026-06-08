@@ -17,6 +17,7 @@ import { MovementsStatus } from '../movements/constants/movements-status';
 import { Location } from '../locations/entities/location.entity';
 import { ProductLittleResponseDto } from '../../products/dto/product-response.dto';
 import { VariantLittleResponseDto } from '../../variants/dto/variant-response.dto';
+import { StockLevelMonitorService } from '../../../stock-alerts/stock-level-monitor.service';
 
 @Injectable()
 export class ItemsService {
@@ -30,13 +31,15 @@ export class ItemsService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly movementsService: MovementsService,
+    private readonly stockLevelMonitor: StockLevelMonitorService,
   ) {}
 
   async create(
     merchant_id: number,
     createItemDto: CreateItemDto,
   ): Promise<OneItemResponse> {
-    const { productId, locationId, variantId, currentQty } = createItemDto;
+    const { productId, locationId, variantId, currentQty, minimumQty } =
+      createItemDto;
     const merchantId = merchant_id;
 
     const [product, variant, location] = await Promise.all([
@@ -87,12 +90,15 @@ export class ItemsService {
 
     const newItem = this.itemRepository.create({
       currentQty,
+      minimumQty: minimumQty ?? null,
       product,
       location,
       variant,
     });
 
     const savedItem = await this.itemRepository.save(newItem);
+
+    await this.stockLevelMonitor.evaluateStockItems(merchantId, [savedItem.id]);
 
     return this.findOne(savedItem.id, merchantId, 'Created');
   }
@@ -144,33 +150,36 @@ export class ItemsService {
     const hasPrev = page > 1;
 
     // 7. Map to ItemResponseDto
-    const data: ItemResponseDto[] = await Promise.all(
-      items.map((item) => {
-        const result: ItemResponseDto = {
-          id: item.id,
-          currentQty: item.currentQty,
-          product: item.product
-            ? ({
-                id: item.product.id,
-                name: item.product.name,
-              } as ProductLittleResponseDto)
+    const data: ItemResponseDto[] = items.map((item) => {
+      const result: ItemResponseDto = {
+        id: item.id,
+        currentQty: item.currentQty,
+        weightedAverageUnitCost:
+          item.weightedAverageUnitCost != null
+            ? Number(item.weightedAverageUnitCost)
             : null,
-          variant: item.variant
-            ? ({
-                id: item.variant.id,
-                name: item.variant.name,
-              } as VariantLittleResponseDto)
-            : null,
-          location: item.location
-            ? ({
-                id: item.location.id,
-                name: item.location.name,
-              } as LocationLittleResponseDto)
-            : null,
-        };
-        return result;
-      }),
-    );
+        minimumQty: item.minimumQty ?? null,
+        product: item.product
+          ? ({
+              id: item.product.id,
+              name: item.product.name,
+            } as ProductLittleResponseDto)
+          : null,
+        variant: item.variant
+          ? ({
+              id: item.variant.id,
+              name: item.variant.name,
+            } as VariantLittleResponseDto)
+          : null,
+        location: item.location
+          ? ({
+              id: item.location.id,
+              name: item.location.name,
+            } as LocationLittleResponseDto)
+          : null,
+      };
+      return result;
+    });
 
     return {
       statusCode: 200,
@@ -223,6 +232,11 @@ export class ItemsService {
     const result: ItemResponseDto = {
       id: item.id,
       currentQty: item.currentQty,
+      weightedAverageUnitCost:
+        item.weightedAverageUnitCost != null
+          ? Number(item.weightedAverageUnitCost)
+          : null,
+      minimumQty: item.minimumQty ?? null,
       product: item.product
         ? ({
             id: item.product.id,
@@ -287,7 +301,8 @@ export class ItemsService {
       ErrorHandler.invalidId('Item ID is incorrect');
     }
     const merchantId = merchant_id;
-    const { productId, locationId, variantId, currentQty } = updateItemDto;
+    const { productId, locationId, variantId, currentQty, minimumQty } =
+      updateItemDto;
 
     const existingItem = await this.itemRepository
       .createQueryBuilder('item')
@@ -338,8 +353,11 @@ export class ItemsService {
     existingItem.location = location;
     existingItem.variant = variant;
 
-    if (currentQty) {
+    if (currentQty !== undefined) {
       existingItem.currentQty = currentQty;
+    }
+    if (minimumQty !== undefined) {
+      existingItem.minimumQty = minimumQty ?? null;
     }
 
     const updatedItem = await this.itemRepository.save(existingItem);
@@ -363,6 +381,10 @@ export class ItemsService {
         reason: 'Transfer between stock locations',
       });
     }
+
+    await this.stockLevelMonitor.evaluateStockItems(merchantId, [
+      updatedItem.id,
+    ]);
 
     return this.findOne(updatedItem.id, merchantId, 'Updated');
   }

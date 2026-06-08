@@ -11,7 +11,8 @@ import { Collaborator } from '../collaborators/entities/collaborator.entity';
 import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       TimeEntry,
       Company,

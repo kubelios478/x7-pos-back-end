@@ -11,7 +11,8 @@ import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entit
 import { ReceiptsModule } from '../receipts/receipts.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([ReceiptTax, Receipt, ReceiptItem, Order]),
     ReceiptsModule,
   ],

@@ -12,7 +12,8 @@ import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       Company,
       Merchant,

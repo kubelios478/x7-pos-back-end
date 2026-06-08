@@ -10,7 +10,8 @@ import { Product } from '../../../inventory/products-inventory/products/entities
 import { Variant } from '../../../inventory/products-inventory/variants/entities/variant.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([OnlineOrderItem, OnlineOrder, Product, Variant]),
   ],
   controllers: [OnlineOrderItemController],

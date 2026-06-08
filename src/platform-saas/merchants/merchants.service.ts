@@ -1,5 +1,5 @@
 // src/platform-saas/merchants/merchants.service.ts
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from './entities/merchant.entity';
@@ -12,7 +12,7 @@ import {
 } from './dtos/merchant-response.dto';
 import { ErrorHandler } from '../../common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
-
+import { Location } from 'src/inventory/products-inventory/stocks/locations/entities/location.entity';
 @Injectable()
 export class MerchantsService {
   constructor(
@@ -21,6 +21,9 @@ export class MerchantsService {
 
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+
+    @InjectRepository(Location)
+    private readonly locationRepo: Repository<Location>,
   ) {}
 
   async create(dto: CreateMerchantDto): Promise<OneMerchantResponseDto> {
@@ -148,7 +151,28 @@ export class MerchantsService {
         ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
       }
 
-      Object.assign(merchant, dto);
+      if (dto.defaultSalesStockLocationId !== undefined) {
+        if (dto.defaultSalesStockLocationId === null) {
+          merchant.defaultSalesStockLocationId = null;
+        } else {
+          const location = await this.locationRepo.findOne({
+            where: {
+              id: dto.defaultSalesStockLocationId,
+              merchantId: id,
+              isActive: true,
+            },
+          });
+          if (!location) {
+            throw new BadRequestException(
+              `Stock location ${dto.defaultSalesStockLocationId} was not found or does not belong to this merchant`,
+            );
+          }
+          merchant.defaultSalesStockLocationId = location.id;
+        }
+      }
+
+      const { defaultSalesStockLocationId: _skip, ...rest } = dto;
+      Object.assign(merchant, rest);
       const updatedMerchant = await this.merchantRepo.save(merchant);
 
       return {

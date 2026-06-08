@@ -11,7 +11,10 @@ import { Product } from 'src/inventory/products-inventory/products/entities/prod
 import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([QROrderItem, QROrder, Product, Variant])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([QROrderItem, QROrder, Product, Variant]),
+  ],
   controllers: [QROrderItemController],
   providers: [QROrderItemService],
   exports: [QROrderItemService],

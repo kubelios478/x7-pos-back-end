@@ -12,6 +12,20 @@ export class ItemResponseDto {
   currentQty: number;
 
   @ApiProperty({
+    example: 12.5,
+    nullable: true,
+    description: 'Weighted average unit cost (WACC/CPP) at this location',
+  })
+  weightedAverageUnitCost: number | null;
+
+  @ApiProperty({
+    example: 10,
+    nullable: true,
+    description: 'Configured minimum quantity for low-stock alerts',
+  })
+  minimumQty: number | null;
+
+  @ApiProperty({
     type: () => ProductLittleResponseDto,
     nullable: true,
     description: 'Associated product details',

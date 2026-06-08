@@ -36,7 +36,7 @@ export class OnlineStoresService {
     private readonly onlineStoreRepository: Repository<OnlineStore>,
     @InjectRepository(Merchant)
     private readonly merchantRepository: Repository<Merchant>,
-  ) { }
+  ) {}
 
   async create(
     createOnlineStoreDto: CreateOnlineStoreDto,

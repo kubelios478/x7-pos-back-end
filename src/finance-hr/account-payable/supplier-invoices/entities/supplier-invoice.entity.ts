@@ -105,6 +105,14 @@ export class SupplierInvoice {
   @Column({ type: 'timestamp', name: 'deleted_at', nullable: true })
   deleted_at: Date | null;
 
+  @ApiProperty({
+    description:
+      'When set, inventory was received from this invoice (idempotent receive)',
+    nullable: true,
+  })
+  @Column({ type: 'timestamp', name: 'inventory_received_at', nullable: true })
+  inventory_received_at: Date | null;
+
   @OneToMany(() => SupplierInvoiceItem, (item) => item.invoice)
   items: SupplierInvoiceItem[];
 }

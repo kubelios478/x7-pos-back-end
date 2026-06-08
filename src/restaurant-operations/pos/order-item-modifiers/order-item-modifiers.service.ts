@@ -5,8 +5,12 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import {
+  DataSource,
+  Repository,
+  In,
+  type QueryDeepPartialEntity,
+} from 'typeorm';
 import { OrderItemModifier } from './entities/order-item-modifier.entity';
 import { OrderItem } from '../order-item/entities/order-item.entity';
 import { Modifier } from '../../../inventory/products-inventory/modifiers/entities/modifier.entity';
@@ -36,6 +40,7 @@ const RELATIONS = [
 @Injectable()
 export class OrderItemModifiersService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(OrderItemModifier)
     private readonly repo: Repository<OrderItemModifier>,
     @InjectRepository(OrderItem)
@@ -45,7 +50,7 @@ export class OrderItemModifiersService {
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
-  ) { }
+  ) {}
 
   async create(
     dto: CreateOrderItemModifierDto,
@@ -87,18 +92,43 @@ export class OrderItemModifiersService {
     row.modifier_id = dto.modifierId;
     row.price = roundMoney(dto.price);
 
-    const saved = await this.repo.save(row);
-    const complete = await this.repo.findOne({
-      where: { id: saved.id },
-      relations: [...RELATIONS],
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let complete: OrderItemModifier | null = null;
+    let becameFullyPaid = false;
+    try {
+      const saved = await queryRunner.manager.save(OrderItemModifier, row);
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          orderItem.order_id,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
+      complete = await queryRunner.manager.findOne(OrderItemModifier, {
+        where: { id: saved.id },
+        relations: [...RELATIONS],
+      });
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(orderItem.order_id);
+    }
+
     if (!complete) {
       throw new NotFoundException(
         'Order item modifier not found after creation',
       );
     }
 
-    await this.ordersService.syncOrderAggregates(orderItem.order_id);
+    await this.ordersService.syncOnlineOrderFromPosOrder(orderItem.order_id);
 
     return {
       statusCode: 201,
@@ -336,19 +366,60 @@ export class OrderItemModifiersService {
       patch.price = roundMoney(dto.price);
     }
 
-    await this.repo.update(id, patch);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const updated = await this.repo.findOne({
-      where: { id },
-      relations: [...RELATIONS],
-    });
-    if (!updated) {
-      throw new NotFoundException('Order item modifier not found after update');
+    let updated: OrderItemModifier | null = null;
+    let becameFullyPaidCurrent = false;
+    let becameFullyPaidPrevious = false;
+    try {
+      await queryRunner.manager.update(OrderItemModifier, id, patch);
+      updated = await queryRunner.manager.findOne(OrderItemModifier, {
+        where: { id },
+        relations: [...RELATIONS],
+      });
+      if (!updated) {
+        throw new NotFoundException(
+          'Order item modifier not found after update',
+        );
+      }
+
+      const syncCurrent =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          updated.orderItem.order_id,
+        );
+      becameFullyPaidCurrent = syncCurrent.becameFullyPaid;
+      if (previousOrderId !== updated.orderItem.order_id) {
+        const syncPrev =
+          await this.ordersService.syncOrderAggregatesWithManager(
+            queryRunner.manager,
+            previousOrderId,
+          );
+        becameFullyPaidPrevious = syncPrev.becameFullyPaid;
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
     }
 
-    await this.ordersService.syncOrderAggregates(updated.orderItem.order_id);
+    if (becameFullyPaidCurrent) {
+      this.ordersService.emitOrderFullyPaid(updated.orderItem.order_id);
+    }
+    if (becameFullyPaidPrevious) {
+      this.ordersService.emitOrderFullyPaid(previousOrderId);
+    }
+
+    await this.ordersService.syncOnlineOrderFromPosOrder(
+      updated.orderItem.order_id,
+    );
     if (previousOrderId !== updated.orderItem.order_id) {
-      await this.ordersService.syncOrderAggregates(previousOrderId);
+      await this.ordersService.syncOnlineOrderFromPosOrder(previousOrderId);
     }
 
     return {
@@ -387,8 +458,32 @@ export class OrderItemModifiersService {
     const orderId = existing.orderItem.order_id;
     const snapshot = this.format(existing);
 
-    await this.repo.delete(id);
-    await this.ordersService.syncOrderAggregates(orderId);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let becameFullyPaid = false;
+    try {
+      await queryRunner.manager.delete(OrderItemModifier, id);
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(orderId);
+    }
+
+    await this.ordersService.syncOnlineOrderFromPosOrder(orderId);
 
     return {
       statusCode: 200,

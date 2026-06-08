@@ -8,7 +8,10 @@ import { SupplierPaymentItem } from './entities/supplier-payment-item.entity';
 import { SupplierPayment } from '../supplier-payments/entities/supplier-payment.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([SupplierPaymentItem, SupplierPayment])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([SupplierPaymentItem, SupplierPayment]),
+  ],
   controllers: [SupplierPaymentItemsController],
   providers: [SupplierPaymentItemsService],
   exports: [SupplierPaymentItemsService],

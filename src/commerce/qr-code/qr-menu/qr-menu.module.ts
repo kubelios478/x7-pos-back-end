@@ -9,7 +9,7 @@ import { QRMenu } from './entity/qr-menu.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([QRMenu, Merchant])],
+  imports: [AuthModule, TypeOrmModule.forFeature([QRMenu, Merchant])],
   controllers: [QrMenuController],
   providers: [QrMenuService],
 })

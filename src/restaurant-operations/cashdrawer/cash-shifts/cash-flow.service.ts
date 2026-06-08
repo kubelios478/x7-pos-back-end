@@ -14,43 +14,43 @@ import { CashShiftMovementType } from './constants/cash-shift-movement-type.enum
  */
 @Injectable()
 export class CashFlowService {
-    /**
-     * Registers a movement in the cash_transactions table linked to a shiftId.
-     *
-     * @param shiftId       ID of the active cash shift.
-     * @param amount        Amount of the movement (always positive).
-     * @param movementType  'IN' = income, 'OUT' = outflow.
-     * @param orderId       ID of the order (optional, null if it is a manual movement).
-     * @param collaboratorId ID of the collaborator making the movement.
-     * @param cashDrawerId   ID of the physical cash drawer to which the transaction belongs.
-     * @param manager       EntityManager of the active QueryRunner.
-     */
-    async addMovement(
-        shiftId: number,
-        amount: number,
-        movementType: CashShiftMovementType,
-        orderId: number | null,
-        collaboratorId: number,
-        cashDrawerId: number,
-        manager: EntityManager,
-        notes: string | null = null,
-    ): Promise<CashTransaction> {
-        const transactionType =
-            movementType === CashShiftMovementType.IN
-                ? CashTransactionType.SALE
-                : CashTransactionType.WITHDRAWAL;
+  /**
+   * Registers a movement in the cash_transactions table linked to a shiftId.
+   *
+   * @param shiftId       ID of the active cash shift.
+   * @param amount        Amount of the movement (always positive).
+   * @param movementType  'IN' = income, 'OUT' = outflow.
+   * @param orderId       ID of the order (optional, null if it is a manual movement).
+   * @param collaboratorId ID of the collaborator making the movement.
+   * @param cashDrawerId   ID of the physical cash drawer to which the transaction belongs.
+   * @param manager       EntityManager of the active QueryRunner.
+   */
+  async addMovement(
+    shiftId: number,
+    amount: number,
+    movementType: CashShiftMovementType,
+    orderId: number | null,
+    collaboratorId: number,
+    cashDrawerId: number,
+    manager: EntityManager,
+    notes: string | null = null,
+  ): Promise<CashTransaction> {
+    const transactionType =
+      movementType === CashShiftMovementType.IN
+        ? CashTransactionType.SALE
+        : CashTransactionType.WITHDRAWAL;
 
-        const transaction = manager.getRepository(CashTransaction).create({
-            shift_id: shiftId,
-            cash_drawer_id: cashDrawerId,
-            order_id: orderId,
-            type: transactionType,
-            amount,
-            collaborator_id: collaboratorId,
-            status: CashTransactionStatus.ACTIVE,
-            notes,
-        });
+    const transaction = manager.getRepository(CashTransaction).create({
+      shift_id: shiftId,
+      cash_drawer_id: cashDrawerId,
+      order_id: orderId,
+      type: transactionType,
+      amount,
+      collaborator_id: collaboratorId,
+      status: CashTransactionStatus.ACTIVE,
+      notes,
+    });
 
-        return manager.getRepository(CashTransaction).save(transaction);
-    }
+    return manager.getRepository(CashTransaction).save(transaction);
+  }
 }

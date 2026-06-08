@@ -54,10 +54,12 @@ describe('JwtStrategy', () => {
 
   it('validate returns AuthenticatedUser with planId and authorizedFeatureIds', async () => {
     userRepository.findOne.mockResolvedValue(mockUser as User);
-    subscriptionAccessService.getSubscriptionAccessForMerchant.mockResolvedValue({
-      planId: 2,
-      authorizedFeatureIds: [7, 14],
-    });
+    subscriptionAccessService.getSubscriptionAccessForMerchant.mockResolvedValue(
+      {
+        planId: 2,
+        authorizedFeatureIds: [7, 14],
+      },
+    );
 
     const result = await strategy.validate({
       sub: '1',

@@ -9,6 +9,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import * as dotenv from 'dotenv';
 import { useContainer } from 'class-validator';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
+import { RedisIoAdapter } from './realtime/adapters/redis-io.adapter';
 
 dotenv.config();
 
@@ -54,6 +55,16 @@ async function bootstrap() {
   app.useGlobalFilters(new ValidationExceptionFilter());
 
   app.enableCors();
+
+  const wsRedisEnabled =
+    (process.env.WS_REDIS_ENABLED ?? '').toLowerCase() === 'true';
+  const redisUrl = process.env.REDIS_URL;
+  if (wsRedisEnabled && redisUrl) {
+    const redisAdapter = new RedisIoAdapter(app, redisUrl);
+    await redisAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisAdapter);
+  }
+
   app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });

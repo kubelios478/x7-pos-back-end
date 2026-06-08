@@ -22,7 +22,7 @@ export const REQUIRE_ACTIVE_SHIFT_KEY = 'requireActiveShift';
  * }
  */
 export const RequireActiveShift = () =>
-    applyDecorators(
-        SetMetadata(REQUIRE_ACTIVE_SHIFT_KEY, true),
-        UseGuards(ActiveShiftGuard),
-    );
+  applyDecorators(
+    SetMetadata(REQUIRE_ACTIVE_SHIFT_KEY, true),
+    UseGuards(ActiveShiftGuard),
+  );

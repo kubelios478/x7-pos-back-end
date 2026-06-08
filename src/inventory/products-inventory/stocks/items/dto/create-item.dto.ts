@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsNotEmpty, IsOptional, Min } from 'class-validator';
 
 export class CreateItemDto {
   @ApiProperty({ example: 1, description: 'Associated product ID' })
@@ -28,4 +28,13 @@ export class CreateItemDto {
   @IsInt()
   @Min(0)
   currentQty: number;
+
+  @ApiPropertyOptional({
+    example: 5,
+    description: 'Minimum quantity for low-stock alerts (omit to disable)',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minimumQty?: number;
 }

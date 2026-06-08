@@ -6,7 +6,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { OnlineOrderItem } from './entities/online-order-item.entity';
 import { OnlineOrder } from '../online-order/entities/online-order.entity';
 import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
@@ -30,6 +30,7 @@ import { resolveUnitPriceForOnlineOrderItem } from '../online-order/online-order
 @Injectable()
 export class OnlineOrderItemService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(OnlineOrderItem)
     private readonly onlineOrderItemRepository: Repository<OnlineOrderItem>,
     @InjectRepository(OnlineOrder)
@@ -134,14 +135,30 @@ export class OnlineOrderItemService {
     onlineOrderItem.modifiers = createOnlineOrderItemDto.modifiers || null;
     onlineOrderItem.notes = createOnlineOrderItemDto.notes || null;
 
-    const savedOnlineOrderItem =
-      await this.onlineOrderItemRepository.save(onlineOrderItem);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const completeOnlineOrderItem =
-      await this.onlineOrderItemRepository.findOne({
-        where: { id: savedOnlineOrderItem.id },
-        relations: ['onlineOrder', 'product', 'variant', 'orderItem'],
-      });
+    let completeOnlineOrderItem: OnlineOrderItem | null = null;
+    try {
+      const savedOnlineOrderItem = await queryRunner.manager.save(
+        OnlineOrderItem,
+        onlineOrderItem,
+      );
+      completeOnlineOrderItem = await queryRunner.manager.findOne(
+        OnlineOrderItem,
+        {
+          where: { id: savedOnlineOrderItem.id },
+          relations: ['onlineOrder', 'product', 'variant', 'orderItem'],
+        },
+      );
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
 
     if (!completeOnlineOrderItem) {
       throw new NotFoundException('Online order item not found after creation');
@@ -484,15 +501,30 @@ export class OnlineOrderItemService {
       existingOnlineOrderItem.notes = updateOnlineOrderItemDto.notes || null;
     }
 
-    const updatedOnlineOrderItem = await this.onlineOrderItemRepository.save(
-      existingOnlineOrderItem,
-    );
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const completeOnlineOrderItem =
-      await this.onlineOrderItemRepository.findOne({
-        where: { id: updatedOnlineOrderItem.id },
-        relations: ['onlineOrder', 'product', 'variant', 'orderItem'],
-      });
+    let completeOnlineOrderItem: OnlineOrderItem | null = null;
+    try {
+      const updatedOnlineOrderItem = await queryRunner.manager.save(
+        OnlineOrderItem,
+        existingOnlineOrderItem,
+      );
+      completeOnlineOrderItem = await queryRunner.manager.findOne(
+        OnlineOrderItem,
+        {
+          where: { id: updatedOnlineOrderItem.id },
+          relations: ['onlineOrder', 'product', 'variant', 'orderItem'],
+        },
+      );
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
 
     if (!completeOnlineOrderItem) {
       throw new NotFoundException('Online order item not found after update');
@@ -551,9 +583,23 @@ export class OnlineOrderItemService {
     }
 
     existingOnlineOrderItem.status = OnlineOrderItemStatus.DELETED;
-    const updatedOnlineOrderItem = await this.onlineOrderItemRepository.save(
-      existingOnlineOrderItem,
-    );
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let updatedOnlineOrderItem: OnlineOrderItem;
+    try {
+      updatedOnlineOrderItem = await queryRunner.manager.save(
+        OnlineOrderItem,
+        existingOnlineOrderItem,
+      );
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
 
     return {
       statusCode: 200,

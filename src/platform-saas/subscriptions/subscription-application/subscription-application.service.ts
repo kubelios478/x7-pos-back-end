@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { MerchantSubscription } from '../merchant-subscriptions/entities/merchant-subscription.entity';
+import { CompanySubscription } from '../company-subscriptions/entities/company-subscription.entity';
 import { SubscriptionApplication } from './entity/subscription-application.entity';
 import { ApplicationEntity } from '../applications/entity/application-entity';
 import { OneSubscriptionApplicationResponseDto } from './dto/subscription-application-response.dto';
@@ -21,28 +22,52 @@ export class SubscriptionApplicationService {
     @InjectRepository(MerchantSubscription)
     private readonly merchantSubscriptionRepository: Repository<MerchantSubscription>,
 
+    @InjectRepository(CompanySubscription)
+    private readonly companySubscriptionRepository: Repository<CompanySubscription>,
+
     @InjectRepository(ApplicationEntity)
     private readonly applicationRepository: Repository<ApplicationEntity>,
   ) {}
   async create(
     dto: CreateSubscriptionApplicationDto,
   ): Promise<OneSubscriptionApplicationResponseDto> {
-    // Validate merchantSubscriptionId and applicationId
+    const hasMerchant = Boolean(dto.merchantSubscriptionId);
+    const hasCompany = Boolean(dto.companySubscriptionId);
+    if (!hasMerchant && !hasCompany) {
+      ErrorHandler.invalidInput(
+        'Either companySubscriptionId or merchantSubscriptionId must be provided',
+      );
+    }
+    if (hasMerchant && hasCompany) {
+      ErrorHandler.invalidInput(
+        'Provide only one of companySubscriptionId or merchantSubscriptionId',
+      );
+    }
+
+    // Validate merchantSubscriptionId/companySubscriptionId and applicationId
     if (
       (dto.merchantSubscriptionId &&
         (!Number.isInteger(dto.merchantSubscriptionId) ||
           dto.merchantSubscriptionId <= 0)) ||
+      (dto.companySubscriptionId &&
+        (!Number.isInteger(dto.companySubscriptionId) ||
+          dto.companySubscriptionId <= 0)) ||
       (dto.applicationId &&
         (!Number.isInteger(dto.applicationId) || dto.applicationId <= 0))
     ) {
       ErrorHandler.invalidId(
-        'Merchant Subscription ID and Application ID must be positive integers',
+        'Subscription ID and Application ID must be positive integers',
       );
     }
     let merchantSubscription: MerchantSubscription | null = null;
+    let companySubscription: CompanySubscription | null = null;
     let application: ApplicationEntity | null = null;
 
-    if (dto.merchantSubscriptionId || dto.applicationId) {
+    if (
+      dto.merchantSubscriptionId ||
+      dto.companySubscriptionId ||
+      dto.applicationId
+    ) {
       if (dto.merchantSubscriptionId) {
         merchantSubscription =
           await this.merchantSubscriptionRepository.findOne({
@@ -50,6 +75,14 @@ export class SubscriptionApplicationService {
           });
         if (!merchantSubscription) {
           ErrorHandler.merchantSubscriptionNotFound();
+        }
+      }
+      if (dto.companySubscriptionId) {
+        companySubscription = await this.companySubscriptionRepository.findOne({
+          where: { id: dto.companySubscriptionId },
+        });
+        if (!companySubscription) {
+          ErrorHandler.notFound('Company subscription not found');
         }
       }
       if (dto.applicationId) {
@@ -65,6 +98,7 @@ export class SubscriptionApplicationService {
     const subscriptionApplication =
       this.subscriptionApplicationRepository.create({
         merchantSubscription: merchantSubscription,
+        companySubscription,
         application: application,
         status: dto.status,
       } as Partial<SubscriptionApplication>);
@@ -100,6 +134,10 @@ export class SubscriptionApplicationService {
         'subscriptionApplication.merchantSubscription',
         'merchantSubscription',
       )
+      .leftJoin(
+        'subscriptionApplication.companySubscription',
+        'companySubscription',
+      )
       .leftJoin('subscriptionApplication.application', 'application')
       .select([
         'subscriptionApplication',
@@ -107,6 +145,10 @@ export class SubscriptionApplicationService {
         'merchantSubscription.status',
         'merchantSubscription.merchant',
         'merchantSubscription.plan',
+        'companySubscription.id',
+        'companySubscription.status',
+        'companySubscription.company',
+        'companySubscription.plan',
         'application.id',
         'application.name',
         'application.status',
@@ -134,11 +176,21 @@ export class SubscriptionApplicationService {
       id: item.id,
       status: item.status,
 
-      merchantSubscription: {
-        id: item.merchantSubscription.id,
-        merchant: item.merchantSubscription.merchant,
-        plan: item.merchantSubscription.plan,
-      },
+      merchantSubscription: item.merchantSubscription
+        ? {
+            id: item.merchantSubscription.id,
+            merchant: item.merchantSubscription.merchant,
+            plan: item.merchantSubscription.plan,
+          }
+        : null,
+
+      companySubscription: item.companySubscription
+        ? {
+            id: item.companySubscription.id,
+            company: item.companySubscription.company,
+            plan: item.companySubscription.plan,
+          }
+        : null,
 
       application: {
         id: item.application.id,

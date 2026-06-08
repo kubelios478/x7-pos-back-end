@@ -29,11 +29,11 @@ export class OrderPaymentResponseDto {
   @ApiProperty()
   createdAt: Date;
 
-  @ApiProperty()
-  source: string;
+  @ApiProperty({ nullable: true })
+  source: string | null;
 
-  @ApiProperty()
-  shift_id: number;
+  @ApiProperty({ nullable: true })
+  shift_id: number | null;
 }
 
 export class OneOrderPaymentResponseDto extends SuccessResponse {

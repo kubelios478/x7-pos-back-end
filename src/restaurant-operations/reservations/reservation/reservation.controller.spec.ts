@@ -6,7 +6,10 @@ import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { GetReservationsQueryDto } from './dto/get-reservations-query.dto';
-import { OneReservationResponse, ReservationResponseDto } from './dto/reservation-response.dto';
+import {
+  OneReservationResponse,
+  ReservationResponseDto,
+} from './dto/reservation-response.dto';
 import { AllPaginatedReservations } from './dto/all-paginated-reservations.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ReservationStatus } from './constants/reservation.constants';
@@ -84,7 +87,7 @@ describe('ReservationController', () => {
         data: {
           ...mockReservationResponse,
           reservation_date: new Date(dto.reservation_date),
-          party_size: dto.party_size
+          party_size: dto.party_size,
         } as any,
       };
 
@@ -161,7 +164,10 @@ describe('ReservationController', () => {
       const expectedResult: OneReservationResponse = {
         statusCode: 200,
         message: 'Reservation Cancelled successfully',
-        data: { ...mockReservationResponse, status: ReservationStatus.CANCELLED },
+        data: {
+          ...mockReservationResponse,
+          status: ReservationStatus.CANCELLED,
+        },
       };
 
       mockReservationService.cancel.mockResolvedValue(expectedResult);
@@ -194,7 +200,7 @@ describe('ReservationController', () => {
     it('should call service methods with correct parameters', async () => {
       const dto: CreateReservationDto = {
         reservation_date: new Date().toISOString(),
-        party_size: 2
+        party_size: 2,
       };
       const query: GetReservationsQueryDto = { page: 1 };
 

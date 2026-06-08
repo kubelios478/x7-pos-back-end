@@ -12,4 +12,4 @@ import { Table } from 'src/restaurant-operations/dining-system/tables/entities/t
   providers: [ReservationTableService],
   exports: [ReservationTableService],
 })
-export class ReservationTableModule { }
+export class ReservationTableModule {}

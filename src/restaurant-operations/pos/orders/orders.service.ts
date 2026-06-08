@@ -10,6 +10,7 @@ import {
   Repository,
   Between,
   In,
+  DataSource,
   type FindOptionsOrder,
   type FindOptionsWhere,
 } from 'typeorm';
@@ -56,11 +57,15 @@ import { formatOnlineOrderToDto } from '../../../commerce/online-ordering-system
 import { OrderType } from './constants/order-type.enum';
 import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OnlineOrderSyncService } from '../../../commerce/online-ordering-system/online-order/online-order-sync.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ORDER_FULLY_PAID_EVENT,
+  ORDER_LOYALTY_REVERSAL_EVENT,
+} from '../../../inventory/sale-inventory/order-paid.events';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { ShiftsService } from 'src/restaurant-operations/shift/shifts/shifts.service';
 import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
 import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
-import { DataSource } from 'typeorm';
 import { SettlementMethod } from 'src/restaurant-operations/tips/tip-settlements/constants/settlement-method.enum';
 import { ShiftRole } from 'src/restaurant-operations/shift/shifts/constants/shift-role.enum';
 import { MerchantTipRule } from 'src/core/configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
@@ -105,6 +110,7 @@ export class OrdersService {
     @InjectRepository(OrderItemModifier)
     private readonly orderItemModifierRepo: Repository<OrderItemModifier>,
     private readonly onlineOrderSyncService: OnlineOrderSyncService,
+    private readonly eventEmitter: EventEmitter2,
     @InjectRepository(Product)
     private readonly productsRepo: Repository<Product>,
     private readonly shiftService: ShiftsService,
@@ -130,7 +136,7 @@ export class OrdersService {
     activeShiftId?: number,
   ): Promise<OneOrderResponseDto> {
     let subtotal = 0;
-    const orderItems: any[] = [];
+    const orderItems: OrderItem[] = [];
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
     }
@@ -212,8 +218,8 @@ export class OrdersService {
         throw new BadRequestException('Invalid closedAt date format');
       }
     }
-    // Validate items
-    for (const item of dto.items) {
+    // Optional line items; POS can add more later via order-item endpoints
+    for (const item of dto.items ?? []) {
       const product = await this.productsRepo.findOne({
         where: { id: item.productId, merchantId: merchant.id },
       });
@@ -266,7 +272,7 @@ export class OrdersService {
     order.displayId = displayId;
     order.shift = activeShift;
     order.shift_id = activeShift.id;
-    order.status = OrderBusinessStatus.PENDING;
+    order.status = dto.businessStatus ?? OrderBusinessStatus.PENDING;
     order.subtotal = subtotal;
 
     order.order_number = await this.nextOrderNumber(dto.merchantId);
@@ -1222,6 +1228,13 @@ export class OrdersService {
     await this.orderRepo.save(order);
     await this.syncOrderAggregates(id);
 
+    if (
+      dto.businessStatus === OrderBusinessStatus.CANCELLED &&
+      existing.status !== OrderBusinessStatus.CANCELLED
+    ) {
+      this.emitOrderLoyaltyReversal(id);
+    }
+
     const updated = await this.orderRepo.findOne({ where: { id } });
     if (!updated) {
       throw new NotFoundException('Order not found after update');
@@ -1269,6 +1282,16 @@ export class OrdersService {
     };
   }
 
+  /** Emits after DB commit when the order first becomes fully paid. */
+  emitOrderFullyPaid(orderId: number, shiftId?: number | null): void {
+    this.eventEmitter.emit(ORDER_FULLY_PAID_EVENT, { orderId, shiftId });
+  }
+
+  /** Emits after DB commit when loyalty points must be reversed (cancel/refund). */
+  emitOrderLoyaltyReversal(orderId: number): void {
+    this.eventEmitter.emit(ORDER_LOYALTY_REVERSAL_EVENT, { orderId });
+  }
+
   /**
    * Recomputes subtotal from line items, tax_total from order_taxes, tip_total
    * (manual_tip_total + sum of payment tip_amount), order total, paid_total from
@@ -1276,18 +1299,51 @@ export class OrdersService {
    * Call after order-item, order-item-modifier, order-tax or order-payment create / update / delete, or after changing order-level discount/tip/delivery.
    */
   async syncOrderAggregates(orderId: number): Promise<void> {
-    const order = await this.orderRepo.findOne({ where: { id: orderId } });
-    if (!order) return;
+    const { becameFullyPaid, becameUnpaid } =
+      await this.syncOrderAggregatesWithManager(
+        this.orderRepo.manager,
+        orderId,
+      );
+    if (becameFullyPaid) {
+      this.emitOrderFullyPaid(orderId);
+    }
+    if (becameUnpaid) {
+      this.emitOrderLoyaltyReversal(orderId);
+    }
+    await this.syncOnlineOrderFromPosOrder(orderId);
+  }
 
-    const items = await this.orderItemRepo.find({
+  /** Post-commit sync to propagate POS order changes to online orders. */
+  async syncOnlineOrderFromPosOrder(orderId: number): Promise<void> {
+    await this.onlineOrderSyncService.syncFromPosOrder(orderId);
+  }
+
+  /**
+   * Transaction-friendly version of {@link syncOrderAggregates}.
+   * It only touches POS tables and MUST be called with the transaction manager when atomicity is required.
+   */
+  async syncOrderAggregatesWithManager(
+    manager: EntityManager,
+    orderId: number,
+  ): Promise<{ becameFullyPaid: boolean; becameUnpaid: boolean }> {
+    const order = await manager.getRepository(Order).findOne({
+      where: { id: orderId },
+    });
+    if (!order) {
+      return { becameFullyPaid: false, becameUnpaid: false };
+    }
+
+    const wasPaid = order.is_paid;
+
+    const items = await manager.getRepository(OrderItem).find({
       where: { order_id: orderId },
     });
 
-    const payments = await this.orderPaymentRepo.find({
+    const payments = await manager.getRepository(OrderPayment).find({
       where: { order_id: orderId },
     });
 
-    const taxes = await this.orderTaxRepo.find({
+    const taxes = await manager.getRepository(OrderTax).find({
       where: { order_id: orderId },
     });
 
@@ -1321,8 +1377,10 @@ export class OrdersService {
     }
 
     applyPaidDerivedFields(order);
-    await this.orderRepo.save(order);
-    await this.onlineOrderSyncService.syncFromPosOrder(orderId);
+    const becameFullyPaid = !wasPaid && order.is_paid;
+    const becameUnpaid = wasPaid && !order.is_paid;
+    await manager.getRepository(Order).save(order);
+    return { becameFullyPaid, becameUnpaid };
   }
 
   /**
@@ -1559,6 +1617,8 @@ export class OrdersService {
       createdAt: row.created_at,
       closedAt: row.closed_at,
       updatedAt: row.updated_at,
+      inventoryConsumedAt: row.inventory_consumed_at,
+      loyaltyPointsAwardedAt: row.loyalty_points_awarded_at,
     };
 
     if (row.orderItems?.length) {
@@ -1607,11 +1667,11 @@ export class OrdersService {
       variantId: orderItem.variant_id,
       variant: orderItem.variant
         ? {
-          id: orderItem.variant.id,
-          name: orderItem.variant.name,
-          price: Number(orderItem.variant.price),
-          sku: orderItem.variant.sku,
-        }
+            id: orderItem.variant.id,
+            name: orderItem.variant.name,
+            price: Number(orderItem.variant.price),
+            sku: orderItem.variant.sku,
+          }
         : null,
       quantity: orderItem.quantity,
       price: Number(orderItem.price),
@@ -1651,15 +1711,15 @@ export class OrdersService {
       },
       onlineOrder: kitchenOrder.onlineOrder
         ? {
-          id: kitchenOrder.onlineOrder.id,
-          status: kitchenOrder.onlineOrder.status,
-        }
+            id: kitchenOrder.onlineOrder.id,
+            status: kitchenOrder.onlineOrder.status,
+          }
         : null,
       station: kitchenOrder.station
         ? {
-          id: kitchenOrder.station.id,
-          name: kitchenOrder.station.name,
-        }
+            id: kitchenOrder.station.id,
+            name: kitchenOrder.station.name,
+          }
         : null,
     };
   }
