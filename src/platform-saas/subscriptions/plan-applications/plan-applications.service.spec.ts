@@ -406,4 +406,46 @@ describe('PlanApplicationsService', () => {
       expect(typeof repository.remove).toBe('function');
     });
   });
+
+  describe('findAll — subscriptionPlanId filter and category mapping', () => {
+    let filterQueryBuilder: any;
+
+    beforeEach(() => {
+      filterQueryBuilder = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([
+          [
+            {
+              id: 1,
+              limits: '100 users per month',
+              status: 'active',
+              subscriptionPlan: { id: 3, name: 'Gold Plan' },
+              application: { id: 5, name: 'POS Core', category: 'POS Core' },
+            },
+          ],
+          1,
+        ]),
+      };
+      repository.createQueryBuilder.mockReturnValue(filterQueryBuilder);
+    });
+
+    it('calls andWhere with subscriptionPlanId when provided', async () => {
+      await service.findAll({ subscriptionPlanId: 3, page: 1, limit: 10 });
+      expect(filterQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'subscriptionPlan.id = :subscriptionPlanId',
+        { subscriptionPlanId: 3 },
+      );
+    });
+
+    it('includes application.category in the mapped response', async () => {
+      const result = await service.findAll({ subscriptionPlanId: 3, page: 1, limit: 10 });
+      expect(result.data[0]).toHaveProperty('application');
+      expect((result.data[0] as any).application).toHaveProperty('category', 'POS Core');
+    });
+  });
 });
