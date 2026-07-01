@@ -6,11 +6,13 @@ import { CategoryController } from './category.controller';
 import { Category } from './entities/category.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { ProductsInventoryModule } from '../products-inventory.module';
+import { ProductsModule } from '../products/products.module';
 
 @Module({
   imports: [AuthModule,
     TypeOrmModule.forFeature([Category, Merchant]),
     forwardRef(() => ProductsInventoryModule),
+    forwardRef(() => ProductsModule),
   ],
   controllers: [CategoryController],
   providers: [CategoryService],

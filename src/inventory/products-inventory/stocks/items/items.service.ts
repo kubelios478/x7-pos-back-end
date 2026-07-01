@@ -390,4 +390,24 @@ export class ItemsService {
 
     return this.findOne(removedItem.id, merchantId, 'Deleted');
   }
+
+  async softRemoveByProductId(
+    productId: number,
+    merchantId: number,
+  ): Promise<void> {
+    const items = await this.itemRepository
+      .createQueryBuilder('item')
+      .leftJoinAndSelect('item.product', 'product')
+      .where('item.productId = :productId', { productId })
+      .andWhere('item.isActive = :isActive', { isActive: true })
+      .andWhere('product.merchantId = :merchantId', { merchantId })
+      .getMany();
+
+    if (items.length > 0) {
+      for (const item of items) {
+        item.isActive = false;
+      }
+      await this.itemRepository.save(items);
+    }
+  }
 }

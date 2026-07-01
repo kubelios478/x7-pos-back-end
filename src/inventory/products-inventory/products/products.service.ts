@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
@@ -18,6 +18,8 @@ import { VariantsService } from '../variants/variants.service';
 import { CategoryLittleResponseDto } from '../category/dto/category-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
+import { ItemsService } from '../stocks/items/items.service';
+import { PurchaseOrderItemService } from '../purchase-order-item/purchase-order-item.service';
 
 @Injectable()
 export class ProductsService {
@@ -32,6 +34,10 @@ export class ProductsService {
     private readonly supplierRepository: Repository<Supplier>,
     private readonly modifiersService: ModifiersService,
     private readonly variantsService: VariantsService,
+    @Inject(forwardRef(() => ItemsService))
+    private readonly itemsService: ItemsService,
+    @Inject(forwardRef(() => PurchaseOrderItemService))
+    private readonly purchaseOrderItemService: PurchaseOrderItemService,
   ) {}
   async create(
     merchant_id: number,
@@ -128,8 +134,9 @@ export class ProductsService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('category.parent', 'parentCategory')
       .leftJoinAndSelect('product.supplier', 'supplier')
-      .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('product.isActive = :isActive', { isActive: true });
+      .leftJoinAndSelect('product.variants', 'variants')
+      .leftJoinAndSelect('product.modifiers', 'modifiers')
+      .where('product.merchantId = :merchantId', { merchantId });
 
     // 5. Apply optional filters
     if (query.name) {
@@ -194,6 +201,28 @@ export class ProductsService {
                 company_id: product.supplier.company_id,
               }
             : null,
+          isActive: product.isActive,
+          variants: product.variants
+            ? product.variants
+                .filter((v) => v.isActive)
+                .map((v) => ({
+                  id: v.id,
+                  name: v.name,
+                  price: v.price,
+                  sku: v.sku,
+                  isActive: v.isActive,
+                }))
+            : [],
+          modifiers: product.modifiers
+            ? product.modifiers
+                .filter((m) => m.isActive)
+                .map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  priceDelta: m.priceDelta,
+                  isActive: m.isActive,
+                }))
+            : [],
         };
         return result;
       }),
@@ -223,10 +252,8 @@ export class ProductsService {
     const whereCondition: {
       id: number;
       merchantId?: number;
-      isActive: boolean;
     } = {
       id,
-      isActive: createdUpdateDelete === 'Deleted' ? false : true,
     };
     if (merchantId !== undefined) {
       whereCondition.merchantId = merchantId;
@@ -234,7 +261,7 @@ export class ProductsService {
 
     const product = await this.productRepository.findOne({
       where: whereCondition,
-      relations: ['merchant', 'category', 'category.parent', 'supplier'],
+      relations: ['merchant', 'category', 'category.parent', 'supplier', 'variants', 'modifiers'],
     });
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
@@ -271,6 +298,28 @@ export class ProductsService {
             company_id: product.supplier.company_id,
           }
         : null,
+      isActive: product.isActive,
+      variants: product.variants
+        ? product.variants
+            .filter((v) => v.isActive)
+            .map((v) => ({
+              id: v.id,
+              name: v.name,
+              price: v.price,
+              sku: v.sku,
+              isActive: v.isActive,
+            }))
+        : [],
+      modifiers: product.modifiers
+        ? product.modifiers
+            .filter((m) => m.isActive)
+            .map((m) => ({
+              id: m.id,
+              name: m.name,
+              priceDelta: m.priceDelta,
+              isActive: m.isActive,
+            }))
+        : [],
     };
 
     let response: OneProductResponse;
@@ -321,10 +370,16 @@ export class ProductsService {
     const product = await this.productRepository.findOneBy({
       id,
       merchantId: merchant_id,
-      isActive: true,
     });
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
+
+    if (updateData.isActive === false && product.isActive === true) {
+      await this.modifiersService.softRemoveByProductId(id, merchant_id);
+      await this.variantsService.softRemoveByProductId(id, merchant_id);
+      await this.itemsService.softRemoveByProductId(id, merchant_id);
+      await this.purchaseOrderItemService.softRemoveByProductId(id, merchant_id);
+    }
 
     if (categoryId && categoryId !== product.categoryId) {
       const category = await this.categoryRepository.findOneBy({
@@ -400,11 +455,26 @@ export class ProductsService {
     try {
       await this.modifiersService.softRemoveByProductId(id, merchant_id);
       await this.variantsService.softRemoveByProductId(id, merchant_id);
+      await this.itemsService.softRemoveByProductId(id, merchant_id);
+      await this.purchaseOrderItemService.softRemoveByProductId(id, merchant_id);
       product.isActive = false;
       await this.productRepository.save(product);
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  async softRemoveByCategoryId(
+    categoryId: number,
+    merchantId: number,
+  ): Promise<void> {
+    const products = await this.productRepository.find({
+      where: { categoryId, merchantId, isActive: true },
+    });
+
+    for (const product of products) {
+      await this.remove(product.id, merchantId);
     }
   }
 }
