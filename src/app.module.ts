@@ -116,6 +116,7 @@ import { ShiftAssignment } from './restaurant-operations/shift/shift-assignments
 import { SubscriptionApplication } from './platform-saas/subscriptions/subscription-application/entity/subscription-application.entity';
 import { SubscriptionPayment } from './platform-saas/subscriptions/subscription-payments/entity/subscription-payments.entity';
 import { SubscriptionPlan } from './platform-saas/subscriptions/subscription-plan/entity/subscription-plan.entity';
+import { SubscriptionPlanDisplayFeature } from './platform-saas/subscriptions/subscription-plan/entity/subscription-plan-display-feature.entity';
 import { SupplierInvoice } from './finance-hr/account-payable/supplier-invoices/entities/supplier-invoice.entity';
 import { SupplierInvoiceItem } from './finance-hr/account-payable/supplier-invoice-item/entities/supplier-invoice-item.entity';
 import { Supplier } from './core/business-partners/suppliers/entities/supplier.entity';
@@ -157,6 +158,8 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MerchantTaxRuleModule } from './core/configuration/merchant-tax-rule/merchant-tax-rule.module';
 import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
 import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-analytics/modifier-analytics.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
+import { OnboardingSession } from './onboarding/entities/onboarding-session.entity';
 
 @Module({
   imports: [
@@ -272,6 +275,7 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           SubscriptionApplication,
           SubscriptionPayment,
           SubscriptionPlan,
+          SubscriptionPlanDisplayFeature,
           SupplierInvoice,
           SupplierInvoiceItem,
           Supplier,
@@ -297,12 +301,14 @@ import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-an
           DeliveryDriver,
           DeliveryAssignment,
           DeliveryTracking,
+          OnboardingSession,
         ],
         synchronize: true,
       }),
     }),
     AccountPayableModule,
     AuthModule,
+    OnboardingModule,
     ConfigurationModule,
     CoreModule,
     HrModule,

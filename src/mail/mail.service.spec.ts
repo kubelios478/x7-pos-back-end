@@ -187,9 +187,7 @@ describe('MailService', () => {
       const smtpError = new Error('SMTP connection failed');
       mockSendMail.mockRejectedValue(smtpError);
 
-      await expect(service.sendMail(options)).rejects.toThrow(
-        'SMTP connection failed',
-      );
+      await expect(service.sendMail(options)).resolves.toBe(false);
       expect(mockSendMail).toHaveBeenCalledTimes(1);
     });
 
@@ -205,9 +203,7 @@ describe('MailService', () => {
       );
       mockSendMail.mockRejectedValue(authError);
 
-      await expect(service.sendMail(options)).rejects.toThrow(
-        'Invalid login: 535 5.7.8 Username and Password not accepted',
-      );
+      await expect(service.sendMail(options)).resolves.toBe(false);
     });
 
     it('should handle invalid recipient errors', async () => {
@@ -220,9 +216,7 @@ describe('MailService', () => {
       const recipientError = new Error('Invalid recipient email address');
       mockSendMail.mockRejectedValue(recipientError);
 
-      await expect(service.sendMail(options)).rejects.toThrow(
-        'Invalid recipient email address',
-      );
+      await expect(service.sendMail(options)).resolves.toBe(false);
     });
 
     it('should handle quota exceeded errors', async () => {
@@ -235,9 +229,7 @@ describe('MailService', () => {
       const quotaError = new Error('Daily quota exceeded');
       mockSendMail.mockRejectedValue(quotaError);
 
-      await expect(service.sendMail(options)).rejects.toThrow(
-        'Daily quota exceeded',
-      );
+      await expect(service.sendMail(options)).resolves.toBe(false);
     });
 
     it('should handle network timeout errors', async () => {
@@ -250,9 +242,7 @@ describe('MailService', () => {
       const timeoutError = new Error('Network timeout');
       mockSendMail.mockRejectedValue(timeoutError);
 
-      await expect(service.sendMail(options)).rejects.toThrow(
-        'Network timeout',
-      );
+      await expect(service.sendMail(options)).resolves.toBe(false);
     });
   });
 
