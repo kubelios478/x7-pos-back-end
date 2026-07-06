@@ -136,7 +136,7 @@ export class CreateOrderDto {
   @Min(0)
   tipTotal?: number;
 
-Mark  @ApiPropertyOptional({
+  @ApiPropertyOptional({
     type: [CreateOrderItemDto],
     description:
       'Optional line items at creation time. Omit or send an empty array to add items later via POST /order-item.',

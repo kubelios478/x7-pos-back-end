@@ -1870,7 +1870,7 @@ export class OrdersService {
             where: {
               orderId: order.id,
               loyaltyCustomerId: transaction.loyaltyCustomerId,
-              source: LoyaltyPointsSource.REFUND_REVERSAL,
+              source: LoyaltyPointsSource.ORDER_REVERSAL,
             },
           },
         );
@@ -1891,7 +1891,7 @@ export class OrdersService {
         await queryRunner.manager.save(LoyaltyPointTransaction, {
           loyaltyCustomerId: loyaltyCustomer.id,
           orderId: order.id,
-          source: LoyaltyPointsSource.REFUND_REVERSAL,
+          source: LoyaltyPointsSource.ORDER_REVERSAL,
           points: -transaction.points,
           description: `Refund reversal for order ${order.order_number}`,
         });

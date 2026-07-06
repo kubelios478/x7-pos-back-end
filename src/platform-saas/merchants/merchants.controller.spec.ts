@@ -7,7 +7,11 @@ import { UpdateMerchantDto } from './dtos/update-merchant.dto';
 import {
   OneMerchantResponseDto,
   AllMerchantsResponseDto,
+  CompanyMerchantsListResponseDto,
 } from './dtos/merchant-response.dto';
+import { UserRole } from '../users/constants/role.enum';
+import { Scope } from '../users/constants/scope.enum';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 describe('MerchantsController', () => {
   let controller: MerchantsController;
@@ -72,11 +76,29 @@ describe('MerchantsController', () => {
     data: [mockMerchant as any],
   };
 
+  const mockCompanyMerchantsResponse: CompanyMerchantsListResponseDto = {
+    statusCode: 200,
+    message: 'Company merchants retrieved successfully',
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    data: [mockMerchant as any],
+    meta: { companyId: 1 },
+  };
+
+  const mockUser: AuthenticatedUser = {
+    id: 1,
+    email: 'admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 1 },
+  };
+
   beforeEach(async () => {
     // Mock MerchantsService
     const mockMerchantsService = {
       create: jest.fn(),
       findAll: jest.fn(),
+      findByCompanyForUser: jest.fn(),
+      createForCompany: jest.fn(),
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
@@ -195,15 +217,49 @@ describe('MerchantsController', () => {
     });
   });
 
+  describe('GET /merchants/company/branches (findByCompany)', () => {
+    it('should return company merchants for authenticated user', async () => {
+      const findByCompanySpy = jest.spyOn(
+        merchantsService,
+        'findByCompanyForUser',
+      );
+      findByCompanySpy.mockResolvedValue(mockCompanyMerchantsResponse);
+
+      const result = await controller.findByCompany(mockUser, '1');
+
+      expect(findByCompanySpy).toHaveBeenCalledWith(mockUser, 1);
+      expect(result).toEqual(mockCompanyMerchantsResponse);
+    });
+  });
+
+  describe('POST /merchants/company/branches (createBranch)', () => {
+    it('should create a merchant branch for the authenticated user', async () => {
+      const createSpy = jest.spyOn(merchantsService, 'createForCompany');
+      createSpy.mockResolvedValue(mockOneMerchantResponse);
+
+      const result = await controller.createBranch(mockUser, {
+        name: 'Branch Two',
+        rut: '12-3456789',
+        address: '123 Main Street',
+        city: 'Miami',
+        state: 'Florida',
+        country: 'USA',
+      });
+
+      expect(createSpy).toHaveBeenCalled();
+      expect(result).toEqual(mockOneMerchantResponse);
+    });
+  });
+
   describe('GET /merchants/:id (findOne)', () => {
     it('should return a merchant by ID successfully', async () => {
       const merchantId = 1;
       const findOneSpy = jest.spyOn(merchantsService, 'findOne');
       findOneSpy.mockResolvedValue(mockOneMerchantResponse);
 
-      const result = await controller.findOne(merchantId);
+      const result = await controller.findOne(merchantId, mockUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(merchantId);
+      expect(findOneSpy).toHaveBeenCalledWith(merchantId, mockUser);
       expect(result).toEqual(mockOneMerchantResponse);
     });
 
@@ -213,10 +269,10 @@ describe('MerchantsController', () => {
       const findOneSpy = jest.spyOn(merchantsService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(merchantId)).rejects.toThrow(
+      await expect(controller.findOne(merchantId, mockUser)).rejects.toThrow(
         errorMessage,
       );
-      expect(findOneSpy).toHaveBeenCalledWith(merchantId);
+      expect(findOneSpy).toHaveBeenCalledWith(merchantId, mockUser);
     });
 
     it('should handle invalid ID parameter', async () => {
@@ -225,10 +281,10 @@ describe('MerchantsController', () => {
       const findOneSpy = jest.spyOn(merchantsService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(merchantId)).rejects.toThrow(
+      await expect(controller.findOne(merchantId, mockUser)).rejects.toThrow(
         errorMessage,
       );
-      expect(findOneSpy).toHaveBeenCalledWith(merchantId);
+      expect(findOneSpy).toHaveBeenCalledWith(merchantId, mockUser);
     });
   });
 
@@ -245,9 +301,17 @@ describe('MerchantsController', () => {
       const updateSpy = jest.spyOn(merchantsService, 'update');
       updateSpy.mockResolvedValue(updatedMerchantResponse);
 
-      const result = await controller.update(merchantId, mockUpdateMerchantDto);
+      const result = await controller.update(
+        merchantId,
+        mockUpdateMerchantDto,
+        mockUser,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(merchantId, mockUpdateMerchantDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        merchantId,
+        mockUpdateMerchantDto,
+        mockUser,
+      );
       expect(result).toEqual(updatedMerchantResponse);
     });
 
@@ -259,9 +323,13 @@ describe('MerchantsController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(merchantId, mockUpdateMerchantDto),
+        controller.update(merchantId, mockUpdateMerchantDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(merchantId, mockUpdateMerchantDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        merchantId,
+        mockUpdateMerchantDto,
+        mockUser,
+      );
     });
 
     it('should handle validation errors during update', async () => {
@@ -272,9 +340,13 @@ describe('MerchantsController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(merchantId, mockUpdateMerchantDto),
+        controller.update(merchantId, mockUpdateMerchantDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(merchantId, mockUpdateMerchantDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        merchantId,
+        mockUpdateMerchantDto,
+        mockUser,
+      );
     });
 
     it('should handle invalid ID during update', async () => {
@@ -285,9 +357,13 @@ describe('MerchantsController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(merchantId, mockUpdateMerchantDto),
+        controller.update(merchantId, mockUpdateMerchantDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(merchantId, mockUpdateMerchantDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        merchantId,
+        mockUpdateMerchantDto,
+        mockUser,
+      );
     });
   });
 
@@ -304,9 +380,9 @@ describe('MerchantsController', () => {
       const removeSpy = jest.spyOn(merchantsService, 'remove');
       removeSpy.mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(merchantId);
+      const result = await controller.remove(merchantId, mockUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(merchantId);
+      expect(removeSpy).toHaveBeenCalledWith(merchantId, mockUser);
       expect(result).toEqual(deleteResponse);
     });
 
@@ -317,8 +393,8 @@ describe('MerchantsController', () => {
       const removeSpy = jest.spyOn(merchantsService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(merchantId)).rejects.toThrow(errorMessage);
-      expect(removeSpy).toHaveBeenCalledWith(merchantId);
+      await expect(controller.remove(merchantId, mockUser)).rejects.toThrow(errorMessage);
+      expect(removeSpy).toHaveBeenCalledWith(merchantId, mockUser);
     });
 
     it('should handle invalid ID during deletion', async () => {
@@ -328,8 +404,8 @@ describe('MerchantsController', () => {
       const removeSpy = jest.spyOn(merchantsService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(merchantId)).rejects.toThrow(errorMessage);
-      expect(removeSpy).toHaveBeenCalledWith(merchantId);
+      await expect(controller.remove(merchantId, mockUser)).rejects.toThrow(errorMessage);
+      expect(removeSpy).toHaveBeenCalledWith(merchantId, mockUser);
     });
   });
 
@@ -348,9 +424,9 @@ describe('MerchantsController', () => {
 
       await controller.create(mockCreateMerchantDto);
       await controller.findAll();
-      await controller.findOne(1);
-      await controller.update(1, mockUpdateMerchantDto);
-      await controller.remove(1);
+      await controller.findOne(1, mockUser);
+      await controller.update(1, mockUpdateMerchantDto, mockUser);
+      await controller.remove(1, mockUser);
 
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(findAllSpy).toHaveBeenCalledTimes(1);
@@ -391,9 +467,13 @@ describe('MerchantsController', () => {
       // Call all controller methods
       const createResult = await controller.create(mockCreateMerchantDto);
       const findAllResult = await controller.findAll();
-      const findOneResult = await controller.findOne(1);
-      const updateResult = await controller.update(1, mockUpdateMerchantDto);
-      const removeResult = await controller.remove(1);
+      const findOneResult = await controller.findOne(1, mockUser);
+      const updateResult = await controller.update(
+        1,
+        mockUpdateMerchantDto,
+        mockUser,
+      );
+      const removeResult = await controller.remove(1, mockUser);
 
       // Verify all calls were made and returned expected results
       expect(createResult.statusCode).toBe(201);

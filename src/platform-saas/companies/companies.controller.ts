@@ -22,6 +22,7 @@ import {
 import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dtos/create-company.dto';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
+import { UpdateCompanyProfileDto } from './dtos/update-company-profile.dto';
 import {
   OneCompanyResponseDto,
   AllCompanyResponseDto,
@@ -33,6 +34,10 @@ import { UserRole } from '../users/constants/role.enum';
 import { Scope } from '../users/constants/scope.enum';
 import { ErrorResponse } from '../../common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { CompanyProfileResponseDto } from './dtos/company-profile.dto';
+import { CompanyConfigurationsResponseDto } from './dtos/company-configurations.dto';
 
 @ApiTags('Companies')
 @ApiExtraModels(ErrorResponse)
@@ -99,6 +104,71 @@ export class CompaniesController {
     return this.companiesService.findAll();
   }
 
+  @Get('company/profile')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Get the authenticated user company profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'Company profile found',
+    type: CompanyProfileResponseDto,
+  })
+  getProfile(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CompanyProfileResponseDto> {
+    return this.companiesService.getProfileForUser(user);
+  }
+
+  @Put('company/profile')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Update the authenticated user company profile' })
+  @ApiBody({ type: UpdateCompanyProfileDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Company profile updated',
+    type: CompanyProfileResponseDto,
+  })
+  updateProfile(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateCompanyProfileDto,
+  ): Promise<CompanyProfileResponseDto> {
+    return this.companiesService.updateProfileForUser(user, dto);
+  }
+
+  @Get('company/configurations')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Get configuration records for the authenticated user company' })
+  @ApiResponse({
+    status: 200,
+    description: 'Company configurations found',
+    type: CompanyConfigurationsResponseDto,
+  })
+  getConfigurations(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CompanyConfigurationsResponseDto> {
+    return this.companiesService.getConfigurationsForUser(user);
+  }
+
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -141,8 +211,9 @@ export class CompaniesController {
   })
   findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCompanyResponseDto> {
-    return this.companiesService.findOne(id);
+    return this.companiesService.findOne(id, user);
   }
 
   @Put(':id')
@@ -189,8 +260,9 @@ export class CompaniesController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCompanyDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCompanyResponseDto> {
-    return this.companiesService.update(id, dto);
+    return this.companiesService.update(id, dto, user);
   }
 
   @Delete(':id')
@@ -235,7 +307,8 @@ export class CompaniesController {
   })
   remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCompanyResponseDto> {
-    return this.companiesService.remove(id);
+    return this.companiesService.remove(id, user);
   }
 }

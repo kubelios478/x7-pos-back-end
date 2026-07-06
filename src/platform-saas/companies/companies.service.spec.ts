@@ -6,13 +6,32 @@ import { CompaniesService } from './companies.service';
 import { Company } from './entities/company.entity';
 import { CreateCompanyDto } from './dtos/create-company.dto';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
+import { Merchant } from '../merchants/entities/merchant.entity';
+import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
+import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier.entity';
+import { Configuration } from 'src/core/configuration/entity/configuration-entity';
+import { UserRole } from '../users/constants/role.enum';
+import { Scope } from '../users/constants/scope.enum';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 describe('CompaniesService', () => {
   let service: CompaniesService;
   let companyRepository: jest.Mocked<Repository<Company>>;
+  let merchantRepository: jest.Mocked<Repository<Merchant>>;
+  let customerRepository: jest.Mocked<Repository<Customer>>;
+  let supplierRepository: jest.Mocked<Repository<Supplier>>;
+  let configurationRepository: jest.Mocked<Repository<Configuration>>;
+
+  const mockMerchantAdmin: AuthenticatedUser = {
+    id: 1,
+    email: 'admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 10 },
+  };
 
   // Mock data
-  const mockCompany: Partial<Company> = {
+  const baseMockCompany: Partial<Company> = {
     id: 1,
     name: 'Test Company',
     email: 'test@company.com',
@@ -26,6 +45,8 @@ describe('CompaniesService', () => {
     configurations: [],
     suppliers: [],
   };
+
+  let mockCompany: Partial<Company>;
 
   const mockCreateCompanyDto: CreateCompanyDto = {
     name: 'New Company',
@@ -52,6 +73,23 @@ describe('CompaniesService', () => {
       remove: jest.fn(),
     };
 
+    const mockMerchantRepository = {
+      findOne: jest.fn(),
+      count: jest.fn(),
+    };
+
+    const mockCustomerRepository = {
+      count: jest.fn(),
+    };
+
+    const mockSupplierRepository = {
+      count: jest.fn(),
+    };
+
+    const mockConfigurationRepository = {
+      find: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CompaniesService,
@@ -59,13 +97,41 @@ describe('CompaniesService', () => {
           provide: getRepositoryToken(Company),
           useValue: mockCompanyRepository,
         },
+        {
+          provide: getRepositoryToken(Merchant),
+          useValue: mockMerchantRepository,
+        },
+        {
+          provide: getRepositoryToken(Customer),
+          useValue: mockCustomerRepository,
+        },
+        {
+          provide: getRepositoryToken(Supplier),
+          useValue: mockSupplierRepository,
+        },
+        {
+          provide: getRepositoryToken(Configuration),
+          useValue: mockConfigurationRepository,
+        },
       ],
     }).compile();
 
     service = module.get<CompaniesService>(CompaniesService);
     companyRepository = module.get(getRepositoryToken(Company));
+    merchantRepository = module.get(getRepositoryToken(Merchant));
+    customerRepository = module.get(getRepositoryToken(Customer));
+    supplierRepository = module.get(getRepositoryToken(Supplier));
+    configurationRepository = module.get(getRepositoryToken(Configuration));
 
     jest.clearAllMocks();
+    companyRepository.findOne.mockReset();
+    companyRepository.save.mockReset();
+    merchantRepository.findOne.mockReset();
+    merchantRepository.count.mockReset();
+    customerRepository.count.mockReset();
+    supplierRepository.count.mockReset();
+    configurationRepository.find.mockReset();
+    mockCompany = { ...baseMockCompany };
   });
 
   describe('Service Initialization', () => {
@@ -268,6 +334,115 @@ describe('CompaniesService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
       });
+    });
+  });
+
+  describe('getProfileForUser', () => {
+    it('should return company profile with metrics', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(companyRepository, 'findOne').mockResolvedValue(
+        mockCompany as Company,
+      );
+      jest.spyOn(merchantRepository, 'count').mockResolvedValue(3);
+      jest.spyOn(customerRepository, 'count').mockResolvedValue(12);
+      jest.spyOn(supplierRepository, 'count').mockResolvedValue(4);
+
+      const result = await service.getProfileForUser(mockMerchantAdmin);
+
+      expect(result.data).toEqual({
+        id: 1,
+        name: 'Test Company',
+        email: 'test@company.com',
+        phone: '1234567890',
+        rut: '12345678-9',
+        address: '123 Test St',
+        city: 'Test City',
+        state: 'Test State',
+        country: 'Test Country',
+        metrics: {
+          activeMerchantBranches: 3,
+          globalCorporateCustomers: 12,
+          authorizedMasterSuppliers: 4,
+        },
+      });
+    });
+  });
+
+  describe('updateProfileForUser', () => {
+    it('should update company profile and return refreshed metrics', async () => {
+      const updatedCompany = { ...mockCompany, name: 'Updated Corp' };
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValueOnce(mockCompany as Company)
+        .mockResolvedValueOnce(updatedCompany as Company);
+      jest.spyOn(companyRepository, 'save').mockResolvedValue(
+        updatedCompany as Company,
+      );
+      jest.spyOn(merchantRepository, 'count').mockResolvedValue(1);
+      jest.spyOn(customerRepository, 'count').mockResolvedValue(0);
+      jest.spyOn(supplierRepository, 'count').mockResolvedValue(0);
+
+      const result = await service.updateProfileForUser(mockMerchantAdmin, {
+        name: 'Updated Corp',
+        rut: mockCompany.rut!,
+        email: mockCompany.email!,
+        phone: mockCompany.phone!,
+        address: mockCompany.address!,
+        city: mockCompany.city!,
+        state: mockCompany.state!,
+        country: mockCompany.country!,
+      });
+
+      expect(result.data.name).toBe('Updated Corp');
+      expect(result.message).toBe('Company profile updated successfully');
+    });
+  });
+
+  describe('getConfigurationsForUser', () => {
+    it('should return company configuration registry', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(configurationRepository, 'find').mockResolvedValue([
+        {
+          id: 5,
+          type: 'merchant_tax_rule',
+          status: 'active',
+          merchant_id: 38,
+          merchant: { id: 38, name: 'Downtown Bistro' },
+          updatedAt: new Date('2026-06-18'),
+        },
+      ] as unknown as Configuration[]);
+
+      const result = await service.getConfigurationsForUser(mockMerchantAdmin);
+
+      expect(result.data.summary.totalConfigurations).toBe(1);
+      expect(result.data.items[0]).toMatchObject({
+        configurationLabel: 'Tax Rules',
+        merchantName: 'Downtown Bistro',
+        status: 'active',
+      });
+    });
+  });
+
+  describe('findOne with ownership', () => {
+    it('should forbid merchant admin accessing another company', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+
+      await expect(
+        service.findOne(99, mockMerchantAdmin),
+      ).rejects.toThrow();
     });
   });
 

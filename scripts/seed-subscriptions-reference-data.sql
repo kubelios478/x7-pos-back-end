@@ -12,16 +12,21 @@ BEGIN;
 DELETE FROM plan_features WHERE subscription_plan_id IN (1, 2, 3);
 DELETE FROM plan_applications WHERE subscriptionplan_id IN (1, 2, 3);
 
-INSERT INTO subscription_plan (id, name, description, price, "billingCycle", status) VALUES
-  (1, 'Quick Service', 'For Quick Service restaurant without table operations', 0, 'monthly', 'active'),
-  (2, 'Full Restaurant', 'For Full Service restaurant with table operations and other features', 0, 'monthly', 'active'),
-  (3, 'Enterprise', 'Include premium features', 0, 'monthly', 'active')
+INSERT INTO subscription_plan (id, name, description, price, "billingCycle", status, slug, badge, recommended, is_custom_pricing, price_label) VALUES
+  (1, 'Essential', 'Quick service operations with core POS tooling for lean teams.', 69.00, 'monthly', 'active', 'essential', 'Quick Service', false, false, NULL),
+  (2, 'Professional', 'Full restaurant operations with advanced service and analytics.', 149.00, 'monthly', 'active', 'professional', 'Full Restaurant', true, false, NULL),
+  (3, 'Executive', 'Enterprise-grade platform with custom commercial terms per client.', NULL, 'annual', 'active', 'executive', 'Enterprise', false, true, 'ANNUAL BILLING')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
   price = EXCLUDED.price,
   "billingCycle" = EXCLUDED."billingCycle",
-  status = EXCLUDED.status;
+  status = EXCLUDED.status,
+  slug = EXCLUDED.slug,
+  badge = EXCLUDED.badge,
+  recommended = EXCLUDED.recommended,
+  is_custom_pricing = EXCLUDED.is_custom_pricing,
+  price_label = EXCLUDED.price_label;
 
 INSERT INTO application (id, name, description, category, status) VALUES
   (1, 'Central Backoffice', 'Central Backoffice Manage', 'Platform SaaS', 'active'),
@@ -521,16 +526,21 @@ BEGIN;
 DELETE FROM plan_features WHERE subscription_plan_id IN (1, 2, 3);
 DELETE FROM plan_applications WHERE subscriptionplan_id IN (1, 2, 3);
 
-INSERT INTO subscription_plan (id, name, description, price, "billingCycle", status) VALUES
-  (1, 'Quick Service', 'For Quick Service restaurant without table operations', 0, 'monthly', 'active'),
-  (2, 'Full Restaurant', 'For Full Service restaurant with table operations and other features', 0, 'monthly', 'active'),
-  (3, 'Enterprise', 'Include premium features', 0, 'monthly', 'active')
+INSERT INTO subscription_plan (id, name, description, price, "billingCycle", status, slug, badge, recommended, is_custom_pricing, price_label) VALUES
+  (1, 'Essential', 'Quick service operations with core POS tooling for lean teams.', 69.00, 'monthly', 'active', 'essential', 'Quick Service', false, false, NULL),
+  (2, 'Professional', 'Full restaurant operations with advanced service and analytics.', 149.00, 'monthly', 'active', 'professional', 'Full Restaurant', true, false, NULL),
+  (3, 'Executive', 'Enterprise-grade platform with custom commercial terms per client.', NULL, 'annual', 'active', 'executive', 'Enterprise', false, true, 'ANNUAL BILLING')
 ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   description = EXCLUDED.description,
   price = EXCLUDED.price,
   "billingCycle" = EXCLUDED."billingCycle",
-  status = EXCLUDED.status;
+  status = EXCLUDED.status,
+  slug = EXCLUDED.slug,
+  badge = EXCLUDED.badge,
+  recommended = EXCLUDED.recommended,
+  is_custom_pricing = EXCLUDED.is_custom_pricing,
+  price_label = EXCLUDED.price_label;
 
 INSERT INTO application (id, name, description, category, status) VALUES
   (1, 'Central Backoffice', 'Central Backoffice Manage', 'Platform SaaS', 'active'),
