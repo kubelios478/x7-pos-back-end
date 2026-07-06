@@ -50,6 +50,25 @@ export class ProductResponseDto {
     description: 'Associated supplier details',
   })
   supplier: SupplierLittleResponseDto | null;
+
+  @ApiProperty({ example: true, description: 'Product active status' })
+  isActive: boolean;
+
+  @ApiProperty({
+    example: [{ id: 1, name: 'Normal', price: 10.99, sku: 'VAR-01', isActive: true }],
+    description: 'Product variants',
+    required: false,
+    nullable: true,
+  })
+  variants?: any[] | null;
+
+  @ApiProperty({
+    example: [{ id: 1, name: 'Extra Cheese', priceDelta: 1.50, isActive: true }],
+    description: 'Product modifiers',
+    required: false,
+    nullable: true,
+  })
+  modifiers?: any[] | null;
 }
 
 export class ProductLittleResponseDto {

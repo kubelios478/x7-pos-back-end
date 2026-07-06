@@ -47,7 +47,7 @@ import { SupplierResponseDto } from './dto/supplier-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@Controller('suppliers')
+@Controller('v1/inventory/suppliers')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIERS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class SuppliersController {
@@ -214,7 +214,7 @@ export class SuppliersController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: GetSuppliersQueryDto,
   ): Promise<AllPaginatedSuppliers> {
-    const companyId = await this.suppliersService.getCompanyIdByMerchantId(
+    const companyId = query.companyId || await this.suppliersService.getCompanyIdByMerchantId(
       user.merchant.id,
     );
     return this.suppliersService.findAll(query, companyId);

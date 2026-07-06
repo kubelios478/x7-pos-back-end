@@ -110,8 +110,7 @@ export class VariantsService {
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
-      .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('variant.isActive = :isActive', { isActive: true });
+      .where('product.merchantId = :merchantId', { merchantId });
 
     // 3. Apply optional filters
     if (query.name) {
@@ -163,6 +162,7 @@ export class VariantsService {
                 )
               ).data
             : null,
+          isActive: variant.isActive,
         };
         return result;
       }),
@@ -198,10 +198,6 @@ export class VariantsService {
       .leftJoinAndSelect('product.supplier', 'supplier')
       .where('variant.id = :id', { id });
 
-    if (createdUpdateDelete !== 'Deleted') {
-      queryBuilder.andWhere('variant.isActive = :isActive', { isActive: true });
-    }
-
     if (merchantId !== undefined) {
       queryBuilder.andWhere('product.merchantId = :merchantId', { merchantId });
     }
@@ -231,6 +227,7 @@ export class VariantsService {
         ? (await this.productsService.findOne(variant.product.id, merchantId))
             .data
         : null,
+      isActive: variant.isActive,
     };
 
     let response: OneVariantResponse;
@@ -284,7 +281,6 @@ export class VariantsService {
       .leftJoinAndSelect('variant.product', 'product')
       .leftJoinAndSelect('product.merchant', 'merchant')
       .where('variant.id = :id', { id })
-      .andWhere('variant.isActive = :isActive', { isActive: true })
       .andWhere('product.merchantId = :merchantId', { merchantId: merchant_id })
       .getOne();
 
