@@ -8,7 +8,10 @@ import { PayrollTaxDetail } from './entities/payroll-tax-detail.entity';
 import { PayrollEntry } from '../payroll-entries/entities/payroll-entry.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([PayrollTaxDetail, PayrollEntry])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([PayrollTaxDetail, PayrollEntry]),
+  ],
   controllers: [PayrollTaxDetailsController],
   providers: [PayrollTaxDetailsService],
   exports: [PayrollTaxDetailsService],

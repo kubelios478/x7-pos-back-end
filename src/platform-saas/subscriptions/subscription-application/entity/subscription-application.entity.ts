@@ -2,6 +2,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MerchantSubscription } from 'src/platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { ApplicationEntity } from 'src/platform-saas/subscriptions/applications/entity/application-entity';
+import { CompanySubscription } from 'src/platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
 import {
   Entity,
   ManyToOne,
@@ -22,9 +23,14 @@ export class SubscriptionApplication {
   @ApiProperty({
     example: 'MyMerchantSubscription',
   })
-  @ManyToOne(() => MerchantSubscription, { eager: true })
+  @ManyToOne(() => MerchantSubscription, { eager: true, nullable: true })
   @JoinColumn({ name: 'merchant_subscription_id' })
-  merchantSubscription: MerchantSubscription;
+  merchantSubscription?: MerchantSubscription | null;
+
+  @ApiProperty({ example: 'MyCompanySubscription', required: false })
+  @ManyToOne(() => CompanySubscription, { eager: true, nullable: true })
+  @JoinColumn({ name: 'company_subscription_id' })
+  companySubscription?: CompanySubscription | null;
 
   @ApiProperty({
     example: 'MyApplication',

@@ -37,7 +37,7 @@ import { AllPaginatedReservations } from './dto/all-paginated-reservations.dto';
 @Controller('reservation')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationController {
-  constructor(private readonly reservationService: ReservationService) { }
+  constructor(private readonly reservationService: ReservationService) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)

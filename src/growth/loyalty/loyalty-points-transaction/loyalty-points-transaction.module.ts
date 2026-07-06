@@ -12,7 +12,8 @@ import { LoyaltyPointTransaction } from './entities/loyalty-points-transaction.e
 import { LoyaltyTier } from '../loyalty-tier/entities/loyalty-tier.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       Order,
       CashTransaction,

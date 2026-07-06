@@ -5,11 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  Repository,
-  Between,
-  Like,
-} from 'typeorm';
+import { Repository, Between, Like } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { OnlineMenu } from './entities/online-menu.entity';
 import { OnlineStore } from '../online-stores/entities/online-store.entity';
@@ -33,7 +29,7 @@ export class OnlineMenuService {
     private readonly onlineMenuRepository: Repository<OnlineMenu>,
     @InjectRepository(OnlineStore)
     private readonly onlineStoreRepository: Repository<OnlineStore>,
-  ) { }
+  ) {}
 
   async create(
     createOnlineMenuDto: CreateOnlineMenuDto,

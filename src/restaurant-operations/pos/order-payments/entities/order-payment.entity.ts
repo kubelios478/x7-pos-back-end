@@ -58,9 +58,9 @@ export class OrderPayment {
 
   @ApiProperty()
   @Column({ type: 'varchar', length: 255, nullable: true })
-  source: string;
+  source: string | null;
 
   @ApiProperty({ example: 1 })
-  @Column({ name: 'shift_id', nullable: true })
-  shift_id: number;
+  @Column({ type: 'int', name: 'shift_id', nullable: true })
+  shift_id: number | null;
 }

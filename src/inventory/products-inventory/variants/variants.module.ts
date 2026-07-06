@@ -6,9 +6,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Variant } from './entities/variant.entity';
 import { Product } from '../products/entities/product.entity';
 import { ProductsModule } from '../products/products.module';
+import { StockAlertsModule } from '../../stock-alerts/stock-alerts.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
+    StockAlertsModule,
     TypeOrmModule.forFeature([Variant, Product]),
     forwardRef(() => ProductsModule),
   ],

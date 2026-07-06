@@ -4,10 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { SupplierInvoiceItem } from './entities/supplier-invoice-item.entity';
 import { SupplierInvoice } from '../supplier-invoices/entities/supplier-invoice.entity';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { CreateSupplierInvoiceItemDto } from './dto/create-supplier-invoice-item.dto';
 import { UpdateSupplierInvoiceItemDto } from './dto/update-supplier-invoice-item.dto';
 import {
@@ -29,6 +31,10 @@ export class SupplierInvoiceItemService {
     private readonly invoiceRepo: Repository<SupplierInvoice>,
     @InjectRepository(Product)
     private readonly productRepo: Repository<Product>,
+    @InjectRepository(Variant)
+    private readonly variantRepo: Repository<Variant>,
+    @InjectRepository(Merchant)
+    private readonly merchantRepo: Repository<Merchant>,
   ) {}
 
   private toResponseDto(
@@ -38,6 +44,7 @@ export class SupplierInvoiceItemService {
       id: row.id,
       invoice_id: row.invoice_id,
       product_id: row.product_id ?? null,
+      variant_id: row.variant_id ?? null,
       description: row.description,
       quantity: Number(row.quantity),
       unit_price: Number(row.unit_price),
@@ -61,23 +68,55 @@ export class SupplierInvoiceItemService {
     return inv;
   }
 
-  private async assertProductIfProvided(
+  private async assertProductVariantForInvoice(
+    invoice: SupplierInvoice,
     productId?: number | null,
+    variantId?: number | null,
   ): Promise<void> {
-    if (productId == null) return;
+    if (productId == null && variantId == null) {
+      return;
+    }
+    if (productId == null || variantId == null) {
+      throw new BadRequestException(
+        'product_id and variant_id must both be set when linking inventory',
+      );
+    }
+
+    const merchants = await this.merchantRepo.find({
+      where: { companyId: invoice.company_id },
+      select: ['id'],
+    });
+    const merchantIds = merchants.map((m) => m.id);
+    if (merchantIds.length === 0) {
+      throw new BadRequestException('No merchant found for invoice company');
+    }
+
     const product = await this.productRepo.findOne({
-      where: { id: productId },
+      where: { id: productId, merchantId: In(merchantIds), isActive: true },
     });
     if (!product) {
       throw new NotFoundException(`Product with ID ${productId} not found`);
+    }
+
+    const variant = await this.variantRepo.findOne({
+      where: { id: variantId, productId, isActive: true },
+    });
+    if (!variant) {
+      throw new NotFoundException(
+        `Variant ${variantId} does not belong to product ${productId}`,
+      );
     }
   }
 
   async create(
     dto: CreateSupplierInvoiceItemDto,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    await this.assertInvoiceExists(dto.invoice_id);
-    await this.assertProductIfProvided(dto.product_id);
+    const invoice = await this.assertInvoiceExists(dto.invoice_id);
+    await this.assertProductVariantForInvoice(
+      invoice,
+      dto.product_id,
+      dto.variant_id,
+    );
 
     const row = this.itemRepo.create({
       invoice_id: dto.invoice_id,
@@ -88,6 +127,7 @@ export class SupplierInvoiceItemService {
       tax_amount: dto.tax_amount ?? 0,
       line_total: dto.line_total,
       ...(dto.product_id != null ? { product_id: dto.product_id } : {}),
+      ...(dto.variant_id != null ? { variant_id: dto.variant_id } : {}),
     });
     const saved = await this.itemRepo.save(row);
     return {
@@ -194,8 +234,18 @@ export class SupplierInvoiceItemService {
       row.invoice_id = dto.invoice_id;
     }
     if (dto.product_id !== undefined) {
-      await this.assertProductIfProvided(dto.product_id ?? undefined);
       row.product_id = dto.product_id ?? null;
+    }
+    if (dto.variant_id !== undefined) {
+      row.variant_id = dto.variant_id ?? null;
+    }
+    if (dto.product_id !== undefined || dto.variant_id !== undefined) {
+      const invoice = await this.assertInvoiceExists(row.invoice_id);
+      await this.assertProductVariantForInvoice(
+        invoice,
+        row.product_id,
+        row.variant_id,
+      );
     }
     if (dto.description != null) row.description = dto.description;
     if (dto.quantity != null) row.quantity = dto.quantity;

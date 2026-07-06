@@ -11,9 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import {
-  IsBusinessEmail,
-} from 'src/common/decorators/validation.decorators';
+import { IsBusinessEmail } from 'src/common/decorators/validation.decorators';
 
 /** Public onboarding: creates legal entity, first branch, and merchant admin in one transaction. */
 export class OnboardingRegisterDto {
@@ -80,7 +78,10 @@ export class OnboardingRegisterDto {
   })
   city: string;
 
-  @ApiProperty({ example: 'Metropolitan Region', description: 'State or region' })
+  @ApiProperty({
+    example: 'Metropolitan Region',
+    description: 'State or region',
+  })
   @IsString()
   @IsNotEmpty()
   @Length(2, 50)
@@ -149,4 +150,3 @@ export class OnboardingRegisterDto {
   @Min(1)
   planId?: number;
 }
-

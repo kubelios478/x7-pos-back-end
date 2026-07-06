@@ -9,7 +9,10 @@ import {
   IsInt,
   Min,
   IsString,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { OrderBusinessStatus } from '../constants/order-business-status.enum';
 import { OrderType } from '../constants/order-type.enum';
 import { OrderSource } from '../constants/order-source.enum';
@@ -53,15 +56,15 @@ export class CreateOrderDto {
   @IsPositive()
   subscriptionId: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: OrderBusinessStatus.PENDING,
     enum: OrderBusinessStatus,
     description:
-      'Business status of the Order (pending, in_progress, completed, cancelled)',
+      'Business status of the Order. Defaults to pending when omitted.',
   })
+  @IsOptional()
   @IsEnum(OrderBusinessStatus)
-  @IsNotEmpty()
-  businessStatus: OrderBusinessStatus;
+  businessStatus?: OrderBusinessStatus;
 
   @ApiProperty({
     example: OrderType.DINE_IN,
@@ -133,9 +136,16 @@ export class CreateOrderDto {
   @Min(0)
   tipTotal?: number;
 
-  @ApiProperty({ type: [CreateOrderItemDto] })
-  @IsNotEmpty()
-  items: CreateOrderItemDto[];
+Mark  @ApiPropertyOptional({
+    type: [CreateOrderItemDto],
+    description:
+      'Optional line items at creation time. Omit or send an empty array to add items later via POST /order-item.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateOrderItemDto)
+  items?: CreateOrderItemDto[];
 
   @ApiProperty()
   @IsOptional()

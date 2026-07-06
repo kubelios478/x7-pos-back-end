@@ -1,13 +1,13 @@
 import {
-    Controller,
-    Get,
-    Post,
-    Param,
-    Body,
-    ParseIntPipe,
-    UseGuards,
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiCreatedResponse, ApiOkResponse, ApiBadRequestResponse, ApiConflictResponse, ApiNotFoundResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
 import { CashShiftsService } from './cash-shifts.service';
 import { CreateCashShiftDto } from './dto/create-cash-shift.dto';
@@ -31,11 +31,11 @@ import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 @Controller('cash-shifts')
 export class CashShiftsController {
-    constructor(private readonly cashShiftsService: CashShiftsService) { }
+  constructor(private readonly cashShiftsService: CashShiftsService) {}
 
-    @ApiOperation({ summary: 'Abrir un nuevo turno de caja' })
-    @ApiResponse({ status: 201, description: 'Turno de caja abierto exitosamente' })
-    @ApiResponse({ status: 409, description: 'Ya existe un turno de caja abierto' })
+    @ApiOperation({ summary: 'Open a new cash shift' })
+    @ApiCreatedResponse({ description: 'Cash shift opened successfully' })
+    @ApiConflictResponse({ description: 'An open cash shift already exists for this collaborator or drawer' })
     @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
     @Scopes(Scope.ADMIN_PORTAL, Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS, Scope.MERCHANT_CLOVER)
     @Post()
@@ -46,7 +46,8 @@ export class CashShiftsController {
         return this.cashShiftsService.openShift(dto, user.merchant.id);
     }
 
-    @ApiOperation({ summary: 'Listar todos los turnos de caja' })
+    @ApiOperation({ summary: 'List all cash shifts' })
+    @ApiOkResponse({ description: 'List of cash shifts retrieved successfully' })
     @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
     @Scopes(Scope.ADMIN_PORTAL, Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS, Scope.MERCHANT_CLOVER)
     @Get()
@@ -54,9 +55,9 @@ export class CashShiftsController {
         return this.cashShiftsService.findAll(user.merchant.id);
     }
 
-    @ApiOperation({ summary: 'Obtener el turno de caja activo del merchant' })
-    @ApiResponse({ status: 200, description: 'Turno activo encontrado' })
-    @ApiResponse({ status: 404, description: 'No hay turno activo' })
+    @ApiOperation({ summary: 'Get the active cash shift for the merchant' })
+    @ApiOkResponse({ description: 'Active cash shift found successfully' })
+    @ApiNotFoundResponse({ description: 'No active cash shift found' })
     @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
     @Scopes(Scope.ADMIN_PORTAL, Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS, Scope.MERCHANT_CLOVER)
     @Get('active')
@@ -64,7 +65,9 @@ export class CashShiftsController {
         return this.cashShiftsService.findActiveShift(user.merchant.id);
     }
 
-    @ApiOperation({ summary: 'Obtener un turno de caja por ID' })
+    @ApiOperation({ summary: 'Get a cash shift by ID' })
+    @ApiOkResponse({ description: 'Cash shift retrieved successfully' })
+    @ApiNotFoundResponse({ description: 'Cash shift not found' })
     @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
     @Scopes(Scope.ADMIN_PORTAL, Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS, Scope.MERCHANT_CLOVER)
     @Get(':id')
@@ -76,12 +79,12 @@ export class CashShiftsController {
     }
 
     @ApiOperation({
-        summary: 'Cerrar un turno de caja',
+        summary: 'Close a cash shift',
         description:
-            'El backend calcula el systemAmount (balance del sistema), la difference (declaredAmount - systemAmount) y registra el cierre. El frontend solo envía declaredAmount y collaboratorId.',
+            'The backend calculates the systemAmount (system balance), the difference (declaredAmount - systemAmount), and registers the closing. The frontend only sends declaredAmount and collaboratorId.',
     })
-    @ApiResponse({ status: 200, description: 'Turno cerrado exitosamente con resumen de cierre' })
-    @ApiResponse({ status: 400, description: 'El turno no está OPEN' })
+    @ApiOkResponse({ description: 'Cash shift closed successfully with shift summary' })
+    @ApiBadRequestResponse({ description: 'The cash shift is not in OPEN status' })
     @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
     @Scopes(Scope.ADMIN_PORTAL, Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS, Scope.MERCHANT_CLOVER)
     @Post(':id/close')
@@ -94,11 +97,11 @@ export class CashShiftsController {
     }
 
     @ApiOperation({
-        summary: 'Añadir una transacción manual (Ingreso/Egreso)',
-        description: 'Permite registrar retiros (pagos a proveedores) o ingresos extra en la caja abierta. Los retiros no pueden superar el dinero disponible en la caja.',
+        summary: 'Add a manual cash transaction (Income/Expense)',
+        description: 'Allows registering cash withdrawals (outflows for suppliers) or cash inflows in the open shift. Outflows cannot exceed the available cash in the till.',
     })
-    @ApiResponse({ status: 201, description: 'Transacción registrada exitosamente' })
-    @ApiResponse({ status: 400, description: 'Fondos insuficientes o caja cerrada' })
+    @ApiCreatedResponse({ description: 'Manual transaction registered successfully' })
+    @ApiBadRequestResponse({ description: 'Insufficient funds or cash shift is closed' })
     @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
     @Scopes(Scope.ADMIN_PORTAL, Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS, Scope.MERCHANT_CLOVER)
     @Post(':id/transactions/manual')

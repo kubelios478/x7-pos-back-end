@@ -9,9 +9,12 @@ import { OrderItem } from './entities/order-item.entity';
 import { Order } from '../orders/entities/order.entity';
 import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
 import { Variant } from '../../../inventory/products-inventory/variants/entities/variant.entity';
+import { StockAlertsModule } from '../../../inventory/stock-alerts/stock-alerts.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
+    StockAlertsModule,
     TypeOrmModule.forFeature([OrderItem, Order, Product, Variant]),
     OrdersModule,
   ],

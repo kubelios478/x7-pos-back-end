@@ -9,9 +9,11 @@ import { OrderItem } from '../../pos/order-item/entities/order-item.entity';
 import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
 import { Variant } from '../../../inventory/products-inventory/variants/entities/variant.entity';
 import { KitchenOrderModule } from '../kitchen-order/kitchen-order.module';
+import { OrdersModule } from '../../pos/orders/orders.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       KitchenOrderItem,
       KitchenOrder,
@@ -20,6 +22,7 @@ import { KitchenOrderModule } from '../kitchen-order/kitchen-order.module';
       Variant,
     ]),
     forwardRef(() => KitchenOrderModule),
+    forwardRef(() => OrdersModule),
   ],
   controllers: [KitchenOrderItemController],
   providers: [KitchenOrderItemService],

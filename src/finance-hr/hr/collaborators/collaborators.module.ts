@@ -10,7 +10,10 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { IsUniqueField } from 'src/validators/is-unique-field.validator';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([Collaborator, User, Merchant])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([Collaborator, User, Merchant]),
+  ],
   controllers: [CollaboratorsController],
   providers: [CollaboratorsService, IsUniqueField],
   exports: [IsUniqueField],

@@ -1,19 +1,20 @@
 import {
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    ManyToOne,
-    OneToMany,
-    JoinColumn,
-    CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Merchant } from '../../../../platform-saas/merchants/entities/merchant.entity';
 import { CashDrawer } from '../../cash-drawers/entities/cash-drawer.entity';
 import { CashShiftStatus } from '../constants/cash-shift-status.enum';
 import type { CashTransaction } from '../../cash-transactions/entities/cash-transaction.entity';
+import { CashMovement } from '../../cash-movements/entities/cash-movement.entity';
 
-@Entity('cash_shifts') 
+@Entity('cash_shifts')
 export class CashShift {
     @ApiProperty({ example: 1, description: 'Unique identifier of the CashShift' })
     @PrimaryGeneratedColumn()
@@ -83,4 +84,7 @@ export class CashShift {
 
     @OneToMany('CashTransaction', (ct: CashTransaction) => ct.cashShift)
     cashTransactions: CashTransaction[];
+
+    @OneToMany(() => CashMovement, (cm) => cm.cashShift)
+    cashMovements: CashMovement[];
 }

@@ -2,16 +2,22 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  JoinColumn,
 } from 'typeorm';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
+import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 import { MovementsStatus } from '../constants/movements-status';
 import { Item } from '../../items/entities/item.entity';
+import { SupplierInvoice } from 'src/finance-hr/account-payable/supplier-invoices/entities/supplier-invoice.entity';
 
 @Entity('stock_movement')
+@Index(['orderId'])
+@Index(['supplierInvoiceId'])
 export class Movement {
   @ApiProperty({ example: 1, description: 'Movement ID' })
   @PrimaryGeneratedColumn()
@@ -73,6 +79,55 @@ export class Movement {
   })
   @JoinColumn({ name: 'merchantId' })
   merchant: Merchant;
+
+  @ApiPropertyOptional({ example: 42 })
+  @Column({ type: 'int', name: 'order_id', nullable: true })
+  orderId: number | null;
+
+  @ManyToOne(() => Order, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'order_id' })
+  order: Order | null;
+
+  @ApiPropertyOptional({ example: 3 })
+  @Column({ type: 'int', name: 'shift_id', nullable: true })
+  shiftId: number | null;
+
+  @ManyToOne(() => Shift, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'shift_id' })
+  shift: Shift | null;
+
+  @ApiPropertyOptional({ example: 15 })
+  @Column({ type: 'int', name: 'supplier_invoice_id', nullable: true })
+  supplierInvoiceId: number | null;
+
+  @ManyToOne(() => SupplierInvoice, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'supplier_invoice_id' })
+  supplierInvoice: SupplierInvoice | null;
+
+  @ApiPropertyOptional({
+    example: 12.5,
+    description: 'Unit cost (WACC) applied on this movement',
+  })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 4,
+    name: 'unit_cost',
+    nullable: true,
+  })
+  unitCost: string | null;
 
   @ApiProperty({
     example: '2023-01-01T12:00:00Z',

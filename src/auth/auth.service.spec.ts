@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
@@ -12,13 +12,14 @@ import { AuthService } from './auth.service';
 import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
 import { Merchant } from '../platform-saas/merchants/entities/merchant.entity';
+import { SubscriptionPlan } from '../platform-saas/subscriptions/subscription-plan/entity/subscription-plan.entity';
 import { UsersService } from '../platform-saas/users/users.service';
 import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
 import {
   SubscriptionAccessService,
-  MSG_NO_MERCHANT_PLAN,
-  MSG_SUBSCRIPTION_OUTDATED,
+  MSG_COMPANY_SUBSCRIPTION_OUTDATED,
+  MSG_NO_COMPANY_PLAN,
 } from './subscription-access.service';
 import { UserRole } from '../platform-saas/users/constants/role.enum';
 import { getAllSubscriptionFeatureIds } from '../common/subscription/subscription-feature-ids';
@@ -44,14 +45,26 @@ describe('AuthService', () => {
   const mockUserRepository = {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
+    exists: jest.fn(),
+    manager: { transaction: jest.fn() },
   };
 
   const mockCompanyRepository = {
     findOneBy: jest.fn(),
+    exists: jest.fn(),
   };
 
   const mockMerchantRepository = {
     findOneBy: jest.fn(),
+    exists: jest.fn(),
+  };
+
+  const mockSubscriptionPlanRepository = {
+    findOne: jest.fn(),
+  };
+
+  const mockDataSource = {
+    createQueryRunner: jest.fn(),
   };
 
   const mockJwtService = {
@@ -73,7 +86,7 @@ describe('AuthService', () => {
   };
 
   const mockSubscriptionAccessService = {
-    getSubscriptionAccessForMerchant: jest.fn(),
+    getSubscriptionAccessForCompany: jest.fn(),
   };
 
   const mockUser = {
@@ -85,6 +98,7 @@ describe('AuthService', () => {
     merchant: {
       id: 1,
       name: 'Test Merchant',
+      companyId: 1,
     },
     refreshToken: null,
   };
@@ -99,6 +113,7 @@ describe('AuthService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        { provide: DataSource, useValue: mockDataSource },
         {
           provide: getRepositoryToken(User),
           useValue: mockUserRepository,
@@ -110,6 +125,10 @@ describe('AuthService', () => {
         {
           provide: getRepositoryToken(Merchant),
           useValue: mockMerchantRepository,
+        },
+        {
+          provide: getRepositoryToken(SubscriptionPlan),
+          useValue: mockSubscriptionPlanRepository,
         },
         {
           provide: JwtService,
@@ -165,7 +184,7 @@ describe('AuthService', () => {
 
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as any);
       mockedBcrypt.compare.mockResolvedValue(true as never);
-      mockSubscriptionAccessService.getSubscriptionAccessForMerchant.mockResolvedValue(
+      mockSubscriptionAccessService.getSubscriptionAccessForCompany.mockResolvedValue(
         { planId, authorizedFeatureIds },
       );
       jest
@@ -186,6 +205,9 @@ describe('AuthService', () => {
         loginDto.password,
         mockUser.password,
       );
+      expect(
+        mockSubscriptionAccessService.getSubscriptionAccessForCompany,
+      ).toHaveBeenCalledWith(mockUser.merchant.companyId);
       expect(jwtService.sign).toHaveBeenCalledTimes(2);
       expect(usersService.updateRefreshToken).toHaveBeenCalledWith(
         mockUser.id,
@@ -246,34 +268,50 @@ describe('AuthService', () => {
       );
     });
 
-    it('should reject login when merchant has no subscription plan', async () => {
+    it('should login with empty plan when company has no subscription plan', async () => {
+      const accessToken = 'access-token-123';
+      const refreshToken = 'refresh-token-456';
+
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as any);
       mockedBcrypt.compare.mockResolvedValue(true as never);
-      mockSubscriptionAccessService.getSubscriptionAccessForMerchant.mockRejectedValue(
-        new UnauthorizedException(MSG_NO_MERCHANT_PLAN),
+      mockSubscriptionAccessService.getSubscriptionAccessForCompany.mockRejectedValue(
+        new UnauthorizedException(MSG_NO_COMPANY_PLAN),
       );
+      jest
+        .spyOn(jwtService, 'sign')
+        .mockReturnValueOnce(accessToken)
+        .mockReturnValueOnce(refreshToken);
+      jest
+        .spyOn(usersService, 'updateRefreshToken')
+        .mockResolvedValue(undefined as any);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.login(loginDto)).rejects.toThrow(
-        MSG_NO_MERCHANT_PLAN,
-      );
+      const result = await service.login(loginDto);
+
+      expect(result.user.planId).toBeUndefined();
+      expect(result.user.authorizedFeatureIds).toEqual([]);
     });
 
-    it('should reject login when merchant subscription is not valid', async () => {
+    it('should login with empty plan when company subscription is not valid', async () => {
+      const accessToken = 'access-token-123';
+      const refreshToken = 'refresh-token-456';
+
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as any);
       mockedBcrypt.compare.mockResolvedValue(true as never);
-      mockSubscriptionAccessService.getSubscriptionAccessForMerchant.mockRejectedValue(
-        new UnauthorizedException(MSG_SUBSCRIPTION_OUTDATED),
+      mockSubscriptionAccessService.getSubscriptionAccessForCompany.mockRejectedValue(
+        new UnauthorizedException(MSG_COMPANY_SUBSCRIPTION_OUTDATED),
       );
+      jest
+        .spyOn(jwtService, 'sign')
+        .mockReturnValueOnce(accessToken)
+        .mockReturnValueOnce(refreshToken);
+      jest
+        .spyOn(usersService, 'updateRefreshToken')
+        .mockResolvedValue(undefined as any);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      await expect(service.login(loginDto)).rejects.toThrow(
-        MSG_SUBSCRIPTION_OUTDATED,
-      );
+      const result = await service.login(loginDto);
+
+      expect(result.user.planId).toBeUndefined();
+      expect(result.user.authorizedFeatureIds).toEqual([]);
     });
 
     it('should login portal_admin without calling subscription service and with full catalog features', async () => {
@@ -283,7 +321,7 @@ describe('AuthService', () => {
       };
       const accessToken = 'access-token-123';
       const refreshToken = 'refresh-token-456';
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
       const catalogIds = getAllSubscriptionFeatureIds();
 
       jest
@@ -301,7 +339,7 @@ describe('AuthService', () => {
       const result = await service.login(loginDto);
 
       expect(
-        mockSubscriptionAccessService.getSubscriptionAccessForMerchant,
+        mockSubscriptionAccessService.getSubscriptionAccessForCompany,
       ).not.toHaveBeenCalled();
       expect(result.user.planId).toBeUndefined();
       expect(result.user.authorizedFeatureIds).toEqual(catalogIds);

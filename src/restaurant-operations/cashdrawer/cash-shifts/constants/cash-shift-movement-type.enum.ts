@@ -1,4 +1,4 @@
 export enum CashShiftMovementType {
-    IN = 'IN',
-    OUT = 'OUT',
+  IN = 'IN',
+  OUT = 'OUT',
 }

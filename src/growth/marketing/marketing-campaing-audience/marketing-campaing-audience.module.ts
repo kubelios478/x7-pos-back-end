@@ -9,7 +9,8 @@ import { MarketingCampaign } from '../marketing_campaing/entities/marketing_camp
 import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       MarketingCampaignAudience,
       MarketingCampaign,

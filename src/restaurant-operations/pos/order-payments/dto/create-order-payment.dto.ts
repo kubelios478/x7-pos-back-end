@@ -17,7 +17,10 @@ export class CreateOrderPaymentDto {
   @IsPositive()
   orderId: number;
 
-  @ApiProperty({ example: 5, description: 'ID of the collaborator processing the payment' })
+  @ApiProperty({
+    example: 5,
+    description: 'ID of the collaborator processing the payment',
+  })
   @IsNumber()
   @IsPositive()
   collaboratorId: number;
@@ -32,6 +35,16 @@ export class CreateOrderPaymentDto {
   @IsNotEmpty()
   @MaxLength(50)
   method: string;
+
+  @ApiPropertyOptional({
+    example: 123,
+    description:
+      'Required when method is loyalty. A server-side lock id created via POST /loyalty-points-redemption/locks.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @IsPositive()
+  loyaltyPointsLockId?: number;
 
   @ApiPropertyOptional({ example: 'stripe' })
   @IsOptional()
@@ -60,10 +73,14 @@ export class CreateOrderPaymentDto {
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  source: string;
+  source?: string;
 
-  @ApiPropertyOptional({ example: 1 })
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'Optional POS shift id for inventory kardex linkage',
+  })
   @IsOptional()
   @IsNumber()
-  shift_id: number;
+  @IsPositive()
+  shiftId?: number;
 }

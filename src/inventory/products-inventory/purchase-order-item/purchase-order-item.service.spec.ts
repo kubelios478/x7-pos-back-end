@@ -96,6 +96,8 @@ describe('PurchaseOrderItemService', () => {
     isActive: true,
     items: [],
     purchaseOrderItems: [],
+    stockBasisKind: null,
+    baseUnitsPerStockIncrement: null,
   } as Variant;
 
   const mockPurchaseOrder: PurchaseOrder = {

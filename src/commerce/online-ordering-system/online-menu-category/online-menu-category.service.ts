@@ -34,7 +34,7 @@ export class OnlineMenuCategoryService {
     private readonly onlineMenuRepository: Repository<OnlineMenu>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
-  ) { }
+  ) {}
 
   async create(
     createOnlineMenuCategoryDto: CreateOnlineMenuCategoryDto,

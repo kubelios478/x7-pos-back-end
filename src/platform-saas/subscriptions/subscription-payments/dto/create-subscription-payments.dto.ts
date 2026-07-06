@@ -1,16 +1,38 @@
 //src/subscriptions/subscription-payments/dto/create-subscription-payments.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsIn, IsDate } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsIn,
+  IsDate,
+  IsOptional,
+  IsInt,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateSubscriptionPaymentDto {
   @ApiProperty({
     example: 1,
-    description: 'ID of the Merchant Subscription Associated',
+    description:
+      'Legacy: ID of the Merchant Subscription associated. Prefer companySubscriptionId.',
+    required: false,
   })
-  @IsNumber()
-  @IsNotEmpty()
-  merchantSubscriptionId: number;
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  merchantSubscriptionId?: number;
+
+  @ApiProperty({
+    example: 1,
+    description: 'ID of the Company Subscription associated',
+    required: false,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  companySubscriptionId?: number;
 
   @ApiProperty({ example: 10900 })
   @IsNumber()

@@ -8,7 +8,10 @@ import { Reservation } from 'src/restaurant-operations/reservations/reservation/
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { AllPaginatedReservationNotes } from './dto/all-paginated-reservation-notes.dto';
 
-import { OneReservationNoteResponse, ReservationNoteResponseDto } from './dto/reservation-note-response.dto';
+import {
+  OneReservationNoteResponse,
+  ReservationNoteResponseDto,
+} from './dto/reservation-note-response.dto';
 import { GetReservationNotesQueryDto } from './dto/get-reservation-notes-query.dto';
 
 @Injectable()
@@ -18,10 +21,16 @@ export class ReservationNoteService {
     private readonly noteRepository: Repository<ReservationNote>,
     @InjectRepository(Reservation)
     private readonly reservationRepository: Repository<Reservation>,
-  ) { }
+  ) {}
 
-  async create(createNoteDto: CreateReservationNoteDto, merchantId: number): Promise<OneReservationNoteResponse> {
-    await this.validateReservationOwnership(createNoteDto.reservation_id, merchantId);
+  async create(
+    createNoteDto: CreateReservationNoteDto,
+    merchantId: number,
+  ): Promise<OneReservationNoteResponse> {
+    await this.validateReservationOwnership(
+      createNoteDto.reservation_id,
+      merchantId,
+    );
 
     try {
       const note = this.noteRepository.create(createNoteDto);
@@ -36,17 +45,29 @@ export class ReservationNoteService {
     }
   }
 
-  async findAll(reservationId: number, merchantId: number, page = 1, limit = 10): Promise<AllPaginatedReservationNotes> {
-    return this.findAllGlobal(merchantId, { reservation_id: reservationId, page, limit });
+  async findAll(
+    reservationId: number,
+    merchantId: number,
+    page = 1,
+    limit = 10,
+  ): Promise<AllPaginatedReservationNotes> {
+    return this.findAllGlobal(merchantId, {
+      reservation_id: reservationId,
+      page,
+      limit,
+    });
   }
 
-  async findAllGlobal(merchantId: number, queryDto: GetReservationNotesQueryDto): Promise<AllPaginatedReservationNotes> {
+  async findAllGlobal(
+    merchantId: number,
+    queryDto: GetReservationNotesQueryDto,
+  ): Promise<AllPaginatedReservationNotes> {
     const { page = 1, limit = 10, reservation_id, created_by } = queryDto;
     const skip = (page - 1) * limit;
 
     const where: any = {
       is_active: true,
-      reservation: { merchant_id: merchantId }
+      reservation: { merchant_id: merchantId },
     };
 
     if (reservation_id) where.reservation_id = reservation_id;
@@ -65,7 +86,7 @@ export class ReservationNoteService {
     return {
       statusCode: 200,
       message: 'All merchant notes retrieved successfully',
-      data: notes.map(note => this.mapToResponseDto(note)),
+      data: notes.map((note) => this.mapToResponseDto(note)),
       page,
       limit,
       total,
@@ -75,7 +96,11 @@ export class ReservationNoteService {
     };
   }
 
-  async findOne(id: number, merchantId: number, action?: string): Promise<OneReservationNoteResponse> {
+  async findOne(
+    id: number,
+    merchantId: number,
+    action?: string,
+  ): Promise<OneReservationNoteResponse> {
     const note = await this.noteRepository.findOne({
       where: { id, is_active: true },
       relations: ['reservation'],
@@ -92,7 +117,11 @@ export class ReservationNoteService {
     };
   }
 
-  async update(id: number, updateNoteDto: UpdateReservationNoteDto, merchantId: number): Promise<OneReservationNoteResponse> {
+  async update(
+    id: number,
+    updateNoteDto: UpdateReservationNoteDto,
+    merchantId: number,
+  ): Promise<OneReservationNoteResponse> {
     await this.findOne(id, merchantId);
     const note = await this.noteRepository.findOneBy({ id });
 
@@ -113,7 +142,10 @@ export class ReservationNoteService {
     }
   }
 
-  async remove(id: number, merchantId: number): Promise<OneReservationNoteResponse> {
+  async remove(
+    id: number,
+    merchantId: number,
+  ): Promise<OneReservationNoteResponse> {
     const noteRes = await this.findOne(id, merchantId);
     const note = await this.noteRepository.findOneBy({ id });
 
@@ -141,7 +173,10 @@ export class ReservationNoteService {
     };
   }
 
-  private async validateReservationOwnership(reservationId: number, merchantId: number) {
+  private async validateReservationOwnership(
+    reservationId: number,
+    merchantId: number,
+  ) {
     const reservation = await this.reservationRepository.findOneBy({
       id: reservationId,
       merchant_id: merchantId,
@@ -149,7 +184,9 @@ export class ReservationNoteService {
     });
 
     if (!reservation) {
-      ErrorHandler.notFound('Reservation not found or does not belong to your merchant');
+      ErrorHandler.notFound(
+        'Reservation not found or does not belong to your merchant',
+      );
     }
   }
 }

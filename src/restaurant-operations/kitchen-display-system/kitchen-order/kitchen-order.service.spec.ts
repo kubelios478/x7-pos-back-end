@@ -21,7 +21,6 @@ import { GetKitchenOrderQueryDto } from './dto/get-kitchen-order-query.dto';
 import { KitchenOrderStatus } from './constants/kitchen-order-status.enum';
 import { KitchenOrderBusinessStatus } from './constants/kitchen-order-business-status.enum';
 import { KitchenStationStatus } from '../kitchen-station/constants/kitchen-station-status.enum';
-import { OnlineOrderStatus } from '../../../commerce/online-ordering-system/online-order/constants/online-order-status.enum';
 import { OrderStatus } from '../../../restaurant-operations/pos/orders/constants/order-status.enum';
 import { DataSource } from 'typeorm';
 import { KitchenOrderSyncService } from './kitchen-order-sync.service';
@@ -31,7 +30,6 @@ describe('KitchenOrderService', () => {
   let kitchenOrderRepository: Repository<KitchenOrder>;
   let merchantRepository: Repository<Merchant>;
   let orderRepository: Repository<Order>;
-  let onlineOrderRepository: Repository<OnlineOrder>;
   let kitchenStationRepository: Repository<KitchenStation>;
 
   const mockKitchenOrderRepository = {
@@ -61,24 +59,30 @@ describe('KitchenOrderService', () => {
     syncPosOrderFromKitchenOrders: jest.fn().mockResolvedValue(undefined),
   };
 
+  const mockQueryRunner = {
+    connect: jest.fn().mockResolvedValue(undefined),
+    startTransaction: jest.fn().mockResolvedValue(undefined),
+    commitTransaction: jest.fn().mockResolvedValue(undefined),
+    rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+    release: jest.fn().mockResolvedValue(undefined),
+    manager: {
+      save: jest.fn((_E: unknown, entity: unknown) => {
+        if (
+          entity &&
+          typeof entity === 'object' &&
+          'kitchen_order_id' in entity
+        ) {
+          return { id: 1, ...entity };
+        }
+        return { id: 1, ...(entity as object) };
+      }),
+      find: jest.fn().mockResolvedValue([]),
+      create: jest.fn((_Entity: unknown, plain: object) => ({ ...plain })),
+    },
+  };
+
   const mockDataSource = {
-    transaction: jest.fn(async (fn: (m: unknown) => Promise<unknown>) => {
-      const manager = {
-        save: jest.fn(async (entity: unknown) => {
-          if (
-            entity &&
-            typeof entity === 'object' &&
-            'kitchen_order_id' in entity
-          ) {
-            return { id: 1, ...entity };
-          }
-          return { id: 1, ...(entity as object) };
-        }),
-        find: jest.fn().mockResolvedValue([]),
-        create: jest.fn((_Entity: unknown, plain: object) => ({ ...plain })),
-      };
-      return fn(manager);
-    }),
+    createQueryRunner: jest.fn(() => mockQueryRunner),
   };
 
   const mockMerchant = {
@@ -90,12 +94,6 @@ describe('KitchenOrderService', () => {
     id: 1,
     merchant_id: 1,
     logical_status: OrderStatus.ACTIVE,
-  };
-
-  const mockOnlineOrder = {
-    id: 1,
-    merchant_id: 1,
-    status: OnlineOrderStatus.ACTIVE,
   };
 
   const mockKitchenStation = {
@@ -177,9 +175,7 @@ describe('KitchenOrderService', () => {
       getRepositoryToken(Merchant),
     );
     orderRepository = module.get<Repository<Order>>(getRepositoryToken(Order));
-    onlineOrderRepository = module.get<Repository<OnlineOrder>>(
-      getRepositoryToken(OnlineOrder),
-    );
+    module.get<Repository<OnlineOrder>>(getRepositoryToken(OnlineOrder));
     kitchenStationRepository = module.get<Repository<KitchenStation>>(
       getRepositoryToken(KitchenStation),
     );
@@ -224,7 +220,7 @@ describe('KitchenOrderService', () => {
       expect(merchantRepository.findOne).toHaveBeenCalled();
       expect(orderRepository.findOne).toHaveBeenCalled();
       expect(kitchenStationRepository.findOne).toHaveBeenCalled();
-      expect(mockDataSource.transaction).toHaveBeenCalled();
+      expect(mockDataSource.createQueryRunner).toHaveBeenCalled();
       expect(
         mockKitchenOrderSyncService.syncPosOrderFromKitchenOrders,
       ).toHaveBeenCalledWith(1);

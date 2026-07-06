@@ -9,7 +9,8 @@ import { Item } from '../items/entities/item.entity';
 import { ItemsModule } from '../items/items.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Location, Merchant, Item]),
     forwardRef(() => ItemsModule),
   ],

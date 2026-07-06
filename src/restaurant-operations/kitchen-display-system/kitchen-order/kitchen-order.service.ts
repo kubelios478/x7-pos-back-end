@@ -192,39 +192,50 @@ export class KitchenOrderService {
     kitchenOrder.completed_at = createKitchenOrderDto.completedAt || null;
     kitchenOrder.notes = createKitchenOrderDto.notes || null;
 
-    const savedKitchenOrder = await this.dataSource.transaction(
-      async (manager) => {
-        const saved = await manager.save(kitchenOrder);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-        const skipAuto = createKitchenOrderDto.skipAutoKitchenItems === true;
-        if (createKitchenOrderDto.orderId && !skipAuto) {
-          const orderItems = await manager.find(OrderItem, {
-            where: {
-              order_id: createKitchenOrderDto.orderId,
-              status: OrderItemStatus.ACTIVE,
-            },
+    let savedKitchenOrder: KitchenOrder;
+    try {
+      savedKitchenOrder = await queryRunner.manager.save(
+        KitchenOrder,
+        kitchenOrder,
+      );
+
+      const skipAuto = createKitchenOrderDto.skipAutoKitchenItems === true;
+      if (createKitchenOrderDto.orderId && !skipAuto) {
+        const orderItems = await queryRunner.manager.find(OrderItem, {
+          where: {
+            order_id: createKitchenOrderDto.orderId,
+            status: OrderItemStatus.ACTIVE,
+          },
+        });
+        for (const oi of orderItems) {
+          const koi = queryRunner.manager.create(KitchenOrderItem, {
+            kitchen_order_id: savedKitchenOrder.id,
+            order_item_id: oi.id,
+            product_id: oi.product_id,
+            variant_id: oi.variant_id,
+            quantity: oi.quantity,
+            prepared_quantity: 0,
+            preparation_status: KitchenOrderItemPreparationStatus.PENDING,
+            status: KitchenOrderItemStatus.ACTIVE,
+            started_at: null,
+            completed_at: null,
+            notes: null,
           });
-          for (const oi of orderItems) {
-            const koi = manager.create(KitchenOrderItem, {
-              kitchen_order_id: saved.id,
-              order_item_id: oi.id,
-              product_id: oi.product_id,
-              variant_id: oi.variant_id,
-              quantity: oi.quantity,
-              prepared_quantity: 0,
-              preparation_status: KitchenOrderItemPreparationStatus.PENDING,
-              status: KitchenOrderItemStatus.ACTIVE,
-              started_at: null,
-              completed_at: null,
-              notes: null,
-            });
-            await manager.save(koi);
-          }
+          await queryRunner.manager.save(KitchenOrderItem, koi);
         }
+      }
 
-        return saved;
-      },
-    );
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
 
     if (createKitchenOrderDto.orderId) {
       await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrders(

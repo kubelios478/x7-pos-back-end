@@ -18,6 +18,19 @@ export class ProductResponseDto {
   basePrice: number;
 
   @ApiProperty({
+    example: false,
+    description:
+      'True when all tracked stock rows at default sales location are depleted (CAT 1)',
+  })
+  isOutOfStock: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'True when any tracked stock row is at or below minimum qty',
+  })
+  isLowStock: boolean;
+
+  @ApiProperty({
     type: () => MerchantResponseDto,
     nullable: true,
     description: 'Associated merchant details',

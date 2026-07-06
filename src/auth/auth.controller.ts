@@ -16,11 +16,21 @@ import { User } from '../platform-saas/users/entities/user.entity';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { OnboardingRegisterDto } from './dto/onboarding-register.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('register-onboarding')
+  @ApiOperation({
+    summary:
+      'Public onboarding: create company, first merchant outlet, admin user, and starter company subscription',
+  })
+  registerOnboarding(@Body() dto: OnboardingRegisterDto) {
+    return this.authService.registerOnboarding(dto);
+  }
 
   @Post('login')
   @ApiOperation({

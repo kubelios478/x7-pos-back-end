@@ -105,6 +105,20 @@ export class OrderResponseDto {
   updatedAt: Date;
 
   @ApiPropertyOptional({
+    example: '2024-01-15T10:05:00Z',
+    description:
+      'Set asynchronously after checkout when recipe-based inventory deduction completes (isPaid must be true)',
+  })
+  inventoryConsumedAt?: Date | null;
+
+  @ApiPropertyOptional({
+    example: '2024-01-15T10:05:00Z',
+    description:
+      'Set asynchronously when loyalty points are awarded for a fully paid order with customerId',
+  })
+  loyaltyPointsAwardedAt?: Date | null;
+
+  @ApiPropertyOptional({
     type: () => [OrderItemResponseDto],
     description: 'POS line items (included when relations are loaded)',
   })

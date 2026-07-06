@@ -59,7 +59,7 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDER_PAYMENTS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class OrderPaymentsController {
-  constructor(private readonly orderPaymentsService: OrderPaymentsService) { }
+  constructor(private readonly orderPaymentsService: OrderPaymentsService) {}
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -71,7 +71,11 @@ export class OrderPaymentsController {
     Scope.MERCHANT_CLOVER,
   )
   @RequireActiveShift()
-  @ApiOperation({ summary: 'Create an order payment' })
+  @ApiOperation({
+    summary: 'Create an order payment',
+    description:
+      'When the order becomes fully paid (balanceDue = 0, including tips), triggers async inventory deduction (recipes), loyalty accrual (if customerId and active program), and stock level evaluation. Include tipAmount in the payment or pay the remaining balanceDue.',
+  })
   @ApiBody({ type: CreateOrderPaymentDto })
   @ApiCreatedResponse({ type: OneOrderPaymentResponseDto })
   @ApiBadRequestResponse({ type: ErrorResponse })
@@ -82,7 +86,12 @@ export class OrderPaymentsController {
     @Body() dto: CreateOrderPaymentDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderPaymentResponseDto> {
-    return this.orderPaymentsService.create(dto, req.user?.merchant?.id, req.user?.activeShiftId);
+    return this.orderPaymentsService.create(
+      dto,
+      req.user?.merchant?.id,
+      req.user?.id,
+      req.user?.activeShiftId,
+    );
   }
 
   @Get()
@@ -104,7 +113,7 @@ export class OrderPaymentsController {
   @ApiQuery({ name: 'sortBy', required: false, enum: OrderPaymentSortBy })
   @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'] })
   @ApiOkResponse({ type: PaginatedOrderPaymentResponseDto })
-  async findAll(
+  findAll(
     @Query() query: GetOrderPaymentQueryDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<PaginatedOrderPaymentResponseDto> {
@@ -123,7 +132,7 @@ export class OrderPaymentsController {
   @ApiOperation({ summary: 'Get one order payment' })
   @ApiParam({ name: 'id' })
   @ApiOkResponse({ type: OneOrderPaymentResponseDto })
-  async findOne(
+  findOne(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderPaymentResponseDto> {
@@ -143,7 +152,7 @@ export class OrderPaymentsController {
   @ApiParam({ name: 'id' })
   @ApiBody({ type: UpdateOrderPaymentDto })
   @ApiOkResponse({ type: OneOrderPaymentResponseDto })
-  async update(
+  update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderPaymentDto,
     @Request() req: AuthenticatedRequest,
@@ -164,7 +173,7 @@ export class OrderPaymentsController {
   @ApiOperation({ summary: 'Delete an order payment' })
   @ApiParam({ name: 'id' })
   @ApiOkResponse({ type: OneOrderPaymentResponseDto })
-  async remove(
+  remove(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOrderPaymentResponseDto> {

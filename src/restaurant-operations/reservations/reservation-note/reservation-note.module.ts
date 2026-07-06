@@ -11,4 +11,4 @@ import { Reservation } from 'src/restaurant-operations/reservations/reservation/
   providers: [ReservationNoteService],
   exports: [ReservationNoteService],
 })
-export class ReservationNoteModule { }
+export class ReservationNoteModule {}

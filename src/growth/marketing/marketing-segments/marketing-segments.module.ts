@@ -8,7 +8,7 @@ import { MarketingSegment } from './entities/marketing-segment.entity';
 import { Merchant } from '../../../platform-saas/merchants/entities/merchant.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([MarketingSegment, Merchant])],
+  imports: [AuthModule, TypeOrmModule.forFeature([MarketingSegment, Merchant])],
   controllers: [MarketingSegmentsController],
   providers: [MarketingSegmentsService],
   exports: [MarketingSegmentsService],

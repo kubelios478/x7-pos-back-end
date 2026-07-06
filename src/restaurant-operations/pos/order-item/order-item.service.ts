@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  DataSource,
   Repository,
   Between,
   In,
@@ -34,6 +35,7 @@ import { OrderItemKitchenStatus } from './constants/order-item-kitchen-status.en
 import { OrderStatus } from '../orders/constants/order-status.enum';
 import { OrdersService } from '../orders/orders.service';
 import { lineSubtotal } from '../orders/order-aggregation.util';
+import { StockAvailabilityService } from 'src/inventory/stock-alerts/stock-availability.service';
 
 const ORDER_ITEM_RELATIONS = [
   'order',
@@ -47,6 +49,7 @@ const ORDER_ITEM_RELATIONS = [
 @Injectable()
 export class OrderItemService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
     @InjectRepository(Order)
@@ -56,7 +59,8 @@ export class OrderItemService {
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
     private readonly ordersService: OrdersService,
-  ) { }
+    private readonly stockAvailabilityService: StockAvailabilityService,
+  ) {}
 
   async create(
     createOrderItemDto: CreateOrderItemDto,
@@ -132,6 +136,28 @@ export class OrderItemService {
           'Variant does not belong to the specified product',
         );
       }
+
+      const variantAvailability =
+        await this.stockAvailabilityService.getVariantAvailability(
+          authenticatedUserMerchantId,
+          createOrderItemDto.variantId,
+        );
+      if (variantAvailability?.isOutOfStock) {
+        throw new BadRequestException(
+          'This product variant is out of stock and cannot be sold',
+        );
+      }
+    } else {
+      const productAvailability =
+        await this.stockAvailabilityService.getProductAvailabilityMap(
+          authenticatedUserMerchantId,
+          [createOrderItemDto.productId],
+        );
+      if (productAvailability.get(createOrderItemDto.productId)?.isOutOfStock) {
+        throw new BadRequestException(
+          'This product is out of stock and cannot be sold',
+        );
+      }
     }
 
     const unitPrice =
@@ -169,19 +195,47 @@ export class OrderItemService {
       discount: orderItem.discount,
     });
 
-    const savedOrderItem = await this.orderItemRepository.save(orderItem);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Fetch the complete order item with relations
-    const completeOrderItem = await this.orderItemRepository.findOne({
-      where: { id: savedOrderItem.id },
-      relations: [...ORDER_ITEM_RELATIONS],
-    });
+    let completeOrderItem: OrderItem | null = null;
+    let becameFullyPaid = false;
+    try {
+      const savedOrderItem = await queryRunner.manager.save(
+        OrderItem,
+        orderItem,
+      );
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          createOrderItemDto.orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
+
+      completeOrderItem = await queryRunner.manager.findOne(OrderItem, {
+        where: { id: savedOrderItem.id },
+        relations: [...ORDER_ITEM_RELATIONS],
+      });
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(createOrderItemDto.orderId);
+    }
 
     if (!completeOrderItem) {
       throw new NotFoundException('Order item not found after creation');
     }
-
-    await this.ordersService.syncOrderAggregates(createOrderItemDto.orderId);
+    await this.ordersService.syncOnlineOrderFromPosOrder(
+      createOrderItemDto.orderId,
+    );
 
     return {
       statusCode: 201,
@@ -580,21 +634,59 @@ export class OrderItemService {
       });
     }
 
-    await this.orderItemRepository.update(id, updateData);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Fetch updated order item
-    const updatedOrderItem = await this.orderItemRepository.findOne({
-      where: { id },
-      relations: [...ORDER_ITEM_RELATIONS],
-    });
+    let updatedOrderItem: OrderItem | null = null;
+    let becameFullyPaidCurrent = false;
+    let becameFullyPaidPrevious = false;
+    try {
+      await queryRunner.manager.update(OrderItem, id, updateData);
+      updatedOrderItem = await queryRunner.manager.findOne(OrderItem, {
+        where: { id },
+        relations: [...ORDER_ITEM_RELATIONS],
+      });
 
-    if (!updatedOrderItem) {
-      throw new NotFoundException('Order item not found after update');
+      if (!updatedOrderItem) {
+        throw new NotFoundException('Order item not found after update');
+      }
+
+      const syncCurrent =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          updatedOrderItem.order_id,
+        );
+      becameFullyPaidCurrent = syncCurrent.becameFullyPaid;
+      if (previousOrderId !== updatedOrderItem.order_id) {
+        const syncPrev =
+          await this.ordersService.syncOrderAggregatesWithManager(
+            queryRunner.manager,
+            previousOrderId,
+          );
+        becameFullyPaidPrevious = syncPrev.becameFullyPaid;
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
     }
 
-    await this.ordersService.syncOrderAggregates(updatedOrderItem.order_id);
+    if (becameFullyPaidCurrent) {
+      this.ordersService.emitOrderFullyPaid(updatedOrderItem.order_id);
+    }
+    if (becameFullyPaidPrevious) {
+      this.ordersService.emitOrderFullyPaid(previousOrderId);
+    }
+
+    await this.ordersService.syncOnlineOrderFromPosOrder(
+      updatedOrderItem.order_id,
+    );
     if (previousOrderId !== updatedOrderItem.order_id) {
-      await this.ordersService.syncOrderAggregates(previousOrderId);
+      await this.ordersService.syncOnlineOrderFromPosOrder(previousOrderId);
     }
 
     return {
@@ -647,11 +739,37 @@ export class OrderItemService {
       throw new ConflictException('Order item is already deleted');
     }
 
-    // Perform logical deletion
-    existingOrderItem.status = OrderItemStatus.DELETED;
-    await this.orderItemRepository.save(existingOrderItem);
+    const orderId = existingOrderItem.order_id;
 
-    await this.ordersService.syncOrderAggregates(existingOrderItem.order_id);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let becameFullyPaid = false;
+    try {
+      await queryRunner.manager.update(OrderItem, id, {
+        status: OrderItemStatus.DELETED,
+      });
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(orderId);
+    }
+
+    existingOrderItem.status = OrderItemStatus.DELETED;
+    await this.ordersService.syncOnlineOrderFromPosOrder(orderId);
 
     return {
       statusCode: 200,
@@ -679,11 +797,11 @@ export class OrderItemService {
       variantId: orderItem.variant_id,
       variant: orderItem.variant
         ? {
-          id: orderItem.variant.id,
-          name: orderItem.variant.name,
-          price: Number(orderItem.variant.price),
-          sku: orderItem.variant.sku,
-        }
+            id: orderItem.variant.id,
+            name: orderItem.variant.name,
+            price: Number(orderItem.variant.price),
+            sku: orderItem.variant.sku,
+          }
         : null,
       quantity: orderItem.quantity,
       price: Number(orderItem.price),

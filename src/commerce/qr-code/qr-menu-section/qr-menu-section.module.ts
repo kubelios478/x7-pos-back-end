@@ -9,7 +9,7 @@ import { QRMenuSection } from './entity/qr-menu-section.entity';
 import { QRMenu } from '../qr-menu/entity/qr-menu.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([QRMenuSection, QRMenu])],
+  imports: [AuthModule, TypeOrmModule.forFeature([QRMenuSection, QRMenu])],
   controllers: [QrMenuSectionController],
   providers: [QRMenuSectionService],
 })

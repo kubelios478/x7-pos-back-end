@@ -10,7 +10,8 @@ import { MarketingAutomation } from '../marketing-automations/entities/marketing
 import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       MarketingMessageLog,
       MarketingCampaign,

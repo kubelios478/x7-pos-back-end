@@ -30,10 +30,16 @@ import { OrderSource } from './constants/order-source.enum';
 import { DeliveryStatus } from './constants/delivery-status.enum';
 import { KitchenStatus } from './constants/kitchen-status.enum';
 import { OnlineOrderSyncService } from '../../../commerce/online-ordering-system/online-order/online-order-sync.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ORDER_FULLY_PAID_EVENT } from '../../../inventory/sale-inventory/order-paid.events';
 
 describe('OrdersService', () => {
   const mockOnlineOrderSyncService = {
     syncFromPosOrder: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockEventEmitter = {
+    emit: jest.fn(),
   };
 
   let service: OrdersService;
@@ -61,8 +67,32 @@ describe('OrdersService', () => {
     findAndCount: jest.fn(),
     update: jest.fn(),
     manager: {
-      getRepository: jest.fn().mockReturnValue({
-        createQueryBuilder: jest.fn(() => mockOrderQbForOrderNumber),
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === Order) {
+          return {
+            findOne: (opts: unknown) => mockOrderRepository.findOne(opts),
+            save: (opts: unknown) => mockOrderRepository.save(opts),
+            createQueryBuilder: jest.fn(() => mockOrderQbForOrderNumber),
+          };
+        }
+        if (entity === OrderItem) {
+          return {
+            find: (opts: unknown) => mockOrderItemRepository.find(opts),
+          };
+        }
+        if (entity === OrderPayment) {
+          return {
+            find: (opts: unknown) => mockOrderPaymentRepository.find(opts),
+          };
+        }
+        if (entity === OrderTax) {
+          return {
+            find: (opts: unknown) => mockOrderTaxRepository.find(opts),
+          };
+        }
+        return {
+          createQueryBuilder: jest.fn(() => mockOrderQbForOrderNumber),
+        };
       }),
     },
     createQueryBuilder: jest.fn(() => ({
@@ -219,6 +249,10 @@ describe('OrdersService', () => {
         {
           provide: OnlineOrderSyncService,
           useValue: mockOnlineOrderSyncService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: mockEventEmitter,
         },
       ],
     }).compile();
@@ -1632,6 +1666,7 @@ describe('OrdersService', () => {
       expect(mockOnlineOrderSyncService.syncFromPosOrder).toHaveBeenCalledWith(
         1,
       );
+      expect(mockEventEmitter.emit).not.toHaveBeenCalled();
       expect(saveSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           subtotal: 50, // (2*20-5) + (1*15-0)
@@ -1655,6 +1690,7 @@ describe('OrdersService', () => {
         tip_total: 0,
         delivery_fee: 0,
         paid_total: 25,
+        is_paid: false,
       };
       const items = [
         {
@@ -1700,6 +1736,10 @@ describe('OrdersService', () => {
           balance_due: 0,
           is_paid: true,
         }),
+      );
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        ORDER_FULLY_PAID_EVENT,
+        { orderId: 1 },
       );
     });
 

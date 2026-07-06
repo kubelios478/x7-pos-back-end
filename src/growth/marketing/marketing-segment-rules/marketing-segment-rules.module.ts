@@ -8,7 +8,10 @@ import { MarketingSegmentRule } from './entities/marketing-segment-rule.entity';
 import { MarketingSegment } from '../marketing-segments/entities/marketing-segment.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([MarketingSegmentRule, MarketingSegment])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([MarketingSegmentRule, MarketingSegment]),
+  ],
   controllers: [MarketingSegmentRulesController],
   providers: [MarketingSegmentRulesService],
   exports: [MarketingSegmentRulesService],

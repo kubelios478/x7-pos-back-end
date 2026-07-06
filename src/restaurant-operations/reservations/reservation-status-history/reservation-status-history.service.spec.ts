@@ -22,7 +22,9 @@ describe('ReservationStatusHistoryService', () => {
       ],
     }).compile();
 
-    service = module.get<ReservationStatusHistoryService>(ReservationStatusHistoryService);
+    service = module.get<ReservationStatusHistoryService>(
+      ReservationStatusHistoryService,
+    );
   });
 
   afterEach(() => {
@@ -35,7 +37,14 @@ describe('ReservationStatusHistoryService', () => {
 
   describe('findAllGlobal', () => {
     it('should return paginated and mapped results', async () => {
-      const data = [{ id: 1, reservation_id: 1, status: 'confirmed', changed_at: new Date() }];
+      const data = [
+        {
+          id: 1,
+          reservation_id: 1,
+          status: 'confirmed',
+          changed_at: new Date(),
+        },
+      ];
       mockHistoryRepository.findAndCount.mockResolvedValue([data, 1]);
 
       const result = await service.findAllGlobal(1, { page: 1, limit: 10 });
@@ -46,33 +55,45 @@ describe('ReservationStatusHistoryService', () => {
     it('should filter by reservation_id if provided', async () => {
       mockHistoryRepository.findAndCount.mockResolvedValue([[], 0]);
       await service.findAllGlobal(1, { reservation_id: 10 });
-      expect(mockHistoryRepository.findAndCount).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ reservation_id: 10 })
-      }));
+      expect(mockHistoryRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ reservation_id: 10 }),
+        }),
+      );
     });
 
     it('should filter by status if provided', async () => {
       mockHistoryRepository.findAndCount.mockResolvedValue([[], 0]);
       await service.findAllGlobal(1, { status: 'cancelled' as any });
-      expect(mockHistoryRepository.findAndCount).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({ status: 'cancelled' })
-      }));
+      expect(mockHistoryRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ status: 'cancelled' }),
+        }),
+      );
     });
 
     it('should order by changed_at DESC', async () => {
       mockHistoryRepository.findAndCount.mockResolvedValue([[], 0]);
       await service.findAllGlobal(1, {});
-      expect(mockHistoryRepository.findAndCount).toHaveBeenCalledWith(expect.objectContaining({
-        order: { changed_at: 'DESC' }
-      }));
+      expect(mockHistoryRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          order: { changed_at: 'DESC' },
+        }),
+      );
     });
   });
 
   describe('findAll (by reservation)', () => {
     it('should call findAllGlobal with reservation_id', async () => {
-      const spy = jest.spyOn(service, 'findAllGlobal').mockResolvedValue({} as any);
+      const spy = jest
+        .spyOn(service, 'findAllGlobal')
+        .mockResolvedValue({} as any);
       await service.findAll(1, 1, 1, 10);
-      expect(spy).toHaveBeenCalledWith(1, { reservation_id: 1, page: 1, limit: 10 });
+      expect(spy).toHaveBeenCalledWith(1, {
+        reservation_id: 1,
+        page: 1,
+        limit: 10,
+      });
     });
   });
 
@@ -88,12 +109,16 @@ describe('ReservationStatusHistoryService', () => {
     it('should throw error if merchant mismatch', async () => {
       const entry = { id: 1, reservation: { merchant_id: 2 } };
       mockHistoryRepository.findOne.mockResolvedValue(entry);
-      await expect(service.findOne(1, 1)).rejects.toThrow('Status history entry not found');
+      await expect(service.findOne(1, 1)).rejects.toThrow(
+        'Status history entry not found',
+      );
     });
 
     it('should throw error if entry not found', async () => {
       mockHistoryRepository.findOne.mockResolvedValue(null);
-      await expect(service.findOne(1, 1)).rejects.toThrow('Status history entry not found');
+      await expect(service.findOne(1, 1)).rejects.toThrow(
+        'Status history entry not found',
+      );
     });
   });
 });

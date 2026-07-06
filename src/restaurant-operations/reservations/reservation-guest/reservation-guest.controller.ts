@@ -1,8 +1,25 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ReservationGuestService } from './reservation-guest.service';
 import { CreateReservationGuestDto } from './dto/create-reservation-guest.dto';
 import { UpdateReservationGuestDto } from './dto/update-reservation-guest.dto';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -20,7 +37,9 @@ import { GetReservationGuestsQueryDto } from './dto/get-reservation-guests-query
 @Controller('reservation-guest')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationGuestController {
-  constructor(private readonly reservationGuestService: ReservationGuestService) { }
+  constructor(
+    private readonly reservationGuestService: ReservationGuestService,
+  ) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
@@ -29,9 +48,12 @@ export class ReservationGuestController {
   @ApiResponse({ status: 201, type: OneReservationGuestResponse })
   create(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() createGuestDto: CreateReservationGuestDto
+    @Body() createGuestDto: CreateReservationGuestDto,
   ): Promise<OneReservationGuestResponse> {
-    return this.reservationGuestService.create(createGuestDto, user.merchant.id);
+    return this.reservationGuestService.create(
+      createGuestDto,
+      user.merchant.id,
+    );
   }
 
   @Get()
@@ -43,7 +65,10 @@ export class ReservationGuestController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() queryDto: GetReservationGuestsQueryDto,
   ): Promise<AllPaginatedReservationGuests> {
-    return this.reservationGuestService.findAllGlobal(user.merchant.id, queryDto);
+    return this.reservationGuestService.findAllGlobal(
+      user.merchant.id,
+      queryDto,
+    );
   }
 
   @Get('by-reservation/:reservationId')
@@ -59,7 +84,12 @@ export class ReservationGuestController {
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ): Promise<AllPaginatedReservationGuests> {
-    return this.reservationGuestService.findAll(reservationId, user.merchant.id, page, limit);
+    return this.reservationGuestService.findAll(
+      reservationId,
+      user.merchant.id,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
@@ -69,7 +99,7 @@ export class ReservationGuestController {
   @ApiResponse({ status: 200, type: OneReservationGuestResponse })
   findOne(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<OneReservationGuestResponse> {
     return this.reservationGuestService.findOne(id, user.merchant.id);
   }
@@ -82,9 +112,13 @@ export class ReservationGuestController {
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateGuestDto: UpdateReservationGuestDto
+    @Body() updateGuestDto: UpdateReservationGuestDto,
   ): Promise<OneReservationGuestResponse> {
-    return this.reservationGuestService.update(id, updateGuestDto, user.merchant.id);
+    return this.reservationGuestService.update(
+      id,
+      updateGuestDto,
+      user.merchant.id,
+    );
   }
 
   @Delete(':id')
@@ -94,7 +128,7 @@ export class ReservationGuestController {
   @ApiResponse({ status: 200, type: OneReservationGuestResponse })
   remove(
     @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<OneReservationGuestResponse> {
     return this.reservationGuestService.remove(id, user.merchant.id);
   }

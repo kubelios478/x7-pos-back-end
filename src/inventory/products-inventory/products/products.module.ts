@@ -11,8 +11,12 @@ import { Variant } from '../variants/entities/variant.entity';
 import { Modifier } from '../modifiers/entities/modifier.entity';
 import { ModifiersModule } from '../modifiers/modifiers.module';
 import { VariantsModule } from '../variants/variants.module';
+import { StockAlertsModule } from '../../stock-alerts/stock-alerts.module';
+
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
+    StockAlertsModule,
     TypeOrmModule.forFeature([
       Product,
       Merchant,

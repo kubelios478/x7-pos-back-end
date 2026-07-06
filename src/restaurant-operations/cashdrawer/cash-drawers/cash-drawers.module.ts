@@ -9,7 +9,10 @@ import { Shift } from '../../shift/shifts/entities/shift.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([CashDrawer, Shift, Collaborator])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([CashDrawer, Shift, Collaborator]),
+  ],
   controllers: [CashDrawersController],
   providers: [CashDrawersService],
   exports: [CashDrawersService],

@@ -19,6 +19,7 @@ import { PurchaseOrderItem } from './purchase-order-item/entities/purchase-order
 import { PurchaseOrder } from './purchase-order/entities/purchase-order.entity';
 import { PurchaseOrderModule } from './purchase-order/purchase-order.module';
 import { PurchaseOrderItemModule } from './purchase-order-item/purchase-order-item.module';
+import { RecipesModule } from './recipes/recipes.module';
 
 @Module({
   controllers: [],
@@ -44,6 +45,7 @@ import { PurchaseOrderItemModule } from './purchase-order-item/purchase-order-it
     MovementsModule,
     PurchaseOrderModule,
     PurchaseOrderItemModule,
+    RecipesModule,
   ],
   exports: [
     ProductsInventoryService,
@@ -56,6 +58,7 @@ import { PurchaseOrderItemModule } from './purchase-order-item/purchase-order-it
     MovementsModule,
     PurchaseOrderModule,
     PurchaseOrderItemModule,
+    RecipesModule,
   ],
 })
 export class ProductsInventoryModule {}
