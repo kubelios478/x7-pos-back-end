@@ -102,11 +102,11 @@ export class SuppliersService {
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // 2. Build query with filters
+    // 2. Build query with filters (se elimina el filtro restrictivo de isActive para permitir filtrar All/Active/Inactive en el front/back)
     const queryBuilder = this.supplierRepository
       .createQueryBuilder('supplier')
-      .where('supplier.company_id = :company_id', { company_id })
-      .andWhere('supplier.isActive = :isActive', { isActive: true });
+      .leftJoinAndSelect('supplier.products', 'products')
+      .where('supplier.company_id = :company_id', { company_id });
 
     // 3. Apply optional filters
     if (query.name) {
@@ -141,6 +141,8 @@ export class SuppliersService {
       company_id: supplier.company_id,
       created_at: supplier.created_at,
       updated_at: supplier.updated_at,
+      products: supplier.products,
+      isActive: supplier.isActive,
     }));
 
     return {
@@ -168,17 +170,20 @@ export class SuppliersService {
     const whereCondition: {
       id: number;
       company_id?: number;
-      isActive: boolean;
+      isActive?: boolean;
     } = {
       id,
-      isActive: createdUpdateDelete === 'Deleted' ? false : true,
     };
+    if (createdUpdateDelete === 'Deleted') {
+      whereCondition.isActive = false;
+    }
     if (company_id !== undefined) {
       whereCondition.company_id = company_id;
     }
 
     const supplier = await this.supplierRepository.findOne({
       where: whereCondition,
+      relations: ['purchaseOrders'],
     });
     if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 
@@ -192,6 +197,7 @@ export class SuppliersService {
       company_id: supplier.company_id,
       created_at: supplier.created_at,
       updated_at: supplier.updated_at,
+      purchaseOrders: supplier.purchaseOrders,
     };
 
     let response: OneSupplierResponse;
@@ -240,7 +246,6 @@ export class SuppliersService {
     const supplier = await this.supplierRepository.findOneBy({
       id,
       company_id,
-      isActive: true,
     });
     if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 

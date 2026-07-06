@@ -61,8 +61,10 @@ export class CategoryService {
         where: { name, merchantId: merchant_id, isActive: false },
       });
 
+      const isActiveValue = createCategoryDto.isActive !== undefined ? createCategoryDto.isActive : true;
+
       if (existingButIsNotActive) {
-        existingButIsNotActive.isActive = true;
+        existingButIsNotActive.isActive = isActiveValue;
         await this.categoryRepo.save(existingButIsNotActive);
         return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
       } else {
@@ -70,6 +72,7 @@ export class CategoryService {
           name,
           merchantId: merchant_id,
           parentId,
+          isActive: isActiveValue,
         });
         const savedCategory = await this.categoryRepo.save(newCategory);
         return this.findOne(savedCategory.id, merchant_id, 'Created');
@@ -88,12 +91,11 @@ export class CategoryService {
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // 2. Build query with filters
+    // 2. Build query with filters (se elimina el filtro restrictivo de isActive para permitir traer las inactivas)
     const queryBuilder = this.categoryRepo
       .createQueryBuilder('category')
       .leftJoinAndSelect('category.merchant', 'merchant')
-      .where('category.merchantId = :merchantId', { merchantId })
-      .andWhere('category.isActive = :isActive', { isActive: true });
+      .where('category.merchantId = :merchantId', { merchantId });
 
     // 3. Apply optional filters
     if (query.name) {
@@ -123,6 +125,7 @@ export class CategoryService {
         const result: CategoryResponseDto = {
           id: category.id,
           name: category.name,
+          isActive: category.isActive,
           merchant: category.merchant
             ? {
                 id: category.merchant.id,
@@ -175,6 +178,7 @@ export class CategoryService {
     const dataForResponse: CategoryResponseDto = {
       id: category.id,
       name: category.name,
+      isActive: category.isActive,
       merchant: category.merchant
         ? {
             id: category.merchant.id,

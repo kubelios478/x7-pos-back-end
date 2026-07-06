@@ -46,27 +46,31 @@ export class ProductsService {
     const { name, sku, basePrice, categoryId, supplierId } = createProductDto;
 
     const [category, supplier] = await Promise.all([
-      this.categoryRepository.findOneBy({
-        id: categoryId,
-        merchantId: merchant_id,
-        isActive: true,
-      }),
-      (async () => {
-        const merchant = await this.merchantRepository.findOne({
-          where: { id: merchant_id },
-          select: ['companyId'],
-        });
-        if (!merchant) return null;
-        return this.supplierRepository.findOneBy({
-          id: supplierId,
-          company_id: merchant.companyId,
-          isActive: true,
-        });
-      })(),
+      categoryId
+        ? this.categoryRepository.findOneBy({
+            id: categoryId,
+            merchantId: merchant_id,
+            isActive: true,
+          })
+        : Promise.resolve(null),
+      supplierId
+        ? (async () => {
+            const merchant = await this.merchantRepository.findOne({
+              where: { id: merchant_id },
+              select: ['companyId'],
+            });
+            if (!merchant) return null;
+            return this.supplierRepository.findOneBy({
+              id: supplierId,
+              company_id: merchant.companyId,
+              isActive: true,
+            });
+          })()
+        : Promise.resolve(null),
     ]);
 
-    if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
-    if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
+    if (categoryId && !category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
+    if (supplierId && !supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 
     const existingProduct = await this.productRepository.findOne({
       where: [
@@ -87,6 +91,8 @@ export class ProductsService {
         where: [{ name: name, merchantId: merchant_id, isActive: false }],
       });
 
+      const isActiveValue = createProductDto.isActive !== undefined ? createProductDto.isActive : true;
+
       if (existingButIsNotActive) {
         Object.assign(existingButIsNotActive, {
           name,
@@ -94,7 +100,7 @@ export class ProductsService {
           basePrice,
           categoryId,
           supplierId,
-          isActive: true,
+          isActive: isActiveValue,
         });
         await this.productRepository.save(existingButIsNotActive);
         return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
@@ -106,6 +112,7 @@ export class ProductsService {
           merchantId: merchant_id,
           categoryId,
           supplierId,
+          isActive: isActiveValue,
         });
 
         const savedProduct = await this.productRepository.save(newProduct);
