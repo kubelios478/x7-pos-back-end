@@ -5,9 +5,12 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { SubscriptionPayment } from './entity/subscription-payments.entity';
 import { CreateSubscriptionPaymentDto } from './dto/create-subscription-payments.dto';
 import { UpdateSubscriptionPaymentDto } from './dto/update-subscription-payment.dto';
-import { Repository, In } from 'typeorm';
+import { DataSource, Repository, In } from 'typeorm';
 import { MerchantSubscription } from '../merchant-subscriptions/entities/merchant-subscription.entity';
 import { SelectQueryBuilder } from 'typeorm';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
+import { CompanySubscription } from '../company-subscriptions/entities/company-subscription.entity';
 
 describe('SubscriptionPaymentsService', () => {
   let service: SubscriptionPaymentsService;
@@ -15,6 +18,28 @@ describe('SubscriptionPaymentsService', () => {
   let merchantSubscriptionRepository: jest.Mocked<
     Repository<MerchantSubscription>
   >;
+  let merchantRepository: jest.Mocked<Repository<Merchant>>;
+  let subscriptionPlanRepository: jest.Mocked<Repository<SubscriptionPlan>>;
+  // kept as provider in the testing module, but not used directly by these tests
+  let mockPaymentLockQueryBuilder: {
+    where: jest.Mock;
+    setLock: jest.Mock;
+    getOne: jest.Mock;
+  };
+
+  let mockQueryRunner: {
+    connect: jest.Mock;
+    startTransaction: jest.Mock;
+    commitTransaction: jest.Mock;
+    rollbackTransaction: jest.Mock;
+    release: jest.Mock;
+    manager: {
+      findOne: jest.Mock;
+      create: jest.Mock;
+      save: jest.Mock;
+      createQueryBuilder: jest.Mock;
+    };
+  };
 
   //Mock data
   const mockSubscriptionPayment: Partial<SubscriptionPayment> = {
@@ -46,7 +71,34 @@ describe('SubscriptionPaymentsService', () => {
   };
 
   beforeEach(async () => {
-    const mockQueryBuilder: any = {
+    mockPaymentLockQueryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      setLock: jest.fn().mockReturnThis(),
+      getOne: jest.fn(),
+    };
+
+    mockQueryRunner = {
+      connect: jest.fn().mockResolvedValue(undefined),
+      startTransaction: jest.fn().mockResolvedValue(undefined),
+      commitTransaction: jest.fn().mockResolvedValue(undefined),
+      rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+      manager: {
+        findOne: jest.fn(),
+        create: jest.fn((_E: unknown, plain: object) => ({ ...plain })),
+        save: jest.fn((_E: unknown, entity: object) => ({
+          id: 1,
+          ...entity,
+        })),
+        createQueryBuilder: jest.fn(() => mockPaymentLockQueryBuilder),
+      },
+    };
+
+    const mockDataSource = {
+      createQueryRunner: jest.fn(() => mockQueryRunner),
+    };
+
+    const mockQueryBuilder = {
       leftJoin: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -56,7 +108,7 @@ describe('SubscriptionPaymentsService', () => {
       getManyAndCount: jest
         .fn()
         .mockResolvedValue([[mockSubscriptionPayment], 1]),
-    };
+    } as unknown as SelectQueryBuilder<SubscriptionPayment>;
 
     const mockRepository = {
       create: jest.fn(),
@@ -65,11 +117,13 @@ describe('SubscriptionPaymentsService', () => {
       find: jest.fn(),
       remove: jest.fn(),
       createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+      delete: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SubscriptionPaymentsService,
+        { provide: DataSource, useValue: mockDataSource },
         {
           provide: getRepositoryToken(SubscriptionPayment),
           useValue: mockRepository,
@@ -84,6 +138,26 @@ describe('SubscriptionPaymentsService', () => {
             remove: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Merchant),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(SubscriptionPlan),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(CompanySubscription),
+          useValue: {
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -94,6 +168,11 @@ describe('SubscriptionPaymentsService', () => {
     merchantSubscriptionRepository = module.get(
       getRepositoryToken(MerchantSubscription),
     );
+    merchantRepository = module.get(getRepositoryToken(Merchant));
+    subscriptionPlanRepository = module.get(
+      getRepositoryToken(SubscriptionPlan),
+    );
+    module.get(getRepositoryToken(CompanySubscription));
 
     jest.clearAllMocks();
   });
@@ -178,7 +257,15 @@ describe('SubscriptionPaymentsService', () => {
       expect(result).toEqual({
         statusCode: 200,
         message: 'Subscription Payment retrieved successfully',
-        data: mockSubPay,
+        data: [
+          expect.objectContaining({
+            id: 1,
+            merchantSubscription: { id: 1 },
+            company_id: null,
+            plan_id: null,
+            external_transaction_id: null,
+          }),
+        ],
         pagination: {
           page: 1,
           limit: 10,
@@ -216,8 +303,9 @@ describe('SubscriptionPaymentsService', () => {
 
   describe('Find One Subscription Payment', () => {
     it('should throw error for invalid ID (null)', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      await expect(service.findOne(null as any)).rejects.toThrow();
+      await expect(
+        service.findOne(null as unknown as number),
+      ).rejects.toThrow();
     });
 
     it('should throw error for invalid ID (zero)', async () => {
@@ -390,6 +478,107 @@ describe('SubscriptionPaymentsService', () => {
       expect(typeof repository.create).toBe('function');
       expect(typeof repository.save).toBe('function');
       expect(typeof repository.remove).toBe('function');
+    });
+  });
+
+  describe('Payment intent & webhook', () => {
+    it('should create a pending payment intent for the authenticated company', async () => {
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce({
+          id: 1,
+          companyId: 10,
+        } as Merchant)
+        .mockResolvedValueOnce({
+          id: 3,
+          price: 100,
+          billingCycle: 'monthly',
+          status: 'active',
+          name: 'Enterprise',
+          description: 'Test',
+        } as SubscriptionPlan);
+
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 1,
+        companyId: 10,
+      } as Merchant);
+      jest.spyOn(subscriptionPlanRepository, 'findOne').mockResolvedValue({
+        id: 3,
+        price: 100,
+        billingCycle: 'monthly',
+        status: 'active',
+        name: 'Enterprise',
+        description: 'Test',
+      } as SubscriptionPlan);
+
+      const result = await service.createIntent(1, { planId: 3 });
+      expect(result).toEqual({
+        statusCode: 201,
+        message: 'Payment intent created successfully',
+        data: { paymentId: 1, provider: 'dummy' },
+      });
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+    });
+
+    it('should reject webhook when amount does not match plan price', async () => {
+      mockPaymentLockQueryBuilder.getOne.mockResolvedValue({
+        id: 1,
+        company_id: 10,
+        plan_id: 3,
+        status: 'pending',
+        currency: 'CLP',
+        amount: 100,
+        paymentMethod: 'dummy_gateway',
+      } as unknown as SubscriptionPayment);
+      mockQueryRunner.manager.findOne.mockResolvedValue({
+        id: 3,
+        price: 100,
+        billingCycle: 'monthly',
+      } as SubscriptionPlan);
+
+      await expect(
+        service.handleWebhook({
+          paymentId: 1,
+          externalTransactionId: 'ext_1',
+          status: 'paid',
+          amount: 99,
+          currency: 'CLP',
+        }),
+      ).rejects.toThrow('Paid amount does not match plan price');
+
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+    });
+
+    it('should activate/extend company subscription on successful webhook', async () => {
+      mockPaymentLockQueryBuilder.getOne.mockResolvedValue({
+        id: 1,
+        company_id: 10,
+        plan_id: 3,
+        status: 'pending',
+        currency: 'CLP',
+        amount: 100,
+        paymentMethod: 'dummy_gateway',
+      } as unknown as SubscriptionPayment);
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce({
+          id: 3,
+          price: 100,
+          billingCycle: 'monthly',
+        } as SubscriptionPlan)
+        .mockResolvedValueOnce(null);
+
+      const result = await service.handleWebhook({
+        paymentId: 1,
+        externalTransactionId: 'ext_2',
+        status: 'paid',
+        amount: 100,
+        currency: 'CLP',
+      });
+
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Payment processed successfully',
+      });
+      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
     });
   });
 });

@@ -11,7 +11,8 @@ import { Order } from '../orders/entities/order.entity';
 import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([OrderItemModifier, OrderItem, Modifier, Order]),
     OrdersModule,
   ],

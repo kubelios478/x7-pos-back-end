@@ -8,6 +8,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ApplicationEntity } from '../applications/entity/application-entity';
 import { MerchantSubscription } from '../merchant-subscriptions/entities/merchant-subscription.entity';
+import { CompanySubscription } from '../company-subscriptions/entities/company-subscription.entity';
 import { SelectQueryBuilder } from 'typeorm';
 
 describe('SubscriptionApplicationService', () => {
@@ -22,6 +23,7 @@ describe('SubscriptionApplicationService', () => {
   const mockSubscriptionApplications: Partial<SubscriptionApplication> = {
     id: 1,
     status: 'active',
+    companySubscription: null,
     merchantSubscription: {
       id: 1,
       merchant: { id: 1, name: 'Test Merchant' },
@@ -88,6 +90,16 @@ describe('SubscriptionApplicationService', () => {
         },
         {
           provide: getRepositoryToken(MerchantSubscription),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(CompanySubscription),
           useValue: {
             findOne: jest.fn(),
             find: jest.fn(),
@@ -308,6 +320,7 @@ describe('SubscriptionApplicationService', () => {
         id: 1,
         status: mockCreateSubscriptionApplicationDto.status,
         application: mockSubscriptionApplications.application!,
+        companySubscription: null,
         merchantSubscription:
           mockSubscriptionApplications.merchantSubscription!,
       };

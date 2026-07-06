@@ -12,7 +12,8 @@ import { User } from 'src/platform-saas/users/entities/user.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       Company,
       Merchant,

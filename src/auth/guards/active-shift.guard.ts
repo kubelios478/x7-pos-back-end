@@ -1,9 +1,9 @@
 import {
-    CanActivate,
-    ExecutionContext,
-    Injectable,
-    PreconditionFailedException,
-    UnauthorizedException,
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  PreconditionFailedException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Request } from 'express';
@@ -22,49 +22,47 @@ import { CashShiftStatus } from '../../restaurant-operations/cashdrawer/cash-shi
  */
 @Injectable()
 export class ActiveShiftGuard implements CanActivate {
-    constructor(private readonly dataSource: DataSource) { }
+  constructor(private readonly dataSource: DataSource) {}
 
-    async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request = context.switchToHttp().getRequest<Request>();
-        const user = request.user as AuthenticatedUser;
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<Request>();
+    const user = request.user as AuthenticatedUser;
 
-        if (!user?.merchant?.id) {
-            throw new UnauthorizedException(
-                'User must be authenticated and belong to a merchant',
-            );
-        }
-
-        const body = request.body || {};
-        const query = request.query || {};
-        const collaboratorId = body.collaboratorId || query.collaboratorId;
-
-        if (!collaboratorId) {
-            throw new PreconditionFailedException(
-                'collaboratorId is required in the request body or query to identify the active cash shift',
-            );
-        }
-
-        const activeShift = await this.dataSource
-            .getRepository(CashShift)
-            .findOne({
-                where: {
-                    merchantId: user.merchant.id,
-                    openedBy: collaboratorId,
-                    status: CashShiftStatus.OPEN,
-                },
-                select: ['id'],
-            });
-
-        if (!activeShift) {
-            throw new PreconditionFailedException(
-                'No active cash shift found for this merchant. Open a cash shift before performing operations.',
-            );
-        }
-
-        // Inject the activeShiftId into req.user so the service can use it
-        // without the frontend having to send it
-        (user as AuthenticatedUser).activeShiftId = activeShift.id;
-
-        return true;
+    if (!user?.merchant?.id) {
+      throw new UnauthorizedException(
+        'User must be authenticated and belong to a merchant',
+      );
     }
+
+    const body = request.body || {};
+    const query = request.query || {};
+    const collaboratorId = body.collaboratorId || query.collaboratorId;
+
+    if (!collaboratorId) {
+      throw new PreconditionFailedException(
+        'collaboratorId is required in the request body or query to identify the active cash shift',
+      );
+    }
+
+    const activeShift = await this.dataSource.getRepository(CashShift).findOne({
+      where: {
+        merchantId: user.merchant.id,
+        openedBy: collaboratorId,
+        status: CashShiftStatus.OPEN,
+      },
+      select: ['id'],
+    });
+
+    if (!activeShift) {
+      throw new PreconditionFailedException(
+        'No active cash shift found for this merchant. Open a cash shift before performing operations.',
+      );
+    }
+
+    // Inject the activeShiftId into req.user so the service can use it
+    // without the frontend having to send it
+    user.activeShiftId = activeShift.id;
+
+    return true;
+  }
 }

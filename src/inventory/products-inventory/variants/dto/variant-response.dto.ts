@@ -16,6 +16,18 @@ export class VariantResponseDto {
   sku: string;
 
   @ApiProperty({
+    example: false,
+    description: 'Out of stock at default sales location when stock is tracked',
+  })
+  isOutOfStock: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'Low stock at default sales location when stock is tracked',
+  })
+  isLowStock: boolean;
+
+  @ApiProperty({
     type: () => ProductResponseDto,
     nullable: true,
     description: 'Associated product details',

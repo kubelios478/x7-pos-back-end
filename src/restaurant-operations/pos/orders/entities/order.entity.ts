@@ -36,7 +36,7 @@ import { KitchenStatus } from '../constants/kitchen-status.enum';
 import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
 
-@Entity('orders') 
+@Entity('orders')
 @Index(['merchant_id', 'status', 'created_at'])
 @Index(['merchant_id', 'order_number'], { unique: true })
 export class Order {
@@ -285,6 +285,24 @@ export class Order {
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updated_at: Date;
 
+  @ApiPropertyOptional({
+    description:
+      'Set when checkout sale inventory deduction has completed for this order',
+  })
+  @Column({ type: 'timestamp', name: 'inventory_consumed_at', nullable: true })
+  inventory_consumed_at: Date | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Set when loyalty points have been awarded for this fully paid order',
+  })
+  @Column({
+    type: 'timestamp',
+    name: 'loyalty_points_awarded_at',
+    nullable: true,
+  })
+  loyalty_points_awarded_at: Date | null;
+
   @ApiProperty({
     type: () => CashTransaction,
     isArray: true,
@@ -339,4 +357,10 @@ export class Order {
 
   @OneToMany(() => TipSettlement, (tipSettlement) => tipSettlement.order)
   tipSettlements: TipSettlement[];
+
+  @Column({ nullable: true })
+  refund_reason: string;
+
+  @Column({ nullable: true })
+  refunded_by_user_id: number;
 }

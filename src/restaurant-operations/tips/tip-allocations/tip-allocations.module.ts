@@ -10,7 +10,8 @@ import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collabora
 import { Shift } from '../../shift/shifts/entities/shift.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([TipAllocation, Tip, Collaborator, Shift]),
   ],
   controllers: [TipAllocationsController],

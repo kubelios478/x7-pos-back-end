@@ -11,7 +11,8 @@ import { QRMenuSection } from '../qr-menu-section/entity/qr-menu-section.entity'
 import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([QRMenuItem, Product, QRMenuSection, Variant]),
   ],
   controllers: [QRMenuItemController],

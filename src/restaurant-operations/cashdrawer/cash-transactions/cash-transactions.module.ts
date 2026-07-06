@@ -11,7 +11,8 @@ import { Collaborator } from '../../../finance-hr/hr/collaborators/entities/coll
 import { CashDrawerHistoryModule } from '../cash-drawer-history/cash-drawer-history.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       CashTransaction,
       CashDrawer,

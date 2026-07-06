@@ -13,8 +13,12 @@ import { ModifiersModule } from '../modifiers/modifiers.module';
 import { VariantsModule } from '../variants/variants.module';
 import { ItemsModule } from '../stocks/items/items.module';
 import { PurchaseOrderItemModule } from '../purchase-order-item/purchase-order-item.module';
+import { StockAlertsModule } from '../../stock-alerts/stock-alerts.module';
+
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
+    StockAlertsModule,
     TypeOrmModule.forFeature([
       Product,
       Merchant,

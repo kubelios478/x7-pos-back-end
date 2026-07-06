@@ -11,7 +11,8 @@ import { KitchenStation } from '../kitchen-station/entities/kitchen-station.enti
 import { User } from '../../../platform-saas/users/entities/user.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       KitchenEventLog,
       KitchenOrder,

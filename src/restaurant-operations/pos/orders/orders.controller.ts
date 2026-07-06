@@ -52,6 +52,7 @@ import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
 import { CompletePurchaseDto } from './dto/complete-purchase.dto';
+import { RefundOrderDto } from './dto/refund-order.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
@@ -62,7 +63,7 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @Controller('orders')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDERS)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -76,7 +77,7 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Create a new order',
     description:
-      'Creates a new order for the authenticated merchant. Validates that all related entities (table, collaborator, subscription, customer) belong to the merchant.',
+      'Creates a new order for the authenticated merchant. Validates that all related entities (table, collaborator, subscription, customer) belong to the merchant. businessStatus defaults to pending; items are optional and can be added later via POST /order-item.',
   })
   @ApiBody({ type: CreateOrderDto })
   @ApiCreatedResponse({
@@ -581,11 +582,32 @@ export class OrdersController {
   }
 
   @Post('payment')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
   async processPayment(@Body() dto: ProcessPaymentDto, @Req() req) {
     return this.ordersService.processPayment(
       dto,
       req.user.merchant.id,
       req.user,
     );
+  }
+
+  @Post('refund')
+  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  async refundOrder(@Body() dto: RefundOrderDto, @Req() req) {
+    return this.ordersService.refundOrder(dto, req.user.merchant?.id, req.user);
   }
 }

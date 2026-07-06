@@ -6,12 +6,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionApplication } from './entity/subscription-application.entity';
 import { MerchantSubscription } from '../merchant-subscriptions/entities/merchant-subscription.entity';
 import { ApplicationEntity } from '../applications/entity/application-entity';
+import { CompanySubscription } from '../company-subscriptions/entities/company-subscription.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       SubscriptionApplication,
       MerchantSubscription,
+      CompanySubscription,
       ApplicationEntity,
     ]),
   ],

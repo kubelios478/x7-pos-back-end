@@ -82,6 +82,10 @@ describe('MovementsService', () => {
     reason: 'Initial stock',
     merchantId: mockMerchant.id,
     merchant: mockMerchant,
+    orderId: null,
+    order: null,
+    shiftId: null,
+    shift: null,
     isActive: true,
     createdAt: new Date(),
   };

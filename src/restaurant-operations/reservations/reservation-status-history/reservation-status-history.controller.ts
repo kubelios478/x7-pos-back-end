@@ -1,4 +1,11 @@
-import { Controller, Get, Param, UseGuards, Query, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  UseGuards,
+  Query,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { ReservationStatusHistoryService } from './reservation-status-history.service';
 import { OneReservationStatusHistoryResponse } from './dto/reservation-status-history-response.dto';
 import { AllPaginatedReservationStatusHistory } from './dto/all-paginated-reservation-status-history.dto';
@@ -11,14 +18,22 @@ import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 
 @ApiTags('Reservation Status History')
 @ApiBearerAuth()
 @Controller('reservation-status-history')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ReservationStatusHistoryController {
-  constructor(private readonly historyService: ReservationStatusHistoryService) { }
+  constructor(
+    private readonly historyService: ReservationStatusHistoryService,
+  ) {}
 
   @Get()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
@@ -44,7 +59,12 @@ export class ReservationStatusHistoryController {
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    return this.historyService.findAll(reservationId, user.merchant.id, page, limit);
+    return this.historyService.findAll(
+      reservationId,
+      user.merchant.id,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')

@@ -115,4 +115,7 @@ export class Shift {
 
   @OneToMany(() => Collaborator, (collaborator) => collaborator.shift)
   collaborators: Collaborator[];
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  current_balance: number;
 }

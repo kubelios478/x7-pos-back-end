@@ -10,7 +10,10 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { Order } from '../../../restaurant-operations/pos/orders/entities/order.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([Tip, Company, Merchant, Order])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([Tip, Company, Merchant, Order]),
+  ],
   controllers: [TipsController],
   providers: [TipsService],
   exports: [TipsService],

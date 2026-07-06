@@ -10,7 +10,8 @@ import { LoyaltyProgram } from '../loyalty-programs/entities/loyalty-program.ent
 import { LoyaltyRewardsRedemption } from '../loyalty-rewards-redemptions/entities/loyalty-rewards-redemption.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       LoyaltyReward,
       Product,

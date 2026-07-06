@@ -10,6 +10,7 @@ import {
   Repository,
   Between,
   In,
+  DataSource,
   type FindOptionsOrder,
   type FindOptionsWhere,
 } from 'typeorm';
@@ -56,11 +57,15 @@ import { formatOnlineOrderToDto } from '../../../commerce/online-ordering-system
 import { OrderType } from './constants/order-type.enum';
 import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OnlineOrderSyncService } from '../../../commerce/online-ordering-system/online-order/online-order-sync.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import {
+  ORDER_FULLY_PAID_EVENT,
+  ORDER_LOYALTY_REVERSAL_EVENT,
+} from '../../../inventory/sale-inventory/order-paid.events';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { ShiftsService } from 'src/restaurant-operations/shift/shifts/shifts.service';
 import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
 import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
-import { DataSource } from 'typeorm';
 import { SettlementMethod } from 'src/restaurant-operations/tips/tip-settlements/constants/settlement-method.enum';
 import { ShiftRole } from 'src/restaurant-operations/shift/shifts/constants/shift-role.enum';
 import { MerchantTipRule } from 'src/core/configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
@@ -73,6 +78,13 @@ import { ReceiptsService } from 'src/core/billing-transactions/receipts/receipts
 import { ReceiptType } from 'src/core/billing-transactions/receipts/constants/receipt-type.enum';
 import { User } from 'src/platform-saas/users/entities/user.entity';
 import { SettlementStatus } from 'src/restaurant-operations/tips/tip-settlements/constants/settlement-status.enum';
+import { RefundOrderDto } from './dto/refund-order.dto';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { ShiftStatus } from 'src/restaurant-operations/shift/shifts/constants/shift-status.enum';
+import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
+import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
+import { LoyaltyPointsSource } from 'src/growth/loyalty/loyalty-points-transaction/constants/loyalty-points-source.enum';
+import { MoreThan } from 'typeorm';
 
 @Injectable()
 export class OrdersService {
@@ -98,6 +110,7 @@ export class OrdersService {
     @InjectRepository(OrderItemModifier)
     private readonly orderItemModifierRepo: Repository<OrderItemModifier>,
     private readonly onlineOrderSyncService: OnlineOrderSyncService,
+    private readonly eventEmitter: EventEmitter2,
     @InjectRepository(Product)
     private readonly productsRepo: Repository<Product>,
     private readonly shiftService: ShiftsService,
@@ -111,6 +124,10 @@ export class OrdersService {
     @InjectRepository(Receipt)
     private readonly receiptRepo: Repository<Receipt>,
     private readonly receiptService: ReceiptsService,
+    @InjectRepository(LoyaltyCustomer)
+    private readonly loyaltyCustomerRepo: Repository<LoyaltyCustomer>,
+    @InjectRepository(LoyaltyPointTransaction)
+    private readonly loyaltyPointTransactionRepo: Repository<LoyaltyPointTransaction>,
   ) {}
 
   async create(
@@ -119,7 +136,7 @@ export class OrdersService {
     activeShiftId?: number,
   ): Promise<OneOrderResponseDto> {
     let subtotal = 0;
-    const orderItems: any[] = [];
+    const orderItems: OrderItem[] = [];
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException('You must be associated with a merchant');
     }
@@ -201,8 +218,8 @@ export class OrdersService {
         throw new BadRequestException('Invalid closedAt date format');
       }
     }
-    // Validate items
-    for (const item of dto.items) {
+    // Optional line items; POS can add more later via order-item endpoints
+    for (const item of dto.items ?? []) {
       const product = await this.productsRepo.findOne({
         where: { id: item.productId, merchantId: merchant.id },
       });
@@ -255,7 +272,7 @@ export class OrdersService {
     order.displayId = displayId;
     order.shift = activeShift;
     order.shift_id = activeShift.id;
-    order.status = OrderBusinessStatus.PENDING;
+    order.status = dto.businessStatus ?? OrderBusinessStatus.PENDING;
     order.subtotal = subtotal;
 
     order.order_number = await this.nextOrderNumber(dto.merchantId);
@@ -361,7 +378,7 @@ export class OrdersService {
     // Recalculate subtotal, taxes, and total to ensure data integrity
     let subtotal = 0;
     for (const item of order.orderItems) {
-      subtotal = roundMoney(subtotal + item.total_price);
+      subtotal = roundMoney(subtotal + Number(item.total_price));
     }
 
     const merchantTaxes = dto.merchantTaxRuleIds?.length
@@ -390,11 +407,11 @@ export class OrdersService {
 
         switch (tax.taxType) {
           case TaxType.PERCENTAGE:
-            itemTax = roundMoney(item.total_price * tax.rate);
+            itemTax = roundMoney(Number(item.total_price) * Number(tax.rate));
             break;
 
           case TaxType.FIXED:
-            itemTax = roundMoney(tax.rate);
+            itemTax = roundMoney(Number(tax.rate));
             break;
 
           default:
@@ -408,7 +425,7 @@ export class OrdersService {
 
       const orderTax = new OrderTax();
       orderTax.name = tax.name;
-      orderTax.rate = tax.rate;
+      orderTax.rate = Number(tax.rate);
       orderTax.amount = taxAmount;
 
       orderTaxes.push(orderTax);
@@ -416,11 +433,11 @@ export class OrdersService {
 
     // Compute final total including subtotal, taxes, discounts, and delivery fee
     const total = computeOrderTotal(
-      subtotal,
-      order.discount_total,
-      taxTotal,
+      Number(subtotal),
+      Number(order.discount_total),
+      Number(taxTotal),
       0,
-      order.delivery_fee,
+      Number(order.delivery_fee),
     );
 
     order.subtotal = subtotal;
@@ -1211,6 +1228,13 @@ export class OrdersService {
     await this.orderRepo.save(order);
     await this.syncOrderAggregates(id);
 
+    if (
+      dto.businessStatus === OrderBusinessStatus.CANCELLED &&
+      existing.status !== OrderBusinessStatus.CANCELLED
+    ) {
+      this.emitOrderLoyaltyReversal(id);
+    }
+
     const updated = await this.orderRepo.findOne({ where: { id } });
     if (!updated) {
       throw new NotFoundException('Order not found after update');
@@ -1258,6 +1282,16 @@ export class OrdersService {
     };
   }
 
+  /** Emits after DB commit when the order first becomes fully paid. */
+  emitOrderFullyPaid(orderId: number, shiftId?: number | null): void {
+    this.eventEmitter.emit(ORDER_FULLY_PAID_EVENT, { orderId, shiftId });
+  }
+
+  /** Emits after DB commit when loyalty points must be reversed (cancel/refund). */
+  emitOrderLoyaltyReversal(orderId: number): void {
+    this.eventEmitter.emit(ORDER_LOYALTY_REVERSAL_EVENT, { orderId });
+  }
+
   /**
    * Recomputes subtotal from line items, tax_total from order_taxes, tip_total
    * (manual_tip_total + sum of payment tip_amount), order total, paid_total from
@@ -1265,18 +1299,51 @@ export class OrdersService {
    * Call after order-item, order-item-modifier, order-tax or order-payment create / update / delete, or after changing order-level discount/tip/delivery.
    */
   async syncOrderAggregates(orderId: number): Promise<void> {
-    const order = await this.orderRepo.findOne({ where: { id: orderId } });
-    if (!order) return;
+    const { becameFullyPaid, becameUnpaid } =
+      await this.syncOrderAggregatesWithManager(
+        this.orderRepo.manager,
+        orderId,
+      );
+    if (becameFullyPaid) {
+      this.emitOrderFullyPaid(orderId);
+    }
+    if (becameUnpaid) {
+      this.emitOrderLoyaltyReversal(orderId);
+    }
+    await this.syncOnlineOrderFromPosOrder(orderId);
+  }
 
-    const items = await this.orderItemRepo.find({
+  /** Post-commit sync to propagate POS order changes to online orders. */
+  async syncOnlineOrderFromPosOrder(orderId: number): Promise<void> {
+    await this.onlineOrderSyncService.syncFromPosOrder(orderId);
+  }
+
+  /**
+   * Transaction-friendly version of {@link syncOrderAggregates}.
+   * It only touches POS tables and MUST be called with the transaction manager when atomicity is required.
+   */
+  async syncOrderAggregatesWithManager(
+    manager: EntityManager,
+    orderId: number,
+  ): Promise<{ becameFullyPaid: boolean; becameUnpaid: boolean }> {
+    const order = await manager.getRepository(Order).findOne({
+      where: { id: orderId },
+    });
+    if (!order) {
+      return { becameFullyPaid: false, becameUnpaid: false };
+    }
+
+    const wasPaid = order.is_paid;
+
+    const items = await manager.getRepository(OrderItem).find({
       where: { order_id: orderId },
     });
 
-    const payments = await this.orderPaymentRepo.find({
+    const payments = await manager.getRepository(OrderPayment).find({
       where: { order_id: orderId },
     });
 
-    const taxes = await this.orderTaxRepo.find({
+    const taxes = await manager.getRepository(OrderTax).find({
       where: { order_id: orderId },
     });
 
@@ -1310,8 +1377,10 @@ export class OrdersService {
     }
 
     applyPaidDerivedFields(order);
-    await this.orderRepo.save(order);
-    await this.onlineOrderSyncService.syncFromPosOrder(orderId);
+    const becameFullyPaid = !wasPaid && order.is_paid;
+    const becameUnpaid = wasPaid && !order.is_paid;
+    await manager.getRepository(Order).save(order);
+    return { becameFullyPaid, becameUnpaid };
   }
 
   /**
@@ -1548,6 +1617,8 @@ export class OrdersService {
       createdAt: row.created_at,
       closedAt: row.closed_at,
       updatedAt: row.updated_at,
+      inventoryConsumedAt: row.inventory_consumed_at,
+      loyaltyPointsAwardedAt: row.loyalty_points_awarded_at,
     };
 
     if (row.orderItems?.length) {
@@ -1596,11 +1667,11 @@ export class OrdersService {
       variantId: orderItem.variant_id,
       variant: orderItem.variant
         ? {
-          id: orderItem.variant.id,
-          name: orderItem.variant.name,
-          price: Number(orderItem.variant.price),
-          sku: orderItem.variant.sku,
-        }
+            id: orderItem.variant.id,
+            name: orderItem.variant.name,
+            price: Number(orderItem.variant.price),
+            sku: orderItem.variant.sku,
+          }
         : null,
       quantity: orderItem.quantity,
       price: Number(orderItem.price),
@@ -1640,16 +1711,224 @@ export class OrdersService {
       },
       onlineOrder: kitchenOrder.onlineOrder
         ? {
-          id: kitchenOrder.onlineOrder.id,
-          status: kitchenOrder.onlineOrder.status,
-        }
+            id: kitchenOrder.onlineOrder.id,
+            status: kitchenOrder.onlineOrder.status,
+          }
         : null,
       station: kitchenOrder.station
         ? {
-          id: kitchenOrder.station.id,
-          name: kitchenOrder.station.name,
-        }
+            id: kitchenOrder.station.id,
+            name: kitchenOrder.station.name,
+          }
         : null,
     };
+  }
+
+  async refundOrder(dto: RefundOrderDto, merchantId: number, user: User) {
+    const order = await this.orderRepo.findOne({
+      where: { id: dto.orderId },
+      relations: ['merchant', 'orderItems'],
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (Number(order.merchant.id) !== Number(merchantId)) {
+      throw new ForbiddenException('Access denied');
+    }
+
+    if (order.status !== OrderBusinessStatus.PAID) {
+      throw new BadRequestException('Only paid orders can be refunded');
+    }
+
+    if (user.role !== UserRole.MERCHANT_ADMIN) {
+      throw new ForbiddenException('Only admin can process refunds');
+    }
+
+    const shift = await this.shiftService.findActiveShiftByMerchant(merchantId);
+
+    if (!shift) {
+      throw new BadRequestException('No active shift found');
+    }
+
+    if (shift.status === ShiftStatus.CLOSED) {
+      throw new BadRequestException('Cannot refund on closed shift');
+    }
+
+    let refundAmount = 0;
+    let isFullRefundByItems = false;
+
+    if (dto.fullRefund) {
+      refundAmount = Number(order.total);
+    } else {
+      if (!dto.itemIds || dto.itemIds.length === 0) {
+        throw new BadRequestException('Item IDs are required');
+      }
+
+      const itemIds = dto.itemIds ?? [];
+
+      const itemsToRefund = order.orderItems.filter((item) =>
+        itemIds.includes(item.id),
+      );
+
+      if (itemsToRefund.length === 0) {
+        throw new BadRequestException('No valid items to refund');
+      }
+
+      isFullRefundByItems = itemsToRefund.length === order.orderItems.length;
+
+      const subtotalToRefund = itemsToRefund.reduce(
+        (sum, item) => sum + Number(item.total_price),
+        0,
+      );
+
+      const proportion = subtotalToRefund / Number(order.subtotal);
+
+      refundAmount = roundMoney(proportion * Number(order.total));
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      // 1. Payments refund
+      const payments = await queryRunner.manager.find(OrderPayment, {
+        where: { order_id: order.id, is_refund: false },
+      });
+
+      for (const payment of payments) {
+        const proportion = Number(payment.amount) / Number(order.total);
+        const refundPart = roundMoney(refundAmount * proportion);
+
+        await queryRunner.manager.save(OrderPayment, {
+          order_id: order.id,
+          amount: -refundPart,
+          method: payment.method,
+          tip_amount: 0,
+          is_refund: true,
+          shift_id: shift.id,
+          source: 'REFUND',
+        });
+      }
+
+      // 2. Shift update
+      shift.current_balance = roundMoney(
+        Number(shift.current_balance) - refundAmount,
+      );
+
+      await queryRunner.manager.save(shift);
+
+      // 3. Tip settlements validation + cancel
+      const settlements = await queryRunner.manager.find(TipSettlement, {
+        where: { order_id: order.id },
+      });
+
+      const hasLiquidated = settlements.some(
+        (s) => s.status === SettlementStatus.LIQUIDATED,
+      );
+
+      if (hasLiquidated) {
+        throw new BadRequestException(
+          'Cannot refund tips that are already liquidated. Manual adjustment required.',
+        );
+      }
+
+      for (const settlement of settlements) {
+        settlement.status = SettlementStatus.CANCELLED;
+        await queryRunner.manager.save(settlement);
+      }
+
+      // 4. Loyalty reversal (IDEMPOTENT FIX)
+      const loyaltyTransactions = await queryRunner.manager.find(
+        LoyaltyPointTransaction,
+        {
+          where: {
+            orderId: order.id,
+            source: LoyaltyPointsSource.ORDER,
+            points: MoreThan(0),
+          },
+        },
+      );
+
+      for (const transaction of loyaltyTransactions) {
+        const loyaltyCustomer = await queryRunner.manager.findOne(
+          LoyaltyCustomer,
+          {
+            where: { id: transaction.loyaltyCustomerId },
+          },
+        );
+
+        if (!loyaltyCustomer) continue;
+
+        // 🔒 Idempotencia REAL: si ya existe reversa, saltar
+        const existsReversal = await queryRunner.manager.findOne(
+          LoyaltyPointTransaction,
+          {
+            where: {
+              orderId: order.id,
+              loyaltyCustomerId: transaction.loyaltyCustomerId,
+              source: LoyaltyPointsSource.REFUND_REVERSAL,
+            },
+          },
+        );
+
+        if (existsReversal) {
+          continue;
+        }
+
+        // actualizar balance
+        loyaltyCustomer.currentPoints = Math.max(
+          0,
+          loyaltyCustomer.currentPoints - transaction.points,
+        );
+
+        await queryRunner.manager.save(loyaltyCustomer);
+
+        // crear reversal (si falla por constraint → ya fue procesado)
+        await queryRunner.manager.save(LoyaltyPointTransaction, {
+          loyaltyCustomerId: loyaltyCustomer.id,
+          orderId: order.id,
+          source: LoyaltyPointsSource.REFUND_REVERSAL,
+          points: -transaction.points,
+          description: `Refund reversal for order ${order.order_number}`,
+        });
+      }
+
+      // 5. Order update (último estado)
+      order.refund_reason = dto.reason;
+      order.refunded_by_user_id = user.id;
+
+      order.status =
+        dto.fullRefund || isFullRefundByItems
+          ? OrderBusinessStatus.CANCELLED
+          : OrderBusinessStatus.PARTIALLY_REFUNDED;
+
+      await queryRunner.manager.save(order);
+
+      await queryRunner.commitTransaction();
+
+      const hasCardPayment = payments.some((p) => p.method !== 'cash');
+
+      return {
+        success: true,
+        message: hasCardPayment
+          ? 'Refund processed. Card refund must be handled manually.'
+          : 'Refund processed successfully',
+        data: {
+          orderId: order.id,
+          refundedAmount: refundAmount,
+          status: order.status,
+          refundedBy: user.id,
+        },
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }

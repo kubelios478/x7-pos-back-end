@@ -16,12 +16,27 @@ export class SubscriptionApplicationResponseDto {
       merchant: { id: 5, name: 'Merchant A' },
       subscriptionPlan: { id: 3, name: 'Plan Gold' },
     },
+    required: false,
   })
-  merchantSubscription: {
+  merchantSubscription?: {
     id: number;
-    merchant: any;
-    plan: any;
-  };
+    merchant: unknown;
+    plan: unknown;
+  } | null;
+
+  @ApiProperty({
+    example: {
+      id: 1,
+      company: { id: 2, name: 'Company A' },
+      subscriptionPlan: { id: 3, name: 'Plan Gold' },
+    },
+    required: false,
+  })
+  companySubscription?: {
+    id: number;
+    company: unknown;
+    plan: unknown;
+  } | null;
 
   @ApiProperty({
     example: { id: 10, name: 'Application X' },

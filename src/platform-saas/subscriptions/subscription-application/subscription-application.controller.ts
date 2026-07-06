@@ -68,7 +68,7 @@ export class SubscriptionApplicationController {
       example: {
         statusCode: 400,
         message:
-          'Invalid input data: merchantSubscriptionId must be a positive integer',
+          'Invalid input data: either companySubscriptionId or merchantSubscriptionId must be provided',
         error: 'Bad Request',
       },
     },
@@ -124,7 +124,7 @@ export class SubscriptionApplicationController {
       'Retrieve a list of all Subscription Applications, including related application and plan data.',
   })
   @ApiOkResponse({
-    description: 'Paginated list of merchant subscriptions',
+    description: 'Paginated list of subscription applications',
     type: PaginatedSubscriptionApplicationResponseDto,
   })
   @ApiUnauthorizedResponse({

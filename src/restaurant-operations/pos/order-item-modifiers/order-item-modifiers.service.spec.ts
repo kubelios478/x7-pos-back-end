@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { type DeleteResult } from 'typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { OrderItemModifiersService } from './order-item-modifiers.service';
@@ -36,7 +37,31 @@ describe('OrderItemModifiersService', () => {
   };
 
   const mockOrdersService = {
+    syncOrderAggregatesWithManager: jest
+      .fn()
+      .mockResolvedValue({ becameFullyPaid: false }),
+    syncOnlineOrderFromPosOrder: jest.fn().mockResolvedValue(undefined),
+    // legacy expectations in this spec
     syncOrderAggregates: jest.fn().mockResolvedValue(undefined),
+    emitOrderFullyPaid: jest.fn(),
+  };
+
+  const mockQueryRunner = {
+    connect: jest.fn().mockResolvedValue(undefined),
+    startTransaction: jest.fn().mockResolvedValue(undefined),
+    commitTransaction: jest.fn().mockResolvedValue(undefined),
+    rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+    release: jest.fn().mockResolvedValue(undefined),
+    manager: {
+      save: jest.fn(),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+  };
+
+  const mockDataSource = {
+    createQueryRunner: jest.fn(() => mockQueryRunner),
   };
 
   const mockOrder = { id: 1, merchant_id: 1 };
@@ -60,6 +85,7 @@ describe('OrderItemModifiersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrderItemModifiersService,
+        { provide: DataSource, useValue: mockDataSource },
         { provide: getRepositoryToken(OrderItemModifier), useValue: mockRepo },
         {
           provide: getRepositoryToken(OrderItem),
@@ -81,6 +107,15 @@ describe('OrderItemModifiersService', () => {
     jest.clearAllMocks();
   });
 
+  beforeEach(() => {
+    mockQueryRunner.manager.delete.mockImplementation(
+      async (_E: unknown, id: unknown) => {
+        await mockRepo.delete(id as any);
+        return { affected: 1 } as unknown as DeleteResult;
+      },
+    );
+  });
+
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
@@ -99,17 +134,20 @@ describe('OrderItemModifiersService', () => {
       jest
         .spyOn(mockModifierRepository, 'findOne')
         .mockResolvedValue(mockModifier as unknown as Modifier);
-      jest
-        .spyOn(mockRepo, 'save')
-        .mockResolvedValue({ id: 1 } as unknown as OrderItemModifier);
-      jest
-        .spyOn(mockRepo, 'findOne')
-        .mockResolvedValue(mockRow as unknown as OrderItemModifier);
+      mockQueryRunner.manager.save.mockResolvedValue({ id: 1 });
+      mockQueryRunner.manager.findOne.mockResolvedValue(
+        mockRow as unknown as OrderItemModifier,
+      );
 
       const result = await service.create(dto, 1);
 
       expect(result.statusCode).toBe(201);
-      expect(mockOrdersService.syncOrderAggregates).toHaveBeenCalledWith(1);
+      expect(
+        mockOrdersService.syncOrderAggregatesWithManager,
+      ).toHaveBeenCalled();
+      expect(
+        mockOrdersService.syncOnlineOrderFromPosOrder,
+      ).toHaveBeenCalledWith(1);
     });
 
     it('should throw without merchant', async () => {
@@ -135,7 +173,9 @@ describe('OrderItemModifiersService', () => {
 
       expect(result.statusCode).toBe(200);
       expect(mockRepo.delete).toHaveBeenCalledWith(1);
-      expect(mockOrdersService.syncOrderAggregates).toHaveBeenCalledWith(1);
+      expect(
+        mockOrdersService.syncOnlineOrderFromPosOrder,
+      ).toHaveBeenCalledWith(1);
     });
   });
 });

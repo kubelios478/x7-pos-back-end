@@ -10,7 +10,8 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { Collaborator } from '../collaborators/entities/collaborator.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       CollaboratorContract,
       Company,

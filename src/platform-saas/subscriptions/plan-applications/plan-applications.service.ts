@@ -83,6 +83,7 @@ export class PlanApplicationsService {
       limit = 10,
       sortBy = 'id',
       sortOrder = 'DESC',
+      subscriptionPlanId,
     } = query;
 
     if (page < 1 || limit < 1) {
@@ -100,6 +101,7 @@ export class PlanApplicationsService {
         'subscriptionPlan.status',
         'application.id',
         'application.name',
+        'application.category',
         'application.status',
       ]);
 
@@ -114,6 +116,12 @@ export class PlanApplicationsService {
     qb.andWhere('planApplication.status != :deleted', {
       deleted: 'deleted',
     });
+
+    if (subscriptionPlanId) {
+      qb.andWhere('subscriptionPlan.id = :subscriptionPlanId', {
+        subscriptionPlanId,
+      });
+    }
 
     qb.orderBy(`planApplication.${sortBy}`, sortOrder);
 
@@ -134,6 +142,7 @@ export class PlanApplicationsService {
       application: {
         id: item.application.id,
         name: item.application.name,
+        category: item.application.category,
       },
     }));
 

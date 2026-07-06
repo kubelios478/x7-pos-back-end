@@ -9,7 +9,10 @@ import { Table } from 'src/restaurant-operations/dining-system/tables/entities/t
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { AllPaginatedReservationTables } from './dto/all-paginated-reservation-tables.dto';
 
-import { OneReservationTableResponse, ReservationTableResponseDto } from './dto/reservation-table-response.dto';
+import {
+  OneReservationTableResponse,
+  ReservationTableResponseDto,
+} from './dto/reservation-table-response.dto';
 import { GetReservationTablesQueryDto } from './dto/get-reservation-tables-query.dto';
 
 @Injectable()
@@ -21,12 +24,21 @@ export class ReservationTableService {
     private readonly reservationRepository: Repository<Reservation>,
     @InjectRepository(Table)
     private readonly tableRepository: Repository<Table>,
-  ) { }
+  ) {}
 
-  async create(createDto: CreateReservationTableDto, merchantId: number): Promise<OneReservationTableResponse> {
-    await this.validateReservationOwnership(createDto.reservation_id, merchantId);
+  async create(
+    createDto: CreateReservationTableDto,
+    merchantId: number,
+  ): Promise<OneReservationTableResponse> {
+    await this.validateReservationOwnership(
+      createDto.reservation_id,
+      merchantId,
+    );
 
-    const table = await this.tableRepository.findOneBy({ id: createDto.table_id, merchant_id: merchantId });
+    const table = await this.tableRepository.findOneBy({
+      id: createDto.table_id,
+      merchant_id: merchantId,
+    });
     if (!table) {
       ErrorHandler.notFound('Table not found');
     }
@@ -58,17 +70,29 @@ export class ReservationTableService {
     }
   }
 
-  async findAll(reservationId: number, merchantId: number, page = 1, limit = 10): Promise<AllPaginatedReservationTables> {
-    return this.findAllGlobal(merchantId, { reservation_id: reservationId, page, limit });
+  async findAll(
+    reservationId: number,
+    merchantId: number,
+    page = 1,
+    limit = 10,
+  ): Promise<AllPaginatedReservationTables> {
+    return this.findAllGlobal(merchantId, {
+      reservation_id: reservationId,
+      page,
+      limit,
+    });
   }
 
-  async findAllGlobal(merchantId: number, queryDto: GetReservationTablesQueryDto): Promise<AllPaginatedReservationTables> {
+  async findAllGlobal(
+    merchantId: number,
+    queryDto: GetReservationTablesQueryDto,
+  ): Promise<AllPaginatedReservationTables> {
     const { page = 1, limit = 10, reservation_id, table_id } = queryDto;
     const skip = (page - 1) * limit;
 
     const where: any = {
       is_active: true,
-      reservation: { merchant_id: merchantId }
+      reservation: { merchant_id: merchantId },
     };
 
     if (reservation_id) where.reservation_id = reservation_id;
@@ -87,7 +111,7 @@ export class ReservationTableService {
     return {
       statusCode: 200,
       message: 'All merchant reservation tables retrieved successfully',
-      data: data.map(item => this.mapToResponseDto(item)),
+      data: data.map((item) => this.mapToResponseDto(item)),
       page,
       limit,
       total,
@@ -97,7 +121,10 @@ export class ReservationTableService {
     };
   }
 
-  async findOne(id: number, merchantId: number): Promise<OneReservationTableResponse> {
+  async findOne(
+    id: number,
+    merchantId: number,
+  ): Promise<OneReservationTableResponse> {
     const resTable = await this.reservationTableRepository.findOne({
       where: { id, is_active: true },
       relations: ['reservation', 'table'],
@@ -114,7 +141,11 @@ export class ReservationTableService {
     };
   }
 
-  async update(id: number, updateDto: UpdateReservationTableDto, merchantId: number): Promise<OneReservationTableResponse> {
+  async update(
+    id: number,
+    updateDto: UpdateReservationTableDto,
+    merchantId: number,
+  ): Promise<OneReservationTableResponse> {
     await this.findOne(id, merchantId);
     const resTable = await this.reservationTableRepository.findOneBy({ id });
 
@@ -135,7 +166,11 @@ export class ReservationTableService {
     }
   }
 
-  async remove(reservationId: number, tableId: number, merchantId: number): Promise<OneReservationTableResponse> {
+  async remove(
+    reservationId: number,
+    tableId: number,
+    merchantId: number,
+  ): Promise<OneReservationTableResponse> {
     await this.validateReservationOwnership(reservationId, merchantId);
 
     const resTable = await this.reservationTableRepository.findOneBy({
@@ -157,7 +192,10 @@ export class ReservationTableService {
     };
   }
 
-  async removeById(id: number, merchantId: number): Promise<OneReservationTableResponse> {
+  async removeById(
+    id: number,
+    merchantId: number,
+  ): Promise<OneReservationTableResponse> {
     const resTable = await this.reservationTableRepository.findOne({
       where: { id, is_active: true },
       relations: ['reservation'],
@@ -176,7 +214,9 @@ export class ReservationTableService {
     };
   }
 
-  private mapToResponseDto(resTable: ReservationTable): ReservationTableResponseDto {
+  private mapToResponseDto(
+    resTable: ReservationTable,
+  ): ReservationTableResponseDto {
     return {
       reservation_id: resTable.reservation_id,
       table_id: resTable.table_id,
@@ -186,7 +226,10 @@ export class ReservationTableService {
     };
   }
 
-  private async validateReservationOwnership(reservationId: number, merchantId: number) {
+  private async validateReservationOwnership(
+    reservationId: number,
+    merchantId: number,
+  ) {
     const reservation = await this.reservationRepository.findOneBy({
       id: reservationId,
       merchant_id: merchantId,

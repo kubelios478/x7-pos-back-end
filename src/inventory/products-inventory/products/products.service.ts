@@ -20,6 +20,7 @@ import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { ItemsService } from '../stocks/items/items.service';
 import { PurchaseOrderItemService } from '../purchase-order-item/purchase-order-item.service';
+import { StockAvailabilityService } from '../../stock-alerts/stock-availability.service';
 
 @Injectable()
 export class ProductsService {
@@ -38,6 +39,7 @@ export class ProductsService {
     private readonly itemsService: ItemsService,
     @Inject(forwardRef(() => PurchaseOrderItemService))
     private readonly purchaseOrderItemService: PurchaseOrderItemService,
+    private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
   async create(
     merchant_id: number,
@@ -173,41 +175,52 @@ export class ProductsService {
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
 
+    const availabilityMap =
+      await this.stockAvailabilityService.getProductAvailabilityMap(
+        merchantId,
+        products.map((p) => p.id),
+      );
+
     // 9. Map to ProductResponseDto
-    const data: ProductResponseDto[] = await Promise.all(
-      products.map((product) => {
-        const result: ProductResponseDto = {
-          id: product.id,
-          name: product.name,
-          sku: product.sku,
-          basePrice: product.basePrice,
-          merchant: product.merchant
-            ? {
-                id: product.merchant.id,
-                name: product.merchant.name,
-              }
-            : null,
-          category: product.category
-            ? {
-                id: product.category.id,
-                name: product.category.name,
-                parent: product.category.parent
-                  ? ({
-                      id: product.category.parent.id,
-                      name: product.category.parent.name,
-                    } as CategoryLittleResponseDto)
-                  : null,
-              }
-            : null,
-          supplier: product.supplier
-            ? {
-                id: product.supplier.id,
-                name: product.supplier.name,
-                tax_id: product.supplier.tax_id,
-                email: product.supplier.email,
-                company_id: product.supplier.company_id,
-              }
-            : null,
+    const data: ProductResponseDto[] = products.map((product) => {
+      const stockFlags = availabilityMap.get(product.id) ?? {
+        isOutOfStock: false,
+        isLowStock: false,
+      };
+      const result: ProductResponseDto = {
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        basePrice: product.basePrice,
+        isOutOfStock: stockFlags.isOutOfStock,
+        isLowStock: stockFlags.isLowStock,
+        merchant: product.merchant
+          ? {
+              id: product.merchant.id,
+              name: product.merchant.name,
+            }
+          : null,
+        category: product.category
+          ? {
+              id: product.category.id,
+              name: product.category.name,
+              parent: product.category.parent
+                ? ({
+                    id: product.category.parent.id,
+                    name: product.category.parent.name,
+                  } as CategoryLittleResponseDto)
+                : null,
+            }
+          : null,
+        supplier: product.supplier
+          ? {
+              id: product.supplier.id,
+              name: product.supplier.name,
+              tax_id: product.supplier.tax_id,
+              email: product.supplier.email,
+              company_id: product.supplier.company_id,
+            }
+          : null,
           isActive: product.isActive,
           variants: product.variants
             ? product.variants
@@ -230,10 +243,9 @@ export class ProductsService {
                   isActive: m.isActive,
                 }))
             : [],
-        };
-        return result;
-      }),
-    );
+      };
+      return result;
+    });
 
     return {
       statusCode: 200,
@@ -273,11 +285,23 @@ export class ProductsService {
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
 
+    const stockFlags =
+      merchantId != null
+        ? ((
+            await this.stockAvailabilityService.getProductAvailabilityMap(
+              merchantId,
+              [product.id],
+            )
+          ).get(product.id) ?? { isOutOfStock: false, isLowStock: false })
+        : { isOutOfStock: false, isLowStock: false };
+
     const result: ProductResponseDto = {
       id: product.id,
       name: product.name,
       sku: product.sku,
       basePrice: product.basePrice,
+      isOutOfStock: stockFlags.isOutOfStock,
+      isLowStock: stockFlags.isLowStock,
       merchant: product.merchant
         ? {
             id: product.merchant.id,

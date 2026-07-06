@@ -13,6 +13,7 @@ import { Variant } from './entities/variant.entity';
 import { ProductsService } from '../products/products.service';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
+import { StockAvailabilityService } from '../../stock-alerts/stock-availability.service';
 
 @Injectable()
 export class VariantsService {
@@ -21,6 +22,7 @@ export class VariantsService {
     private readonly variantRepository: Repository<Variant>,
     @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
+    private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
 
   async create(
@@ -132,16 +134,33 @@ export class VariantsService {
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
 
+    const availabilityMap =
+      await this.stockAvailabilityService.getVariantAvailabilityMap(
+        merchantId,
+        variants.map((v) => v.id),
+      );
+
     // 7. Map to VariantResponseDto
     const data: VariantResponseDto[] = await Promise.all(
       variants.map(async (variant) => {
+        const flags = availabilityMap.get(variant.id) ?? {
+          isOutOfStock: false,
+          isLowStock: false,
+        };
         const result: VariantResponseDto = {
           id: variant.id,
           name: variant.name,
           price: variant.price,
           sku: variant.sku,
+          isOutOfStock: flags.isOutOfStock,
+          isLowStock: flags.isLowStock,
           product: variant.product
-            ? (await this.productsService.findOne(variant.product.id)).data
+            ? (
+                await this.productsService.findOne(
+                  variant.product.id,
+                  merchantId,
+                )
+              ).data
             : null,
           isActive: variant.isActive,
         };
@@ -189,13 +208,24 @@ export class VariantsService {
       ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
 
+    const flags =
+      merchantId != null
+        ? ((await this.stockAvailabilityService.getVariantAvailability(
+            merchantId,
+            variant.id,
+          )) ?? { isOutOfStock: false, isLowStock: false })
+        : { isOutOfStock: false, isLowStock: false };
+
     const result: VariantResponseDto = {
       id: variant.id,
       name: variant.name,
       price: variant.price,
       sku: variant.sku,
+      isOutOfStock: flags.isOutOfStock,
+      isLowStock: flags.isLowStock,
       product: variant.product
-        ? (await this.productsService.findOne(variant.product.id)).data
+        ? (await this.productsService.findOne(variant.product.id, merchantId))
+            .data
         : null,
       isActive: variant.isActive,
     };

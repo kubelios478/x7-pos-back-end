@@ -1,11 +1,11 @@
 import {
-    Controller,
-    Get,
-    Post,
-    Param,
-    Body,
-    ParseIntPipe,
-    UseGuards,
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiCreatedResponse, ApiOkResponse, ApiBadRequestResponse, ApiConflictResponse, ApiNotFoundResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard';
@@ -31,7 +31,7 @@ import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 @Controller('cash-shifts')
 export class CashShiftsController {
-    constructor(private readonly cashShiftsService: CashShiftsService) { }
+  constructor(private readonly cashShiftsService: CashShiftsService) {}
 
     @ApiOperation({ summary: 'Open a new cash shift' })
     @ApiCreatedResponse({ description: 'Cash shift opened successfully' })

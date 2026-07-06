@@ -45,7 +45,7 @@ export class CashTransactionsService {
     @InjectRepository(Order)
     private readonly orderRepo: Repository<Order>,
     private readonly cashDrawerHistoryService: CashDrawerHistoryService,
-  ) { }
+  ) {}
 
   async create(
     dto: CreateCashTransactionDto,

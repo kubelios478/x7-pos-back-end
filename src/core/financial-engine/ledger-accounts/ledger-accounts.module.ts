@@ -9,7 +9,10 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([LedgerAccount, Company, Merchant])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([LedgerAccount, Company, Merchant]),
+  ],
   controllers: [LedgerAccountsController],
   providers: [LedgerAccountsService],
   exports: [LedgerAccountsService],

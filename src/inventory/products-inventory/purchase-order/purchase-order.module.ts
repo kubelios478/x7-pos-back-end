@@ -10,7 +10,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PurchaseOrderItem } from '../purchase-order-item/entities/purchase-order-item.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       PurchaseOrder,
       PurchaseOrderItem,

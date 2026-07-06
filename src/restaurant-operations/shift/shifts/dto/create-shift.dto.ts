@@ -51,4 +51,12 @@ export class CreateShiftDto {
   @IsEnum(ShiftStatus)
   @IsOptional()
   status?: ShiftStatus;
+
+  @ApiProperty({
+    example: 10990.5,
+    description: 'Initial balance for the shift (optional)',
+  })
+  @IsNumber()
+  @IsOptional()
+  current_balance?: number;
 }

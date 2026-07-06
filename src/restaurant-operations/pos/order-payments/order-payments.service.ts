@@ -5,8 +5,13 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In, DataSource } from 'typeorm';
-import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
+import {
+  DataSource,
+  Repository,
+  Between,
+  In,
+  type QueryDeepPartialEntity,
+} from 'typeorm';
 import { OrderPayment } from './entities/order-payment.entity';
 import { Order } from '../orders/entities/order.entity';
 import { CreateOrderPaymentDto } from './dto/create-order-payment.dto';
@@ -23,6 +28,10 @@ import { PaginatedOrderPaymentResponseDto } from './dto/paginated-order-payment-
 import { OrderStatus } from '../orders/constants/order-status.enum';
 import { OrdersService } from '../orders/orders.service';
 import { roundMoney } from '../orders/order-aggregation.util';
+import {
+  LoyaltyPointsRedemptionService,
+  PAYMENT_METHOD_LOYALTY,
+} from 'src/growth/loyalty/loyalty-points-redemption/loyalty-points-redemption.service';
 import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
 import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { CashShiftStatus } from '../../cashdrawer/cash-shifts/constants/cash-shift-status.enum';
@@ -33,18 +42,20 @@ const ORDER_PAYMENT_RELATIONS = ['order', 'order.merchant'] as const;
 @Injectable()
 export class OrderPaymentsService {
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(OrderPayment)
     private readonly orderPaymentRepository: Repository<OrderPayment>,
     @InjectRepository(Order)
     private readonly orderRepository: Repository<Order>,
     private readonly ordersService: OrdersService,
+    private readonly loyaltyPointsRedemptionService: LoyaltyPointsRedemptionService,
     private readonly cashFlowService: CashFlowService,
-    private readonly dataSource: DataSource,
-  ) { }
+  ) {}
 
   async create(
     dto: CreateOrderPaymentDto,
     authenticatedUserMerchantId: number,
+    cashierUserId?: number,
     activeShiftId?: number,
   ): Promise<OneOrderPaymentResponseDto> {
     if (!authenticatedUserMerchantId) {
@@ -53,24 +64,25 @@ export class OrderPaymentsService {
       );
     }
 
-    // CAT 1 requires the shift to be open prior to payment. The Interceptor already does this but we verify it is injected.
+    // CAT 1 requires the shift to be open prior to payment. The interceptor enforces it,
+    // but we still validate presence and lock the shift row for correctness under concurrency.
     if (!activeShiftId) {
-      throw new BadRequestException('Cash shift opening required. There is no active shift.');
+      throw new BadRequestException(
+        'Cash shift opening required. There is no active shift.',
+      );
     }
 
-    const order = await this.orderRepository.findOne({
+    const precheck = await this.orderRepository.findOne({
       where: { id: dto.orderId },
-      relations: ['merchant'],
+      select: ['id', 'merchant_id', 'logical_status'],
     });
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-    if (order.merchant_id !== authenticatedUserMerchantId) {
+    if (!precheck) throw new NotFoundException('Order not found');
+    if (precheck.merchant_id !== authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'You can only record payments for orders belonging to your merchant',
       );
     }
-    if (order.logical_status !== OrderStatus.ACTIVE) {
+    if (precheck.logical_status !== OrderStatus.ACTIVE) {
       throw new BadRequestException('Cannot add payments to a deleted order');
     }
 
@@ -87,69 +99,115 @@ export class OrderPaymentsService {
       );
     }
 
-    // GOLDEN FLOW: Atomic Transactions (QueryRunner)
+    const isLoyalty = dto.method === PAYMENT_METHOD_LOYALTY;
+    if (isLoyalty && !cashierUserId) {
+      throw new ForbiddenException('Missing cashier identity');
+    }
+
+    if (isLoyalty && !dto.loyaltyPointsLockId) {
+      throw new BadRequestException(
+        'loyaltyPointsLockId is required when method is loyalty',
+      );
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    let savedPaymentId: number;
+    let saved: OrderPayment;
+    let becameFullyPaid = false;
+    let becameUnpaid = false;
 
     try {
-      // Step A: Validate that the shift is still open (Row Lock)
+      // Step A: Validate that the shift is still open (row lock)
       const shift = await queryRunner.manager.findOne(CashShift, {
-        where: { id: activeShiftId, merchantId: authenticatedUserMerchantId, status: CashShiftStatus.OPEN },
+        where: {
+          id: activeShiftId,
+          merchantId: authenticatedUserMerchantId,
+          status: CashShiftStatus.OPEN,
+        },
         lock: { mode: 'pessimistic_write' },
       });
 
       if (!shift) {
-        throw new BadRequestException('The active cash shift has been closed. Operation cancelled.');
+        throw new BadRequestException(
+          'The active cash shift has been closed. Operation cancelled.',
+        );
       }
 
       // Step B: Register the payment
       const row = new OrderPayment();
       row.order_id = dto.orderId;
       row.amount = roundMoney(dto.amount);
-      row.method = dto.method;
+      row.method = isLoyalty ? PAYMENT_METHOD_LOYALTY : dto.method;
       row.provider = dto.provider ?? null;
       row.reference = dto.reference ?? null;
       row.tip_amount = roundMoney(tip);
       row.is_refund = dto.isRefund ?? false;
+      if (dto.source !== undefined) {
+        row.source = dto.source;
+      }
+      row.shift_id = dto.shiftId ?? activeShiftId;
 
-      const savedPayment = await queryRunner.manager.save(OrderPayment, row);
-      savedPaymentId = savedPayment.id;
+      saved = await queryRunner.manager.save(OrderPayment, row);
 
-      // Step C: Register the financial transaction linked to the shiftId
-      if (dto.method.toLowerCase() === 'cash' || dto.method.toLowerCase() === 'efectivo') {
-        const movementType = dto.isRefund ? CashShiftMovementType.OUT : CashShiftMovementType.IN;
-        const totalAmount = Number(savedPayment.amount) + Number(savedPayment.tip_amount);
+      // Step C: Loyalty lock consumption (inside the same transaction)
+      if (isLoyalty) {
+        await this.loyaltyPointsRedemptionService.consumeLockWithManager({
+          manager: queryRunner.manager,
+          lockId: dto.loyaltyPointsLockId!,
+          authenticatedUserMerchantId,
+          cashierUserId: cashierUserId!,
+          orderId: dto.orderId,
+          paymentId: saved.id,
+        });
+      }
+
+      // Step D: Register the financial transaction linked to the shiftId (cash only)
+      if (dto.method.toLowerCase() === 'cash') {
+        const movementType = dto.isRefund
+          ? CashShiftMovementType.OUT
+          : CashShiftMovementType.IN;
+        const totalAmount = Number(saved.amount) + Number(saved.tip_amount);
 
         await this.cashFlowService.addMovement(
           shift.id,
           totalAmount,
           movementType,
           dto.orderId,
-          dto.collaboratorId, // Collaborator who processed the payment will be the owner of the movement
+          dto.collaboratorId,
           shift.cashDrawerId,
           queryRunner.manager,
         );
       }
 
-      // Step D: Update the inventory
-      // TODO: The inventory service should be invoked here to deduct stock.
-      // Example: await this.inventoryService.deductFromOrder(dto.orderId, queryRunner.manager);
+      // Step E: Sync order aggregates inside the same transaction
+      const syncResult =
+        await this.ordersService.syncOrderAggregatesWithManager(
+          queryRunner.manager,
+          dto.orderId,
+        );
+      becameFullyPaid = syncResult.becameFullyPaid;
+      becameUnpaid = syncResult.becameUnpaid;
 
-      // Commit all changes
       await queryRunner.commitTransaction();
-    } catch (error) {
-      // Rollback the entire transaction if anything fails (Atomic Guarantee)
+    } catch (e) {
       await queryRunner.rollbackTransaction();
-      throw error;
+      throw e;
     } finally {
       await queryRunner.release();
     }
 
+    // Events must run after commit (avoid side-effects inside the transaction)
+    if (becameFullyPaid) {
+      this.ordersService.emitOrderFullyPaid(dto.orderId, dto.shiftId);
+    }
+    if (becameUnpaid) {
+      this.ordersService.emitOrderLoyaltyReversal(dto.orderId);
+    }
+
     const complete = await this.orderPaymentRepository.findOne({
-      where: { id: savedPaymentId },
+      where: { id: saved.id },
       relations: [...ORDER_PAYMENT_RELATIONS],
     });
 
@@ -157,12 +215,13 @@ export class OrderPaymentsService {
       throw new NotFoundException('Order payment not found after creation');
     }
 
-    await this.ordersService.syncOrderAggregates(dto.orderId);
+    // External sync after commit (keeps transaction purely POS-scoped).
+    await this.ordersService.syncOnlineOrderFromPosOrder(dto.orderId);
 
     return {
       statusCode: 201,
       message: 'Order payment created successfully',
-      data: this.format(complete!),
+      data: this.format(complete),
     };
   }
 

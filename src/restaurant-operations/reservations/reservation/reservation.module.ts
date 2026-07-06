@@ -28,4 +28,4 @@ import { ReservationNote } from '../reservation-note/entities/reservation-note.e
   providers: [ReservationService],
   exports: [ReservationService],
 })
-export class ReservationModule { }
+export class ReservationModule {}

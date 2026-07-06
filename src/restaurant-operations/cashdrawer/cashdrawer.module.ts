@@ -9,4 +9,4 @@ import { CashMovementsModule } from './cash-movements/cash-movements.module';
   imports: [CashDrawersModule, CashDrawerHistoryModule, CashTransactionsModule, CashShiftsModule, CashMovementsModule],
   exports: [CashDrawersModule, CashDrawerHistoryModule, CashTransactionsModule, CashShiftsModule, CashMovementsModule],
 })
-export class CashdrawerModule { }
+export class CashdrawerModule {}

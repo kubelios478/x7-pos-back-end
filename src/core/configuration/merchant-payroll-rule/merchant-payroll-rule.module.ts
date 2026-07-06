@@ -12,7 +12,8 @@ import { MerchantPayrollRuleService } from './merchant-payroll-rule.service';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([
       Company,
       MerchantPayrollRule,

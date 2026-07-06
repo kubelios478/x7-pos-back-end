@@ -10,7 +10,10 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { Shift } from '../../shift/shifts/entities/shift.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([TipPool, Company, Merchant, Shift])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([TipPool, Company, Merchant, Shift]),
+  ],
   controllers: [TipPoolsController],
   providers: [TipPoolsService],
   exports: [TipPoolsService],

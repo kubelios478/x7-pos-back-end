@@ -117,7 +117,9 @@ export class CashTransaction {
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
-  @ManyToOne('CashShift', (cs: CashShift) => cs.cashTransactions, { nullable: true })
+  @ManyToOne('CashShift', (cs: CashShift) => cs.cashTransactions, {
+    nullable: true,
+  })
   @JoinColumn({ name: 'shift_id' })
   cashShift: CashShift | null;
 

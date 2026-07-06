@@ -8,7 +8,7 @@ import { OnlineMenu } from './entities/online-menu.entity';
 import { OnlineStore } from '../online-stores/entities/online-store.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([OnlineMenu, OnlineStore])],
+  imports: [AuthModule, TypeOrmModule.forFeature([OnlineMenu, OnlineStore])],
   controllers: [OnlineMenuController],
   providers: [OnlineMenuService],
   exports: [OnlineMenuService],

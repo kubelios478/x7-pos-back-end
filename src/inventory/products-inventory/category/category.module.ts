@@ -9,7 +9,8 @@ import { ProductsInventoryModule } from '../products-inventory.module';
 import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [AuthModule,
+  imports: [
+    AuthModule,
     TypeOrmModule.forFeature([Category, Merchant]),
     forwardRef(() => ProductsInventoryModule),
     forwardRef(() => ProductsModule),

@@ -9,6 +9,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { OnlineOrderItemService } from './online-order-item.service';
 import { OnlineOrderItem } from './entities/online-order-item.entity';
 import { OnlineOrder } from '../online-order/entities/online-order.entity';
@@ -16,10 +17,7 @@ import { Product } from '../../../inventory/products-inventory/products/entities
 import { Variant } from '../../../inventory/products-inventory/variants/entities/variant.entity';
 import { CreateOnlineOrderItemDto } from './dto/create-online-order-item.dto';
 import { UpdateOnlineOrderItemDto } from './dto/update-online-order-item.dto';
-import {
-  GetOnlineOrderItemQueryDto,
-  OnlineOrderItemSortBy,
-} from './dto/get-online-order-item-query.dto';
+import { GetOnlineOrderItemQueryDto } from './dto/get-online-order-item-query.dto';
 import { OnlineStoreStatus } from '../online-stores/constants/online-store-status.enum';
 import { OnlineOrderStatus } from '../online-order/constants/online-order-status.enum';
 import { OnlineOrderItemStatus } from './constants/online-order-item-status.enum';
@@ -51,6 +49,22 @@ describe('OnlineOrderItemService', () => {
 
   const mockVariantRepository = {
     findOne: jest.fn(),
+  };
+
+  const mockQueryRunner = {
+    connect: jest.fn().mockResolvedValue(undefined),
+    startTransaction: jest.fn().mockResolvedValue(undefined),
+    commitTransaction: jest.fn().mockResolvedValue(undefined),
+    rollbackTransaction: jest.fn().mockResolvedValue(undefined),
+    release: jest.fn().mockResolvedValue(undefined),
+    manager: {
+      save: jest.fn(),
+      findOne: jest.fn(),
+    },
+  };
+
+  const mockDataSource = {
+    createQueryRunner: jest.fn(() => mockQueryRunner),
   };
 
   const mockOnlineStore = {
@@ -139,9 +153,41 @@ describe('OnlineOrderItemService', () => {
   };
 
   beforeEach(async () => {
+    let lastSaved: Record<string, unknown> | null = null;
+    mockQueryRunner.manager.save.mockImplementation(
+      (_E: unknown, entity: unknown) => {
+        lastSaved = (entity ?? {}) as Record<string, unknown>;
+        return {
+          id: 1,
+          ...lastSaved,
+        };
+      },
+    );
+    mockQueryRunner.manager.findOne.mockImplementation(
+      (_E: unknown, opts: unknown): OnlineOrderItem | null => {
+        const whereId = (opts as { where?: { id?: number } } | null | undefined)
+          ?.where?.id;
+        if (whereId == null) return null;
+
+        const hasVariantKey =
+          lastSaved != null &&
+          Object.prototype.hasOwnProperty.call(lastSaved, 'variant_id');
+        const variantId = hasVariantKey
+          ? (lastSaved?.variant_id as number | null)
+          : 3;
+
+        return {
+          ...(mockOnlineOrderItem as unknown as OnlineOrderItem),
+          id: whereId,
+          variant_id: variantId,
+        } as unknown as OnlineOrderItem;
+      },
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OnlineOrderItemService,
+        { provide: DataSource, useValue: mockDataSource },
         {
           provide: getRepositoryToken(OnlineOrderItem),
           useValue: mockOnlineOrderItemRepository,
@@ -231,11 +277,8 @@ describe('OnlineOrderItemService', () => {
         where: { id: 3 },
         relations: ['product', 'product.merchant'],
       });
-      expect(onlineOrderItemRepository.save).toHaveBeenCalled();
-      expect(onlineOrderItemRepository.findOne).toHaveBeenCalledWith({
-        where: { id: savedItem.id },
-        relations: ['onlineOrder', 'product', 'variant', 'orderItem'],
-      });
+      expect(mockDataSource.createQueryRunner).toHaveBeenCalled();
+      // now resolved via QueryRunner manager
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Online order item created successfully');
       expect(result.data.onlineOrderId).toBe(1);
@@ -595,7 +638,7 @@ describe('OnlineOrderItemService', () => {
       const result = await service.update(1, updateOnlineOrderItemDto, 1);
 
       expect(onlineOrderItemRepository.createQueryBuilder).toHaveBeenCalled();
-      expect(onlineOrderItemRepository.save).toHaveBeenCalled();
+      expect(mockDataSource.createQueryRunner).toHaveBeenCalled();
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Online order item updated successfully');
     });
@@ -657,7 +700,7 @@ describe('OnlineOrderItemService', () => {
       const result = await service.remove(1, 1);
 
       expect(onlineOrderItemRepository.createQueryBuilder).toHaveBeenCalled();
-      expect(onlineOrderItemRepository.save).toHaveBeenCalled();
+      expect(mockDataSource.createQueryRunner).toHaveBeenCalled();
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Online order item deleted successfully');
     });

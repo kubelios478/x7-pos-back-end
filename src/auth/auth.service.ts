@@ -1,12 +1,13 @@
 // src/auth/service/auth.service.ts
 import {
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { UsersService } from '../platform-saas/users/users.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
@@ -16,9 +17,15 @@ import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
 import { Merchant } from '../platform-saas/merchants/entities/merchant.entity';
 import { LoginDto } from './dto/login.dto';
+import { OnboardingRegisterDto } from './dto/onboarding-register.dto';
 import { JwtPayload } from 'src/auth/interfaces/JwtPayload.interface';
-import { SubscriptionAccessService } from './subscription-access.service';
+import {
+  MSG_COMPANY_SUBSCRIPTION_OUTDATED,
+  MSG_NO_COMPANY_PLAN,
+  SubscriptionAccessService,
+} from './subscription-access.service';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { getAllSubscriptionFeatureIds } from 'src/common/subscription/subscription-feature-ids';
 
 @Injectable()
@@ -26,6 +33,7 @@ export class AuthService {
   private readonly logger = new Logger('AuthService');
 
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(Company)
@@ -64,12 +72,31 @@ export class AuthService {
       planId = undefined;
       authorizedFeatureIds = getAllSubscriptionFeatureIds();
     } else {
-      const access =
-        await this.subscriptionAccessService.getSubscriptionAccessForMerchant(
-          user.merchant.id,
+      const companyId = user.merchant.companyId;
+      if (!companyId) {
+        throw new UnauthorizedException(
+          'User does not have an associated company',
         );
-      planId = access.planId;
-      authorizedFeatureIds = access.authorizedFeatureIds;
+      }
+      try {
+        const access =
+          await this.subscriptionAccessService.getSubscriptionAccessForCompany(
+            companyId,
+          );
+        planId = access.planId;
+        authorizedFeatureIds = access.authorizedFeatureIds;
+      } catch (err) {
+        const message = (err as { message?: string }).message ?? '';
+        if (
+          message === MSG_NO_COMPANY_PLAN ||
+          message === MSG_COMPANY_SUBSCRIPTION_OUTDATED
+        ) {
+          planId = undefined;
+          authorizedFeatureIds = [];
+        } else {
+          throw err;
+        }
+      }
     }
 
     console.log('User found:', user);
@@ -162,6 +189,127 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Refresh token expired or invalid');
     }
+  }
+
+  async registerOnboarding(dto: OnboardingRegisterDto) {
+    const emailTaken = await this.userRepository.exists({
+      where: { email: dto.adminEmail },
+    });
+    if (emailTaken) {
+      throw new ConflictException('Admin email is already registered');
+    }
+
+    const rutTaken = await this.companyRepository.exists({
+      where: { rut: dto.rut },
+    });
+    if (rutTaken) {
+      throw new ConflictException('A company with this tax ID already exists');
+    }
+
+    const resolvedUsername =
+      (dto.username?.trim() || dto.adminEmail.split('@')[0]) ?? '';
+
+    if (resolvedUsername.length > 0) {
+      const usernameTaken = await this.userRepository.exists({
+        where: { username: resolvedUsername },
+      });
+      if (usernameTaken) {
+        throw new ConflictException('Username is already taken');
+      }
+    }
+
+    const merchantName = `${dto.branchName} (${dto.rut})`;
+    const nameTaken = await this.merchantRepository.exists({
+      where: { name: merchantName },
+    });
+    if (nameTaken) {
+      throw new ConflictException(
+        'An outlet with this name and tax ID combination already exists',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    let savedUser: User;
+    try {
+      const company = queryRunner.manager.create(Company, {
+        name: dto.companyName,
+        email: dto.companyEmail,
+        phone: dto.companyPhone,
+        rut: dto.rut,
+        address: dto.address,
+        city: dto.city,
+        state: dto.state,
+        country: dto.country,
+      });
+      const savedCompany = await queryRunner.manager.save(Company, company);
+
+      const merchant = queryRunner.manager.create(Merchant, {
+        name: merchantName,
+        email: dto.companyEmail,
+        phone: dto.companyPhone,
+        rut: dto.rut,
+        address: dto.address,
+        city: dto.city,
+        state: dto.state,
+        country: dto.country,
+        companyId: savedCompany.id,
+      });
+      const savedMerchant = await queryRunner.manager.save(Merchant, merchant);
+
+      const user = queryRunner.manager.create(User, {
+        email: dto.adminEmail,
+        username: resolvedUsername,
+        password: hashedPassword,
+        role: UserRole.MERCHANT_ADMIN,
+        scope: Scope.MERCHANT_WEB,
+        merchantId: savedMerchant.id,
+      });
+      savedUser = await queryRunner.manager.save(User, user);
+
+      await queryRunner.commitTransaction();
+    } catch (e) {
+      await queryRunner.rollbackTransaction();
+      throw e;
+    } finally {
+      await queryRunner.release();
+    }
+
+    const payload = {
+      sub: savedUser.id,
+      email: savedUser.email,
+      role: savedUser.role,
+      scope: savedUser.scope,
+    };
+
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: '200m',
+    });
+
+    const refreshToken = this.jwtService.sign(payload, {
+      expiresIn: '7d',
+      secret: process.env.JWT_REFRESH_SECRET,
+    });
+
+    await this.usersService.updateRefreshToken(savedUser.id, refreshToken);
+
+    return {
+      access_token: accessToken,
+      refreshToken,
+      user: {
+        id: savedUser.id,
+        email: savedUser.email,
+        role: savedUser.role,
+        scope: savedUser.scope,
+        merchant: { id: savedUser.merchantId },
+        planId: undefined,
+        authorizedFeatureIds: [],
+      },
+    };
   }
 
   // async refreshToken(refreshToken: string) {

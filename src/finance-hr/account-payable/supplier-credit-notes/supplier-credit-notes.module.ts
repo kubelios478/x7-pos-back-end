@@ -9,7 +9,10 @@ import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier.entity';
 
 @Module({
-  imports: [AuthModule,TypeOrmModule.forFeature([SupplierCreditNote, Company, Supplier])],
+  imports: [
+    AuthModule,
+    TypeOrmModule.forFeature([SupplierCreditNote, Company, Supplier]),
+  ],
   controllers: [SupplierCreditNotesController],
   providers: [SupplierCreditNotesService],
   exports: [SupplierCreditNotesService],

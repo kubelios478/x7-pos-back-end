@@ -4,4 +4,5 @@ export enum OrderBusinessStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
   PAID = 'paid',
+  PARTIALLY_REFUNDED = 'partially_refunded',
 }

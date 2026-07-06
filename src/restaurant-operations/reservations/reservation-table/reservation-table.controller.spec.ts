@@ -30,7 +30,9 @@ describe('ReservationTableController', () => {
       ],
     }).compile();
 
-    controller = module.get<ReservationTableController>(ReservationTableController);
+    controller = module.get<ReservationTableController>(
+      ReservationTableController,
+    );
   });
 
   afterEach(() => {
@@ -50,12 +52,20 @@ describe('ReservationTableController', () => {
   it('should call findAllGlobal service', async () => {
     const query = { page: 1, limit: 10 };
     await controller.findAllGlobal(mockUser as any, query);
-    expect(mockService.findAllGlobal).toHaveBeenCalledWith(mockUser.merchant.id, query);
+    expect(mockService.findAllGlobal).toHaveBeenCalledWith(
+      mockUser.merchant.id,
+      query,
+    );
   });
 
   it('should call findAll (by reservation) service', async () => {
     await controller.findAll(mockUser as any, 1, 1, 10);
-    expect(mockService.findAll).toHaveBeenCalledWith(1, mockUser.merchant.id, 1, 10);
+    expect(mockService.findAll).toHaveBeenCalledWith(
+      1,
+      mockUser.merchant.id,
+      1,
+      10,
+    );
   });
 
   it('should call findOne service', async () => {
@@ -66,7 +76,11 @@ describe('ReservationTableController', () => {
   it('should call update service', async () => {
     const dto = { is_active: false };
     await controller.update(mockUser as any, 1, dto);
-    expect(mockService.update).toHaveBeenCalledWith(1, dto, mockUser.merchant.id);
+    expect(mockService.update).toHaveBeenCalledWith(
+      1,
+      dto,
+      mockUser.merchant.id,
+    );
   });
 
   it('should call remove service', async () => {
