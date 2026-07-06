@@ -304,6 +304,28 @@ describe('PlanFeaturesService', () => {
       });
     });
 
+    it('applies dto.status even when it differs from the current status', async () => {
+      const currentPlanFeature = { ...mockPlanFeature, status: 'active' };
+      const dtoWithDifferentStatus: UpdatePlanFeatureDto = {
+        ...mockUpdatePlanFeatureDto,
+        status: 'inactive',
+      };
+      const findOneSpy = jest.spyOn(repository, 'findOne');
+      const saveSpy = jest.spyOn(repository, 'save');
+
+      findOneSpy.mockResolvedValue(currentPlanFeature as PlanFeature);
+      saveSpy.mockResolvedValue({
+        ...currentPlanFeature,
+        status: 'inactive',
+      } as PlanFeature);
+
+      await service.update(1, dtoWithDifferentStatus);
+
+      expect(saveSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'inactive' }),
+      );
+    });
+
     it('should throw error for invalid ID during update', async () => {
       await expect(
         service.update(0, mockUpdatePlanFeatureDto),
@@ -385,6 +407,65 @@ describe('PlanFeaturesService', () => {
       expect(typeof repository.create).toBe('function');
       expect(typeof repository.save).toBe('function');
       expect(typeof repository.remove).toBe('function');
+    });
+  });
+
+  describe('Find All — subscriptionPlanId filter and unit mapping', () => {
+    let filterQueryBuilder: any;
+
+    beforeEach(() => {
+      filterQueryBuilder = {
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([
+          [
+            {
+              id: 1,
+              limit_value: 10,
+              status: 'active',
+              subscriptionPlan: { id: 3, name: 'Gold Plan' },
+              feature: { id: 5, name: 'Max Users', Unit: 'user', description: 'Maximum concurrent users allowed' },
+            },
+          ],
+          1,
+        ]),
+      };
+      repository.createQueryBuilder.mockReturnValue(filterQueryBuilder);
+    });
+
+    it('calls andWhere with subscriptionPlanId when provided', async () => {
+      await service.findAll({ subscriptionPlanId: 3, page: 1, limit: 10 });
+      expect(filterQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'subscriptionPlan.id = :subscriptionPlanId',
+        { subscriptionPlanId: 3 },
+      );
+    });
+
+    it('includes feature.unit in the mapped response', async () => {
+      const result = await service.findAll({
+        subscriptionPlanId: 3,
+        page: 1,
+        limit: 10,
+      });
+      expect(result.data[0]).toHaveProperty('feature');
+      expect((result.data[0] as any).feature).toHaveProperty('unit', 'user');
+    });
+
+    it('includes feature.description in the mapped response', async () => {
+      const result = await service.findAll({
+        subscriptionPlanId: 3,
+        page: 1,
+        limit: 10,
+      });
+      expect(result.data[0]).toHaveProperty('feature');
+      expect((result.data[0] as any).feature).toHaveProperty(
+        'description',
+        'Maximum concurrent users allowed',
+      );
     });
   });
 });

@@ -211,7 +211,7 @@ describe('FeaturesController', () => {
         statusCode: 200,
         message: 'Subscription Plan updated successfully',
         data: {
-          ...mockOneFeatureResponse,
+          ...mockFeature,
           ...mockUpdateFeatureDto,
           id: 0,
         },

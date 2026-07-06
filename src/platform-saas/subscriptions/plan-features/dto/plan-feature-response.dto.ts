@@ -10,8 +10,8 @@ export class PlanFeatureResponseDto {
   @ApiProperty({ example: { id: 1, name: 'SubscriptionPlan' } })
   subscriptionPlan: { id: number; name: string };
 
-  @ApiProperty({ example: { id: 1, name: 'Feature' } })
-  feature: { id: number; name: string };
+  @ApiProperty({ example: { id: 1, name: 'Feature', unit: 'user', description: 'Max concurrent users' } })
+  feature: { id: number; name: string; unit: string; description: string };
 
   @ApiProperty({ example: 10990 })
   limit_value: number;
