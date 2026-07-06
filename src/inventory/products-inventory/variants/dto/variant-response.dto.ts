@@ -33,6 +33,9 @@ export class VariantResponseDto {
     description: 'Associated product details',
   })
   product: ProductResponseDto | null;
+
+  @ApiProperty({ example: true, description: 'Variant active status' })
+  isActive: boolean;
 }
 
 export class VariantLittleResponseDto {

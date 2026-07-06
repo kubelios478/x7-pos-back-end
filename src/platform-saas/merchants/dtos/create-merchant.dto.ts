@@ -9,11 +9,13 @@ import {
   Matches,
   IsOptional,
   IsNotEmpty,
+  IsEnum,
 } from 'class-validator';
 import {
   IsBusinessEmail,
   IsValidRUT,
 } from '../../../common/decorators/validation.decorators';
+import { MerchantStatus } from '../constants/merchant-status.enum';
 
 export class CreateMerchantDto {
   @IsString({ message: 'Merchant name must be a string' })
@@ -129,6 +131,18 @@ export class CreateMerchantDto {
     maxLength: 50,
   })
   country: string;
+
+  @IsOptional()
+  @IsEnum(MerchantStatus, {
+    message: 'Status must be active, inactive, or suspended',
+  })
+  @ApiProperty({
+    example: MerchantStatus.ACTIVE,
+    description: 'Operational status of the merchant branch',
+    enum: MerchantStatus,
+    required: false,
+  })
+  status?: MerchantStatus;
 
   @IsNumber({}, { message: 'Company ID must be a valid number' })
   @ApiProperty({

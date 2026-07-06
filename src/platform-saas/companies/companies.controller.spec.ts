@@ -8,10 +8,21 @@ import {
   OneCompanyResponseDto,
   AllCompanyResponseDto,
 } from './dtos/company-response.dto';
+import { UserRole } from '../users/constants/role.enum';
+import { Scope } from '../users/constants/scope.enum';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 describe('CompaniesController', () => {
   let controller: CompaniesController;
   let companiesService: jest.Mocked<CompaniesService>;
+
+  const mockUser: AuthenticatedUser = {
+    id: 1,
+    email: 'admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 1 },
+  };
 
   // Mock data
   const mockCompany = {
@@ -63,6 +74,8 @@ describe('CompaniesController', () => {
     const mockCompaniesService = {
       create: jest.fn(),
       findAll: jest.fn(),
+      getProfileForUser: jest.fn(),
+      updateProfileForUser: jest.fn(),
       findOne: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),
@@ -175,9 +188,9 @@ describe('CompaniesController', () => {
       const findOneSpy = jest.spyOn(companiesService, 'findOne');
       findOneSpy.mockResolvedValue(mockOneCompanyResponse);
 
-      const result = await controller.findOne(companyId);
+      const result = await controller.findOne(companyId, mockUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(companyId);
+      expect(findOneSpy).toHaveBeenCalledWith(companyId, mockUser);
       expect(result).toEqual(mockOneCompanyResponse);
     });
 
@@ -187,8 +200,8 @@ describe('CompaniesController', () => {
       const findOneSpy = jest.spyOn(companiesService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(companyId)).rejects.toThrow(errorMessage);
-      expect(findOneSpy).toHaveBeenCalledWith(companyId);
+      await expect(controller.findOne(companyId, mockUser)).rejects.toThrow(errorMessage);
+      expect(findOneSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
 
     it('should handle invalid ID parameter', async () => {
@@ -197,8 +210,8 @@ describe('CompaniesController', () => {
       const findOneSpy = jest.spyOn(companiesService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(companyId)).rejects.toThrow(errorMessage);
-      expect(findOneSpy).toHaveBeenCalledWith(companyId);
+      await expect(controller.findOne(companyId, mockUser)).rejects.toThrow(errorMessage);
+      expect(findOneSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
   });
 
@@ -214,9 +227,9 @@ describe('CompaniesController', () => {
       const updateSpy = jest.spyOn(companiesService, 'update');
       updateSpy.mockResolvedValue(updatedCompanyResponse);
 
-      const result = await controller.update(companyId, mockUpdateCompanyDto);
+      const result = await controller.update(companyId, mockUpdateCompanyDto, mockUser);
 
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto);
+      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
       expect(result).toEqual(updatedCompanyResponse);
     });
 
@@ -228,9 +241,9 @@ describe('CompaniesController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(companyId, mockUpdateCompanyDto),
+        controller.update(companyId, mockUpdateCompanyDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto);
+      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
     });
 
     it('should handle validation errors during update', async () => {
@@ -241,9 +254,9 @@ describe('CompaniesController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(companyId, mockUpdateCompanyDto),
+        controller.update(companyId, mockUpdateCompanyDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto);
+      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
     });
 
     it('should handle invalid ID during update', async () => {
@@ -254,9 +267,9 @@ describe('CompaniesController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(companyId, mockUpdateCompanyDto),
+        controller.update(companyId, mockUpdateCompanyDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto);
+      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
     });
   });
 
@@ -272,9 +285,9 @@ describe('CompaniesController', () => {
       const removeSpy = jest.spyOn(companiesService, 'remove');
       removeSpy.mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(companyId);
+      const result = await controller.remove(companyId, mockUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(companyId);
+      expect(removeSpy).toHaveBeenCalledWith(companyId, mockUser);
       expect(result).toEqual(deleteResponse);
     });
 
@@ -285,8 +298,8 @@ describe('CompaniesController', () => {
       const removeSpy = jest.spyOn(companiesService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(companyId)).rejects.toThrow(errorMessage);
-      expect(removeSpy).toHaveBeenCalledWith(companyId);
+      await expect(controller.remove(companyId, mockUser)).rejects.toThrow(errorMessage);
+      expect(removeSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
 
     it('should handle invalid ID during deletion', async () => {
@@ -296,8 +309,8 @@ describe('CompaniesController', () => {
       const removeSpy = jest.spyOn(companiesService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(companyId)).rejects.toThrow(errorMessage);
-      expect(removeSpy).toHaveBeenCalledWith(companyId);
+      await expect(controller.remove(companyId, mockUser)).rejects.toThrow(errorMessage);
+      expect(removeSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
   });
 
@@ -316,9 +329,9 @@ describe('CompaniesController', () => {
 
       await controller.create(mockCreateCompanyDto);
       await controller.findAll();
-      await controller.findOne(1);
-      await controller.update(1, mockUpdateCompanyDto);
-      await controller.remove(1);
+      await controller.findOne(1, mockUser);
+      await controller.update(1, mockUpdateCompanyDto, mockUser);
+      await controller.remove(1, mockUser);
 
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(findAllSpy).toHaveBeenCalledTimes(1);
@@ -356,9 +369,9 @@ describe('CompaniesController', () => {
       // Call all controller methods
       const createResult = await controller.create(mockCreateCompanyDto);
       const findAllResult = await controller.findAll();
-      const findOneResult = await controller.findOne(1);
-      const updateResult = await controller.update(1, mockUpdateCompanyDto);
-      const removeResult = await controller.remove(1);
+      const findOneResult = await controller.findOne(1, mockUser);
+      const updateResult = await controller.update(1, mockUpdateCompanyDto, mockUser);
+      const removeResult = await controller.remove(1, mockUser);
 
       // Verify all calls were made and returned expected results
       expect(createResult.statusCode).toBe(201);

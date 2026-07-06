@@ -6,12 +6,25 @@ import { MerchantsService } from './merchants.service';
 import { Merchant } from './entities/merchant.entity';
 import { Company } from '../companies/entities/company.entity';
 import { CreateMerchantDto } from './dtos/create-merchant.dto';
+import { CreateCompanyMerchantDto } from './dtos/create-company-merchant.dto';
 import { UpdateMerchantDto } from './dtos/update-merchant.dto';
+import { Location } from 'src/inventory/products-inventory/stocks/locations/entities/location.entity';
+import { User } from '../users/entities/user.entity';
+import { Table } from 'src/restaurant-operations/dining-system/tables/entities/table.entity';
+import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
+import { UserRole } from '../users/constants/role.enum';
+import { Scope } from '../users/constants/scope.enum';
+import { MerchantStatus } from './constants/merchant-status.enum';
+import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
 describe('MerchantsService', () => {
   let service: MerchantsService;
   let merchantRepository: jest.Mocked<Repository<Merchant>>;
   let companyRepository: jest.Mocked<Repository<Company>>;
+  let userRepository: jest.Mocked<Repository<User>>;
+  let tableRepository: jest.Mocked<Repository<Table>>;
+  let collaboratorRepository: jest.Mocked<Repository<Collaborator>>;
+  let locationRepository: jest.Mocked<Repository<Location>>;
 
   // Mock data
   const mockCompany = {
@@ -41,6 +54,7 @@ describe('MerchantsService', () => {
     state: 'Test State',
     country: 'Test Country',
     companyId: 1,
+    status: MerchantStatus.ACTIVE,
     company: mockCompany as Company,
     users: [],
   };
@@ -62,6 +76,24 @@ describe('MerchantsService', () => {
     email: 'updated@merchant.com',
   };
 
+  const mockMerchantAdmin: AuthenticatedUser = {
+    id: 1,
+    email: 'admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 1 },
+  };
+
+  const mockCreateCompanyMerchantDto: CreateCompanyMerchantDto = {
+    name: 'Branch Two',
+    rut: '12-3456789',
+    email: 'branch@example.com',
+    address: '123 Main Street',
+    city: 'Miami',
+    state: 'Florida',
+    country: 'USA',
+  };
+
   beforeEach(async () => {
     const mockMerchantRepository = {
       create: jest.fn(),
@@ -69,10 +101,28 @@ describe('MerchantsService', () => {
       find: jest.fn(),
       findOne: jest.fn(),
       remove: jest.fn(),
+      exists: jest.fn(),
     };
 
     const mockCompanyRepository = {
       findOne: jest.fn(),
+    };
+
+    const mockLocationRepository = {
+      findOne: jest.fn(),
+      count: jest.fn(),
+    };
+
+    const mockUserRepository = {
+      count: jest.fn(),
+    };
+
+    const mockTableRepository = {
+      count: jest.fn(),
+    };
+
+    const mockCollaboratorRepository = {
+      count: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -86,12 +136,32 @@ describe('MerchantsService', () => {
           provide: getRepositoryToken(Company),
           useValue: mockCompanyRepository,
         },
+        {
+          provide: getRepositoryToken(Location),
+          useValue: mockLocationRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: mockUserRepository,
+        },
+        {
+          provide: getRepositoryToken(Table),
+          useValue: mockTableRepository,
+        },
+        {
+          provide: getRepositoryToken(Collaborator),
+          useValue: mockCollaboratorRepository,
+        },
       ],
     }).compile();
 
     service = module.get<MerchantsService>(MerchantsService);
     merchantRepository = module.get(getRepositoryToken(Merchant));
     companyRepository = module.get(getRepositoryToken(Company));
+    userRepository = module.get(getRepositoryToken(User));
+    tableRepository = module.get(getRepositoryToken(Table));
+    collaboratorRepository = module.get(getRepositoryToken(Collaborator));
+    locationRepository = module.get(getRepositoryToken(Location));
 
     jest.clearAllMocks();
   });
@@ -135,6 +205,7 @@ describe('MerchantsService', () => {
         state: mockCreateMerchantDto.state,
         country: mockCreateMerchantDto.country,
         companyId: mockCreateMerchantDto.companyId,
+        status: MerchantStatus.ACTIVE,
       });
       expect(saveSpy).toHaveBeenCalledWith(mockMerchant);
       expect(result).toEqual({
@@ -271,6 +342,102 @@ describe('MerchantsService', () => {
       expect(result.data).toEqual([]);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Merchants retrieved successfully');
+    });
+  });
+
+  describe('createForCompany', () => {
+    it('should create a merchant for the authenticated user company', async () => {
+      const findOneSpy = jest.spyOn(merchantRepository, 'findOne');
+      const existsSpy = jest.spyOn(merchantRepository, 'exists');
+      const companyFindSpy = jest.spyOn(companyRepository, 'findOne');
+      const createSpy = jest.spyOn(merchantRepository, 'create');
+      const saveSpy = jest.spyOn(merchantRepository, 'save');
+
+      findOneSpy.mockResolvedValue({ id: 1, companyId: 1 } as Merchant);
+      existsSpy.mockResolvedValue(false);
+      companyFindSpy.mockResolvedValue(mockCompany as Company);
+      createSpy.mockReturnValue(mockMerchant as Merchant);
+      saveSpy.mockResolvedValue(mockMerchant as Merchant);
+
+      const result = await service.createForCompany(
+        mockCreateCompanyMerchantDto,
+        mockMerchantAdmin,
+      );
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Branch Two',
+          companyId: 1,
+          status: MerchantStatus.ACTIVE,
+        }),
+      );
+      expect(result.statusCode).toBe(201);
+    });
+  });
+
+  describe('findByCompanyForUser', () => {
+    it('should return merchants scoped to the user company', async () => {
+      const findSpy = jest.spyOn(merchantRepository, 'findOne');
+      const findAllSpy = jest.spyOn(merchantRepository, 'find');
+
+      findSpy.mockResolvedValue({
+        id: 1,
+        companyId: 1,
+      } as Merchant);
+      findAllSpy.mockResolvedValue([mockMerchant as Merchant]);
+
+      const result = await service.findByCompanyForUser(mockMerchantAdmin);
+
+      expect(findAllSpy).toHaveBeenCalledWith({
+        where: { companyId: 1 },
+        order: { name: 'ASC' },
+        select: {
+          id: true,
+          name: true,
+          rut: true,
+          email: true,
+          phone: true,
+          address: true,
+          city: true,
+          state: true,
+          country: true,
+          status: true,
+          companyId: true,
+        },
+      });
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'Company merchants retrieved successfully',
+        data: [mockMerchant],
+        meta: { companyId: 1 },
+      });
+    });
+
+    it('should reject cross-company access for merchant_admin', async () => {
+      const findSpy = jest.spyOn(merchantRepository, 'findOne');
+      findSpy.mockResolvedValue({
+        id: 1,
+        companyId: 1,
+      } as Merchant);
+
+      await expect(
+        service.findByCompanyForUser(mockMerchantAdmin, 99),
+      ).rejects.toThrow();
+    });
+
+    it('should return empty array when company has no merchants', async () => {
+      const findSpy = jest.spyOn(merchantRepository, 'findOne');
+      const findAllSpy = jest.spyOn(merchantRepository, 'find');
+
+      findSpy.mockResolvedValue({
+        id: 1,
+        companyId: 1,
+      } as Merchant);
+      findAllSpy.mockResolvedValue([]);
+
+      const result = await service.findByCompanyForUser(mockMerchantAdmin);
+
+      expect(result.data).toEqual([]);
     });
   });
 
@@ -453,6 +620,46 @@ describe('MerchantsService', () => {
     it('should properly integrate with Company repository', () => {
       expect(companyRepository).toBeDefined();
       expect(typeof companyRepository.findOne).toBe('function');
+    });
+  });
+
+  describe('getAdminSummary', () => {
+    it('should return branch metrics using collaborators when available', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 1,
+        name: 'Test Merchant',
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'count').mockResolvedValue(3);
+      jest.spyOn(collaboratorRepository, 'count').mockResolvedValue(5);
+      jest.spyOn(tableRepository, 'count').mockResolvedValue(10);
+      jest.spyOn(locationRepository, 'count').mockResolvedValue(2);
+
+      const result = await service.getAdminSummary(1, mockMerchantAdmin);
+
+      expect(result.data).toEqual({
+        id: 1,
+        name: 'Test Merchant',
+        totalActiveTeamMembers: 5,
+        operationalFloorAssets: 10,
+        activeStockHubs: 2,
+      });
+    });
+
+    it('should fall back to users count when no collaborators exist', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 1,
+        name: 'Test Merchant',
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'count').mockResolvedValue(4);
+      jest.spyOn(collaboratorRepository, 'count').mockResolvedValue(0);
+      jest.spyOn(tableRepository, 'count').mockResolvedValue(0);
+      jest.spyOn(locationRepository, 'count').mockResolvedValue(1);
+
+      const result = await service.getAdminSummary(1, mockMerchantAdmin);
+
+      expect(result.data.totalActiveTeamMembers).toBe(4);
     });
   });
 });

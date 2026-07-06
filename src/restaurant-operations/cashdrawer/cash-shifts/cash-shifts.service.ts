@@ -366,10 +366,10 @@ export class CashShiftsService {
           )
           .select(
             `(
-                            COALESCE(cs.opening_balance, 0)
-                            + COALESCE(SUM(CASE WHEN ct.type IN ('sale', 'adjustment_up') THEN ct.amount ELSE 0 END), 0)
-                            - COALESCE(SUM(CASE WHEN ct.type IN ('refund', 'withdrawal', 'adjustment_down') THEN ct.amount ELSE 0 END), 0)
-                        )`,
+              COALESCE(cs.opening_balance, 0)
+              + COALESCE(SUM(CASE WHEN ct.type IN ('sale', 'adjustment_up') THEN ct.amount ELSE 0 END), 0)
+              - COALESCE(SUM(CASE WHEN ct.type IN ('refund', 'withdrawal', 'adjustment_down') THEN ct.amount ELSE 0 END), 0)
+            )`,
             'liveBalance',
           )
           .where('cs.id = :shiftId', { shiftId: lockedShift.id })

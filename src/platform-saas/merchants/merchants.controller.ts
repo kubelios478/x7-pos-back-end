@@ -9,6 +9,7 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -27,10 +28,12 @@ import {
 } from '@nestjs/swagger';
 import { MerchantsService } from './merchants.service';
 import { CreateMerchantDto } from './dtos/create-merchant.dto';
+import { CreateCompanyMerchantDto } from './dtos/create-company-merchant.dto';
 import { UpdateMerchantDto } from './dtos/update-merchant.dto';
 import {
   OneMerchantResponseDto,
   AllMerchantsResponseDto,
+  CompanyMerchantsListResponseDto,
 } from './dtos/merchant-response.dto';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -39,6 +42,9 @@ import { UserRole } from '../users/constants/role.enum';
 import { Scope } from '../users/constants/scope.enum';
 import { ErrorResponse } from '../../common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { MerchantAdminSummaryResponseDto } from './dtos/merchant-admin-summary.dto';
 
 @ApiTags('Merchants')
 @ApiExtraModels(ErrorResponse)
@@ -107,6 +113,77 @@ export class MerchantsController {
     return this.merchantsService.findAll();
   }
 
+  @Get('company/branches')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'List merchants for the authenticated user company' })
+  @ApiOkResponse({
+    description: 'Company merchants retrieved successfully',
+    type: CompanyMerchantsListResponseDto,
+  })
+  findByCompany(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('companyId') companyId?: string,
+  ): Promise<CompanyMerchantsListResponseDto> {
+    const parsedCompanyId =
+      companyId !== undefined && companyId !== ''
+        ? parseInt(companyId, 10)
+        : undefined;
+    return this.merchantsService.findByCompanyForUser(user, parsedCompanyId);
+  }
+
+  @Post('company/branches')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Create a merchant branch for the authenticated user company' })
+  @ApiCreatedResponse({
+    description: 'Merchant created successfully',
+    type: OneMerchantResponseDto,
+  })
+  @ApiBody({ type: CreateCompanyMerchantDto })
+  createBranch(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateCompanyMerchantDto,
+  ): Promise<OneMerchantResponseDto> {
+    return this.merchantsService.createForCompany(dto, user);
+  }
+
+  @Get(':id/admin-summary')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Get administrative summary metrics for a merchant branch' })
+  @ApiParam({ name: 'id', type: Number, description: 'Merchant ID' })
+  @ApiOkResponse({
+    description: 'Merchant admin summary found',
+    type: MerchantAdminSummaryResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Merchant not found' })
+  getAdminSummary(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MerchantAdminSummaryResponseDto> {
+    return this.merchantsService.getAdminSummary(id, user);
+  }
+
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -150,8 +227,9 @@ export class MerchantsController {
   })
   findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantResponseDto> {
-    return this.merchantsService.findOne(id);
+    return this.merchantsService.findOne(id, user);
   }
 
   @Put(':id')
@@ -200,8 +278,9 @@ export class MerchantsController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMerchantDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantResponseDto> {
-    return this.merchantsService.update(id, dto);
+    return this.merchantsService.update(id, dto, user);
   }
 
   @Delete(':id')
@@ -248,7 +327,8 @@ export class MerchantsController {
   })
   remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantResponseDto> {
-    return this.merchantsService.remove(id);
+    return this.merchantsService.remove(id, user);
   }
 }

@@ -44,6 +44,15 @@ export class SupplierResponseDto {
 
   @ApiProperty({ description: 'Last update date' })
   updated_at: Date;
+
+  @ApiProperty({ description: 'Associated purchase orders', required: false })
+  purchaseOrders?: any[];
+
+  @ApiProperty({ description: 'Associated products', required: false })
+  products?: any[];
+
+  @ApiProperty({ description: 'Whether the supplier is active' })
+  isActive?: boolean;
 }
 
 export class SupplierLittleResponseDto {

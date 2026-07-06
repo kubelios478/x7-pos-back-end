@@ -61,3 +61,16 @@ export class AllMerchantsResponseDto extends SuccessResponse {
   @ApiProperty()
   data: Merchant[];
 }
+
+export class CompanyMerchantsMetaDto {
+  @ApiProperty({ example: 32 })
+  companyId: number;
+}
+
+export class CompanyMerchantsListResponseDto extends SuccessResponse {
+  @ApiProperty({ type: [Merchant] })
+  data: Merchant[];
+
+  @ApiProperty({ type: CompanyMerchantsMetaDto })
+  meta: CompanyMerchantsMetaDto;
+}

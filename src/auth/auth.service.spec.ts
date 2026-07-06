@@ -373,23 +373,28 @@ describe('AuthService', () => {
         text: expect.stringContaining('test-uuid-123'),
         html: expect.stringContaining('test-uuid-123'),
       });
-      expect(result).toEqual({ message: 'Recovery link sent to email.' });
+      expect(result).toEqual({
+        message:
+          'If the email matches an active account, a recovery link has been sent.',
+      });
     });
 
-    it('should throw NotFoundException if user not found', async () => {
+    it('should return a neutral message if user not found', async () => {
       jest
         .spyOn(usersService, 'findByEmail')
-        .mockResolvedValue(undefined as any);
+        .mockRejectedValue(new NotFoundException('User not found'));
 
-      await expect(service.sendResetLink(email)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.sendResetLink(email)).rejects.toThrow(
-        'User not found',
-      );
+      const result = await service.sendResetLink(email);
+
+      expect(result).toEqual({
+        message:
+          'If the email matches an active account, a recovery link has been sent.',
+      });
+      expect(usersService.saveResetToken).not.toHaveBeenCalled();
+      expect(mailService.sendMail).not.toHaveBeenCalled();
     });
 
-    it('should handle mail service errors gracefully', async () => {
+    it('should return success even when mail service fails', async () => {
       const userResponse = { data: mockUser };
 
       jest
@@ -398,13 +403,14 @@ describe('AuthService', () => {
       jest
         .spyOn(usersService, 'saveResetToken')
         .mockResolvedValue(undefined as any);
-      jest
-        .spyOn(mailService, 'sendMail')
-        .mockRejectedValue(new Error('Mail service failed'));
+      jest.spyOn(mailService, 'sendMail').mockResolvedValue(false);
 
-      await expect(service.sendResetLink(email)).rejects.toThrow(
-        'Mail service failed',
-      );
+      const result = await service.sendResetLink(email);
+
+      expect(result).toEqual({
+        message:
+          'If the email matches an active account, a recovery link has been sent.',
+      });
     });
   });
 

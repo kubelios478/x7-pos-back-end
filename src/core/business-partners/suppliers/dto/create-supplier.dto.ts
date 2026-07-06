@@ -7,6 +7,7 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  IsBoolean,
 } from 'class-validator';
 
 export class CreateSupplierDto {
@@ -58,4 +59,9 @@ export class CreateSupplierDto {
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiProperty({ example: true, description: 'Whether the supplier is active', required: false })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }

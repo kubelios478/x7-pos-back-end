@@ -133,28 +133,37 @@ export class AuthService {
     };
   }
   async sendResetLink(email: string) {
-    const userResponse = await this.usersService.findByEmail(email);
-    if (!userResponse) throw new NotFoundException('User not found');
+    const neutralMessage =
+      'If the email matches an active account, a recovery link has been sent.';
 
-    const user = userResponse.data;
+    let user: User;
+    try {
+      const userResponse = await this.usersService.findByEmail(email);
+      user = userResponse.data as User;
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        return { message: neutralMessage };
+      }
+      throw err;
+    }
+
     const resetToken = uuidv4();
-    console.log('email:', email);
-    console.log('resetToken:', resetToken);
-    console.log('user.id:', user.id);
-    console.log('BEFORE CALL A saveResetToken');
     await this.usersService.saveResetToken(user.id, resetToken);
-    console.log('AFTER CALL A saveResetToken');
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
-    await this.mailService.sendMail({
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.warn(`Password reset link (dev): ${resetUrl}`);
+    }
+
+    void this.mailService.sendMail({
       to: user.email,
       subject: 'Reset Password',
       text: `Click the following link to reset your password: ${resetUrl}`,
       html: `<p>Click <a href="${resetUrl}">here</a> to reset your password.</p>`,
     });
 
-    return { message: 'Recovery link sent to email.' };
+    return { message: neutralMessage };
   }
 
   async resetPassword(token: string, newPassword: string) {

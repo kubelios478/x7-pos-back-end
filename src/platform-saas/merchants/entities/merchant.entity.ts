@@ -27,6 +27,7 @@ import { Movement } from 'src/inventory/products-inventory/stocks/movements/enti
 import { LoyaltyProgram } from 'src/growth/loyalty/loyalty-programs/entities/loyalty-program.entity';
 import { PurchaseOrder } from 'src/inventory/products-inventory/purchase-order/entities/purchase-order.entity';
 import { Location } from 'src/inventory/products-inventory/stocks/locations/entities/location.entity';
+import { MerchantStatus } from '../constants/merchant-status.enum';
 
 @Entity()
 export class Merchant {
@@ -86,6 +87,18 @@ export class Merchant {
   })
   @Column({ nullable: true })
   country: string;
+
+  @ApiProperty({
+    example: MerchantStatus.ACTIVE,
+    description: 'Operational status of the merchant branch',
+    enum: MerchantStatus,
+  })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: MerchantStatus.ACTIVE,
+  })
+  status: MerchantStatus;
 
   @ApiProperty({
     example: 1234567890,
