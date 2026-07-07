@@ -7,4 +7,6 @@ export enum LoyaltyPointsSource {
   REDEMPTION = 'REDEMPTION', //CANJE DE PUNTOS
   /** Automatic reversal when an order is cancelled or no longer fully paid. */
   ORDER_REVERSAL = 'ORDER_REVERSAL',
+  /** Automatic reversal of points when an order is refunded. */
+  REFUND_REVERSAL = 'REFUND_REVERSAL',
 }
