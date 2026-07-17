@@ -9,12 +9,17 @@ import {
   PurchaseOrderResponseDto,
 } from './dto/purchase-order-response.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull, DeepPartial } from 'typeorm';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { Supplier } from '../../../core/business-partners/suppliers/entities/supplier.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { PurchaseOrderItem } from '../purchase-order-item/entities/purchase-order-item.entity';
+import { Location } from '../stocks/locations/entities/location.entity';
+import { Item } from '../stocks/items/entities/item.entity';
+import { PurchaseOrderStatus } from './constants/purchase-order-status.enum';
+import { MovementsStatus } from '../stocks/movements/constants/movements-status';
+import { MovementsService } from '../stocks/movements/movements.service';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -27,13 +32,18 @@ export class PurchaseOrderService {
     private readonly supplierRepository: Repository<Supplier>,
     @InjectRepository(PurchaseOrderItem)
     private readonly purchaseOrderItemRepository: Repository<PurchaseOrderItem>,
+    @InjectRepository(Location)
+    private readonly locationRepository: Repository<Location>,
+    @InjectRepository(Item)
+    private readonly itemRepository: Repository<Item>,
+    private readonly movementsService: MovementsService,
   ) {}
 
   async create(
     merchant_id: number,
     createPurchaseOrderDto: CreatePurchaseOrderDto,
   ): Promise<OnePurchaseOrderResponse> {
-    const { supplierId, ...purchaseOrderData } = createPurchaseOrderDto;
+    const { supplierId, items, ...purchaseOrderData } = createPurchaseOrderDto;
 
     const [supplier] = await Promise.all([
       (async () => {
@@ -52,15 +62,75 @@ export class PurchaseOrderService {
     if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 
     try {
+      let calculatedTotal = 0;
+      const itemsToSave: {
+        productId: number;
+        variantId: number | null;
+        locationId: number;
+        quantity: number;
+        unitPrice: number;
+        totalPrice: number;
+      }[] = [];
+
+      if (items && Array.isArray(items)) {
+        for (const item of items) {
+          if (!item.variantId) {
+            throw new Error('Cada ítem de la orden de compra debe tener una variante asociada.');
+          }
+          if (!item.locationId) {
+            throw new Error('Cada ítem de la orden de compra debe tener una localización de destino asignada.');
+          }
+          const qty = Number(item.quantity) || 0;
+          const price = Number(item.unitPrice) || 0;
+          const totalPrice = qty * price;
+          calculatedTotal += totalPrice;
+
+          itemsToSave.push({
+            productId: Number(item.productId),
+            variantId: Number(item.variantId),
+            locationId: Number(item.locationId),
+            quantity: qty,
+            unitPrice: price,
+            totalPrice: totalPrice,
+          });
+        }
+      }
+
+      const finalTotal = purchaseOrderData.totalAmount !== undefined 
+        ? purchaseOrderData.totalAmount 
+        : calculatedTotal;
+
       const newPurchaseOrder = this.purchaseOrderRepository.create({
         status: purchaseOrderData.status,
-        totalAmount: purchaseOrderData.totalAmount,
+        totalAmount: finalTotal,
         merchantId: merchant_id,
         supplierId,
       });
 
       const savedPurchaseOrder =
         await this.purchaseOrderRepository.save(newPurchaseOrder);
+
+      if (itemsToSave.length > 0) {
+        const itemsWithOrder = itemsToSave.map(item => {
+          const poItem = new PurchaseOrderItem();
+          poItem.productId = item.productId;
+          poItem.variantId = item.variantId as any;
+          poItem.locationId = item.locationId;
+          poItem.quantity = item.quantity;
+          poItem.unitPrice = item.unitPrice;
+          poItem.totalPrice = item.totalPrice;
+          poItem.purchaseOrderId = savedPurchaseOrder.id;
+          poItem.receivedQuantity = 0; // Siempre inicializar en 0 para que increaseStockForOrder calcule diff correcto
+          return poItem;
+        });
+        await this.purchaseOrderItemRepository.save(itemsWithOrder);
+
+        // Si la orden se crea directamente en estado COMPLETED o PARTIALLY_RECEIVED, incrementamos el stock
+        const targetReceivedStatuses = [PurchaseOrderStatus.COMPLETED, PurchaseOrderStatus.PARTIALLY_RECEIVED];
+        if (targetReceivedStatuses.includes(savedPurchaseOrder.status)) {
+          await this.increaseStockForOrder(savedPurchaseOrder.id, merchant_id, savedPurchaseOrder.status);
+        }
+      }
 
       return this.findOne(savedPurchaseOrder.id, merchant_id, 'Created');
     } catch (error) {
@@ -82,6 +152,7 @@ export class PurchaseOrderService {
       .createQueryBuilder('purchaseOrder')
       .leftJoinAndSelect('purchaseOrder.merchant', 'merchant')
       .leftJoinAndSelect('purchaseOrder.supplier', 'supplier')
+      .leftJoinAndSelect('purchaseOrder.purchaseOrderItems', 'purchaseOrderItems')
       .where('purchaseOrder.merchantId = :merchantId', { merchantId })
       .andWhere('purchaseOrder.isActive = :isActive', { isActive: true });
 
@@ -109,7 +180,7 @@ export class PurchaseOrderService {
 
     const data: PurchaseOrderResponseDto[] = await Promise.all(
       purchaseOrders.map((purchaseOrder) => {
-        const result: PurchaseOrderResponseDto = {
+        const result: any = {
           id: purchaseOrder.id,
           status: purchaseOrder.status,
           totalAmount: purchaseOrder.totalAmount,
@@ -129,6 +200,15 @@ export class PurchaseOrderService {
                 company_id: purchaseOrder.supplier.company_id,
               }
             : null,
+          purchaseOrderItems: (purchaseOrder.purchaseOrderItems || []).map(item => ({
+            id: item.id,
+            quantity: item.quantity,
+            receivedQuantity: item.receivedQuantity || 0,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+            productId: item.productId,
+            variantId: item.variantId,
+          })),
         };
         return result;
       }),
@@ -169,13 +249,19 @@ export class PurchaseOrderService {
 
     const purchaseOrder = await this.purchaseOrderRepository.findOne({
       where: whereCondition,
-      relations: ['merchant', 'supplier'],
+      relations: [
+        'merchant',
+        'supplier',
+        'purchaseOrderItems',
+        'purchaseOrderItems.product',
+        'purchaseOrderItems.variant'
+      ],
     });
 
     if (!purchaseOrder)
       ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
 
-    const result: PurchaseOrderResponseDto = {
+    const result: any = {
       id: purchaseOrder.id,
       status: purchaseOrder.status,
       totalAmount: purchaseOrder.totalAmount,
@@ -195,6 +281,25 @@ export class PurchaseOrderService {
             company_id: purchaseOrder.supplier.company_id,
           }
         : null,
+      purchaseOrderItems: (purchaseOrder.purchaseOrderItems || []).map(item => ({
+        id: item.id,
+        quantity: item.quantity,
+        receivedQuantity: item.receivedQuantity || 0,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice,
+        productId: item.productId,
+        variantId: item.variantId,
+        product: item.product ? {
+          id: item.product.id,
+          name: item.product.name,
+          sku: item.product.sku
+        } : null,
+        variant: item.variant ? {
+          id: item.variant.id,
+          name: item.variant.name,
+          sku: item.variant.sku
+        } : null
+      }))
     };
 
     let response: OnePurchaseOrderResponse;
@@ -248,8 +353,13 @@ export class PurchaseOrderService {
       merchantId: merchant_id,
     });
 
-    if (!purchaseOrder)
+    if (!purchaseOrder) {
       ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
+    }
+
+    if (updateProductDto.isActive === false && purchaseOrder.isActive === true) {
+      return this.remove(id, merchant_id);
+    }
 
     if (supplierId && supplierId !== purchaseOrder.supplierId) {
       const merchant = await this.merchantRepository.findOne({
@@ -265,19 +375,193 @@ export class PurchaseOrderService {
       if (!supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
     }
 
+    const oldStatus = purchaseOrder.status;
+
     if (updateData.status && updateData.status !== purchaseOrder.status) {
       purchaseOrder.orderDate = new Date();
     }
 
-    Object.assign(purchaseOrder, {
-      ...updateData,
-      supplierId,
-    });
     try {
+      // Solo actualizar los campos simples — excluir 'items' del DTO para no contaminar la entidad
+      const { items: _items, ...updateEntityData } = updateData as any;
+      Object.assign(purchaseOrder, {
+        ...updateEntityData,
+        // Solo sobreescribir supplierId si viene explícitamente en el payload
+        ...(supplierId !== undefined ? { supplierId } : {}),
+      });
       await this.purchaseOrderRepository.save(purchaseOrder);
+
+      const targetReceivedStatuses = [PurchaseOrderStatus.COMPLETED, PurchaseOrderStatus.PARTIALLY_RECEIVED];
+      const isNowReceived = targetReceivedStatuses.includes(purchaseOrder.status);
+
+      // 1. Si vienen items con receivedQuantity, los actualizamos e incrementamos el stock por la diferencia
+      if (updateProductDto.items && Array.isArray(updateProductDto.items)) {
+        let location = await this.locationRepository.findOne({
+          where: { merchantId: merchant_id, isActive: true }
+        });
+
+        if (!location) {
+          location = this.locationRepository.create({
+            name: 'Main Warehouse',
+            address: 'Default address location',
+            merchantId: merchant_id,
+            isActive: true
+          });
+          location = await this.locationRepository.save(location);
+        }
+
+        for (const itemDto of updateProductDto.items) {
+          const dbItem = await this.purchaseOrderItemRepository.findOneBy({
+            id: Number(itemDto.id),
+            purchaseOrderId: id,
+            isActive: true
+          });
+
+          if (dbItem) {
+            const oldReceived = Number(dbItem.receivedQuantity) || 0;
+            // Si el estado de la orden es COMPLETED, asumimos que se recibió todo el ítem
+            const newReceived = purchaseOrder.status === PurchaseOrderStatus.COMPLETED
+              ? Number(dbItem.quantity)
+              : (itemDto.receivedQuantity !== undefined && itemDto.receivedQuantity !== null
+                  ? Number(itemDto.receivedQuantity)
+                  : oldReceived);
+            const diff = newReceived - oldReceived;
+
+            dbItem.receivedQuantity = newReceived;
+            await this.purchaseOrderItemRepository.save(dbItem);
+
+            if (isNowReceived && diff !== 0) {
+              const targetLocationId = dbItem.locationId || location.id;
+              const whereClause: any = {
+                productId: dbItem.productId,
+                locationId: targetLocationId
+              };
+              if (dbItem.variantId) {
+                whereClause.variantId = dbItem.variantId;
+              } else {
+                whereClause.variantId = IsNull();
+              }
+
+              const stockItem = await this.itemRepository.findOne({
+                where: whereClause
+              });
+
+              if (stockItem) {
+                const oldQty = Number(stockItem.currentQty) || 0;
+                stockItem.currentQty = oldQty + diff;
+                stockItem.isActive = true; // Reactivar si estaba inactivo
+                await this.itemRepository.save(stockItem);
+              } else {
+                const createData: DeepPartial<Item> = {
+                  productId: dbItem.productId,
+                  locationId: targetLocationId,
+                  currentQty: diff,
+                  isActive: true
+                };
+                if (dbItem.variantId) {
+                  createData.variantId = dbItem.variantId;
+                }
+                const newStockItem = this.itemRepository.create(createData);
+                await this.itemRepository.save(newStockItem);
+              }
+            }
+          }
+        }
+      } else {
+        // 2. Si no vienen items específicos pero cambia el estatus a COMPLETED/PARTIALLY_RECEIVED, procesamos todo el pedido
+        const wasAlreadyReceived = targetReceivedStatuses.includes(oldStatus);
+        if (isNowReceived && !wasAlreadyReceived) {
+          await this.increaseStockForOrder(id, merchant_id, purchaseOrder.status);
+        }
+      }
+
       return this.findOne(id, merchant_id, 'Updated');
-    } catch (error) {
+    } catch (error: any) {
       ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  private async increaseStockForOrder(purchaseOrderId: number, merchantId: number, status: PurchaseOrderStatus) {
+    const orderItems = await this.purchaseOrderItemRepository.find({
+      where: { purchaseOrderId, isActive: true }
+    });
+
+    if (orderItems.length > 0) {
+      let defaultLocation = await this.locationRepository.findOne({
+        where: { merchantId, isActive: true }
+      });
+
+      if (!defaultLocation) {
+        defaultLocation = this.locationRepository.create({
+          name: 'Main Warehouse',
+          address: 'Default address location',
+          merchantId,
+          isActive: true
+        });
+        defaultLocation = await this.locationRepository.save(defaultLocation);
+      }
+
+      for (const item of orderItems) {
+        const oldReceived = Number(item.receivedQuantity) || 0;
+        // Para COMPLETED: el total a recibir es item.quantity; diff es lo pendiente de recibir
+        const newReceived = status === PurchaseOrderStatus.COMPLETED ? Number(item.quantity) : oldReceived;
+        const diff = newReceived - oldReceived;
+
+        if (diff > 0) {
+          item.receivedQuantity = newReceived;
+          await this.purchaseOrderItemRepository.save(item);
+
+          const targetLocationId = item.locationId || defaultLocation.id;
+
+          const whereClause: any = {
+            productId: item.productId,
+            locationId: targetLocationId
+          };
+          if (item.variantId) {
+            whereClause.variantId = item.variantId;
+          } else {
+            whereClause.variantId = IsNull();
+          }
+
+          const stockItem = await this.itemRepository.findOne({
+            where: whereClause
+          });
+
+          if (stockItem) {
+            stockItem.currentQty = Number(stockItem.currentQty) + diff;
+            stockItem.isActive = true;
+            await this.itemRepository.save(stockItem);
+
+            await this.movementsService.create(merchantId, {
+              stockItemId: stockItem.id,
+              quantity: diff,
+              type: MovementsStatus.PURCHASE_ENTRY,
+              reference: `PO-${purchaseOrderId}`,
+              reason: `Fulfillment of Purchase Order #${purchaseOrderId}`,
+            });
+          } else {
+            const createData: DeepPartial<Item> = {
+              productId: item.productId,
+              locationId: targetLocationId,
+              currentQty: diff,
+              isActive: true
+            };
+            if (item.variantId) {
+              createData.variantId = item.variantId;
+            }
+            const newStockItem = this.itemRepository.create(createData);
+            const savedStockItem = await this.itemRepository.save(newStockItem);
+
+            await this.movementsService.create(merchantId, {
+              stockItemId: savedStockItem.id,
+              quantity: diff,
+              type: MovementsStatus.PURCHASE_ENTRY,
+              reference: `PO-${purchaseOrderId}`,
+              reason: `Fulfillment of Purchase Order #${purchaseOrderId}`,
+            });
+          }
+        }
+      }
     }
   }
 

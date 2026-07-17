@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, Min, IsOptional, IsArray } from 'class-validator';
 import { PurchaseOrderStatus } from '../constants/purchase-order-status.enum';
 
 export class CreatePurchaseOrderDto {
@@ -29,4 +29,13 @@ export class CreatePurchaseOrderDto {
   @IsNumber()
   @Min(0)
   totalAmount?: number;
+
+  @ApiProperty({
+    description: 'Line items of the purchase order',
+    required: false,
+    type: 'array',
+  })
+  @IsOptional()
+  @IsArray()
+  items?: any[];
 }

@@ -33,6 +33,7 @@ import {
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { GetItemsQueryDto } from './dto/get-items-query.dto';
 import { AllPaginatedItems } from './dto/all-paginated-items.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -372,5 +373,30 @@ export class ItemsController {
   ): Promise<OneItemResponse> {
     const merchantId = user.merchant.id;
     return this.itemsService.remove(id, merchantId);
+  }
+
+  @Post(':id/adjust')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Adjust stock quantity manually (Administrator only)' })
+  @ApiParam({ name: 'id', type: Number, description: 'Stock Item ID' })
+  @ApiBody({ type: AdjustStockDto })
+  @ApiOkResponse({ description: 'Stock adjusted successfully', type: Item })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'Stock Item not found' })
+  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  adjust(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() adjustStockDto: AdjustStockDto,
+  ): Promise<OneItemResponse> {
+    const merchantId = user.merchant.id;
+    return this.itemsService.adjust(id, merchantId, adjustStockDto);
   }
 }

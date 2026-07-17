@@ -7,7 +7,7 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CashShift } from '../../cash-shifts/entities/cash-shift.entity';
+import type { CashShift } from '../../cash-shifts/entities/cash-shift.entity';
 import { User } from '../../../../platform-saas/users/entities/user.entity';
 import { CashMovementType } from '../constants/cash-movement-type.enum';
 
@@ -50,7 +50,7 @@ export class CashMovement {
   createdAt: Date;
 
   // Relations
-  @ManyToOne(() => CashShift, (cs) => cs.cashMovements, { onDelete: 'CASCADE' })
+  @ManyToOne('CashShift', 'cashMovements', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'shift_id' })
   cashShift: CashShift;
 

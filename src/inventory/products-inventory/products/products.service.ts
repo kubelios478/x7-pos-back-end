@@ -200,7 +200,7 @@ export class ProductsService {
               name: product.merchant.name,
             }
           : null,
-        category: product.category
+        category: product.category && product.category.merchantId === merchantId
           ? {
               id: product.category.id,
               name: product.category.name,
@@ -308,7 +308,7 @@ export class ProductsService {
             name: product.merchant.name,
           }
         : null,
-      category: product.category
+      category: product.category && (merchantId === undefined || product.category.merchantId === merchantId)
         ? {
             id: product.category.id,
             name: product.category.name,
