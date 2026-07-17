@@ -442,7 +442,7 @@ export class PurchaseOrderService {
                 whereClause.variantId = IsNull();
               }
 
-              const stockItem = await this.itemRepository.findOne({
+              let stockItem = await this.itemRepository.findOne({
                 where: whereClause
               });
 
@@ -450,7 +450,7 @@ export class PurchaseOrderService {
                 const oldQty = Number(stockItem.currentQty) || 0;
                 stockItem.currentQty = oldQty + diff;
                 stockItem.isActive = true; // Reactivar si estaba inactivo
-                await this.itemRepository.save(stockItem);
+                stockItem = await this.itemRepository.save(stockItem);
               } else {
                 const createData: DeepPartial<Item> = {
                   productId: dbItem.productId,
@@ -462,8 +462,17 @@ export class PurchaseOrderService {
                   createData.variantId = dbItem.variantId;
                 }
                 const newStockItem = this.itemRepository.create(createData);
-                await this.itemRepository.save(newStockItem);
+                stockItem = await this.itemRepository.save(newStockItem);
               }
+
+              // Registrar el movimiento de auditoría
+              await this.movementsService.create(merchant_id, {
+                stockItemId: stockItem.id,
+                quantity: Math.abs(diff),
+                type: diff > 0 ? MovementsStatus.PURCHASE_ENTRY : MovementsStatus.OUT,
+                reference: `PO-${id}`,
+                reason: `Fulfillment of Purchase Order #${id} (Partial / Update)`,
+              });
             }
           }
         }
