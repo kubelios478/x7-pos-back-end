@@ -43,6 +43,8 @@ import {
 import { PaginatedMerchantOvertimeRuleResponseDto } from './dto/paginated-merchant-overtime-rule-response.dto';
 import { QueryMerchantOvertimeRuleDto } from './dto/query-merchant-overtime-rule.dto';
 import { UpdateMerchantOvertimeRuleDto } from './dto/update-merchant-overtime-rule.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Merchant Overtime Rule')
 @Controller('merchant-overtime-rule')
@@ -137,8 +139,9 @@ export class MerchantOvertimeRuleController {
   })
   async create(
     @Body() dto: CreateMerchantOvertimeRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantOvertimeRuleResponseDto> {
-    return this.merchantOvertimeRuleService.create(dto);
+    return this.merchantOvertimeRuleService.create(dto, user);
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -191,8 +194,9 @@ export class MerchantOvertimeRuleController {
   })
   async findAll(
     @Query() query: QueryMerchantOvertimeRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedMerchantOvertimeRuleResponseDto> {
-    return this.merchantOvertimeRuleService.findAll(query);
+    return this.merchantOvertimeRuleService.findAll(query, user);
   }
 
   @Get(':id')
@@ -292,12 +296,13 @@ export class MerchantOvertimeRuleController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantOvertimeRuleResponseDto> {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
     const merchantOvertimeRule =
-      await this.merchantOvertimeRuleService.findOne(id);
+      await this.merchantOvertimeRuleService.findOne(id, user);
     return merchantOvertimeRule;
   }
 
@@ -405,8 +410,9 @@ export class MerchantOvertimeRuleController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMerchantOvertimeRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantOvertimeRuleResponseDto> {
-    return this.merchantOvertimeRuleService.update(id, dto);
+    return this.merchantOvertimeRuleService.update(id, dto, user);
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

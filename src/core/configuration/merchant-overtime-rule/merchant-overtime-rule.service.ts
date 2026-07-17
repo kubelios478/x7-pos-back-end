@@ -12,6 +12,28 @@ import { QueryMerchantOvertimeRuleDto } from './dto/query-merchant-overtime-rule
 import { PaginatedMerchantOvertimeRuleResponseDto } from './dto/paginated-merchant-overtime-rule-response.dto';
 import { UpdateMerchantOvertimeRuleDto } from './dto/update-merchant-overtime-rule.dto';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import {
+  resolveMerchantContext,
+  assertOwnsCompany,
+} from '../utils/merchant-scoping.util';
+import { OvertimeCalculationType } from '../constants/overtime-calculation-type.enum';
+
+const AUDIT_USER_SELECT: (keyof User)[] = ['id', 'username', 'email'];
+
+const OVERTIME_RULE_SELECT_FIELDS = [
+  'merchantOvertimeRule',
+  'company.id',
+  'createdBy.id',
+  'createdBy.username',
+  'createdBy.email',
+  'updatedBy.id',
+  'updatedBy.username',
+  'updatedBy.email',
+  'merchant.id',
+  'merchant.name',
+];
 
 @Injectable()
 export class MerchantOvertimeRuleService {
@@ -31,60 +53,59 @@ export class MerchantOvertimeRuleService {
 
   async create(
     dto: CreateMerchantOvertimeRuleDto,
+    user: AuthenticatedUser,
   ): Promise<OneMerchantOvertimeRuleResponseDto> {
-    if (dto.companyId && !Number.isInteger(dto.companyId)) {
-      ErrorHandler.invalidId('Company ID must be a positive integer');
+    const requiresThreshold =
+      dto.calculationMethod === OvertimeCalculationType.DAILY ||
+      dto.calculationMethod === OvertimeCalculationType.WEEKLY;
+
+    if (
+      requiresThreshold &&
+      (dto.thresholdHours == null || dto.maxHours == null)
+    ) {
+      ErrorHandler.invalidInput(
+        'thresholdHours and maxHours are required when calculationMethod is daily or weekly',
+      );
     }
 
-    let company: Company | null = null;
-    if (dto.companyId) {
-      company = await this.companyRepository.findOne({
-        where: { id: dto.companyId },
-      });
-      if (!company) {
-        ErrorHandler.notFound('Company not found');
-      }
-    }
+    const thresholdHours = requiresThreshold ? dto.thresholdHours : null;
+    const maxHours = requiresThreshold ? dto.maxHours : null;
 
-    let merchant: Merchant | null = null;
-    if (dto.merchantId) {
-      merchant = await this.merchantRepository.findOne({
-        where: { id: dto.merchantId },
-      });
-      if (!merchant) {
-        ErrorHandler.notFound('Merchant not found');
-      }
+    const { merchant, companyId } = await resolveMerchantContext(
+      this.merchantRepository,
+      user,
+    );
+
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+    if (!company) {
+      ErrorHandler.notFound('Company not found');
     }
 
     const createdByUser = await this.userRepository.findOne({
-      where: { id: dto.createdById },
+      where: { id: user.id },
+      select: AUDIT_USER_SELECT,
     });
-
     if (!createdByUser) {
-      ErrorHandler.notFound('CreatedBy user not found');
+      ErrorHandler.userNotFound();
     }
 
-    const updatedByUser = await this.userRepository.findOne({
-      where: { id: dto.updatedById },
-    });
-
-    if (!updatedByUser) {
-      ErrorHandler.notFound('UpdatedBy user not found');
-    }
+    const now = new Date();
 
     const merchantOvertimeRule = this.merchantOvertimeRuleRepository.create({
-      company: company,
-      merchant: merchant,
-      createdAt: dto.createdAt,
-      updatedAt: dto.updatedAt,
+      company,
+      merchant,
+      createdAt: now,
+      updatedAt: now,
       createdBy: createdByUser,
-      updatedBy: updatedByUser,
-      status: dto.status,
+      updatedBy: createdByUser,
+      status: 'active',
       name: dto.name,
       description: dto.description,
       calculationMethod: dto.calculationMethod,
-      thresholdHours: dto.thresholdHours,
-      maxHours: dto.maxHours,
+      thresholdHours,
+      maxHours,
       rateMethod: dto.rateMethod,
       rateValue: dto.rateValue,
       appliesOnHolidays: dto.appliesOnHolidays,
@@ -103,6 +124,7 @@ export class MerchantOvertimeRuleService {
 
   async findAll(
     query: QueryMerchantOvertimeRuleDto,
+    user: AuthenticatedUser,
   ): Promise<PaginatedMerchantOvertimeRuleResponseDto> {
     const {
       status,
@@ -122,16 +144,16 @@ export class MerchantOvertimeRuleService {
       .leftJoin('merchantOvertimeRule.createdBy', 'createdBy')
       .leftJoin('merchantOvertimeRule.updatedBy', 'updatedBy')
       .leftJoin('merchantOvertimeRule.merchant', 'merchant')
-      .select([
-        'merchantOvertimeRule',
-        'company.id',
-        'createdBy.id',
-        'createdBy.email',
-        'updatedBy.id',
-        'updatedBy.email',
-        'merchant.id',
-        'merchant.name',
-      ]);
+      .select(OVERTIME_RULE_SELECT_FIELDS);
+
+    if (user.role !== UserRole.PORTAL_ADMIN) {
+      const { companyId } = await resolveMerchantContext(
+        this.merchantRepository,
+        user,
+      );
+      qb.andWhere('company.id = :companyId', { companyId });
+    }
+
     if (status) {
       qb.andWhere('merchantOvertimeRule.status = :status', { status });
     } else {
@@ -162,19 +184,37 @@ export class MerchantOvertimeRuleService {
     };
   }
 
-  async findOne(id: number): Promise<OneMerchantOvertimeRuleResponseDto> {
+  async findOne(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantOvertimeRuleResponseDto> {
     if (!Number.isInteger(id) || id < 1) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
-    const merchantOvertimeRule =
-      await this.merchantOvertimeRuleRepository.findOne({
-        where: { id, status: In(['active', 'inactive']) },
-        relations: ['company', 'createdBy', 'updatedBy', 'merchant'],
-      });
+    const merchantOvertimeRule = await this.merchantOvertimeRuleRepository
+      .createQueryBuilder('merchantOvertimeRule')
+      .leftJoin('merchantOvertimeRule.company', 'company')
+      .leftJoin('merchantOvertimeRule.createdBy', 'createdBy')
+      .leftJoin('merchantOvertimeRule.updatedBy', 'updatedBy')
+      .leftJoin('merchantOvertimeRule.merchant', 'merchant')
+      .select(OVERTIME_RULE_SELECT_FIELDS)
+      .where('merchantOvertimeRule.id = :id', { id })
+      .andWhere('merchantOvertimeRule.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      })
+      .getOne();
+
     if (!merchantOvertimeRule) {
       ErrorHandler.merchantOvertimeRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantOvertimeRule.company.id,
+    );
+
     return {
       statusCode: 200,
       message: 'Merchant Overtime Rule retrieved successfully',
@@ -185,6 +225,7 @@ export class MerchantOvertimeRuleService {
   async update(
     id: number,
     dto: UpdateMerchantOvertimeRuleDto,
+    user: AuthenticatedUser,
   ): Promise<OneMerchantOvertimeRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
@@ -198,17 +239,21 @@ export class MerchantOvertimeRuleService {
       ErrorHandler.merchantOvertimeRuleNotFound();
     }
 
-    if (dto.updatedById) {
-      const updatedByUser = await this.userRepository.findOne({
-        where: { id: dto.updatedById },
-      });
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantOvertimeRule.company.id,
+    );
 
-      if (!updatedByUser) {
-        ErrorHandler.notFound('UpdatedBy user not found');
-      }
-
-      merchantOvertimeRule.updatedBy = updatedByUser;
+    const updatedByUser = await this.userRepository.findOne({
+      where: { id: user.id },
+      select: AUDIT_USER_SELECT,
+    });
+    if (!updatedByUser) {
+      ErrorHandler.notFound('UpdatedBy user not found');
     }
+    merchantOvertimeRule.updatedBy = updatedByUser;
+    merchantOvertimeRule.updatedAt = new Date();
 
     Object.assign(merchantOvertimeRule, dto);
 

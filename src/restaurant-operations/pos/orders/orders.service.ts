@@ -402,23 +402,24 @@ export class OrdersService {
     for (const tax of merchantTaxes) {
       let taxAmount = 0;
 
-      for (const item of order.orderItems) {
-        let itemTax = 0;
+      switch (tax.taxType) {
+        case TaxType.PERCENTAGE:
+        case TaxType.COMPOUND:
+          for (const item of order.orderItems) {
+            const itemTax = roundMoney(
+              Number(item.total_price) * Number(tax.rate),
+            );
+            taxAmount = roundMoney(taxAmount + itemTax);
+          }
+          break;
 
-        switch (tax.taxType) {
-          case TaxType.PERCENTAGE:
-            itemTax = roundMoney(Number(item.total_price) * Number(tax.rate));
-            break;
+        case TaxType.FIXED:
+          // Applied once per order, not per item.
+          taxAmount = roundMoney(Number(tax.rate));
+          break;
 
-          case TaxType.FIXED:
-            itemTax = roundMoney(Number(tax.rate));
-            break;
-
-          default:
-            itemTax = 0;
-        }
-
-        taxAmount = roundMoney(taxAmount + itemTax);
+        default:
+          taxAmount = 0;
       }
 
       taxTotal = roundMoney(taxTotal + taxAmount);

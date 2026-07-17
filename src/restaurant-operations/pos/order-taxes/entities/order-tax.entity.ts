@@ -27,8 +27,12 @@ export class OrderTax {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @ApiProperty({ example: 19.0, description: 'Tax rate (e.g. percentage)' })
-  @Column({ type: 'decimal', precision: 5, scale: 2 })
+  @ApiProperty({
+    example: 0.19,
+    description:
+      'Tax rate as stored on the merchant tax rule (decimal fraction for PERCENTAGE/COMPOUND, monetary amount for FIXED)',
+  })
+  @Column({ type: 'decimal', precision: 10, scale: 4 })
   rate: number;
 
   @ApiProperty({ example: 3.5 })

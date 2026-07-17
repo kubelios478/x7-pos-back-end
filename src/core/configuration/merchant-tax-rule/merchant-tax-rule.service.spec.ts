@@ -4,20 +4,24 @@ import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MerchantTaxRule } from './entity/merchant-tax-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TaxType } from '../constants/tax-type.enum';
 import { CreateMerchantTaxRuleDto } from './dto/create-merchant-tax-rule.dto';
 import { UpdateMerchantTaxRuleDto } from './dto/update-merchant-tax-rule.dto';
 import { SelectQueryBuilder } from 'typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from 'src/platform-saas/users/entities/user.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 
 describe('MerchantTaxRuleService', () => {
   let service: MerchantTaxRuleService;
   let merchantTaxRuleRepository: Repository<MerchantTaxRule>;
   let companyRepository: Repository<Company>;
+  let merchantRepository: Repository<Merchant>;
   let userRepository: Repository<User>;
 
-  //Mock Data
   const mockMerchantTaxRule: Partial<MerchantTaxRule> = {
     id: 1,
     company: {
@@ -37,48 +41,61 @@ describe('MerchantTaxRuleService', () => {
     } as Company,
     createdAt: new Date(),
     updatedAt: new Date(),
-    createdBy: { id: 1 } as User,
-    updatedBy: { id: 1 } as User,
+    createdBy: {
+      id: 1,
+      username: 'admin',
+      email: 'merchant-admin@test.com',
+    } as User,
+    updatedBy: {
+      id: 1,
+      username: 'admin',
+      email: 'merchant-admin@test.com',
+    } as User,
     status: 'active',
     name: 'Test Merchant Tax Rule',
     description: 'Description of the merchant tax rule',
     taxType: TaxType.COMPOUND,
-    rate: 19,
+    rate: 0.19,
     appliesToTips: true,
     appliesToOvertime: true,
     isCompound: true,
     externalTaxCode: 'lfgtr-hhse',
   };
 
+  const mockMerchantAdminUser: AuthenticatedUser = {
+    id: 1,
+    email: 'merchant-admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 10 },
+  };
+
+  const mockPortalAdminUser: AuthenticatedUser = {
+    id: 2,
+    email: 'portal-admin@test.com',
+    role: UserRole.PORTAL_ADMIN,
+    scope: Scope.ADMIN_PORTAL,
+    merchant: { id: 0 },
+  };
+
   const mockCreateMerchantTaxRuleDto: CreateMerchantTaxRuleDto = {
-    companyId: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdById: 1,
-    updatedById: 1,
-    status: 'active',
     name: 'Test Merchant Tax Rule',
     description: 'Description of the merchant tax rule',
     taxType: TaxType.COMPOUND,
-    rate: 19,
+    rate: 0.19,
     appliesToTips: true,
     appliesToOvertime: true,
-    isCompound: true,
     externalTaxCode: 'lfgtr-hhse',
   };
 
   const mockUpdateMerchantTaxRuleDto: UpdateMerchantTaxRuleDto = {
-    companyId: 1,
-    createdById: 1,
-    updatedById: 1,
     status: 'inactive',
     name: 'Update Merchant Tax Rule',
     description: 'Description of the merchant tax rule',
     taxType: TaxType.COMPOUND,
-    rate: 19,
+    rate: 0.19,
     appliesToTips: true,
     appliesToOvertime: true,
-    isCompound: true,
     externalTaxCode: 'lfgtr-hhse',
   };
 
@@ -86,11 +103,13 @@ describe('MerchantTaxRuleService', () => {
     const mockQueryBuilder: any = {
       leftJoin: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       getManyAndCount: jest.fn().mockResolvedValue([[mockMerchantTaxRule], 1]),
+      getOne: jest.fn().mockResolvedValue(mockMerchantTaxRule),
     };
 
     const mockRepository = {
@@ -120,6 +139,16 @@ describe('MerchantTaxRuleService', () => {
           },
         },
         {
+          provide: getRepositoryToken(Merchant),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(User),
           useValue: {
             findOne: jest.fn(),
@@ -139,6 +168,9 @@ describe('MerchantTaxRuleService', () => {
     companyRepository = module.get<Repository<Company>>(
       getRepositoryToken(Company),
     );
+    merchantRepository = module.get<Repository<Merchant>>(
+      getRepositoryToken(Merchant),
+    );
     userRepository = module.get<Repository<User>>(getRepositoryToken(User));
   });
 
@@ -153,14 +185,17 @@ describe('MerchantTaxRuleService', () => {
 
   describe('Create Merchant Tax Rule', () => {
     it('should create and return a merchant tax rule successfully', async () => {
-      jest
-        .spyOn(merchantTaxRuleRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
       jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
-        id: 1,
+        id: 7,
       } as Company);
       jest.spyOn(userRepository, 'findOne').mockResolvedValue({
         id: 1,
+        username: 'admin',
+        email: 'merchant-admin@test.com',
       } as User);
 
       const createSpy = jest.spyOn(merchantTaxRuleRepository, 'create');
@@ -168,11 +203,18 @@ describe('MerchantTaxRuleService', () => {
 
       createSpy.mockReturnValue(mockMerchantTaxRule as MerchantTaxRule);
       saveSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
-      const result = await service.create(mockCreateMerchantTaxRuleDto);
+
+      const result = await service.create(
+        mockCreateMerchantTaxRuleDto,
+        mockMerchantAdminUser,
+      );
 
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          company: { id: 1 },
+          company: { id: 7 },
+          merchant: { id: 10, companyId: 7 },
+          status: 'active',
+          isCompound: true,
         }),
       );
       expect(saveSpy).toHaveBeenCalledWith(mockMerchantTaxRule);
@@ -183,12 +225,182 @@ describe('MerchantTaxRuleService', () => {
       });
     });
 
-    it('should handle database errors during creation', async () => {
-      jest
-        .spyOn(merchantTaxRuleRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as MerchantTaxRule);
+    it('derives isCompound=false for a non-compound tax type', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
       jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
+        id: 7,
+      } as Company);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
         id: 1,
+      } as User);
+
+      const createSpy = jest.spyOn(merchantTaxRuleRepository, 'create');
+      const saveSpy = jest.spyOn(merchantTaxRuleRepository, 'save');
+      createSpy.mockReturnValue(mockMerchantTaxRule as MerchantTaxRule);
+      saveSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+
+      await service.create(
+        { ...mockCreateMerchantTaxRuleDto, taxType: TaxType.PERCENTAGE },
+        mockMerchantAdminUser,
+      );
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ isCompound: false }),
+      );
+    });
+
+    it('throws forbidden when the creating user has no resolvable merchant', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.create(mockCreateMerchantTaxRuleDto, mockMerchantAdminUser),
+      ).rejects.toThrow();
+    });
+
+    it('rejects a rate greater than 10 for a percentage tax type', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
+
+      await expect(
+        service.create(
+          {
+            ...mockCreateMerchantTaxRuleDto,
+            taxType: TaxType.PERCENTAGE,
+            rate: 19,
+          },
+          mockMerchantAdminUser,
+        ),
+      ).rejects.toThrow(
+        'For PERCENTAGE/COMPOUND tax types, rate must be a decimal fraction (e.g. 0.19 for 19%), not a whole percentage number.',
+      );
+    });
+
+    it('rejects a rate greater than 10 for a compound tax type', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
+
+      await expect(
+        service.create(
+          {
+            ...mockCreateMerchantTaxRuleDto,
+            taxType: TaxType.COMPOUND,
+            rate: 15,
+          },
+          mockMerchantAdminUser,
+        ),
+      ).rejects.toThrow(
+        'For PERCENTAGE/COMPOUND tax types, rate must be a decimal fraction (e.g. 0.19 for 19%), not a whole percentage number.',
+      );
+    });
+
+    it('rejects a rate greater than 1 for a percentage tax type', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
+
+      await expect(
+        service.create(
+          {
+            ...mockCreateMerchantTaxRuleDto,
+            taxType: TaxType.PERCENTAGE,
+            rate: 1.9,
+          },
+          mockMerchantAdminUser,
+        ),
+      ).rejects.toThrow(
+        'For PERCENTAGE/COMPOUND tax types, rate must be a decimal fraction (e.g. 0.19 for 19%), not a whole percentage number.',
+      );
+    });
+
+    it('rejects a rate greater than 1 for a compound tax type', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
+
+      await expect(
+        service.create(
+          {
+            ...mockCreateMerchantTaxRuleDto,
+            taxType: TaxType.COMPOUND,
+            rate: 1.9,
+          },
+          mockMerchantAdminUser,
+        ),
+      ).rejects.toThrow(
+        'For PERCENTAGE/COMPOUND tax types, rate must be a decimal fraction (e.g. 0.19 for 19%), not a whole percentage number.',
+      );
+    });
+
+    it('allows a rate of exactly 1 for a percentage tax type', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
+      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
+        id: 7,
+      } as Company);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
+
+      const createSpy = jest.spyOn(merchantTaxRuleRepository, 'create');
+      const saveSpy = jest.spyOn(merchantTaxRuleRepository, 'save');
+      createSpy.mockReturnValue(mockMerchantTaxRule as MerchantTaxRule);
+      saveSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+
+      await service.create(
+        { ...mockCreateMerchantTaxRuleDto, taxType: TaxType.PERCENTAGE, rate: 1 },
+        mockMerchantAdminUser,
+      );
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ rate: 1, taxType: TaxType.PERCENTAGE }),
+      );
+    });
+
+    it('allows a rate greater than 10 for a fixed tax type', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
+      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
+        id: 7,
+      } as Company);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
+
+      const createSpy = jest.spyOn(merchantTaxRuleRepository, 'create');
+      const saveSpy = jest.spyOn(merchantTaxRuleRepository, 'save');
+      createSpy.mockReturnValue(mockMerchantTaxRule as MerchantTaxRule);
+      saveSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+
+      await service.create(
+        { ...mockCreateMerchantTaxRuleDto, taxType: TaxType.FIXED, rate: 15 },
+        mockMerchantAdminUser,
+      );
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ rate: 15, taxType: TaxType.FIXED }),
+      );
+    });
+
+    it('should handle database errors during creation', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 7,
+      } as Merchant);
+      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
+        id: 7,
       } as Company);
       jest.spyOn(userRepository, 'findOne').mockResolvedValue({
         id: 1,
@@ -201,15 +413,8 @@ describe('MerchantTaxRuleService', () => {
       saveSpy.mockRejectedValue(new Error('Database error'));
 
       await expect(
-        service.create(mockCreateMerchantTaxRuleDto),
+        service.create(mockCreateMerchantTaxRuleDto, mockMerchantAdminUser),
       ).rejects.toThrow('Database error');
-
-      expect(createSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          company: { id: 1 },
-        }),
-      );
-      expect(saveSpy).toHaveBeenCalledWith(mockMerchantTaxRule);
     });
   });
 
@@ -217,7 +422,6 @@ describe('MerchantTaxRuleService', () => {
     it('should return all merchant tax rules', async () => {
       const mockMerchantTaxRules = [mockMerchantTaxRule as MerchantTaxRule];
 
-      // QueryBuilder ya mockeado en el beforeEach
       const qb = merchantTaxRuleRepository.createQueryBuilder() as Partial<
         SelectQueryBuilder<MerchantTaxRule>
       >;
@@ -226,10 +430,10 @@ describe('MerchantTaxRuleService', () => {
         .spyOn(qb, 'getManyAndCount')
         .mockResolvedValue([mockMerchantTaxRules, mockMerchantTaxRules.length]);
 
-      const result = await service.findAll({
-        page: 1,
-        limit: 10,
-      });
+      const result = await service.findAll(
+        { page: 1, limit: 10 },
+        mockPortalAdminUser,
+      );
 
       expect(result).toEqual({
         statusCode: 200,
@@ -251,10 +455,10 @@ describe('MerchantTaxRuleService', () => {
 
       jest.spyOn(qb, 'getManyAndCount').mockResolvedValue([[], 0]);
 
-      const result = await service.findAll({
-        page: 1,
-        limit: 10,
-      });
+      const result = await service.findAll(
+        { page: 1, limit: 10 },
+        mockPortalAdminUser,
+      );
 
       expect(result).toEqual({
         statusCode: 200,
@@ -268,114 +472,351 @@ describe('MerchantTaxRuleService', () => {
         },
       });
     });
+
+    it("scopes the query to the merchant admin's company", async () => {
+      const qb = merchantTaxRuleRepository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantTaxRule>
+      >;
+      jest
+        .spyOn(qb, 'getManyAndCount')
+        .mockResolvedValue([[mockMerchantTaxRule as MerchantTaxRule], 1]);
+      const merchantFindOneSpy = jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue({ id: 10, companyId: 7 } as Merchant);
+
+      await service.findAll({ page: 1, limit: 10 }, mockMerchantAdminUser);
+
+      expect(merchantFindOneSpy).toHaveBeenCalledWith({
+        where: { id: 10 },
+        select: ['id', 'companyId'],
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith('company.id = :companyId', {
+        companyId: 7,
+      });
+    });
+
+    it('does not scope the query for a portal admin', async () => {
+      const qb = merchantTaxRuleRepository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantTaxRule>
+      >;
+      jest
+        .spyOn(qb, 'getManyAndCount')
+        .mockResolvedValue([[mockMerchantTaxRule as MerchantTaxRule], 1]);
+      const merchantFindOneSpy = jest.spyOn(merchantRepository, 'findOne');
+
+      await service.findAll({ page: 1, limit: 10 }, mockPortalAdminUser);
+
+      expect(merchantFindOneSpy).not.toHaveBeenCalled();
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        'company.id = :companyId',
+        expect.anything(),
+      );
+    });
+
+    it('throws when the merchant admin has no resolvable company', async () => {
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.findAll({ page: 1, limit: 10 }, mockMerchantAdminUser),
+      ).rejects.toThrow();
+    });
   });
 
   describe('Find One Merchant Tax Rule', () => {
     it('should throw error for invalid ID (null)', async () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      await expect(service.findOne(null as any)).rejects.toThrow();
+      await expect(
+        service.findOne(null as any, mockMerchantAdminUser),
+      ).rejects.toThrow();
     });
 
     it('should throw error for invalid ID (zero)', async () => {
-      await expect(service.findOne(0)).rejects.toThrow();
+      await expect(service.findOne(0, mockMerchantAdminUser)).rejects.toThrow();
     });
 
     it('should throw error for invalid ID (negative)', async () => {
-      await expect(service.findOne(-1)).rejects.toThrow();
+      await expect(
+        service.findOne(-1, mockMerchantAdminUser),
+      ).rejects.toThrow();
     });
 
     it('should handle not found merchant tax rule', async () => {
-      const findOneSpy = jest.spyOn(merchantTaxRuleRepository, 'findOne');
-      findOneSpy.mockResolvedValue(null);
+      const qb = merchantTaxRuleRepository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantTaxRule>
+      >;
+      jest.spyOn(qb, 'getOne').mockResolvedValue(null);
 
-      await expect(service.findOne(999)).rejects.toThrow(
+      await expect(service.findOne(999, mockMerchantAdminUser)).rejects.toThrow(
         'Merchant Tax Rule not found',
       );
-
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 999,
-          status: In(['active', 'inactive']),
-        },
-        relations: ['company', 'createdBy', 'updatedBy'],
-      });
     });
 
-    it('should return a merchant tax rule when found', async () => {
-      const mockFound = {
-        id: 1,
-        company: {
-          id: 1,
-        } as Company,
-        createdBy: { id: 1 } as User,
-        updatedBy: { id: 1 } as User,
-        status: 'active',
-        name: 'Test Merchant Tax Rule',
-        description: 'Description of the merchant tax rule',
-        taxType: TaxType.COMPOUND,
-        rate: 19,
-        appliesToTips: true,
-        appliesToOvertime: true,
-        isCompound: true,
-        externalTaxCode: 'lfgtr-hhse',
-      } as MerchantTaxRule;
-
+    it('should return a merchant tax rule when found and owned by the caller', async () => {
+      const qb = merchantTaxRuleRepository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantTaxRule>
+      >;
       jest
-        .spyOn(merchantTaxRuleRepository, 'findOne')
-        .mockResolvedValue(mockFound);
+        .spyOn(qb, 'getOne')
+        .mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: (mockMerchantTaxRule.company as Company).id,
+      } as Merchant);
 
-      const result = await service.findOne(1);
+      const result = await service.findOne(1, mockMerchantAdminUser);
 
       expect(result).toEqual({
         statusCode: 200,
         message: 'Merchant Tax Rule retrieved successfully',
-        data: mockFound,
+        data: mockMerchantTaxRule,
       });
+    });
+
+    it('forbids viewing a tax rule owned by a different company', async () => {
+      const qb = merchantTaxRuleRepository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantTaxRule>
+      >;
+      jest
+        .spyOn(qb, 'getOne')
+        .mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 999,
+      } as Merchant);
+
+      await expect(service.findOne(1, mockMerchantAdminUser)).rejects.toThrow();
+    });
+
+    it('does not restrict a portal admin by company', async () => {
+      const qb = merchantTaxRuleRepository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantTaxRule>
+      >;
+      jest
+        .spyOn(qb, 'getOne')
+        .mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+      const merchantFindOneSpy = jest.spyOn(merchantRepository, 'findOne');
+
+      const result = await service.findOne(1, mockPortalAdminUser);
+
+      expect(merchantFindOneSpy).not.toHaveBeenCalled();
+      expect(result.data).toEqual(mockMerchantTaxRule);
     });
   });
 
   describe('Update Merchant Tax Rule', () => {
     it('should update and return a merchant tax rule successfully', async () => {
-      const updatedMerchantTaxRule: Partial<MerchantTaxRule> = {
-        ...mockMerchantTaxRule,
-        ...mockUpdateMerchantTaxRuleDto,
-        company: mockMerchantTaxRule.company,
-        createdBy: mockMerchantTaxRule.createdBy,
-        updatedBy: mockMerchantTaxRule.updatedBy,
-      };
-
       const findOneSpy = jest.spyOn(merchantTaxRuleRepository, 'findOne');
       const saveSpy = jest.spyOn(merchantTaxRuleRepository, 'save');
 
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as User);
-      jest
-        .spyOn(companyRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as Company);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+        username: 'admin',
+        email: 'merchant-admin@test.com',
+      } as User);
 
       findOneSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
-      saveSpy.mockResolvedValue(updatedMerchantTaxRule as MerchantTaxRule);
-      const result = await service.update(1, mockUpdateMerchantTaxRuleDto);
+      saveSpy.mockImplementation(async (entity) => entity as MerchantTaxRule);
+
+      const result = await service.update(
+        1,
+        mockUpdateMerchantTaxRuleDto,
+        mockMerchantAdminUser,
+      );
 
       expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-          status: In(['active', 'inactive']),
-        },
-        relations: ['company'],
+        where: { id: 1, status: In(['active', 'inactive']) },
+        relations: ['company', 'merchant'],
       });
-      expect(saveSpy).toHaveBeenCalledWith(updatedMerchantTaxRule);
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Merchant Tax Rule updated successfully',
-        data: updatedMerchantTaxRule,
-      });
+      expect(saveSpy).toHaveBeenCalled();
+      expect(result.statusCode).toBe(200);
+      expect(result.data.name).toBe(mockUpdateMerchantTaxRuleDto.name);
+      expect(result.data.status).toBe('inactive');
+    });
+
+    it('recomputes isCompound when taxType changes', async () => {
+      jest.spyOn(merchantTaxRuleRepository, 'findOne').mockResolvedValue({
+        ...mockMerchantTaxRule,
+        isCompound: true,
+      } as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
+      const saveSpy = jest
+        .spyOn(merchantTaxRuleRepository, 'save')
+        .mockImplementation(async (entity) => entity as MerchantTaxRule);
+
+      await service.update(
+        1,
+        { taxType: TaxType.PERCENTAGE },
+        mockMerchantAdminUser,
+      );
+
+      expect(saveSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ isCompound: false }),
+      );
+    });
+
+    it('leaves isCompound untouched when taxType is not in the payload', async () => {
+      jest.spyOn(merchantTaxRuleRepository, 'findOne').mockResolvedValue({
+        ...mockMerchantTaxRule,
+        isCompound: true,
+      } as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
+      const saveSpy = jest
+        .spyOn(merchantTaxRuleRepository, 'save')
+        .mockImplementation(async (entity) => entity as MerchantTaxRule);
+
+      await service.update(1, { rate: 0.25 }, mockMerchantAdminUser);
+
+      expect(saveSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ isCompound: true }),
+      );
+    });
+
+    it('rejects a rate greater than 10 when the existing tax type is compound', async () => {
+      jest.spyOn(merchantTaxRuleRepository, 'findOne').mockResolvedValue({
+        ...mockMerchantTaxRule,
+        taxType: TaxType.COMPOUND,
+      } as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
+
+      await expect(
+        service.update(1, { rate: 19 }, mockMerchantAdminUser),
+      ).rejects.toThrow(
+        'For PERCENTAGE/COMPOUND tax types, rate must be a decimal fraction (e.g. 0.19 for 19%), not a whole percentage number.',
+      );
+    });
+
+    it('rejects a rate greater than 1 when the existing tax type is compound', async () => {
+      jest.spyOn(merchantTaxRuleRepository, 'findOne').mockResolvedValue({
+        ...mockMerchantTaxRule,
+        taxType: TaxType.COMPOUND,
+      } as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
+
+      await expect(
+        service.update(1, { rate: 1.9 }, mockMerchantAdminUser),
+      ).rejects.toThrow(
+        'For PERCENTAGE/COMPOUND tax types, rate must be a decimal fraction (e.g. 0.19 for 19%), not a whole percentage number.',
+      );
+    });
+
+    it('allows a rate greater than 10 when changing tax type to fixed', async () => {
+      jest.spyOn(merchantTaxRuleRepository, 'findOne').mockResolvedValue({
+        ...mockMerchantTaxRule,
+        taxType: TaxType.COMPOUND,
+      } as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
+      const saveSpy = jest
+        .spyOn(merchantTaxRuleRepository, 'save')
+        .mockImplementation(async (entity) => entity as MerchantTaxRule);
+
+      await service.update(
+        1,
+        { taxType: TaxType.FIXED, rate: 15 },
+        mockMerchantAdminUser,
+      );
+
+      expect(saveSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ rate: 15, taxType: TaxType.FIXED }),
+      );
+    });
+
+    it('forbids updating a tax rule owned by a different company', async () => {
+      jest
+        .spyOn(merchantTaxRuleRepository, 'findOne')
+        .mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 999,
+      } as Merchant);
+
+      await expect(
+        service.update(1, mockUpdateMerchantTaxRuleDto, mockMerchantAdminUser),
+      ).rejects.toThrow();
+    });
+
+    it('does not restrict a portal admin by company', async () => {
+      jest
+        .spyOn(merchantTaxRuleRepository, 'findOne')
+        .mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+      const merchantFindOneSpy = jest.spyOn(merchantRepository, 'findOne');
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 2,
+      } as User);
+      jest
+        .spyOn(merchantTaxRuleRepository, 'save')
+        .mockImplementation(async (entity) => entity as MerchantTaxRule);
+
+      await service.update(
+        1,
+        mockUpdateMerchantTaxRuleDto,
+        mockPortalAdminUser,
+      );
+
+      expect(merchantFindOneSpy).not.toHaveBeenCalled();
+    });
+
+    it('always sets updatedBy from the session user, ignoring any client value', async () => {
+      jest
+        .spyOn(merchantTaxRuleRepository, 'findOne')
+        .mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      const sessionUser = { id: 1, username: 'session-user' } as User;
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(sessionUser);
+      const saveSpy = jest
+        .spyOn(merchantTaxRuleRepository, 'save')
+        .mockImplementation(async (entity) => entity as MerchantTaxRule);
+
+      await service.update(
+        1,
+        mockUpdateMerchantTaxRuleDto,
+        mockMerchantAdminUser,
+      );
+
+      expect(saveSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ updatedBy: sessionUser }),
+      );
     });
 
     it('should throw error for invalid ID during update', async () => {
       await expect(
-        service.update(0, mockUpdateMerchantTaxRuleDto),
+        service.update(0, mockUpdateMerchantTaxRuleDto, mockMerchantAdminUser),
       ).rejects.toThrow();
     });
 
@@ -384,33 +825,31 @@ describe('MerchantTaxRuleService', () => {
       findOneSpy.mockResolvedValue(null);
 
       await expect(
-        service.update(999, mockUpdateMerchantTaxRuleDto),
+        service.update(
+          999,
+          mockUpdateMerchantTaxRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow('Merchant Tax Rule not found');
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 999,
-          status: In(['active', 'inactive']),
-        },
-        relations: ['company'],
-      });
     });
 
     it('should handle database errors during update', async () => {
-      const findOneSpy = jest.spyOn(merchantTaxRuleRepository, 'findOne');
-      const saveSpy = jest.spyOn(merchantTaxRuleRepository, 'save');
-
       jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as User);
+        .spyOn(merchantTaxRuleRepository, 'findOne')
+        .mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 1,
+      } as Merchant);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as User);
       jest
-        .spyOn(companyRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as Company);
-
-      findOneSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
-      saveSpy.mockRejectedValue(new Error('Database error'));
+        .spyOn(merchantTaxRuleRepository, 'save')
+        .mockRejectedValue(new Error('Database error'));
 
       await expect(
-        service.update(1, mockUpdateMerchantTaxRuleDto),
+        service.update(1, mockUpdateMerchantTaxRuleDto, mockMerchantAdminUser),
       ).rejects.toThrow('Database error');
     });
   });
@@ -426,9 +865,7 @@ describe('MerchantTaxRuleService', () => {
       const result = await service.remove(1);
 
       expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-        },
+        where: { id: 1 },
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -450,9 +887,7 @@ describe('MerchantTaxRuleService', () => {
         'Merchant Tax Rule not found',
       );
       expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 999,
-        },
+        where: { id: 999 },
       });
     });
   });
