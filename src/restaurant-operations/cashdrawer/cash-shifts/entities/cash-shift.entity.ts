@@ -12,7 +12,7 @@ import { Merchant } from '../../../../platform-saas/merchants/entities/merchant.
 import { CashDrawer } from '../../cash-drawers/entities/cash-drawer.entity';
 import { CashShiftStatus } from '../constants/cash-shift-status.enum';
 import type { CashTransaction } from '../../cash-transactions/entities/cash-transaction.entity';
-import { CashMovement } from '../../cash-movements/entities/cash-movement.entity';
+import type { CashMovement } from '../../cash-movements/entities/cash-movement.entity';
 
 @Entity('cash_shifts')
 export class CashShift {
@@ -85,6 +85,6 @@ export class CashShift {
     @OneToMany('CashTransaction', (ct: CashTransaction) => ct.cashShift)
     cashTransactions: CashTransaction[];
 
-    @OneToMany(() => CashMovement, (cm) => cm.cashShift)
+    @OneToMany('CashMovement', (cm: CashMovement) => cm.cashShift)
     cashMovements: CashMovement[];
 }

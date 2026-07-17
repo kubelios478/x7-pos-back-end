@@ -6,12 +6,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { Location } from './entities/location.entity';
 import { Item } from '../items/entities/item.entity';
+import { Variant } from '../../variants/entities/variant.entity';
 import { ItemsModule } from '../items/items.module';
 
 @Module({
   imports: [
     AuthModule,
-    TypeOrmModule.forFeature([Location, Merchant, Item]),
+    TypeOrmModule.forFeature([Location, Merchant, Item, Variant]),
     forwardRef(() => ItemsModule),
   ],
   controllers: [LocationsController],

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
 import { Repository } from 'typeorm';
@@ -163,6 +164,7 @@ export class ItemsService {
           ? ({
               id: item.product.id,
               name: item.product.name,
+              sku: item.product.sku,
             } as ProductLittleResponseDto)
           : null,
         variant: item.variant
@@ -241,6 +243,7 @@ export class ItemsService {
         ? ({
             id: item.product.id,
             name: item.product.name,
+            sku: item.product.sku,
           } as ProductLittleResponseDto)
         : null,
       variant: item.variant
@@ -428,8 +431,61 @@ export class ItemsService {
     if (items.length > 0) {
       for (const item of items) {
         item.isActive = false;
+        item.currentQty = 0; // Eliminar existencias al desactivar
       }
       await this.itemRepository.save(items);
     }
+  }
+
+  async adjust(
+    id: number,
+    merchantId: number,
+    adjustStockDto: AdjustStockDto,
+  ): Promise<OneItemResponse> {
+    const { value, type, reason } = adjustStockDto;
+
+    const item = await this.itemRepository
+      .createQueryBuilder('item')
+      .leftJoinAndSelect('item.product', 'product')
+      .leftJoinAndSelect('item.variant', 'variant')
+      .leftJoinAndSelect('item.location', 'location')
+      .where('item.id = :id', { id })
+      .andWhere('product.merchantId = :merchantId', { merchantId })
+      .andWhere('item.isActive = :isActive', { isActive: true })
+      .getOne();
+
+    if (!item) {
+      ErrorHandler.notFound(ErrorMessage.ITEM_NOT_FOUND);
+    }
+
+    const oldQty = Number(item.currentQty) || 0;
+    let newQty = oldQty;
+    let diff = 0;
+
+    if (type === 'absolute') {
+      newQty = value;
+      diff = newQty - oldQty;
+    } else {
+      newQty = oldQty + value;
+      diff = value;
+    }
+
+    item.currentQty = newQty;
+    const savedItem = await this.itemRepository.save(item);
+
+    // Registrar auditoría automática en stock_movement si la diferencia no es 0
+    if (diff !== 0) {
+      await this.movementsService.create(merchantId, {
+        stockItemId: item.id,
+        quantity: Math.abs(diff),
+        type: diff > 0 ? MovementsStatus.IN : MovementsStatus.OUT,
+        reference: 'Manual Stock Correction',
+        reason: reason || 'Manual adjustment by administrator',
+      });
+    }
+
+    await this.stockLevelMonitor.evaluateStockItems(merchantId, [savedItem.id]);
+
+    return this.findOne(savedItem.id, merchantId, 'Updated');
   }
 }

@@ -214,7 +214,7 @@ export class SuppliersController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: GetSuppliersQueryDto,
   ): Promise<AllPaginatedSuppliers> {
-    const companyId = query.companyId || await this.suppliersService.getCompanyIdByMerchantId(
+    const companyId = await this.suppliersService.getCompanyIdByMerchantId(
       user.merchant.id,
     );
     return this.suppliersService.findAll(query, companyId);

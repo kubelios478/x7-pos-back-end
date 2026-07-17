@@ -28,4 +28,9 @@ export class CreatePurchaseOrderItemDto {
   @IsNumber()
   @Min(0)
   unitPrice: number;
+
+  @ApiProperty({ example: 1, description: 'ID of the destination location' })
+  @IsNotEmpty()
+  @IsNumber()
+  locationId: number;
 }

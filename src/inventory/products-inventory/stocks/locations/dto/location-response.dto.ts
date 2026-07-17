@@ -18,6 +18,9 @@ export class LocationResponseDto {
     description: 'Associated merchant details',
   })
   merchant: MerchantResponseDto | null;
+
+  @ApiProperty({ example: true, description: 'Is location active' })
+  isActive: boolean;
 }
 
 export class LocationLittleResponseDto {

@@ -77,6 +77,9 @@ export class ProductLittleResponseDto {
 
   @ApiProperty({ example: 'Phone', description: 'Product name' })
   name: string;
+
+  @ApiProperty({ example: 'PROD-001', description: 'Product SKU', required: false })
+  sku?: string;
 }
 
 export class OneProductResponse extends SuccessResponse {
