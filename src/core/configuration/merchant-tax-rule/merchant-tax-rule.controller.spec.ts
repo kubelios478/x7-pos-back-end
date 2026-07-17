@@ -5,13 +5,18 @@ import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 import { MerchantTaxRule } from './entity/merchant-tax-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TaxType } from '../constants/tax-type.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { CreateMerchantTaxRuleDto } from './dto/create-merchant-tax-rule.dto';
+import { UpdateMerchantTaxRuleDto } from './dto/update-merchant-tax-rule.dto';
 
 describe('MerchantTaxRuleController', () => {
   let controller: MerchantTaxRuleController;
   let service: MerchantTaxRuleService;
 
-  // Mock data
   const mockCompany: Company = {
     id: 1,
     name: 'Test Company',
@@ -30,11 +35,23 @@ describe('MerchantTaxRuleController', () => {
 
   const mockUser = {
     id: 1,
+    username: 'admin',
+    email: 'merchant-admin@test.com',
   } as User;
+
+  const mockAuthenticatedUser: AuthenticatedUser = {
+    id: 1,
+    email: 'merchant-admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 10 },
+  };
 
   const mockMerchantTaxRule: MerchantTaxRule = {
     id: 1,
     company: mockCompany,
+    merchant_id: 10,
+    merchant: { id: 10 } as Merchant,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: mockUser,
@@ -43,28 +60,20 @@ describe('MerchantTaxRuleController', () => {
     name: 'Test Merchant Tax Rule',
     description: 'Description of the merchant tax rule',
     taxType: TaxType.COMPOUND,
-    rate: 19,
+    rate: 0.19,
     appliesToTips: true,
     appliesToOvertime: true,
     isCompound: true,
     externalTaxCode: 'lfgtr-hhse',
   };
 
-  const mockCreateMerchantTaxRuleDto = {
-    id: 1,
-    companyId: mockCompany.id,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdById: mockUser.id,
-    updatedById: mockUser.id,
-    status: 'active',
+  const mockCreateMerchantTaxRuleDto: CreateMerchantTaxRuleDto = {
     name: 'Test Merchant Tax Rule',
     description: 'Description of the merchant tax rule',
     taxType: TaxType.COMPOUND,
-    rate: 19,
+    rate: 0.19,
     appliesToTips: true,
     appliesToOvertime: true,
-    isCompound: true,
     externalTaxCode: 'lfgtr-hhse',
   };
 
@@ -88,26 +97,19 @@ describe('MerchantTaxRuleController', () => {
     data: mockMerchantTaxRule,
   };
 
-  const mockUpdateMerchantTaxRuleDto = {
-    id: 1,
-    company: mockCompany,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: 'Test User 2',
-    updatedBy: 'Test User 2',
+  const mockUpdateMerchantTaxRuleDto: UpdateMerchantTaxRuleDto = {
     status: 'inactive',
     name: 'Update Merchant Tax Rule',
     description: 'Description of the merchant tax rule',
     taxType: TaxType.COMPOUND,
-    rate: 15,
+    rate: 0.15,
     appliesToTips: false,
     appliesToOvertime: true,
-    isCompound: true,
     externalTaxCode: 'lfgtr-hhse',
   };
 
   beforeEach(async () => {
-    const mockMerchantTaxRule = {
+    const mockMerchantTaxRuleService = {
       create: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
@@ -120,7 +122,7 @@ describe('MerchantTaxRuleController', () => {
       providers: [
         {
           provide: MerchantTaxRuleService,
-          useValue: mockMerchantTaxRule,
+          useValue: mockMerchantTaxRuleService,
         },
       ],
     }).compile();
@@ -140,9 +142,6 @@ describe('MerchantTaxRuleController', () => {
     });
   });
 
-  //--------------------------------------------------------------
-  // POST /merchant-tax-rule
-  //--------------------------------------------------------------
   describe('POST /merchant-tax-rule', () => {
     it('should create a merchant tax rule successfully', async () => {
       const expectedResponse = {
@@ -154,11 +153,16 @@ describe('MerchantTaxRuleController', () => {
       const createSpy = jest
         .spyOn(service, 'create')
         .mockResolvedValue(expectedResponse);
-      createSpy.mockResolvedValue(expectedResponse);
 
-      const result = await controller.create(mockCreateMerchantTaxRuleDto);
+      const result = await controller.create(
+        mockCreateMerchantTaxRuleDto,
+        mockAuthenticatedUser,
+      );
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantTaxRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateMerchantTaxRuleDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(expectedResponse);
     });
 
@@ -167,28 +171,33 @@ describe('MerchantTaxRuleController', () => {
       const createSpy = jest
         .spyOn(service, 'create')
         .mockRejectedValue(new Error(errorMessage));
-      createSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(mockCreateMerchantTaxRuleDto),
+        controller.create(mockCreateMerchantTaxRuleDto, mockAuthenticatedUser),
       ).rejects.toThrow(errorMessage);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantTaxRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateMerchantTaxRuleDto,
+        mockAuthenticatedUser,
+      );
     });
   });
-  //--------------------------------------------------------------
-  // GET /merchant-tax-rule
-  //--------------------------------------------------------------
+
   describe('GET /merchant-tax-rule', () => {
     it('should retrieve all merchant tax rules successfully', async () => {
       const findAllSpy = jest
         .spyOn(service, 'findAll')
         .mockResolvedValue(mockPaginatedResponse);
-      findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(mockPaginatedResponse);
     });
 
@@ -208,11 +217,16 @@ describe('MerchantTaxRuleController', () => {
       const findAllSpy = jest
         .spyOn(service, 'findAll')
         .mockResolvedValue(emptyPaginatedResponse);
-      findAllSpy.mockResolvedValue(emptyPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(emptyPaginatedResponse);
     });
 
@@ -221,28 +235,27 @@ describe('MerchantTaxRuleController', () => {
       const findAllSpy = jest
         .spyOn(service, 'findAll')
         .mockRejectedValue(new Error(errorMessage));
-      findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser),
+      ).rejects.toThrow(errorMessage);
+
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
       );
-
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
     });
   });
-  //--------------------------------------------------------------
-  // GET /merchant-tax-rule/:id
-  //--------------------------------------------------------------
+
   describe('GET /merchant-tax-rule/:id', () => {
     it('should retrieve a merchant tax rule by id successfully', async () => {
       const findOneSpy = jest
         .spyOn(service, 'findOne')
         .mockResolvedValue(mockOneMerchantTaxRuleResponseDto);
-      findOneSpy.mockResolvedValue(mockOneMerchantTaxRuleResponseDto);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, mockAuthenticatedUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(mockOneMerchantTaxRuleResponseDto);
     });
 
@@ -251,16 +264,15 @@ describe('MerchantTaxRuleController', () => {
       const findOneSpy = jest
         .spyOn(service, 'findOne')
         .mockRejectedValue(new Error(errorMessage));
-      findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(1)).rejects.toThrow(errorMessage);
+      await expect(
+        controller.findOne(1, mockAuthenticatedUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
   });
-  //--------------------------------------------------------------
-  // PATCH /merchant-tax-rule/:id
-  //--------------------------------------------------------------
+
   describe('PATCH /merchant-tax-rule/:id', () => {
     it('should update a merchant tax rule successfully', async () => {
       const updatedResponse = {
@@ -271,11 +283,18 @@ describe('MerchantTaxRuleController', () => {
       const updateSpy = jest
         .spyOn(service, 'update')
         .mockResolvedValue(updatedResponse);
-      updateSpy.mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, mockUpdateMerchantTaxRuleDto);
+      const result = await controller.update(
+        1,
+        mockUpdateMerchantTaxRuleDto,
+        mockAuthenticatedUser,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantTaxRuleDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        mockUpdateMerchantTaxRuleDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(updatedResponse);
     });
 
@@ -284,18 +303,23 @@ describe('MerchantTaxRuleController', () => {
       const updateSpy = jest
         .spyOn(service, 'update')
         .mockRejectedValue(new Error(errorMessage));
-      updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, mockUpdateMerchantTaxRuleDto),
+        controller.update(
+          1,
+          mockUpdateMerchantTaxRuleDto,
+          mockAuthenticatedUser,
+        ),
       ).rejects.toThrow(errorMessage);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantTaxRuleDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        mockUpdateMerchantTaxRuleDto,
+        mockAuthenticatedUser,
+      );
     });
   });
-  //--------------------------------------------------------------
-  // DELETE /merchant-tax-rule/:id
-  //--------------------------------------------------------------
+
   describe('DELETE /merchant-tax-rule/:id', () => {
     it('should delete a merchant tax rule successfully', async () => {
       const deleteResponse = {
@@ -306,7 +330,6 @@ describe('MerchantTaxRuleController', () => {
       const removeSpy = jest
         .spyOn(service, 'remove')
         .mockResolvedValue(deleteResponse);
-      removeSpy.mockResolvedValue(deleteResponse);
 
       const result = await controller.remove(1);
 
@@ -319,7 +342,6 @@ describe('MerchantTaxRuleController', () => {
       const removeSpy = jest
         .spyOn(service, 'remove')
         .mockRejectedValue(new Error(errorMessage));
-      removeSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(controller.remove(1)).rejects.toThrow(errorMessage);
 

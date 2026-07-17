@@ -25,14 +25,14 @@ export class MerchantPayrollRule extends Configuration {
     example: 1,
     description: 'Day of the Pay in the Week',
   })
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   payDayOfWeek: number;
 
   @ApiProperty({
     example: 31,
     description: 'Day of the Pay in the Month',
   })
-  @Column({ type: 'int' })
+  @Column({ type: 'int', nullable: true })
   payDayOfMonth: number;
 
   @ApiProperty({

@@ -43,6 +43,8 @@ import {
 import { PaginatedMerchantPayrollRuleResponseDto } from './dto/paginated-merchant-payroll-rule-response.dto';
 import { QueryMerchantPayrollRuleDto } from './dto/query-merchant-payroll-rule.dto';
 import { UpdateMerchantPayrollRuleDto } from './dto/update-merchant-payroll-rule.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Merchant Payroll Rule')
 @Controller('merchant-payroll-rule')
@@ -136,8 +138,9 @@ export class MerchantPayrollRuleController {
   })
   async create(
     @Body() dto: CreateMerchantPayrollRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantPayrollRuleResponseDto> {
-    return this.merchantPayrollRuleService.create(dto);
+    return this.merchantPayrollRuleService.create(dto, user);
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -190,8 +193,9 @@ export class MerchantPayrollRuleController {
   })
   async findAll(
     @Query() query: QueryMerchantPayrollRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedMerchantPayrollRuleResponseDto> {
-    return this.merchantPayrollRuleService.findAll(query);
+    return this.merchantPayrollRuleService.findAll(query, user);
   }
 
   @Get(':id')
@@ -290,12 +294,13 @@ export class MerchantPayrollRuleController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantPayrollRuleResponseDto> {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
     const merchantPayrollRule =
-      await this.merchantPayrollRuleService.findOne(id);
+      await this.merchantPayrollRuleService.findOne(id, user);
     return merchantPayrollRule;
   }
 
@@ -402,8 +407,9 @@ export class MerchantPayrollRuleController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMerchantPayrollRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantPayrollRuleResponseDto> {
-    return this.merchantPayrollRuleService.update(id, dto);
+    return this.merchantPayrollRuleService.update(id, dto, user);
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

@@ -156,6 +156,8 @@ import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/e
 import { RealtimeModule } from './realtime/realtime.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MerchantTaxRuleModule } from './core/configuration/merchant-tax-rule/merchant-tax-rule.module';
+import { MerchantOvertimeRuleModule } from './core/configuration/merchant-overtime-rule/merchant-overtime-rule.module';
+import { MerchantPayrollRuleModule } from './core/configuration/merchant-payroll-rule/merchant-payroll-rule.module';
 import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
 import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-analytics/modifier-analytics.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
@@ -336,6 +338,8 @@ import { OnboardingSession } from './onboarding/entities/onboarding-session.enti
     DeliveryAssignmentModule,
     RealtimeModule,
     MerchantTaxRuleModule,
+    MerchantOvertimeRuleModule,
+    MerchantPayrollRuleModule,
     KitchenAnalyticsModule,
     ModifierAnalyticsModule,
   ],

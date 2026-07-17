@@ -34,6 +34,8 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { CreateMerchantTipRuleDto } from './dto/create-merchant-tip-rule.dto';
 import {
   MerchantTipRuleResponseDto,
@@ -137,8 +139,9 @@ export class MerchantTipRuleController {
   })
   async create(
     @Body() dto: CreateMerchantTipRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.create(dto);
+    return this.merchantTipRuleService.create(dto, user);
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -190,8 +193,9 @@ export class MerchantTipRuleController {
   })
   async findAll(
     @Query() query: QueryMerchantTipRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.findAll(query);
+    return this.merchantTipRuleService.findAll(query, user);
   }
 
   @Get(':id')
@@ -290,11 +294,12 @@ export class MerchantTipRuleController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
-    const merchantTipRule = await this.merchantTipRuleService.findOne(id);
+    const merchantTipRule = await this.merchantTipRuleService.findOne(id, user);
     return merchantTipRule;
   }
 
@@ -402,8 +407,9 @@ export class MerchantTipRuleController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMerchantTipRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.update(id, dto);
+    return this.merchantTipRuleService.update(id, dto, user);
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

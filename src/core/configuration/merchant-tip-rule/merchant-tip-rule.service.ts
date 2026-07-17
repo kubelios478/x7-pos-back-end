@@ -13,6 +13,27 @@ import { PaginatedMerchantTipRuleResponseDto } from './dto/paginated-merchant-ti
 import { UpdateMerchantTipRuleDto } from './dto/update-merchant-tip-rule.dto';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TipDistributionMethod } from '../constants/tip-distribution-method.enum';
+import { TipCalculationMethod } from '../constants/tip-calculation-method.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import {
+  resolveMerchantContext,
+  assertOwnsCompany,
+} from '../utils/merchant-scoping.util';
+
+const AUDIT_USER_SELECT: (keyof User)[] = ['id', 'username', 'email'];
+const TIP_RULE_SELECT_FIELDS = [
+  'merchantTipRule',
+  'company.id',
+  'createdBy.id',
+  'createdBy.username',
+  'createdBy.email',
+  'updatedBy.id',
+  'updatedBy.username',
+  'updatedBy.email',
+  'merchant.id',
+  'merchant.name',
+];
 
 @Injectable()
 export class MerchantTipRuleService {
@@ -30,78 +51,97 @@ export class MerchantTipRuleService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  private validateRoleBasedSum(
+    tipDistributionMethod: TipDistributionMethod,
+    staffPercentage?: number,
+    kitchenPercentage?: number,
+    managerPercentage?: number,
+  ): void {
+    if (tipDistributionMethod !== TipDistributionMethod.ROLE_BASED) {
+      return;
+    }
+
+    if (
+      staffPercentage == null ||
+      kitchenPercentage == null ||
+      managerPercentage == null
+    ) {
+      ErrorHandler.invalidInput(
+        'Role based distribution requires all percentage fields',
+      );
+    }
+
+    const pctTotal =
+      Number(staffPercentage) + Number(kitchenPercentage) + Number(managerPercentage);
+
+    if (Math.abs(pctTotal - 1) > 0.01) {
+      ErrorHandler.invalidInput('Tip distribution percentages must total 1');
+    }
+  }
+
+  private validateSuggestedPercentagesSum(
+    tipCalculationMethod: TipCalculationMethod,
+    suggestedPercentages?: number[],
+  ): void {
+    if (tipCalculationMethod !== TipCalculationMethod.PERCENTAGE) {
+      return;
+    }
+
+    const sum = (suggestedPercentages ?? []).reduce(
+      (acc, n) => acc + Number(n),
+      0,
+    );
+
+    if (Math.abs(sum - 1) > 0.01) {
+      ErrorHandler.invalidInput('Suggested percentages must sum to 100%');
+    }
+  }
+
   async create(
     dto: CreateMerchantTipRuleDto,
+    user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
-    if (dto.companyId && !Number.isInteger(dto.companyId)) {
-      ErrorHandler.invalidId('Company ID must be a positive integer');
-    }
+    this.validateRoleBasedSum(
+      dto.tipDistributionMethod,
+      dto.staffPercentage,
+      dto.kitchenPercentage,
+      dto.managerPercentage,
+    );
+    this.validateSuggestedPercentagesSum(
+      dto.tipCalculationMethod,
+      dto.suggestedPercentages,
+    );
 
-    if (dto.tipDistributionMethod === TipDistributionMethod.ROLE_BASED) {
-      if (
-        dto.staffPercentage == null ||
-        dto.kitchenPercentage == null ||
-        dto.managerPercentage == null
-      ) {
-        ErrorHandler.invalidInput(
-          'Role based distribution requires all percentage fields',
-        );
-      }
+    const { merchant, companyId } = await resolveMerchantContext(
+      this.merchantRepository,
+      user,
+    );
 
-      const pctTotal =
-        Number(dto.staffPercentage) +
-        Number(dto.kitchenPercentage) +
-        Number(dto.managerPercentage);
-
-      if (Math.abs(pctTotal - 1) > 0.01) {
-        ErrorHandler.invalidInput('Tip distribution percentages must total 1');
-      }
-    }
-
-    let company: Company | null = null;
-    if (dto.companyId) {
-      company = await this.companyRepository.findOne({
-        where: { id: dto.companyId },
-      });
-      if (!company) {
-        ErrorHandler.notFound('Company not found');
-      }
-    }
-
-    let merchant: Merchant | null = null;
-    if (dto.merchantId) {
-      merchant = await this.merchantRepository.findOne({
-        where: { id: dto.merchantId },
-      });
-      if (!merchant) {
-        ErrorHandler.notFound('Merchant not found');
-      }
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+    if (!company) {
+      ErrorHandler.notFound('Company not found');
     }
 
     const createdByUser = await this.userRepository.findOne({
-      where: { id: dto.createdById },
+      where: { id: user.id },
+      select: AUDIT_USER_SELECT,
     });
-
     if (!createdByUser) {
       ErrorHandler.userNotFound();
     }
 
-    const updatedByUser = await this.userRepository.findOne({
-      where: { id: dto.updatedById },
-    });
-
-    if (!updatedByUser) {
-      ErrorHandler.userNotFound();
-    }
+    const now = new Date();
 
     const merchantTipRule = this.merchantTipRuleRepository.create({
-      company: company,
-      merchant: merchant,
-      createdAt: dto.createdAt,
-      updatedAt: dto.updatedAt,
+      company,
+      merchant,
+      createdAt: now,
+      updatedAt: now,
       createdBy: createdByUser,
-      updatedBy: updatedByUser,
-      status: dto.status,
+      updatedBy: createdByUser,
+      status: 'active',
       name: dto.name,
       tipCalculationMethod: dto.tipCalculationMethod,
       tipDistributionMethod: dto.tipDistributionMethod,
@@ -127,6 +167,7 @@ export class MerchantTipRuleService {
 
   async findAll(
     query: QueryMerchantTipRuleDto,
+    user: AuthenticatedUser,
   ): Promise<PaginatedMerchantTipRuleResponseDto> {
     const {
       status,
@@ -146,16 +187,16 @@ export class MerchantTipRuleService {
       .leftJoin('merchantTipRule.createdBy', 'createdBy')
       .leftJoin('merchantTipRule.updatedBy', 'updatedBy')
       .leftJoin('merchantTipRule.merchant', 'merchant')
-      .select([
-        'merchantTipRule',
-        'company.id',
-        'createdBy.id',
-        'createdBy.email',
-        'updatedBy.id',
-        'updatedBy.email',
-        'merchant.id',
-        'merchant.name',
-      ]);
+      .select(TIP_RULE_SELECT_FIELDS);
+
+    if (user.role !== UserRole.PORTAL_ADMIN) {
+      const { companyId } = await resolveMerchantContext(
+        this.merchantRepository,
+        user,
+      );
+      qb.andWhere('company.id = :companyId', { companyId });
+    }
+
     if (status) {
       qb.andWhere('merchantTipRule.status = :status', { status });
     } else {
@@ -185,18 +226,37 @@ export class MerchantTipRuleService {
       },
     };
   }
-  async findOne(id: number): Promise<OneMerchantTipRuleResponseDto> {
+  async findOne(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantTipRuleResponseDto> {
     if (!Number.isInteger(id) || id < 1) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
-    const merchantTipRule = await this.merchantTipRuleRepository.findOne({
-      where: { id, status: In(['active', 'inactive']) },
-      relations: ['company', 'createdBy', 'updatedBy', 'merchant'],
-    });
+    const merchantTipRule = await this.merchantTipRuleRepository
+      .createQueryBuilder('merchantTipRule')
+      .leftJoin('merchantTipRule.company', 'company')
+      .leftJoin('merchantTipRule.createdBy', 'createdBy')
+      .leftJoin('merchantTipRule.updatedBy', 'updatedBy')
+      .leftJoin('merchantTipRule.merchant', 'merchant')
+      .select(TIP_RULE_SELECT_FIELDS)
+      .where('merchantTipRule.id = :id', { id })
+      .andWhere('merchantTipRule.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      })
+      .getOne();
+
     if (!merchantTipRule) {
       ErrorHandler.merchantTipRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantTipRule.company.id,
+    );
+
     return {
       statusCode: 200,
       message: 'Merchant Tip Rule retrieved successfully',
@@ -207,6 +267,7 @@ export class MerchantTipRuleService {
   async update(
     id: number,
     dto: UpdateMerchantTipRuleDto,
+    user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
@@ -219,17 +280,44 @@ export class MerchantTipRuleService {
       ErrorHandler.merchantTipRuleNotFound();
     }
 
-    if (dto.updatedById) {
-      const updatedByUser = await this.userRepository.findOne({
-        where: { id: dto.updatedById },
-      });
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantTipRule.company.id,
+    );
 
-      if (!updatedByUser) {
-        ErrorHandler.userNotFound();
-      }
-
-      merchantTipRule.updatedBy = updatedByUser;
+    if (
+      dto.tipDistributionMethod !== undefined ||
+      dto.staffPercentage !== undefined ||
+      dto.kitchenPercentage !== undefined ||
+      dto.managerPercentage !== undefined
+    ) {
+      this.validateRoleBasedSum(
+        dto.tipDistributionMethod ?? merchantTipRule.tipDistributionMethod,
+        dto.staffPercentage ?? merchantTipRule.staffPercentage,
+        dto.kitchenPercentage ?? merchantTipRule.kitchenPercentage,
+        dto.managerPercentage ?? merchantTipRule.managerPercentage,
+      );
     }
+    if (
+      dto.tipCalculationMethod !== undefined ||
+      dto.suggestedPercentages !== undefined
+    ) {
+      this.validateSuggestedPercentagesSum(
+        dto.tipCalculationMethod ?? merchantTipRule.tipCalculationMethod,
+        dto.suggestedPercentages ?? merchantTipRule.suggestedPercentages,
+      );
+    }
+
+    const updatedByUser = await this.userRepository.findOne({
+      where: { id: user.id },
+      select: AUDIT_USER_SELECT,
+    });
+    if (!updatedByUser) {
+      ErrorHandler.notFound('UpdatedBy user not found');
+    }
+    merchantTipRule.updatedBy = updatedByUser;
+    merchantTipRule.updatedAt = new Date();
 
     Object.assign(merchantTipRule, dto);
 

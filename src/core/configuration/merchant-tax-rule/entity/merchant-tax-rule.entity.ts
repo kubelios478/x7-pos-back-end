@@ -28,12 +28,13 @@ export class MerchantTaxRule extends Configuration {
   taxType: TaxType;
 
   @ApiProperty({
-    example: 19,
-    description: 'Rate of the tax',
+    example: 0.19,
+    description:
+      'Rate of the tax. For PERCENTAGE/COMPOUND, a decimal fraction (e.g. 0.19 for 19%). For FIXED, a monetary amount applied once per order.',
   })
   @Column({
     type: 'decimal',
-    precision: 5,
+    precision: 10,
     scale: 4,
     nullable: true,
   })

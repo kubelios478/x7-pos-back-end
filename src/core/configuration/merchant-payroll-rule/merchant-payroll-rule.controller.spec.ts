@@ -5,13 +5,18 @@ import { MerchantPayrollRuleService } from './merchant-payroll-rule.service';
 import { MerchantPayrollRule } from './entity/merchant-payroll-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { PayrollFrequency } from '../constants/payroll-frequency.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { CreateMerchantPayrollRuleDto } from './dto/create-merchant-payroll-rule.dto';
+import { UpdateMerchantPayrollRuleDto } from './dto/update-merchant-payroll-rule.dto';
 
 describe('MerchantPayrollRuleController', () => {
   let controller: MerchantPayrollRuleController;
   let service: MerchantPayrollRuleService;
 
-  // Mock data
   const mockCompany: Company = {
     id: 1,
     name: 'Test Company',
@@ -24,17 +29,29 @@ describe('MerchantPayrollRuleController', () => {
     country: 'Test Country',
     merchants: [],
     customers: [],
-    suppliers: [],
     configurations: [],
+    suppliers: [],
   } as Company;
 
-  const mockUser = {
+  const mockUser = { id: 1 } as User;
+
+  const mockMerchant: Merchant = {
+    id: 10,
+  } as Merchant;
+
+  const mockAuthenticatedUser: AuthenticatedUser = {
     id: 1,
-  } as User;
+    email: 'merchant-admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 10 },
+  };
 
   const mockMerchantPayrollRule: MerchantPayrollRule = {
     id: 1,
     company: mockCompany,
+    merchant_id: 10,
+    merchant: mockMerchant,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: mockUser,
@@ -51,14 +68,7 @@ describe('MerchantPayrollRuleController', () => {
     requiresManagerApproval: true,
   };
 
-  const mockCreateMerchantPayrollRuleDto = {
-    id: 1,
-    companyId: mockCompany.id,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdById: mockUser.id,
-    updatedById: mockUser.id,
-    status: 'active',
+  const mockCreateMerchantPayrollRuleDto: CreateMerchantPayrollRuleDto = {
     name: 'Test Merchant Payroll Rule',
     frequencyPayroll: PayrollFrequency.CUSTOM,
     payDayOfWeek: 2,
@@ -70,33 +80,7 @@ describe('MerchantPayrollRuleController', () => {
     requiresManagerApproval: true,
   };
 
-  const mockPagination = {
-    total: 1,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  };
-
-  const mockPaginatedResponse = {
-    statusCode: 200,
-    message: 'Merchant Payroll rules retrieved successfully',
-    data: [mockMerchantPayrollRule],
-    pagination: mockPagination,
-  };
-
-  const mockOneMerchantPayrollRuleResponseDto = {
-    statusCode: 200,
-    message: 'Merchant Payroll rule retrieved successfully',
-    data: mockMerchantPayrollRule,
-  };
-
-  const mockUpdateMerchantPayrollRuleDto = {
-    id: 1,
-    company: mockCompany,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: 'Test User 2',
-    updatedBy: 'Test User 2',
+  const mockUpdateMerchantPayrollRuleDto: UpdateMerchantPayrollRuleDto = {
     status: 'inactive',
     name: 'Update Merchant Payroll Rule',
     frequencyPayroll: PayrollFrequency.MONTHLY,
@@ -109,8 +93,21 @@ describe('MerchantPayrollRuleController', () => {
     requiresManagerApproval: true,
   };
 
+  const mockPagination = { total: 1, page: 1, limit: 10, totalPages: 1 };
+  const mockPaginatedResponse = {
+    statusCode: 200,
+    message: 'Merchant Payroll Rules retrieved successfully',
+    data: [mockMerchantPayrollRule],
+    pagination: mockPagination,
+  };
+  const mockOneMerchantPayrollRuleResponseDto = {
+    statusCode: 200,
+    message: 'Merchant Payroll Rule retrieved successfully',
+    data: mockMerchantPayrollRule,
+  };
+
   beforeEach(async () => {
-    const mockMerchantPayrollRule = {
+    const mockService = {
       create: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
@@ -120,20 +117,11 @@ describe('MerchantPayrollRuleController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MerchantPayrollRuleController],
-      providers: [
-        {
-          provide: MerchantPayrollRuleService,
-          useValue: mockMerchantPayrollRule,
-        },
-      ],
+      providers: [{ provide: MerchantPayrollRuleService, useValue: mockService }],
     }).compile();
 
-    controller = module.get<MerchantPayrollRuleController>(
-      MerchantPayrollRuleController,
-    );
-    service = module.get<MerchantPayrollRuleService>(
-      MerchantPayrollRuleService,
-    );
+    controller = module.get<MerchantPayrollRuleController>(MerchantPayrollRuleController);
+    service = module.get<MerchantPayrollRuleService>(MerchantPayrollRuleService);
   });
 
   describe('Controller Initialization', () => {
@@ -145,127 +133,83 @@ describe('MerchantPayrollRuleController', () => {
     });
   });
 
-  //--------------------------------------------------------------
-  // POST /merchant-payroll-rule
-  //--------------------------------------------------------------
   describe('POST /merchant-payroll-rule', () => {
     it('should create a merchant payroll rule successfully', async () => {
       const expectedResponse = {
         statusCode: 201,
-        message: 'Merchant payroll rule created successfully',
+        message: 'Merchant Payroll Rule created successfully',
         data: mockMerchantPayrollRule,
       };
+      const createSpy = jest.spyOn(service, 'create').mockResolvedValue(expectedResponse);
 
-      const createSpy = jest
-        .spyOn(service, 'create')
-        .mockResolvedValue(expectedResponse);
-      createSpy.mockResolvedValue(expectedResponse);
+      const result = await controller.create(mockCreateMerchantPayrollRuleDto, mockAuthenticatedUser);
 
-      const result = await controller.create(mockCreateMerchantPayrollRuleDto);
-
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantPayrollRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantPayrollRuleDto, mockAuthenticatedUser);
       expect(result).toEqual(expectedResponse);
     });
 
     it('should handle errors during creation', async () => {
       const errorMessage = 'Failed to create Merchant Payroll Rule';
-      const createSpy = jest
-        .spyOn(service, 'create')
-        .mockRejectedValue(new Error(errorMessage));
-      createSpy.mockRejectedValue(new Error(errorMessage));
+      jest.spyOn(service, 'create').mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(mockCreateMerchantPayrollRuleDto),
+        controller.create(mockCreateMerchantPayrollRuleDto, mockAuthenticatedUser),
       ).rejects.toThrow(errorMessage);
-
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantPayrollRuleDto);
     });
   });
-  //--------------------------------------------------------------
-  // GET /merchant-payroll-rule
-  //--------------------------------------------------------------
+
   describe('GET /merchant-payroll-rule', () => {
     it('should retrieve all merchant payroll rules successfully', async () => {
-      const findAllSpy = jest
-        .spyOn(service, 'findAll')
-        .mockResolvedValue(mockPaginatedResponse);
-      findAllSpy.mockResolvedValue(mockPaginatedResponse);
+      const findAllSpy = jest.spyOn(service, 'findAll').mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser);
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, mockAuthenticatedUser);
       expect(result).toEqual(mockPaginatedResponse);
     });
 
     it('should return empty list with pagination', async () => {
-      const emptyPaginatedResponse = {
+      const emptyResponse = {
         statusCode: 200,
-        message: 'Merchant payroll rules retrieved successfully',
+        message: 'Merchant Payroll Rules retrieved successfully',
         data: [],
-        pagination: {
-          total: 0,
-          page: 1,
-          limit: 10,
-          totalPages: 0,
-        },
+        pagination: { total: 0, page: 1, limit: 10, totalPages: 0 },
       };
+      jest.spyOn(service, 'findAll').mockResolvedValue(emptyResponse);
 
-      const findAllSpy = jest
-        .spyOn(service, 'findAll')
-        .mockResolvedValue(emptyPaginatedResponse);
-      findAllSpy.mockResolvedValue(emptyPaginatedResponse);
+      const result = await controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
-
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
-      expect(result).toEqual(emptyPaginatedResponse);
+      expect(result).toEqual(emptyResponse);
     });
 
     it('should handle service errors in findAll', async () => {
-      const errorMessage = 'Failed to retrieve Merchant Payroll Rules';
-      const findAllSpy = jest
-        .spyOn(service, 'findAll')
-        .mockRejectedValue(new Error(errorMessage));
-      findAllSpy.mockRejectedValue(new Error(errorMessage));
+      jest.spyOn(service, 'findAll').mockRejectedValue(new Error('boom'));
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
-      );
-
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      await expect(
+        controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser),
+      ).rejects.toThrow('boom');
     });
   });
-  //--------------------------------------------------------------
-  // GET /merchant-payroll-rule/:id
-  //--------------------------------------------------------------
+
   describe('GET /merchant-payroll-rule/:id', () => {
     it('should retrieve a merchant payroll rule by id successfully', async () => {
       const findOneSpy = jest
         .spyOn(service, 'findOne')
         .mockResolvedValue(mockOneMerchantPayrollRuleResponseDto);
-      findOneSpy.mockResolvedValue(mockOneMerchantPayrollRuleResponseDto);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, mockAuthenticatedUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(mockOneMerchantPayrollRuleResponseDto);
     });
 
     it('should handle errors when retrieving by ID', async () => {
-      const errorMessage = 'Failed to retrieve Merchant Payroll Rule';
-      const findOneSpy = jest
-        .spyOn(service, 'findOne')
-        .mockRejectedValue(new Error(errorMessage));
-      findOneSpy.mockRejectedValue(new Error(errorMessage));
+      jest.spyOn(service, 'findOne').mockRejectedValue(new Error('not found'));
 
-      await expect(controller.findOne(1)).rejects.toThrow(errorMessage);
-
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      await expect(controller.findOne(1, mockAuthenticatedUser)).rejects.toThrow('not found');
     });
   });
-  //--------------------------------------------------------------
-  // PATCH /merchant-payroll-rule/:id
-  //--------------------------------------------------------------
+
   describe('PATCH /merchant-payroll-rule/:id', () => {
     it('should update a merchant payroll rule successfully', async () => {
       const updatedResponse = {
@@ -273,54 +217,31 @@ describe('MerchantPayrollRuleController', () => {
         message: 'Merchant Payroll Rule updated successfully',
         data: mockMerchantPayrollRule,
       };
-      const updateSpy = jest
-        .spyOn(service, 'update')
-        .mockResolvedValue(updatedResponse);
-      updateSpy.mockResolvedValue(updatedResponse);
+      const updateSpy = jest.spyOn(service, 'update').mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(
-        1,
-        mockUpdateMerchantPayrollRuleDto,
-      );
+      const result = await controller.update(1, mockUpdateMerchantPayrollRuleDto, mockAuthenticatedUser);
 
-      expect(updateSpy).toHaveBeenCalledWith(
-        1,
-        mockUpdateMerchantPayrollRuleDto,
-      );
+      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantPayrollRuleDto, mockAuthenticatedUser);
       expect(result).toEqual(updatedResponse);
     });
 
     it('should handle errors during update', async () => {
-      const errorMessage = 'Failed to update Merchant Payroll Rule';
-      const updateSpy = jest
-        .spyOn(service, 'update')
-        .mockRejectedValue(new Error(errorMessage));
-      updateSpy.mockRejectedValue(new Error(errorMessage));
+      jest.spyOn(service, 'update').mockRejectedValue(new Error('forbidden'));
 
       await expect(
-        controller.update(1, mockUpdateMerchantPayrollRuleDto),
-      ).rejects.toThrow(errorMessage);
-
-      expect(updateSpy).toHaveBeenCalledWith(
-        1,
-        mockUpdateMerchantPayrollRuleDto,
-      );
+        controller.update(1, mockUpdateMerchantPayrollRuleDto, mockAuthenticatedUser),
+      ).rejects.toThrow('forbidden');
     });
   });
-  //--------------------------------------------------------------
-  // DELETE /merchant-payroll-rule/:id
-  //--------------------------------------------------------------
+
   describe('DELETE /merchant-payroll-rule/:id', () => {
     it('should delete a merchant payroll rule successfully', async () => {
       const deleteResponse = {
         statusCode: 200,
         message: 'Merchant Payroll Rule deleted successfully',
-        data: mockOneMerchantPayrollRuleResponseDto.data,
+        data: mockMerchantPayrollRule,
       };
-      const removeSpy = jest
-        .spyOn(service, 'remove')
-        .mockResolvedValue(deleteResponse);
-      removeSpy.mockResolvedValue(deleteResponse);
+      const removeSpy = jest.spyOn(service, 'remove').mockResolvedValue(deleteResponse);
 
       const result = await controller.remove(1);
 
@@ -329,15 +250,9 @@ describe('MerchantPayrollRuleController', () => {
     });
 
     it('should handle errors during deletion', async () => {
-      const errorMessage = 'Failed to delete Merchant Payroll Rule';
-      const removeSpy = jest
-        .spyOn(service, 'remove')
-        .mockRejectedValue(new Error(errorMessage));
-      removeSpy.mockRejectedValue(new Error(errorMessage));
+      jest.spyOn(service, 'remove').mockRejectedValue(new Error('not found'));
 
-      await expect(controller.remove(1)).rejects.toThrow(errorMessage);
-
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      await expect(controller.remove(1)).rejects.toThrow('not found');
     });
   });
 });
