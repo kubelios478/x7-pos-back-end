@@ -49,7 +49,13 @@ import {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
-@Scopes(Scope.MERCHANT_WEB)
+@Scopes(
+  Scope.ADMIN_PORTAL,
+  Scope.MERCHANT_WEB,
+  Scope.MERCHANT_ANDROID,
+  Scope.MERCHANT_IOS,
+  Scope.MERCHANT_CLOVER,
+)
 @Controller('journal-entries/:entryId/lines')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.JOURNAL_ENTRY_LINES)
 export class JournalEntryLineController {
