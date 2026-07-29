@@ -3,11 +3,12 @@ import {
   IsNumber,
   IsEnum,
   IsPositive,
+  IsBoolean,
   Min,
   Max,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { SupplierInvoiceStatus } from '../constants/supplier-invoice-status.enum';
 
 export enum SupplierInvoiceSortBy {
@@ -72,4 +73,13 @@ export class GetSupplierInvoicesQueryDto {
   @ApiPropertyOptional({ example: 'DESC', enum: ['ASC', 'DESC'] })
   @IsOptional()
   sortOrder?: 'ASC' | 'DESC';
+
+  @ApiPropertyOptional({
+    example: false,
+    description: 'When true, list only soft-deleted (archived) invoices',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  only_deleted?: boolean;
 }

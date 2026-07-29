@@ -22,10 +22,12 @@ export class Configuration {
   @JoinColumn({ name: 'company_id' })
   company: Company;
 
-  @Column()
+  // Nullable so a company can be seeded with a default configuration record
+  // before any merchant branch exists (see CompanyDefaultConfiguration).
+  @Column({ nullable: true })
   merchant_id: number;
 
-  @ManyToOne(() => Merchant, { nullable: false })
+  @ManyToOne(() => Merchant, { nullable: true })
   @JoinColumn({ name: 'merchant_id' })
   merchant: Merchant;
 

@@ -6,6 +6,7 @@ import {
   Param,
   Body,
   Put,
+  Patch,
   Delete,
   ParseIntPipe,
   UseGuards,
@@ -23,6 +24,7 @@ import { CompaniesService } from './companies.service';
 import { CreateCompanyDto } from './dtos/create-company.dto';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
 import { UpdateCompanyProfileDto } from './dtos/update-company-profile.dto';
+import { UpdateCompanyStatusDto } from './dtos/update-company-status.dto';
 import {
   OneCompanyResponseDto,
   AllCompanyResponseDto,
@@ -263,6 +265,39 @@ export class CompaniesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCompanyResponseDto> {
     return this.companiesService.update(id, dto, user);
+  }
+
+  @Patch(':id/status')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary:
+      'Suspend or reactivate a company (non-destructive status toggle instead of DELETE)',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Company ID' })
+  @ApiBody({ type: UpdateCompanyStatusDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Company status updated',
+    type: OneCompanyResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Company not found',
+    type: ErrorResponse,
+  })
+  setStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateCompanyStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<OneCompanyResponseDto> {
+    return this.companiesService.setStatus(id, dto.status, user);
   }
 
   @Delete(':id')

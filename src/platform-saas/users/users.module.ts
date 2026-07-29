@@ -7,9 +7,14 @@ import { Merchant } from '../merchants/entities/merchant.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { HttpModule } from '@nestjs/axios';
+import { MailModule } from '../../mail/mail.module';
 
 @Module({
-  imports: [HttpModule, TypeOrmModule.forFeature([User, Company, Merchant])],
+  imports: [
+    HttpModule,
+    MailModule,
+    TypeOrmModule.forFeature([User, Company, Merchant]),
+  ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
