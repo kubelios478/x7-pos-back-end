@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, Not } from 'typeorm';
 import { SupplierInvoice } from './entities/supplier-invoice.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
@@ -122,7 +122,11 @@ export class SupplierInvoicesService {
 
     const qb = this.invoiceRepo
       .createQueryBuilder('inv')
-      .where('inv.deleted_at IS NULL');
+      .where(
+        query.only_deleted
+          ? 'inv.deleted_at IS NOT NULL'
+          : 'inv.deleted_at IS NULL',
+      );
 
     if (query.company_id != null) {
       qb.andWhere('inv.company_id = :companyId', {
@@ -265,6 +269,30 @@ export class SupplierInvoicesService {
       statusCode: 200,
       message: 'Supplier invoice deleted successfully',
       data: this.toResponseDto(invoice),
+    };
+  }
+
+  async restore(id: number): Promise<OneSupplierInvoiceResponseDto> {
+    if (!id || id <= 0) {
+      throw new BadRequestException('Invalid supplier invoice ID');
+    }
+
+    const invoice = await this.invoiceRepo.findOne({
+      where: { id, deleted_at: Not(IsNull()) },
+    });
+    if (!invoice) {
+      throw new NotFoundException(
+        `Archived supplier invoice with ID ${id} not found`,
+      );
+    }
+
+    invoice.deleted_at = null;
+    const saved = await this.invoiceRepo.save(invoice);
+
+    return {
+      statusCode: 200,
+      message: 'Supplier invoice restored successfully',
+      data: this.toResponseDto(saved),
     };
   }
 }

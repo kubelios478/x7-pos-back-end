@@ -87,6 +87,14 @@ export class User {
   refreshToken?: string;
 
   @ApiProperty({
+    example: true,
+    description: 'Whether the user account is active (soft-deactivation flag)',
+    default: true,
+  })
+  @Column({ type: 'boolean', default: true })
+  isActive: boolean;
+
+  @ApiProperty({
     example: 1234567890,
     description: 'Merchant ID associated with the User',
   })
