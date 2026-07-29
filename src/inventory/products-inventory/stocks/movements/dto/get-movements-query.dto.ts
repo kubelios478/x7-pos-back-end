@@ -34,4 +34,13 @@ export class GetMovementsQueryDto {
   @IsOptional()
   @IsString()
   itemName?: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Filter movements by stock item ID',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  itemId?: number;
 }

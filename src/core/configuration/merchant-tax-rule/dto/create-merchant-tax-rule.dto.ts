@@ -1,87 +1,36 @@
-//src/core/configuartion/merchant-tax-rule/dto/create-merchant-tax-rule.dto.ts
+//src/core/configuration/merchant-tax-rule/dto/create-merchant-tax-rule.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsEnum,
   IsBoolean,
-  IsInt,
   IsNotEmpty,
-  IsIn,
-  IsDate,
   IsNumber,
+  IsOptional,
+  MaxLength,
+  Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { TaxType } from '../../constants/tax-type.enum';
 
 export class CreateMerchantTaxRuleDto {
   @ApiProperty({
-    example: 1,
-    description: 'Identifier of the related company',
-  })
-  @IsInt()
-  companyId: number;
-
-  @ApiProperty({
-    example: 1,
-    description: 'Identifier of the related merchant',
-  })
-  @IsInt()
-  merchantId: number;
-
-  @ApiProperty({
-    example: '26-09-2023',
-    description: 'Date when the merchant tax rule was created',
-  })
-  @Type(() => Date)
-  @IsDate()
-  @IsNotEmpty()
-  createdAt: Date;
-
-  @ApiProperty({
-    example: '26-09-2023',
-    description: 'Date when the merchant tax rule was last updated',
-  })
-  @Type(() => Date)
-  @IsDate()
-  @IsNotEmpty()
-  updatedAt: Date;
-
-  @ApiProperty({
-    example: 5,
-    description: 'User ID who created the merchant tax rule',
-  })
-  @IsInt()
-  @IsNotEmpty()
-  createdById: number;
-
-  @ApiProperty({
-    example: 5,
-    description: 'User ID who last updated the merchant tax rule',
-  })
-  @IsInt()
-  @IsNotEmpty()
-  updatedById: number;
-
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
-  @IsString()
-  @IsNotEmpty()
-  @IsIn(['active', 'inactive'])
-  status: string;
-
-  @ApiProperty({
     example: 'Merchant tax rule name',
     description: 'Name of the merchant tax rule',
+    maxLength: 50,
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50)
   name: string;
 
   @ApiProperty({
     example: 'Merchant tax rule description',
     description: 'Description of the merchant tax rule',
+    maxLength: 200,
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   description: string;
 
   @ApiProperty({
@@ -93,11 +42,13 @@ export class CreateMerchantTaxRuleDto {
   taxType: TaxType;
 
   @ApiProperty({
-    example: 19,
-    description: 'Rate of the tax',
+    example: 0.19,
+    description:
+      'Rate of the tax. For PERCENTAGE/COMPOUND, a decimal fraction (e.g. 0.19 for 19%) — not a whole percentage number. For FIXED, the monetary amount charged once per order.',
   })
   @IsNumber()
   @IsNotEmpty()
+  @Min(0)
   rate: number;
 
   @ApiProperty({
@@ -117,18 +68,11 @@ export class CreateMerchantTaxRuleDto {
   appliesToOvertime: boolean;
 
   @ApiProperty({
-    example: true,
-    description: 'It is calculated on another tax',
-  })
-  @IsBoolean()
-  @IsNotEmpty()
-  isCompound: boolean;
-
-  @ApiProperty({
     example: 'lfgtr-hhse',
     description: 'External Tax Code for Accounting/tax integration',
+    required: false,
   })
   @IsString()
-  @IsNotEmpty()
-  externalTaxCode: string;
+  @IsOptional()
+  externalTaxCode?: string;
 }

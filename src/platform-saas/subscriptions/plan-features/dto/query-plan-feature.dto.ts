@@ -15,6 +15,16 @@ export class QueryPlanFeatureDto {
   status?: string;
 
   @ApiPropertyOptional({
+    description: 'Filter by subscription plan ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  subscriptionPlanId?: number;
+
+  @ApiPropertyOptional({
     description: 'Page number',
     example: 1,
   })

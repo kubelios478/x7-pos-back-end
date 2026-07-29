@@ -19,10 +19,12 @@ describe('PlanFeaturesController', () => {
     name: 'Basic Plan',
   } as SubscriptionPlan;
 
-  const mockFeatureEntity: FeatureEntity = {
+  const mockFeatureEntity = {
     id: 1,
     name: 'My Feature',
-  } as FeatureEntity;
+    Unit: 'user',
+    unit: 'user',
+  } as FeatureEntity & { unit: string };
 
   const mockPlanFeature = {
     id: 1,

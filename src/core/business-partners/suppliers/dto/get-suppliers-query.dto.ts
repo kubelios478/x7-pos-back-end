@@ -34,4 +34,13 @@ export class GetSuppliersQueryDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Filter suppliers by company ID',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  companyId?: number;
 }

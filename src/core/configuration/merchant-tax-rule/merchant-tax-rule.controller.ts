@@ -34,6 +34,8 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 import { CreateMerchantTaxRuleDto } from './dto/create-merchant-tax-rule.dto';
 import {
@@ -82,7 +84,7 @@ export class MerchantTaxRuleController {
         name: 'Merchant tax rule name',
         description: 'Description of the merchant tax rule',
         taxType: 'percentage',
-        rate: 19,
+        rate: 0.19,
         appliesToTips: true,
         appliesToOvertime: true,
         isCompound: true,
@@ -135,8 +137,9 @@ export class MerchantTaxRuleController {
   })
   async create(
     @Body() dto: CreateMerchantTaxRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTaxRuleResponseDto> {
-    return this.merchantTaxRuleService.create(dto);
+    return this.merchantTaxRuleService.create(dto, user);
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -188,8 +191,9 @@ export class MerchantTaxRuleController {
   })
   async findAll(
     @Query() query: QueryMerchantTaxRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedMerchantTaxRuleResponseDto> {
-    return this.merchantTaxRuleService.findAll(query);
+    return this.merchantTaxRuleService.findAll(query, user);
   }
 
   @Get(':id')
@@ -226,7 +230,7 @@ export class MerchantTaxRuleController {
         name: 'Default Tax Rule',
         description: 'Description of the merchant tax rule',
         taxType: 'percentage',
-        rate: 19,
+        rate: 0.19,
         appliesToTips: true,
         appliesToOvertime: true,
         isCompound: true,
@@ -286,11 +290,15 @@ export class MerchantTaxRuleController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTaxRuleResponseDto> {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
-    const merchantTaxRule = await this.merchantTaxRuleService.findOne(id);
+    const merchantTaxRule = await this.merchantTaxRuleService.findOne(
+      id,
+      user,
+    );
     return merchantTaxRule;
   }
 
@@ -396,8 +404,9 @@ export class MerchantTaxRuleController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateMerchantTaxRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTaxRuleResponseDto> {
-    return this.merchantTaxRuleService.update(id, dto);
+    return this.merchantTaxRuleService.update(id, dto, user);
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

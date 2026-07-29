@@ -47,7 +47,7 @@ import { SupplierResponseDto } from './dto/supplier-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@Controller('suppliers')
+@Controller('v1/inventory/suppliers')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIERS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class SuppliersController {

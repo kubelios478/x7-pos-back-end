@@ -14,16 +14,53 @@ import { ProductsService } from '../products/products.service';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { StockAvailabilityService } from '../../stock-alerts/stock-availability.service';
+import { Location } from '../stocks/locations/entities/location.entity';
+import { Item } from '../stocks/items/entities/item.entity';
 
 @Injectable()
 export class VariantsService {
   constructor(
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    @InjectRepository(Location)
+    private readonly locationRepository: Repository<Location>,
+    @InjectRepository(Item)
+    private readonly itemRepository: Repository<Item>,
     @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
     private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
+
+  private async initializeStockForVariant(variant: Variant, merchantId: number) {
+    const locations = await this.locationRepository.findBy({
+      merchantId,
+      isActive: true,
+    });
+
+    for (const location of locations) {
+      // Verificar si ya existe para evitar duplicación
+      const existingItem = await this.itemRepository.findOne({
+        where: {
+          productId: variant.productId,
+          variantId: variant.id,
+          locationId: location.id,
+        },
+      });
+
+      if (!existingItem) {
+        const newItem = this.itemRepository.create({
+          currentQty: 0,
+          minimumQty: 5,
+          productId: variant.productId,
+          variantId: variant.id,
+          locationId: location.id,
+          isActive: true,
+          weightedAverageUnitCost: '0.0000',
+        });
+        await this.itemRepository.save(newItem);
+      }
+    }
+  }
 
   async create(
     merchant_id: number,
@@ -35,20 +72,6 @@ export class VariantsService {
 
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
-    }
-
-    const existingVariantByName = await this.variantRepository.findOne({
-      where: [
-        {
-          name: variantData.name,
-          isActive: true,
-          product: { merchantId: merchant_id },
-        },
-      ],
-    });
-
-    if (existingVariantByName) {
-      ErrorHandler.exists(ErrorMessage.VARIANT_NAME_EXISTS);
     }
 
     const existingVariantBySku = await this.variantRepository.findOne({
@@ -67,7 +90,7 @@ export class VariantsService {
     const existingButIsNotActive = await this.variantRepository.findOne({
       where: [
         {
-          name: variantData.name,
+          sku: variantData.sku,
           isActive: false,
           product: { merchantId: merchant_id },
         },
@@ -80,8 +103,9 @@ export class VariantsService {
         productId: product.data.id,
         isActive: true,
       });
-      await this.variantRepository.save(existingButIsNotActive);
-      return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
+      const savedVariant = await this.variantRepository.save(existingButIsNotActive);
+      await this.initializeStockForVariant(savedVariant, merchant_id);
+      return this.findOne(savedVariant.id, merchant_id, 'Created');
     } else {
       const newVariant = this.variantRepository.create({
         ...variantData,
@@ -89,6 +113,7 @@ export class VariantsService {
       });
 
       const savedVariant = await this.variantRepository.save(newVariant);
+      await this.initializeStockForVariant(savedVariant, merchant_id);
 
       return this.findOne(savedVariant.id, merchant_id, 'Created');
     }
@@ -110,8 +135,7 @@ export class VariantsService {
       .leftJoinAndSelect('product.merchant', 'merchant')
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
-      .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('variant.isActive = :isActive', { isActive: true });
+      .where('product.merchantId = :merchantId', { merchantId });
 
     // 3. Apply optional filters
     if (query.name) {
@@ -163,6 +187,7 @@ export class VariantsService {
                 )
               ).data
             : null,
+          isActive: variant.isActive,
         };
         return result;
       }),
@@ -198,10 +223,6 @@ export class VariantsService {
       .leftJoinAndSelect('product.supplier', 'supplier')
       .where('variant.id = :id', { id });
 
-    if (createdUpdateDelete !== 'Deleted') {
-      queryBuilder.andWhere('variant.isActive = :isActive', { isActive: true });
-    }
-
     if (merchantId !== undefined) {
       queryBuilder.andWhere('product.merchantId = :merchantId', { merchantId });
     }
@@ -231,6 +252,7 @@ export class VariantsService {
         ? (await this.productsService.findOne(variant.product.id, merchantId))
             .data
         : null,
+      isActive: variant.isActive,
     };
 
     let response: OneVariantResponse;
@@ -284,7 +306,6 @@ export class VariantsService {
       .leftJoinAndSelect('variant.product', 'product')
       .leftJoinAndSelect('product.merchant', 'merchant')
       .where('variant.id = :id', { id })
-      .andWhere('variant.isActive = :isActive', { isActive: true })
       .andWhere('product.merchantId = :merchantId', { merchantId: merchant_id })
       .getOne();
 

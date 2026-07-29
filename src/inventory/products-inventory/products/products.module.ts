@@ -11,6 +11,8 @@ import { Variant } from '../variants/entities/variant.entity';
 import { Modifier } from '../modifiers/entities/modifier.entity';
 import { ModifiersModule } from '../modifiers/modifiers.module';
 import { VariantsModule } from '../variants/variants.module';
+import { ItemsModule } from '../stocks/items/items.module';
+import { PurchaseOrderItemModule } from '../purchase-order-item/purchase-order-item.module';
 import { StockAlertsModule } from '../../stock-alerts/stock-alerts.module';
 
 @Module({
@@ -27,6 +29,8 @@ import { StockAlertsModule } from '../../stock-alerts/stock-alerts.module';
     ]),
     forwardRef(() => ModifiersModule),
     forwardRef(() => VariantsModule),
+    forwardRef(() => ItemsModule),
+    forwardRef(() => PurchaseOrderItemModule),
   ],
   controllers: [ProductsController],
   providers: [ProductsService],

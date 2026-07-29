@@ -105,8 +105,7 @@ export class ModifiersService {
       .leftJoinAndSelect('product.category', 'category')
       .leftJoinAndSelect('product.supplier', 'supplier')
       .leftJoinAndSelect('modifier.parent', 'parent')
-      .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('modifier.isActive = :isActive', { isActive: true });
+      .where('product.merchantId = :merchantId', { merchantId });
 
     // 3. Apply optional filters
     if (query.name) {
@@ -143,6 +142,7 @@ export class ModifiersService {
           parent: modifier.parent
             ? { id: modifier.parent.id, name: modifier.parent.name }
             : null,
+          isActive: modifier.isActive,
         };
         return result;
       }),
@@ -179,12 +179,6 @@ export class ModifiersService {
       .leftJoinAndSelect('modifier.parent', 'parent')
       .where('modifier.id = :id', { id });
 
-    if (createdUpdateDelete !== 'Deleted') {
-      queryBuilder.andWhere('modifier.isActive = :isActive', {
-        isActive: true,
-      });
-    }
-
     if (merchantId !== undefined) {
       queryBuilder.andWhere('product.merchantId = :merchantId', { merchantId });
     }
@@ -205,6 +199,7 @@ export class ModifiersService {
       parent: modifier.parent
         ? { id: modifier.parent.id, name: modifier.parent.name }
         : null,
+      isActive: modifier.isActive,
     };
 
     let response: OneModifierResponse;
@@ -258,7 +253,6 @@ export class ModifiersService {
       .leftJoinAndSelect('modifier.product', 'product')
       .leftJoinAndSelect('product.merchant', 'merchant')
       .where('modifier.id = :id', { id })
-      .andWhere('modifier.isActive = :isActive', { isActive: true })
       .andWhere('product.merchantId = :merchantId', { merchantId: merchant_id })
       .getOne();
 

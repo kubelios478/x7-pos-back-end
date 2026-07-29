@@ -7,6 +7,12 @@ import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
 import { OvertimeCalculationType } from '../constants/overtime-calculation-type.enum';
 import { OvertimeRateType } from '../constants/overtime-rate-type.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { CreateMerchantOvertimeRuleDto } from './dto/create-merchant-overtime-rule.dto';
+import { UpdateMerchantOvertimeRuleDto } from './dto/update-merchant-overtime-rule.dto';
 
 describe('MerchantOvertimeRuleController', () => {
   let controller: MerchantOvertimeRuleController;
@@ -33,9 +39,19 @@ describe('MerchantOvertimeRuleController', () => {
     id: 1,
   } as User;
 
+  const mockAuthenticatedUser: AuthenticatedUser = {
+    id: 1,
+    email: 'merchant-admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 10 },
+  };
+
   const mockMerchantOvertimeRule: MerchantOvertimeRule = {
     id: 1,
     company: mockCompany,
+    merchant_id: 10,
+    merchant: { id: 10 } as Merchant,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: mockUser,
@@ -53,14 +69,7 @@ describe('MerchantOvertimeRuleController', () => {
     priority: 10,
   };
 
-  const mockCreateMerchantOvertimeRuleDto = {
-    id: 1,
-    companyId: mockCompany.id,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdById: mockUser.id,
-    updatedById: mockUser.id,
-    status: 'active',
+  const mockCreateMerchantOvertimeRuleDto: CreateMerchantOvertimeRuleDto = {
     name: 'Test Merchant Overtime Rule',
     description: 'Description of the Overtime Rule',
     calculationMethod: OvertimeCalculationType.DAILY,
@@ -93,21 +102,12 @@ describe('MerchantOvertimeRuleController', () => {
     data: mockMerchantOvertimeRule,
   };
 
-  const mockUpdateMerchantOvertimeRuleDto = {
-    id: 1,
-    company: mockCompany,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: 'Test User 2',
-    updatedBy: 'Test User 2',
+  const mockUpdateMerchantOvertimeRuleDto: UpdateMerchantOvertimeRuleDto = {
     status: 'inactive',
     name: 'Update Merchant Overtime Rule',
     description: 'Description of the Overtime Rule 2',
     calculationMethod: OvertimeCalculationType.SPECIAL_DAY,
     rateMethod: OvertimeRateType.FIXED_AMOUNT,
-    thresholdHours: 16,
-    maxHours: 20,
-    rateValue: 200,
     appliesOnHolidays: true,
     appliesOnWeekends: true,
     priority: 5,
@@ -163,11 +163,16 @@ describe('MerchantOvertimeRuleController', () => {
       const createSpy = jest
         .spyOn(service, 'create')
         .mockResolvedValue(expectedResponse);
-      createSpy.mockResolvedValue(expectedResponse);
 
-      const result = await controller.create(mockCreateMerchantOvertimeRuleDto);
+      const result = await controller.create(
+        mockCreateMerchantOvertimeRuleDto,
+        mockAuthenticatedUser,
+      );
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantOvertimeRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateMerchantOvertimeRuleDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(expectedResponse);
     });
 
@@ -176,13 +181,15 @@ describe('MerchantOvertimeRuleController', () => {
       const createSpy = jest
         .spyOn(service, 'create')
         .mockRejectedValue(new Error(errorMessage));
-      createSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(mockCreateMerchantOvertimeRuleDto),
+        controller.create(mockCreateMerchantOvertimeRuleDto, mockAuthenticatedUser),
       ).rejects.toThrow(errorMessage);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantOvertimeRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateMerchantOvertimeRuleDto,
+        mockAuthenticatedUser,
+      );
     });
   });
   //--------------------------------------------------------------
@@ -195,9 +202,15 @@ describe('MerchantOvertimeRuleController', () => {
         .mockResolvedValue(mockPaginatedResponse);
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(mockPaginatedResponse);
     });
 
@@ -219,9 +232,15 @@ describe('MerchantOvertimeRuleController', () => {
         .mockResolvedValue(emptyPaginatedResponse);
       findAllSpy.mockResolvedValue(emptyPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(emptyPaginatedResponse);
     });
 
@@ -232,11 +251,14 @@ describe('MerchantOvertimeRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
     });
   });
   //--------------------------------------------------------------
@@ -249,9 +271,9 @@ describe('MerchantOvertimeRuleController', () => {
         .mockResolvedValue(mockOneMerchantOvertimeRuleResponseDto);
       findOneSpy.mockResolvedValue(mockOneMerchantOvertimeRuleResponseDto);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, mockAuthenticatedUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(mockOneMerchantOvertimeRuleResponseDto);
     });
 
@@ -262,9 +284,11 @@ describe('MerchantOvertimeRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(1)).rejects.toThrow(errorMessage);
+      await expect(
+        controller.findOne(1, mockAuthenticatedUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
   });
   //--------------------------------------------------------------
@@ -280,16 +304,17 @@ describe('MerchantOvertimeRuleController', () => {
       const updateSpy = jest
         .spyOn(service, 'update')
         .mockResolvedValue(updatedResponse);
-      updateSpy.mockResolvedValue(updatedResponse);
 
       const result = await controller.update(
         1,
         mockUpdateMerchantOvertimeRuleDto,
+        mockAuthenticatedUser,
       );
 
       expect(updateSpy).toHaveBeenCalledWith(
         1,
         mockUpdateMerchantOvertimeRuleDto,
+        mockAuthenticatedUser,
       );
       expect(result).toEqual(updatedResponse);
     });
@@ -299,15 +324,15 @@ describe('MerchantOvertimeRuleController', () => {
       const updateSpy = jest
         .spyOn(service, 'update')
         .mockRejectedValue(new Error(errorMessage));
-      updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, mockUpdateMerchantOvertimeRuleDto),
+        controller.update(1, mockUpdateMerchantOvertimeRuleDto, mockAuthenticatedUser),
       ).rejects.toThrow(errorMessage);
 
       expect(updateSpy).toHaveBeenCalledWith(
         1,
         mockUpdateMerchantOvertimeRuleDto,
+        mockAuthenticatedUser,
       );
     });
   });

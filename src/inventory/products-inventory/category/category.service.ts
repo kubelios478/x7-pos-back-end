@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +14,7 @@ import { AllPaginatedCategories } from './dto/all-paginated-categories.dto';
 import { ProductsInventoryService } from '../products-inventory.service';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
+import { ProductsService } from '../products/products.service';
 
 @Injectable()
 export class CategoryService {
@@ -23,6 +24,8 @@ export class CategoryService {
     @InjectRepository(Merchant)
     private readonly merchantRepo: Repository<Merchant>,
     private readonly productsInventoryService: ProductsInventoryService,
+    @Inject(forwardRef(() => ProductsService))
+    private readonly productsService: ProductsService,
   ) {}
 
   async create(
@@ -58,8 +61,10 @@ export class CategoryService {
         where: { name, merchantId: merchant_id, isActive: false },
       });
 
+      const isActiveValue = createCategoryDto.isActive !== undefined ? createCategoryDto.isActive : true;
+
       if (existingButIsNotActive) {
-        existingButIsNotActive.isActive = true;
+        existingButIsNotActive.isActive = isActiveValue;
         await this.categoryRepo.save(existingButIsNotActive);
         return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
       } else {
@@ -67,6 +72,7 @@ export class CategoryService {
           name,
           merchantId: merchant_id,
           parentId,
+          isActive: isActiveValue,
         });
         const savedCategory = await this.categoryRepo.save(newCategory);
         return this.findOne(savedCategory.id, merchant_id, 'Created');
@@ -85,12 +91,11 @@ export class CategoryService {
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // 2. Build query with filters
+    // 2. Build query with filters (se elimina el filtro restrictivo de isActive para permitir traer las inactivas)
     const queryBuilder = this.categoryRepo
       .createQueryBuilder('category')
       .leftJoinAndSelect('category.merchant', 'merchant')
-      .where('category.merchantId = :merchantId', { merchantId })
-      .andWhere('category.isActive = :isActive', { isActive: true });
+      .where('category.merchantId = :merchantId', { merchantId });
 
     // 3. Apply optional filters
     if (query.name) {
@@ -120,6 +125,7 @@ export class CategoryService {
         const result: CategoryResponseDto = {
           id: category.id,
           name: category.name,
+          isActive: category.isActive,
           merchant: category.merchant
             ? {
                 id: category.merchant.id,
@@ -158,11 +164,9 @@ export class CategoryService {
     const whereCondition: {
       id: number;
       merchantId?: number;
-      isActive: boolean;
     } = {
       id,
       merchantId: merchant_id,
-      isActive: createdUpdateDelete === 'Deleted' ? false : true,
     };
 
     const category = await this.categoryRepo.findOne({
@@ -174,6 +178,7 @@ export class CategoryService {
     const dataForResponse: CategoryResponseDto = {
       id: category.id,
       name: category.name,
+      isActive: category.isActive,
       merchant: category.merchant
         ? {
             id: category.merchant.id,
@@ -226,14 +231,27 @@ export class CategoryService {
   ): Promise<OneCategoryResponse> {
     if (!id || id <= 0) ErrorHandler.invalidId('Category ID is incorrect');
 
-    const { name, parentId } = updateCategoryDto;
+    const { name, parentId, isActive } = updateCategoryDto;
 
     const category = await this.categoryRepo.findOneBy({
       id,
       merchantId: merchant_id,
-      isActive: true,
     });
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
+
+    if (isActive === false && category.isActive === true) {
+      // Soft delete all products within this category
+      await this.productsService.softRemoveByCategoryId(id, merchant_id);
+
+      // Recursively soft delete subcategories
+      const subCategories = await this.categoryRepo.findBy({
+        parentId: id,
+        isActive: true,
+      });
+      for (const sub of subCategories) {
+        await this.remove(sub.id, merchant_id);
+      }
+    }
 
     if (name !== undefined && name !== category.name) {
       const existingCategory = await this.categoryRepo.findOne({
@@ -255,7 +273,7 @@ export class CategoryService {
       }
     }
 
-    Object.assign(category, { name, parentId });
+    Object.assign(category, { name, parentId, isActive });
 
     try {
       await this.categoryRepo.save(category);
@@ -284,12 +302,14 @@ export class CategoryService {
 
         for (const sub of subCategories) {
           await hideRecursive(sub.id);
+          await this.productsService.softRemoveByCategoryId(sub.id, merchant_id);
           sub.isActive = false;
           await this.categoryRepo.save(sub);
         }
       };
 
       await hideRecursive(category.id);
+      await this.productsService.softRemoveByCategoryId(category.id, merchant_id);
       category.isActive = false;
       await this.categoryRepo.save(category);
       return this.findOne(id, merchant_id, 'Deleted');

@@ -1,84 +1,21 @@
-//src/core/configuartion/merchant-payroll-rule/dto/create-merchant-payroll-rule.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsString,
-  IsEnum,
-  IsBoolean,
-  IsInt,
-  IsNotEmpty,
-  IsIn,
-  IsDate,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsEnum, IsBoolean, IsInt, IsNotEmpty, MaxLength, IsOptional, Min, Max } from 'class-validator';
 import { PayrollFrequency } from '../../constants/payroll-frequency.enum';
 
 export class CreateMerchantPayrollRuleDto {
   @ApiProperty({
-    example: 1,
-    description: 'Identifier of the related company',
-  })
-  @IsInt()
-  companyId: number;
-
-  @ApiProperty({
-    example: 1,
-    description: 'Identifier of the related merchant',
-  })
-  @IsInt()
-  merchantId: number;
-
-  @ApiProperty({
-    example: '26-09-2023',
-    description: 'Date when the merchant payroll rule was created',
-  })
-  @Type(() => Date)
-  @IsDate()
-  @IsNotEmpty()
-  createdAt: Date;
-
-  @ApiProperty({
-    example: '26-09-2023',
-    description: 'Date when the merchant payroll rule was last updated',
-  })
-  @Type(() => Date)
-  @IsDate()
-  @IsNotEmpty()
-  updatedAt: Date;
-
-  @ApiProperty({
-    example: 5,
-    description: 'User ID who created the merchant payroll rule',
-  })
-  @IsInt()
-  @IsNotEmpty()
-  createdById: number;
-
-  @ApiProperty({
-    example: 5,
-    description: 'User ID who last updated the merchant payroll rule',
-  })
-  @IsInt()
-  @IsNotEmpty()
-  updatedById: number;
-
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
-  @IsString()
-  @IsNotEmpty()
-  @IsIn(['active', 'inactive'])
-  status: string;
-
-  @ApiProperty({
-    example: 'Merchant payroll rule name',
+    example: 'Standard Biweekly Payroll',
     description: 'Name of the merchant payroll rule',
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50)
   name: string;
 
   @ApiProperty({
-    example: 'weekly',
-    description:
-      'Frequency of the Payroll (e.g., weekly, biweekly, monthly, custom)',
+    example: 'biweekly',
+    enum: PayrollFrequency,
+    description: 'Frequency of the Payroll (e.g., weekly, biweekly, monthly, custom)',
   })
   @IsEnum(PayrollFrequency)
   @IsNotEmpty()
@@ -86,19 +23,27 @@ export class CreateMerchantPayrollRuleDto {
 
   @ApiProperty({
     example: 1,
-    description: 'Day of the Pay in the Week',
+    required: false,
+    description:
+      'Day of the Pay in the Week (1-7). Required when frequencyPayroll is weekly or biweekly; ignored (forced to null) otherwise.',
   })
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  payDayOfWeek: number;
+  @Min(1)
+  @Max(7)
+  payDayOfWeek?: number | null;
 
   @ApiProperty({
     example: 31,
-    description: 'Day of the Pay in the Month',
+    required: false,
+    description:
+      'Day of the Pay in the Month (1-31). Required when frequencyPayroll is monthly; ignored (forced to null) otherwise.',
   })
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  payDayOfMonth: number;
+  @Min(1)
+  @Max(31)
+  payDayOfMonth?: number | null;
 
   @ApiProperty({
     example: true,
@@ -109,7 +54,7 @@ export class CreateMerchantPayrollRuleDto {
   allowNegativePayroll: boolean;
 
   @ApiProperty({
-    example: 31,
+    example: 2,
     description: 'Number of decimal places to round',
   })
   @IsInt()
@@ -122,6 +67,7 @@ export class CreateMerchantPayrollRuleDto {
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(10)
   currency: string;
 
   @ApiProperty({

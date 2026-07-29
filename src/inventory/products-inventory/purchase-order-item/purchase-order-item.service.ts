@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreatePurchaseOrderItemDto } from './dto/create-purchase-order-item.dto';
@@ -29,6 +29,7 @@ export class PurchaseOrderItemService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
     private readonly variantsService: VariantsService,
   ) {}
@@ -362,6 +363,26 @@ export class PurchaseOrderItemService {
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  async softRemoveByProductId(
+    productId: number,
+    merchantId: number,
+  ): Promise<void> {
+    const items = await this.purchaseOrderItemRepository
+      .createQueryBuilder('purchaseOrderItem')
+      .leftJoinAndSelect('purchaseOrderItem.purchaseOrder', 'purchaseOrder')
+      .where('purchaseOrderItem.productId = :productId', { productId })
+      .andWhere('purchaseOrderItem.isActive = :isActive', { isActive: true })
+      .andWhere('purchaseOrder.merchantId = :merchantId', { merchantId })
+      .getMany();
+
+    if (items.length > 0) {
+      for (const item of items) {
+        item.isActive = false;
+      }
+      await this.purchaseOrderItemRepository.save(items);
     }
   }
 }

@@ -82,6 +82,7 @@ export class PlanFeaturesService {
       limit = 10,
       sortBy = 'id',
       sortOrder = 'DESC',
+      subscriptionPlanId,
     } = query;
 
     if (page < 1 || limit < 1) {
@@ -99,6 +100,8 @@ export class PlanFeaturesService {
         'subscriptionPlan.status',
         'feature.id',
         'feature.name',
+        'feature.Unit',
+        'feature.description',
         'feature.status',
       ]);
 
@@ -113,6 +116,12 @@ export class PlanFeaturesService {
     qb.andWhere('planFeature.status != :deleted', {
       deleted: 'deleted',
     });
+
+    if (subscriptionPlanId) {
+      qb.andWhere('subscriptionPlan.id = :subscriptionPlanId', {
+        subscriptionPlanId,
+      });
+    }
 
     qb.orderBy(`planFeature.${sortBy}`, sortOrder);
 
@@ -133,6 +142,8 @@ export class PlanFeaturesService {
       feature: {
         id: item.feature.id,
         name: item.feature.name,
+        unit: item.feature.Unit,
+        description: item.feature.description,
       },
     }));
 
@@ -180,6 +191,9 @@ export class PlanFeaturesService {
     }
     if (dto.limit_value !== undefined) {
       planFeature.limit_value = dto.limit_value;
+    }
+    if (dto.status !== undefined) {
+      planFeature.status = dto.status;
     }
     const updatedPlanFeature = await this.planFeatureRepo.save(planFeature);
 

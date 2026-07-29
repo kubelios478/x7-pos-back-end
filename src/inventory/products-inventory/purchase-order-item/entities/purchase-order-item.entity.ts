@@ -9,6 +9,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { PurchaseOrder } from '../../purchase-order/entities/purchase-order.entity';
 import { Product } from '../../products/entities/product.entity';
 import { Variant } from '../../variants/entities/variant.entity';
+import { Location } from '../../stocks/locations/entities/location.entity';
 
 @Entity('purchase_order_item')
 export class PurchaseOrderItem {
@@ -65,6 +66,22 @@ export class PurchaseOrderItem {
   })
   @JoinColumn({ name: 'variantId' })
   variant: Variant;
+
+  @ApiProperty({ example: 3, description: 'Quantity of items physically received' })
+  @Column({ type: 'int', name: 'received_quantity', default: 0 })
+  receivedQuantity: number;
+
+  @ApiProperty({ example: 1, description: 'Destination location ID' })
+  @Column({ name: 'locationId', nullable: true })
+  locationId: number;
+
+  @ManyToOne(() => Location, {
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'locationId' })
+  location: Location;
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;

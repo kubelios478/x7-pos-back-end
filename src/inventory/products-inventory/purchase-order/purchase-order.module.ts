@@ -8,6 +8,10 @@ import { Supplier } from '../../../core/business-partners/suppliers/entities/sup
 import { PurchaseOrder } from './entities/purchase-order.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PurchaseOrderItem } from '../purchase-order-item/entities/purchase-order-item.entity';
+import { Location } from '../stocks/locations/entities/location.entity';
+import { Item } from '../stocks/items/entities/item.entity';
+import { MovementsModule } from '../stocks/movements/movements.module';
+import { MovementsService } from '../stocks/movements/movements.service';
 
 @Module({
   imports: [
@@ -17,7 +21,10 @@ import { PurchaseOrderItem } from '../purchase-order-item/entities/purchase-orde
       PurchaseOrderItem,
       Merchant,
       Supplier,
+      Location,
+      Item,
     ]),
+    MovementsModule,
   ],
   controllers: [PurchaseOrderController],
   providers: [PurchaseOrderService],

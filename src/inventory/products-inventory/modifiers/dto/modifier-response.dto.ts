@@ -26,6 +26,9 @@ export class ModifierResponseDto {
     required: false,
   })
   parent?: { id: number; name: string } | null;
+
+  @ApiProperty({ example: true, description: 'Modifier active status' })
+  isActive: boolean;
 }
 
 export class OneModifierResponse extends SuccessResponse {

@@ -23,6 +23,9 @@ export class CategoryResponseDto {
     nullable: true,
   })
   parents?: { id: number; parentName: string }[];
+
+  @ApiProperty({ example: true, description: 'Whether the category is active' })
+  isActive: boolean;
 }
 export class CategoryLittleResponseDto {
   @ApiProperty({ example: 1, description: 'Category ID' })

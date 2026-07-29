@@ -87,8 +87,14 @@ export class MovementsService {
 
     // 3. Apply optional filters
     if (query.itemName) {
-      queryBuilder.andWhere('LOWER(item.name) LIKE LOWER(:itemName)', {
+      queryBuilder.andWhere('LOWER(product.name) LIKE LOWER(:itemName)', {
         itemName: `%${query.itemName}%`,
+      });
+    }
+
+    if (query.itemId) {
+      queryBuilder.andWhere('item.id = :itemId', {
+        itemId: query.itemId,
       });
     }
 

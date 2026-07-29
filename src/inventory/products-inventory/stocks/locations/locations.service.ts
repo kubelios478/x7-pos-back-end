@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateLocationDto } from './dto/create-location.dto';
@@ -14,6 +14,9 @@ import {
   OneLocationResponse,
 } from './dto/location-response.dto';
 
+import { Item } from '../items/entities/item.entity';
+import { Variant } from '../../variants/entities/variant.entity';
+
 @Injectable()
 export class LocationsService {
   constructor(
@@ -21,7 +24,68 @@ export class LocationsService {
     private readonly locationRepository: Repository<Location>,
     @InjectRepository(Merchant)
     private readonly merchantRepo: Repository<Merchant>,
+    @InjectRepository(Item)
+    private readonly itemRepository: Repository<Item>,
+    @InjectRepository(Variant)
+    private readonly variantRepository: Repository<Variant>,
   ) {}
+
+
+  private async checkActiveStock(locationId: number) {
+    const activeStock = await this.itemRepository.findOne({
+      where: {
+        locationId,
+        isActive: true,
+      },
+    });
+
+    // Validamos si hay algún stock item registrado con cantidad mayor a 0
+    if (activeStock) {
+      // Buscamos si alguno tiene cantidad de stock > 0
+      const itemsWithStock = await this.itemRepository.createQueryBuilder('item')
+        .where('item.locationId = :locationId', { locationId })
+        .andWhere('item.currentQty > 0')
+        .getMany();
+
+      if (itemsWithStock.length > 0) {
+        throw new BadRequestException('Cannot deactivate a location with active stock items. Please transfer or zero-out all inventory stock before deactivating this location.');
+      }
+    }
+  }
+
+  private async initializeStockForNewLocation(locationId: number, merchantId: number) {
+    // Buscar todas las variantes activas de productos pertenecientes a este merchant
+    const variants = await this.variantRepository.createQueryBuilder('variant')
+      .innerJoinAndSelect('variant.product', 'product')
+      .where('product.merchantId = :merchantId', { merchantId })
+      .andWhere('variant.isActive = :isActive', { isActive: true })
+      .andWhere('product.isActive = :isActive', { isActive: true })
+      .getMany();
+
+    for (const variant of variants) {
+      // Verificar si ya existe para evitar duplicados
+      const existing = await this.itemRepository.findOne({
+        where: {
+          productId: variant.productId,
+          variantId: variant.id,
+          locationId: locationId
+        }
+      });
+
+      if (!existing) {
+        const newStockItem = this.itemRepository.create({
+          currentQty: 0,
+          minimumQty: 5,
+          productId: variant.productId,
+          variantId: variant.id,
+          locationId: locationId,
+          isActive: true,
+          weightedAverageUnitCost: '0.0000'
+        });
+        await this.itemRepository.save(newStockItem);
+      }
+    }
+  }
 
   async create(
     merchant_id: number,
@@ -61,6 +125,7 @@ export class LocationsService {
       if (existingButIsNotActive) {
         existingButIsNotActive.isActive = true;
         await this.locationRepository.save(existingButIsNotActive);
+        await this.initializeStockForNewLocation(existingButIsNotActive.id, merchant_id);
         return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
       } else {
         const newLocation = this.locationRepository.create({
@@ -69,6 +134,7 @@ export class LocationsService {
           merchantId: merchant_id,
         });
         const savedLocation = await this.locationRepository.save(newLocation);
+        await this.initializeStockForNewLocation(savedLocation.id, merchant_id);
         return this.findOne(savedLocation.id, merchant_id, 'Created');
       }
     } catch (error) {
@@ -89,8 +155,7 @@ export class LocationsService {
     const queryBuilder = this.locationRepository
       .createQueryBuilder('location')
       .leftJoinAndSelect('location.merchant', 'merchant')
-      .where('location.merchantId = :merchantId', { merchantId })
-      .andWhere('location.isActive = :isActive', { isActive: true });
+      .where('location.merchantId = :merchantId', { merchantId });
 
     // 3. Apply optional filters
     if (query.name) {
@@ -121,6 +186,7 @@ export class LocationsService {
           id: location.id,
           name: location.name,
           address: location.address,
+          isActive: location.isActive,
           merchant: location.merchant
             ? {
                 id: location.merchant.id,
@@ -176,6 +242,7 @@ export class LocationsService {
       id: location.id,
       name: location.name,
       address: location.address,
+      isActive: location.isActive,
       merchant: location.merchant
         ? {
             id: location.merchant.id,
@@ -227,10 +294,9 @@ export class LocationsService {
     if (!id || id <= 0) {
       ErrorHandler.invalidId('Location ID is incorrect');
     }
-    const { name, address } = updateLocationDto;
+    const { name, address, isActive } = updateLocationDto;
     const location = await this.locationRepository.findOneBy({
       id,
-      isActive: true,
       merchantId: merchant_id,
     });
     if (!location) ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
@@ -259,7 +325,11 @@ export class LocationsService {
       }
     }
 
-    Object.assign(location, { name, address });
+    if (isActive === false) {
+      await this.checkActiveStock(id);
+    }
+
+    Object.assign(location, { name, address, isActive });
 
     try {
       await this.locationRepository.save(location);
@@ -279,6 +349,8 @@ export class LocationsService {
       merchantId: merchant_id,
     });
     if (!location) ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
+
+    await this.checkActiveStock(id);
 
     location.isActive = false;
 
