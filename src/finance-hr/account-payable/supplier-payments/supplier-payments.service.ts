@@ -54,14 +54,15 @@ export class SupplierPaymentsService {
 
   async create(
     dto: CreateSupplierPaymentDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierPaymentResponseDto> {
+    // Merchant users are forced to their own company; portal users may target any via dto.
+    const companyId = scopedCompanyId ?? dto.company_id;
     const company = await this.companyRepo.findOne({
-      where: { id: dto.company_id },
+      where: { id: companyId },
     });
     if (!company) {
-      throw new NotFoundException(
-        `Company with ID ${dto.company_id} not found`,
-      );
+      throw new NotFoundException(`Company with ID ${companyId} not found`);
     }
 
     const supplier = await this.supplierRepo.findOne({
@@ -81,7 +82,7 @@ export class SupplierPaymentsService {
     }
 
     const payment = this.paymentRepo.create({
-      company_id: dto.company_id,
+      company_id: companyId,
       supplier_id: dto.supplier_id,
       payment_number: dto.payment_number,
       payment_date: new Date(dto.payment_date),
@@ -102,6 +103,7 @@ export class SupplierPaymentsService {
 
   async findAll(
     query: GetSupplierPaymentsQueryDto,
+    scopedCompanyId?: number,
   ): Promise<PaginatedSupplierPaymentsResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -113,9 +115,11 @@ export class SupplierPaymentsService {
       .createQueryBuilder('sp')
       .where('sp.deleted_at IS NULL');
 
-    if (query.company_id != null) {
+    // Merchant users are locked to their own company; portal users may narrow via query.
+    const effectiveCompanyId = scopedCompanyId ?? query.company_id;
+    if (effectiveCompanyId != null) {
       qb.andWhere('sp.company_id = :companyId', {
-        companyId: query.company_id,
+        companyId: effectiveCompanyId,
       });
     }
     if (query.supplier_id != null) {
@@ -183,6 +187,7 @@ export class SupplierPaymentsService {
   async update(
     id: number,
     dto: UpdateSupplierPaymentDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierPaymentResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier payment ID');
@@ -194,8 +199,13 @@ export class SupplierPaymentsService {
     if (!payment) {
       throw new NotFoundException(`Supplier payment with ID ${id} not found`);
     }
+    // Merchant users can only touch their own company's payments and may never move them
+    // to another company (scopedCompanyId set → any dto.company_id is ignored).
+    if (scopedCompanyId != null && payment.company_id !== scopedCompanyId) {
+      throw new NotFoundException(`Supplier payment with ID ${id} not found`);
+    }
 
-    if (dto.company_id != null) {
+    if (scopedCompanyId == null && dto.company_id != null) {
       const company = await this.companyRepo.findOne({
         where: { id: dto.company_id },
       });

@@ -54,14 +54,15 @@ export class SupplierCreditNotesService {
 
   async create(
     dto: CreateSupplierCreditNoteDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierCreditNoteResponseDto> {
+    // Merchant users are forced to their own company; portal users may target any via dto.
+    const companyId = scopedCompanyId ?? dto.company_id;
     const company = await this.companyRepo.findOne({
-      where: { id: dto.company_id },
+      where: { id: companyId },
     });
     if (!company)
-      throw new NotFoundException(
-        `Company with ID ${dto.company_id} not found`,
-      );
+      throw new NotFoundException(`Company with ID ${companyId} not found`);
 
     const supplier = await this.supplierRepo.findOne({
       where: { id: dto.supplier_id },
@@ -79,7 +80,7 @@ export class SupplierCreditNotesService {
     }
 
     const cn = this.creditNoteRepo.create({
-      company_id: dto.company_id,
+      company_id: companyId,
       supplier_id: dto.supplier_id,
       credit_note_number: dto.credit_note_number,
       issue_date: new Date(dto.issue_date),
@@ -98,6 +99,7 @@ export class SupplierCreditNotesService {
 
   async findAll(
     query: GetSupplierCreditNotesQueryDto,
+    scopedCompanyId?: number,
   ): Promise<PaginatedSupplierCreditNotesResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -109,9 +111,11 @@ export class SupplierCreditNotesService {
       .createQueryBuilder('cn')
       .where('cn.deleted_at IS NULL');
 
-    if (query.company_id != null)
+    // Merchant users are locked to their own company; portal users may narrow via query.
+    const effectiveCompanyId = scopedCompanyId ?? query.company_id;
+    if (effectiveCompanyId != null)
       qb.andWhere('cn.company_id = :companyId', {
-        companyId: query.company_id,
+        companyId: effectiveCompanyId,
       });
     if (query.supplier_id != null)
       qb.andWhere('cn.supplier_id = :supplierId', {
@@ -175,6 +179,7 @@ export class SupplierCreditNotesService {
   async update(
     id: number,
     dto: UpdateSupplierCreditNoteDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierCreditNoteResponseDto> {
     if (!id || id <= 0)
       throw new BadRequestException('Invalid supplier credit note ID');
@@ -186,8 +191,14 @@ export class SupplierCreditNotesService {
       throw new NotFoundException(
         `Supplier credit note with ID ${id} not found`,
       );
+    // Merchant users can only touch their own company's credit notes and never move them.
+    if (scopedCompanyId != null && cn.company_id !== scopedCompanyId) {
+      throw new NotFoundException(
+        `Supplier credit note with ID ${id} not found`,
+      );
+    }
 
-    if (dto.company_id != null) {
+    if (scopedCompanyId == null && dto.company_id != null) {
       const company = await this.companyRepo.findOne({
         where: { id: dto.company_id },
       });

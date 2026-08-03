@@ -8,6 +8,7 @@ import { SupplierPaymentAllocation } from './entities/supplier_payment_allocatio
 import { SupplierPayment } from '../supplier-payments/entities/supplier-payment.entity';
 import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier.entity';
 import { SupplierCreditNote } from '../supplier-credit-notes/entities/supplier-credit-note.entity';
+import { SupplierInvoice } from '../supplier-invoices/entities/supplier-invoice.entity';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SupplierCreditNote } from '../supplier-credit-notes/entities/supplier-c
       SupplierPayment,
       Supplier,
       SupplierCreditNote,
+      SupplierInvoice,
     ]),
   ],
   controllers: [SupplierPaymentAllocationsController],

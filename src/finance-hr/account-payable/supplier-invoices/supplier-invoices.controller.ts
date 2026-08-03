@@ -124,8 +124,20 @@ export class SupplierInvoicesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async create(
     @Body() dto: CreateSupplierInvoiceDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceResponseDto> {
-    return this.supplierInvoicesService.create(dto);
+    return this.supplierInvoicesService.create(dto, this.merchantCompanyScope(user));
+  }
+
+  /**
+   * For merchant users, returns the company that owns their merchant so the service can
+   * enforce multi-tenant scoping (they can only read/write their own company's invoices).
+   * Portal users get `undefined`, preserving cross-company access via the optional filter.
+   */
+  private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
+    const isMerchant =
+      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+    return isMerchant ? user.merchant?.companyId : undefined;
   }
 
   @Get()
@@ -153,8 +165,9 @@ export class SupplierInvoicesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findAll(
     @Query() query: GetSupplierInvoicesQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierInvoicesResponseDto> {
-    return this.supplierInvoicesService.findAll(query);
+    return this.supplierInvoicesService.findAll(query, this.merchantCompanyScope(user));
   }
 
   @Get(':id')
