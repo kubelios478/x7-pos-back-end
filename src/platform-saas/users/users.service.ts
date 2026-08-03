@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
@@ -12,10 +13,26 @@ import {
   OneUserResponseDto,
   AllUsersResponseDto,
 } from './dtos/user-response.dto';
+import { UserHrSummaryResponseDto } from './dtos/user-hr-summary.dto';
+import { UserRole } from './constants/role.enum';
 import * as bcrypt from 'bcrypt';
 import { console } from 'inspector';
 import { ErrorHandler } from '../../common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
+import { MailService } from '../../mail/mail.service';
+
+function toSafeUser(user: User) {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    scope: user.scope,
+    isActive: user.isActive,
+    merchantId: user.merchantId,
+    merchant: user.merchant,
+  };
+}
 
 @Injectable()
 export class UsersService {
@@ -28,34 +45,47 @@ export class UsersService {
 
     @InjectRepository(Merchant)
     private readonly merchantRepo: Repository<Merchant>,
+
+    private readonly mailService: MailService,
   ) {}
 
-  async create(dto: CreateUserDto): Promise<OneUserResponseDto> {
+  async create(
+    dto: CreateUserDto,
+    currentUser?: AuthenticatedUser,
+  ): Promise<OneUserResponseDto> {
+    // Merchant admins can only provision users inside their own merchant (AC 3).
+    // We ignore any client-provided merchantId and anchor to the admin's merchant.
+    const isMerchantAdmin = currentUser?.role === UserRole.MERCHANT_ADMIN;
+    const resolvedMerchantId = isMerchantAdmin
+      ? currentUser?.merchant?.id
+      : dto.merchantId;
+
     // Validate input ID parameters
     if (dto.companyId && dto.companyId <= 0) {
       ErrorHandler.invalidId('Company ID must be a positive number');
     }
-    if (dto.merchantId && dto.merchantId <= 0) {
+    if (resolvedMerchantId && resolvedMerchantId <= 0) {
       ErrorHandler.invalidId('Merchant ID must be a positive number');
+    }
+    if (!resolvedMerchantId) {
+      ErrorHandler.invalidId('Merchant ID is required to create a user');
     }
 
     const company = dto.companyId
       ? await this.companyRepo.findOne({ where: { id: dto.companyId } })
       : undefined;
-    console.log('Company:', company);
 
     if (dto.companyId && !company) {
       ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
     }
 
-    const merchant = dto.merchantId
-      ? await this.merchantRepo.findOne({ where: { id: dto.merchantId } })
-      : undefined;
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: resolvedMerchantId },
+    });
 
-    if (dto.merchantId && !merchant) {
+    if (!merchant) {
       ErrorHandler.notFound(ErrorMessage.MERCHANT_NOT_FOUND);
     }
-    console.log('Merchant:', merchant);
 
     const user = this.userRepo.create({
       username: dto.username,
@@ -63,27 +93,18 @@ export class UsersService {
       password: await bcrypt.hash(dto.password, 10),
       role: dto.role,
       scope: dto.scope,
-      company: company,
+      isActive: true,
       merchant: merchant,
+      merchantId: resolvedMerchantId,
     } as Partial<User>);
 
     try {
       const savedUser = await this.userRepo.save(user);
 
-      const safeUserData = {
-        id: savedUser.id,
-        username: savedUser.username,
-        email: savedUser.email,
-        role: savedUser.role,
-        scope: savedUser.scope,
-        merchantId: savedUser.merchantId,
-        merchant: savedUser.merchant,
-      };
-
       return {
         statusCode: 201,
         message: 'User created successfully',
-        data: safeUserData,
+        data: toSafeUser(savedUser),
       };
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
@@ -94,20 +115,11 @@ export class UsersService {
     const users = await this.userRepo.find({
       relations: ['merchant'],
     });
-    const mappedUsers = users.map((user) => ({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      scope: user.scope,
-      merchantId: user.merchantId,
-      merchant: user.merchant,
-    }));
 
     return {
       statusCode: 200,
       message: 'Users retrieved successfully',
-      data: mappedUsers,
+      data: users.map(toSafeUser),
     };
   }
 
@@ -131,20 +143,10 @@ export class UsersService {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
-    const safeUserData = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      scope: user.scope,
-      merchantId: user.merchantId,
-      merchant: user.merchant,
-    };
-
     return {
       statusCode: 200,
       message: 'User retrieved successfully',
-      data: safeUserData,
+      data: toSafeUser(user),
     };
   }
 
@@ -167,20 +169,10 @@ export class UsersService {
       relations: ['merchant'],
     });
 
-    const mappedUsers = users.map((user) => ({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      scope: user.scope,
-      merchantId: user.merchantId,
-      merchant: user.merchant,
-    }));
-
     return {
       statusCode: 200,
       message: 'Users retrieved successfully',
-      data: mappedUsers,
+      data: users.map(toSafeUser),
     };
   }
 
@@ -190,7 +182,6 @@ export class UsersService {
       ErrorHandler.invalidFormat('Please provide a valid email address');
     }
 
-    console.log('Searching for user by email:', email);
     const foundUser = await this.userRepo.findOne({
       where: { email },
       relations: ['merchant'],
@@ -200,22 +191,10 @@ export class UsersService {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
-    console.log('User found:', foundUser);
-
-    const safeUserData = {
-      id: foundUser.id,
-      username: foundUser.username,
-      email: foundUser.email,
-      role: foundUser.role,
-      scope: foundUser.scope,
-      merchantId: foundUser.merchantId,
-      merchant: foundUser.merchant,
-    };
-
     return {
       statusCode: 200,
       message: 'User retrieved successfully',
-      data: safeUserData,
+      data: toSafeUser(foundUser),
     };
   }
 
@@ -228,8 +207,6 @@ export class UsersService {
   }
 
   async saveResetToken(userId: number, token: string): Promise<void> {
-    console.log('In a saveResetToken');
-    console.log('Saving reset token for user:', userId, 'Token:', token);
     await this.userRepo.update(userId, { resetToken: token });
   }
 
@@ -267,17 +244,7 @@ export class UsersService {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
-    const isSelf = user.id === currentUser.id;
-    const sameMerchant =
-      user.merchant?.id &&
-      currentUser.merchant?.id &&
-      user.merchant.id === currentUser.merchant.id;
-
-    if (!isSelf && !sameMerchant) {
-      ErrorHandler.insufficientPermissions(
-        'You can only update your own profile or users from your merchant',
-      );
-    }
+    this.assertCanManageUser(user, currentUser);
 
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
@@ -287,23 +254,153 @@ export class UsersService {
       Object.assign(user, dto);
       const updatedUser = await this.userRepo.save(user);
 
-      const safeUserData = {
-        id: updatedUser.id,
-        username: updatedUser.username,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        scope: updatedUser.scope,
-        merchantId: updatedUser.merchantId,
-        merchant: updatedUser.merchant,
-      };
-
       return {
         statusCode: 200,
         message: 'User updated successfully',
-        data: safeUserData,
+        data: toSafeUser(updatedUser),
       };
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
+    }
+  }
+
+  /**
+   * Soft-activate / deactivate a user without deleting the record (AC: deactivate access).
+   */
+  async setActiveStatus(
+    id: number,
+    isActive: boolean,
+    currentUser: AuthenticatedUser,
+  ): Promise<OneUserResponseDto> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('User ID must be a positive number');
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { id },
+      relations: ['merchant'],
+    });
+
+    if (!user) {
+      ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
+    }
+
+    this.assertCanManageUser(user, currentUser);
+
+    user.isActive = isActive;
+    const updatedUser = await this.userRepo.save(user);
+
+    return {
+      statusCode: 200,
+      message: isActive
+        ? 'User reactivated successfully'
+        : 'User deactivated successfully',
+      data: toSafeUser(updatedUser),
+    };
+  }
+
+  /**
+   * Admin-triggered password reset. Generates a reset token and emails the target
+   * user a recovery link — the admin never sees or sets the password (AC: Password Isolation).
+   */
+  async triggerPasswordReset(
+    id: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<{ statusCode: number; message: string }> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('User ID must be a positive number');
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { id },
+      relations: ['merchant'],
+    });
+
+    if (!user) {
+      ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
+    }
+
+    this.assertCanManageUser(user, currentUser);
+
+    const resetToken = uuidv4();
+    await this.saveResetToken(user.id, resetToken);
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+    void this.mailService.sendMail({
+      to: user.email,
+      subject: 'Reset Password',
+      text: `A password reset was requested for your account. Click the following link to set a new password: ${resetUrl}`,
+      html: `<p>A password reset was requested for your account. Click <a href="${resetUrl}">here</a> to set a new password.</p>`,
+    });
+
+    return {
+      statusCode: 200,
+      message: 'Password reset link sent to the user email.',
+    };
+  }
+
+  /**
+   * Returns the user together with linked HR collaborator records so the admin can
+   * cross-reference system accounts with human-resource files (AC: HR dashboard).
+   */
+  async getHrSummary(
+    id: number,
+    currentUser: AuthenticatedUser,
+  ): Promise<UserHrSummaryResponseDto> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('User ID must be a positive number');
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { id },
+      relations: ['merchant', 'collaborators'],
+    });
+
+    if (!user) {
+      ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
+    }
+
+    this.assertCanManageUser(user, currentUser);
+
+    const collaborators = (user.collaborators ?? []).map((collaborator) => ({
+      id: collaborator.id,
+      name: collaborator.name,
+      employeeId: collaborator.employeeId ?? null,
+      department: collaborator.department ?? null,
+      role: collaborator.role,
+      status: collaborator.status,
+      merchantId: collaborator.merchant_id,
+    }));
+
+    return {
+      statusCode: 200,
+      message: 'User HR summary retrieved successfully',
+      data: {
+        user: toSafeUser(user),
+        collaborators,
+      },
+    };
+  }
+
+  private assertCanManageUser(
+    user: User,
+    currentUser: AuthenticatedUser,
+  ): void {
+    if (currentUser.role === UserRole.PORTAL_ADMIN) {
+      return;
+    }
+
+    const isSelf = user.id === currentUser.id;
+    const sameMerchant =
+      user.merchant?.id &&
+      currentUser.merchant?.id &&
+      user.merchant.id === currentUser.merchant.id;
+
+    if (!isSelf && !sameMerchant) {
+      ErrorHandler.insufficientPermissions(
+        'You can only manage your own profile or users from your merchant',
+      );
     }
   }
 }

@@ -7,6 +7,7 @@ import { CustomerSummaryDto } from 'src/core/business-partners/customers/dtos/cu
 import { Customer } from 'src/core/business-partners/customers/entities/customer.entity';
 import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier.entity';
 import { Configuration } from 'src/core/configuration/entity/configuration-entity';
+import { CompanyStatus } from '../constants/company-status.enum';
 
 @Entity()
 export class Company {
@@ -17,6 +18,20 @@ export class Company {
   @ApiProperty({ example: 'Acme Corp', description: 'Name of the company' })
   @Column()
   name: string;
+
+  @ApiProperty({
+    example: CompanyStatus.ACTIVE,
+    enum: CompanyStatus,
+    description:
+      'Operational status of the company. Deactivating suspends access for all child merchants without deleting data.',
+    default: CompanyStatus.ACTIVE,
+  })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: CompanyStatus.ACTIVE,
+  })
+  status: CompanyStatus;
 
   @ApiProperty({
     example: 'contact@acme.com',
@@ -97,4 +112,18 @@ export class Company {
 
   @OneToMany(() => Supplier, (supplier) => supplier.company)
   suppliers: Supplier[];
+
+  @ApiProperty({
+    example: 4,
+    description: 'Number of merchant branches linked to the company (computed).',
+    required: false,
+  })
+  merchantsCount?: number;
+
+  @ApiProperty({
+    example: 12,
+    description: 'Number of B2B customers linked to the company (computed).',
+    required: false,
+  })
+  customersCount?: number;
 }

@@ -6,14 +6,22 @@ import {
   MinLength,
   IsNumber,
   IsEmail,
+  IsOptional,
+  Length,
 } from 'class-validator';
 import { UserRole } from '../constants/role.enum';
 import { Scope } from '../constants/scope.enum';
 
 export class CreateUserDto {
-  @ApiProperty({ example: 'johndoe', description: 'Username of the user' })
+  @ApiProperty({
+    example: 'johndoe',
+    description: 'Username of the user',
+    required: false,
+  })
+  @IsOptional()
   @IsString()
-  username: string;
+  @Length(2, 60, { message: 'Username must be between 2 and 60 characters' })
+  username?: string;
 
   @ApiProperty({
     example: 'securePass123',
@@ -38,11 +46,22 @@ export class CreateUserDto {
   @IsEnum(Scope)
   scope: Scope;
 
-  @ApiProperty({ example: 1, description: 'ID of the associated company' })
+  @ApiProperty({
+    example: 1,
+    description: 'ID of the associated company',
+    required: false,
+  })
+  @IsOptional()
   @IsNumber()
-  companyId: number;
+  companyId?: number;
 
-  @ApiProperty({ example: 1, description: 'ID of the associated merchant' })
+  @ApiProperty({
+    example: 1,
+    description:
+      'ID of the associated merchant. Ignored for merchant admins (forced to their own merchant).',
+    required: false,
+  })
+  @IsOptional()
   @IsNumber()
-  merchantId: number;
+  merchantId?: number;
 }

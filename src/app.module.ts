@@ -38,6 +38,7 @@ import { Collaborator } from './finance-hr/hr/collaborators/entities/collaborato
 import { CollaboratorContract } from './finance-hr/hr/collaborator-contracts/entities/collaborator-contract.entity';
 import { Company } from './platform-saas/companies/entities/company.entity';
 import { Configuration } from './core/configuration/entity/configuration-entity';
+import { CompanyDefaultConfiguration } from './core/configuration/company-default/entity/company-default-configuration.entity';
 import { Customer } from './core/business-partners/customers/entities/customer.entity';
 import { FeatureEntity } from './platform-saas/subscriptions/features/entity/features.entity';
 import { Item } from './inventory/products-inventory/stocks/items/entities/item.entity';
@@ -204,6 +205,7 @@ import { OnboardingSession } from './onboarding/entities/onboarding-session.enti
           CollaboratorContract,
           Company,
           Configuration,
+          CompanyDefaultConfiguration,
           Customer,
           FeatureEntity,
           KitchenDisplayDevice,

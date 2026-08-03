@@ -22,7 +22,9 @@ import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { UserRole } from '../users/constants/role.enum';
 import { MerchantStatus } from '../merchants/constants/merchant-status.enum';
+import { CompanyStatus } from './constants/company-status.enum';
 import { Configuration } from 'src/core/configuration/entity/configuration-entity';
+import { CompanyDefaultConfiguration } from 'src/core/configuration/company-default/entity/company-default-configuration.entity';
 import {
   CompanyConfigurationsResponseDto,
   CompanyConfigurationItemDto,
@@ -56,8 +58,28 @@ export class CompaniesService {
 
   async create(dto: CreateCompanyDto): Promise<OneCompanyResponseDto> {
     try {
-      const company = this.companyRepo.create(dto);
-      const createdCompany = await this.companyRepo.save(company);
+      // Company creation and its default Configuration seed are atomic: a company
+      // must never exist without its initial SaaS configuration record (AC 3).
+      const createdCompany = await this.companyRepo.manager.transaction(
+        async (manager) => {
+          const company = manager.create(Company, dto);
+          const savedCompany = await manager.save(Company, company);
+
+          const now = new Date();
+          const defaultConfiguration = manager.create(
+            CompanyDefaultConfiguration,
+            {
+              company: savedCompany,
+              status: 'default',
+              createdAt: now,
+              updatedAt: now,
+            },
+          );
+          await manager.save(CompanyDefaultConfiguration, defaultConfiguration);
+
+          return savedCompany;
+        },
+      );
 
       return {
         statusCode: 201,
@@ -70,12 +92,49 @@ export class CompaniesService {
   }
 
   async findAll(): Promise<AllCompanyResponseDto> {
-    const companies = await this.companyRepo.find({ relations: ['merchants'] });
+    const companies = await this.companyRepo
+      .createQueryBuilder('company')
+      .loadRelationCountAndMap('company.merchantsCount', 'company.merchants')
+      .loadRelationCountAndMap('company.customersCount', 'company.customers')
+      .orderBy('company.id', 'ASC')
+      .getMany();
 
     return {
       statusCode: 200,
       message: 'Companies retrieved successfully',
       data: companies,
+    };
+  }
+
+  async setStatus(
+    id: number,
+    status: CompanyStatus,
+    user?: AuthenticatedUser,
+  ): Promise<OneCompanyResponseDto> {
+    if (!id || id <= 0) {
+      ErrorHandler.invalidId('Company ID must be a positive number');
+    }
+
+    if (user) {
+      await this.assertUserOwnsCompany(id, user);
+    }
+
+    const company = await this.companyRepo.findOne({ where: { id } });
+
+    if (!company) {
+      ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
+    }
+
+    company.status = status;
+    const updatedCompany = await this.companyRepo.save(company);
+
+    return {
+      statusCode: 200,
+      message:
+        status === CompanyStatus.ACTIVE
+          ? 'Company reactivated successfully'
+          : 'Company suspended successfully',
+      data: updatedCompany,
     };
   }
 

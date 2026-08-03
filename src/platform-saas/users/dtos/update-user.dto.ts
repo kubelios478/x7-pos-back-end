@@ -1,6 +1,7 @@
 // src/users/dtos/update-user.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsOptional,
@@ -51,4 +52,12 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(Scope)
   scope?: Scope;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the user account is active',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

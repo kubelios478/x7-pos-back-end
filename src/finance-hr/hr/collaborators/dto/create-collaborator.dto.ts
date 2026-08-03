@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsEnum,
   IsPositive,
+  IsOptional,
   MinLength,
   MaxLength,
 } from 'class-validator';
@@ -34,6 +35,26 @@ export class CreateCollaboratorDto {
   @MinLength(1)
   @MaxLength(150)
   name: string;
+
+  @ApiProperty({
+    example: 'EMP-00123',
+    description: 'Internal employee identifier',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  employeeId?: string;
+
+  @ApiProperty({
+    example: 'Kitchen',
+    description: 'Department the collaborator belongs to',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  department?: string;
 
   @ApiProperty({
     example: ShiftRole.WAITER,

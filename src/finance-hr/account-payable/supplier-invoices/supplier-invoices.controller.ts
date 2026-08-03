@@ -235,4 +235,29 @@ export class SupplierInvoicesController {
   ): Promise<OneSupplierInvoiceResponseDto> {
     return this.supplierInvoicesService.remove(id);
   }
+
+  @Post(':id/restore')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Restore a soft-deleted (archived) supplier invoice' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiOkResponse({
+    description: 'Supplier invoice restored successfully',
+    type: OneSupplierInvoiceResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'Archived supplier invoice not found' })
+  @ApiBadRequestResponse({ description: 'Invalid ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiForbiddenResponse({ description: 'Forbidden' })
+  async restore(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneSupplierInvoiceResponseDto> {
+    return this.supplierInvoicesService.restore(id);
+  }
 }
