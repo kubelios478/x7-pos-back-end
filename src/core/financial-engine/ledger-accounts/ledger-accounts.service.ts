@@ -76,6 +76,7 @@ export class LedgerAccountsService {
       code: account.code,
       name: account.name,
       type: account.type,
+      is_active: account.is_active,
       parent_account_id: account.parent_account_id ?? null,
       created_at: account.created_at,
       updated_at: account.updated_at,
@@ -95,7 +96,12 @@ export class LedgerAccountsService {
       where: {
         id,
         company_id,
-        is_active: createdUpdateDelete === 'Deleted' ? false : true,
+        is_active:
+          createdUpdateDelete === 'Deleted'
+            ? false
+            : createdUpdateDelete === 'Updated'
+              ? undefined
+              : true,
       },
       relations: ['company'],
     });
@@ -158,8 +164,7 @@ export class LedgerAccountsService {
     const qb = this.ledgerAccountRepository
       .createQueryBuilder('account')
       .leftJoinAndSelect('account.company', 'company')
-      .where('account.company_id = :company_id', { company_id })
-      .andWhere('account.is_active = :is_active', { is_active: true });
+      .where('account.company_id = :company_id', { company_id });
 
     if (query.name) {
       qb.andWhere('LOWER(account.name) LIKE LOWER(:name)', {
@@ -216,7 +221,6 @@ export class LedgerAccountsService {
     const account = await this.ledgerAccountRepository.findOneBy({
       id,
       company_id,
-      is_active: true,
     });
     if (!account) ErrorHandler.notFound('Ledger Account not found');
 
