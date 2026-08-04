@@ -37,6 +37,8 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import {
   GetSupplierPaymentsQueryDto,
@@ -81,8 +83,22 @@ export class SupplierPaymentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async create(
     @Body() createSupplierPaymentDto: CreateSupplierPaymentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierPaymentResponseDto> {
-    return this.supplierPaymentsService.create(createSupplierPaymentDto);
+    return this.supplierPaymentsService.create(
+      createSupplierPaymentDto,
+      this.merchantCompanyScope(user),
+    );
+  }
+
+  /**
+   * Merchant users are locked to their own company (they can only read/write their own
+   * company's payments). Portal users get `undefined` → cross-company access preserved.
+   */
+  private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
+    const isMerchant =
+      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+    return isMerchant ? user.merchant?.companyId : undefined;
   }
 
   @Get()
@@ -110,8 +126,9 @@ export class SupplierPaymentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findAll(
     @Query() query: GetSupplierPaymentsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierPaymentsResponseDto> {
-    return this.supplierPaymentsService.findAll(query);
+    return this.supplierPaymentsService.findAll(query, this.merchantCompanyScope(user));
   }
 
   @Get(':id')
@@ -164,8 +181,13 @@ export class SupplierPaymentsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateSupplierPaymentDto: UpdateSupplierPaymentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierPaymentResponseDto> {
-    return this.supplierPaymentsService.update(id, updateSupplierPaymentDto);
+    return this.supplierPaymentsService.update(
+      id,
+      updateSupplierPaymentDto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Delete(':id')

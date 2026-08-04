@@ -34,6 +34,8 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { SupplierCreditNotesService } from './supplier-credit-notes.service';
 import { CreateSupplierCreditNoteDto } from './dto/create-supplier-credit-note.dto';
@@ -81,8 +83,19 @@ export class SupplierCreditNotesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async create(
     @Body() dto: CreateSupplierCreditNoteDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierCreditNoteResponseDto> {
-    return this.supplierCreditNotesService.create(dto);
+    return this.supplierCreditNotesService.create(dto, this.merchantCompanyScope(user));
+  }
+
+  /**
+   * Merchant users are locked to their own company (they can only read/write their own
+   * company's credit notes). Portal users get `undefined` → cross-company access preserved.
+   */
+  private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
+    const isMerchant =
+      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+    return isMerchant ? user.merchant?.companyId : undefined;
   }
 
   @Get()
@@ -110,8 +123,9 @@ export class SupplierCreditNotesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findAll(
     @Query() query: GetSupplierCreditNotesQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierCreditNotesResponseDto> {
-    return this.supplierCreditNotesService.findAll(query);
+    return this.supplierCreditNotesService.findAll(query, this.merchantCompanyScope(user));
   }
 
   @Get(':id')
@@ -164,8 +178,9 @@ export class SupplierCreditNotesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSupplierCreditNoteDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierCreditNoteResponseDto> {
-    return this.supplierCreditNotesService.update(id, dto);
+    return this.supplierCreditNotesService.update(id, dto, this.merchantCompanyScope(user));
   }
 
   @Delete(':id')

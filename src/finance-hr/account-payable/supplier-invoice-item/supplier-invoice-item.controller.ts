@@ -43,6 +43,8 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 
 @ApiTags('Supplier invoice items (Account payable)')
@@ -80,8 +82,16 @@ export class SupplierInvoiceItemController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async create(
     @Body() dto: CreateSupplierInvoiceItemDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    return this.supplierInvoiceItemService.create(dto);
+    return this.supplierInvoiceItemService.create(dto, this.merchantCompanyScope(user));
+  }
+
+  /** Merchant users are locked to their own company; portal users get `undefined`. */
+  private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
+    const isMerchant =
+      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+    return isMerchant ? user.merchant?.companyId : undefined;
   }
 
   @Get()
@@ -112,8 +122,9 @@ export class SupplierInvoiceItemController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findAll(
     @Query() query: GetSupplierInvoiceItemsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierInvoiceItemsResponseDto> {
-    return this.supplierInvoiceItemService.findAll(query);
+    return this.supplierInvoiceItemService.findAll(query, this.merchantCompanyScope(user));
   }
 
   @Get(':id')
@@ -164,8 +175,9 @@ export class SupplierInvoiceItemController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSupplierInvoiceItemDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    return this.supplierInvoiceItemService.update(id, dto);
+    return this.supplierInvoiceItemService.update(id, dto, this.merchantCompanyScope(user));
   }
 
   @Delete(':id')
@@ -189,7 +201,8 @@ export class SupplierInvoiceItemController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    return this.supplierInvoiceItemService.remove(id);
+    return this.supplierInvoiceItemService.remove(id, this.merchantCompanyScope(user));
   }
 }

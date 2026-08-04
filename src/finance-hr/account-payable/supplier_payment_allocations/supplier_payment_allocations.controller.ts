@@ -37,6 +37,8 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import {
   GetSupplierPaymentAllocationsQueryDto,
@@ -83,10 +85,19 @@ export class SupplierPaymentAllocationsController {
   async create(
     @Body()
     createSupplierPaymentAllocationDto: CreateSupplierPaymentAllocationDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplierPaymentAllocationsService.create(
       createSupplierPaymentAllocationDto,
+      this.merchantCompanyScope(user),
     );
+  }
+
+  /** Merchant users are locked to their own company; portal users get `undefined`. */
+  private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
+    const isMerchant =
+      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+    return isMerchant ? user.merchant?.companyId : undefined;
   }
 
   @Get()
@@ -116,8 +127,14 @@ export class SupplierPaymentAllocationsController {
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden' })
-  async findAll(@Query() query: GetSupplierPaymentAllocationsQueryDto) {
-    return this.supplierPaymentAllocationsService.findAll(query);
+  async findAll(
+    @Query() query: GetSupplierPaymentAllocationsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplierPaymentAllocationsService.findAll(
+      query,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Get(':id')
@@ -167,10 +184,12 @@ export class SupplierPaymentAllocationsController {
     @Param('id', ParseIntPipe) id: number,
     @Body()
     updateSupplierPaymentAllocationDto: UpdateSupplierPaymentAllocationDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.supplierPaymentAllocationsService.update(
       id,
       updateSupplierPaymentAllocationDto,
+      this.merchantCompanyScope(user),
     );
   }
 
@@ -195,7 +214,13 @@ export class SupplierPaymentAllocationsController {
   @ApiBadRequestResponse({ description: 'Invalid ID' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden' })
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.supplierPaymentAllocationsService.remove(id);
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplierPaymentAllocationsService.remove(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 }
