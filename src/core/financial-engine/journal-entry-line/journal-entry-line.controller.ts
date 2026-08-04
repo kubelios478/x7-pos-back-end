@@ -5,7 +5,6 @@ import {
   Body,
   Patch,
   Param,
-  Delete,
   UseGuards,
   ParseIntPipe,
   Query,
@@ -49,7 +48,13 @@ import {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
-@Scopes(Scope.MERCHANT_WEB)
+@Scopes(
+  Scope.ADMIN_PORTAL,
+  Scope.MERCHANT_WEB,
+  Scope.MERCHANT_ANDROID,
+  Scope.MERCHANT_IOS,
+  Scope.MERCHANT_CLOVER,
+)
 @Controller('journal-entries/:entryId/lines')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.JOURNAL_ENTRY_LINES)
 export class JournalEntryLineController {
@@ -140,30 +145,5 @@ export class JournalEntryLineController {
     @Body() dto: UpdateJournalEntryLineDto,
   ) {
     return this.journalEntryLineService.update(user.merchant.id, id, dto);
-  }
-
-  // ─── DELETE /journal-entries/:entryId/lines/:id ───────────────────────────
-
-  @Delete(':id')
-  @ApiOperation({
-    summary: 'Delete a journal entry line',
-    description:
-      'Only lines belonging to DRAFT journal entries can be deleted.',
-  })
-  @ApiParam({ name: 'entryId', type: Number })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiCreatedResponse({ type: OneJournalEntryLineResponse })
-  @ApiBadRequestResponse({
-    type: ErrorResponse,
-    description: 'Entry not in DRAFT',
-  })
-  @ApiNotFoundResponse({ type: ErrorResponse })
-  @ApiUnauthorizedResponse({ type: ErrorResponse })
-  @ApiForbiddenResponse({ type: ErrorResponse })
-  remove(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    return this.journalEntryLineService.remove(user.merchant.id, id);
   }
 }

@@ -73,6 +73,7 @@ describe('LedgerAccountsService', () => {
     code: mockLedgerAccount.code,
     name: mockLedgerAccount.name,
     type: mockLedgerAccount.type,
+    is_active: mockLedgerAccount.is_active,
     parent_account_id: null,
     created_at: mockLedgerAccount.created_at,
     updated_at: mockLedgerAccount.updated_at,
@@ -288,6 +289,30 @@ describe('LedgerAccountsService', () => {
         },
       );
     });
+
+    it('does not filter out inactive accounts', async () => {
+      const merchantRepo = service['merchantRepository'];
+      jest.spyOn(merchantRepo, 'findOne').mockResolvedValueOnce(mockMerchant);
+
+      const inactiveAccount: LedgerAccount = {
+        ...mockLedgerAccount,
+        id: 2,
+        code: '9999',
+        is_active: false,
+      };
+
+      mockQueryBuilder.getCount.mockResolvedValueOnce(2);
+      mockQueryBuilder.getMany.mockResolvedValueOnce([mockLedgerAccount, inactiveAccount]);
+
+      const result = await service.findAll(mockQuery, mockMerchant.id);
+
+      expect(result.data).toHaveLength(2);
+      expect(result.data.some((a) => a.is_active === false)).toBe(true);
+      expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
+        'account.is_active = :is_active',
+        { is_active: true },
+      );
+    });
   });
 
   // ─── FindOne ───────────────────────────────────────────────────────────────
@@ -411,6 +436,84 @@ describe('LedgerAccountsService', () => {
       await expect(
         service.update(-1, mockMerchant.id, mockUpdateDto),
       ).rejects.toThrow();
+    });
+
+    it('reactivates an inactive account when is_active: true is sent', async () => {
+      const merchantRepo = service['merchantRepository'];
+      const ledgerAccountRepo = service['ledgerAccountRepository'];
+
+      const inactiveAccount: LedgerAccount = { ...mockLedgerAccount, is_active: false };
+      const reactivatedAccount: LedgerAccount = { ...inactiveAccount, is_active: true };
+
+      jest.spyOn(merchantRepo, 'findOne').mockResolvedValue(mockMerchant);
+      jest
+        .spyOn(ledgerAccountRepo, 'findOneBy')
+        .mockResolvedValueOnce(inactiveAccount);
+      jest
+        .spyOn(ledgerAccountRepo, 'save')
+        .mockResolvedValueOnce(reactivatedAccount);
+      jest
+        .spyOn(ledgerAccountRepo, 'findOne')
+        .mockResolvedValueOnce(reactivatedAccount);
+
+      const result = await service.update(mockLedgerAccount.id, mockMerchant.id, {
+        is_active: true,
+      });
+
+      expect(ledgerAccountRepo.findOneBy).toHaveBeenCalledWith({
+        id: mockLedgerAccount.id,
+        company_id: mockCompany.id,
+      });
+      expect(result.data.is_active).toBe(true);
+    });
+
+    it('updates a non-status field on an inactive account without losing it in the post-save re-query', async () => {
+      const merchantRepo = service['merchantRepository'];
+      const ledgerAccountRepo = service['ledgerAccountRepository'];
+
+      const inactiveAccount: LedgerAccount = {
+        ...mockLedgerAccount,
+        is_active: false,
+      };
+      const updatedInactiveAccount: LedgerAccount = {
+        ...inactiveAccount,
+        name: 'Cash and Equivalents',
+      };
+
+      jest.spyOn(merchantRepo, 'findOne').mockResolvedValue(mockMerchant);
+      jest
+        .spyOn(ledgerAccountRepo, 'findOneBy')
+        .mockResolvedValueOnce(inactiveAccount);
+      jest
+        .spyOn(ledgerAccountRepo, 'save')
+        .mockResolvedValueOnce(updatedInactiveAccount);
+      jest
+        .spyOn(ledgerAccountRepo, 'findOne')
+        .mockResolvedValueOnce(updatedInactiveAccount);
+
+      const result = await service.update(
+        mockLedgerAccount.id,
+        mockMerchant.id,
+        mockUpdateDto, // { name: 'Cash and Equivalents' } — does not touch is_active
+      );
+
+      // The re-query inside fetchOne(id, company_id, 'Updated') must NOT
+      // constrain on is_active: update() may edit a field on an account that
+      // is currently inactive, and the account's active state shouldn't
+      // determine whether the (already-successful) save can be found again.
+      expect(ledgerAccountRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          id: mockLedgerAccount.id,
+          company_id: mockCompany.id,
+          is_active: undefined,
+        },
+        relations: ['company'],
+      });
+
+      expect(result.statusCode).toBe(201);
+      expect(result.message).toBe('Ledger Account Updated successfully');
+      expect(result.data.name).toBe('Cash and Equivalents');
+      expect(result.data.is_active).toBe(false);
     });
   });
 
