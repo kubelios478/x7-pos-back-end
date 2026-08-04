@@ -160,6 +160,7 @@ describe('CashDrawersService', () => {
 
       expect(shiftRepository.findOne).toHaveBeenCalledWith({
         where: { merchant: { id: 1 }, status: ShiftStatus.ACTIVE },
+        order: { startTime: 'DESC', id: 'DESC' },
       });
       expect(collaboratorRepository.findOne).toHaveBeenCalledWith({
         where: { user_id: 1, merchant_id: 1 },
@@ -461,6 +462,37 @@ describe('CashDrawersService', () => {
         .mockResolvedValue(undefined as any);
 
       const result = await service.update(1, closeCashDrawerDto, mockUser);
+
+      expect(cashDrawerRepository.update).toHaveBeenCalledWith(1, {
+        closing_balance: 100.0,
+        closed_by: 1,
+        status: CashDrawerStatus.CLOSE,
+      });
+      expect(result.statusCode).toBe(200);
+      expect(result.data.status).toBe(CashDrawerStatus.CLOSE);
+    });
+
+    it('should close a cash drawer when the closing balance differs from the current balance only past the second decimal place', async () => {
+      const subCentDto: CloseCashDrawerDto = { closingBalance: 100.004 };
+      const closedCashDrawer = {
+        ...mockCashDrawer,
+        closing_balance: 100.0,
+        closed_by: 1,
+        status: CashDrawerStatus.CLOSE,
+        closedByCollaborator: mockCollaborator,
+      };
+      jest
+        .spyOn(cashDrawerRepository, 'findOne')
+        .mockResolvedValueOnce(mockCashDrawer as any) // existing, current_balance = 100.0
+        .mockResolvedValueOnce(closedCashDrawer as any); // refetched after update
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as any);
+      jest
+        .spyOn(cashDrawerRepository, 'update')
+        .mockResolvedValue(undefined as any);
+
+      const result = await service.update(1, subCentDto, mockUser);
 
       expect(cashDrawerRepository.update).toHaveBeenCalledWith(1, {
         closing_balance: 100.0,

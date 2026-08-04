@@ -50,11 +50,14 @@ export class CashDrawersService {
       throw new BadRequestException('Opening balance must be non-negative');
     }
 
+    // NOTE: ShiftsService.findActiveShiftByMerchant() has the identical unordered-lookup
+    // pattern; keep both in sync if this changes.
     const activeShift = await this.shiftRepository.findOne({
       where: {
         merchant: { id: authenticatedUserMerchantId },
         status: ShiftStatus.ACTIVE,
       },
+      order: { startTime: 'DESC', id: 'DESC' },
     });
 
     if (!activeShift) {
@@ -389,16 +392,19 @@ export class CashDrawersService {
     }
 
     // `current_balance`/`closingBalance` can arrive as numeric strings (decimal
-    // column), so coerce both sides before comparing.
+    // column), so coerce both sides before comparing. Both sides are also rounded
+    // to 2 decimal places (matching the decimal(12,2) column) so sub-cent noise in
+    // the incoming DTO value doesn't cause a false Discrepancy.
     const currentBalance = Number(existingCashDrawer.current_balance);
-    const closingBalance = Number(closeCashDrawerDto.closingBalance);
+    const closingBalance =
+      Math.round(Number(closeCashDrawerDto.closingBalance) * 100) / 100;
     const status =
-      closingBalance === currentBalance
+      closingBalance === Math.round(currentBalance * 100) / 100
         ? CashDrawerStatus.CLOSE
         : CashDrawerStatus.DISCREPANCY;
 
     await this.cashDrawerRepository.update(id, {
-      closing_balance: closeCashDrawerDto.closingBalance,
+      closing_balance: closingBalance,
       closed_by: collaborator.id,
       status,
     });

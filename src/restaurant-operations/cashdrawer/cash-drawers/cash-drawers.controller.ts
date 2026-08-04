@@ -78,7 +78,7 @@ export class CashDrawersController {
   @ApiOperation({
     summary: 'Create a new cash drawer',
     description:
-      'Creates a new cash drawer for a specific shift. Only merchant administrators and users can create cash drawers for their merchant.',
+      "Opens a new cash drawer for the authenticated user's active shift. The shift and operator are resolved automatically from the authenticated session, not supplied by the client. Only merchant administrators and users can create cash drawers for their merchant.",
   })
   @ApiCreatedResponse({
     description: 'Cash drawer created successfully',
