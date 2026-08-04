@@ -114,52 +114,31 @@ describe('CashDrawersController', () => {
 
   describe('POST /cash-drawers (create)', () => {
     const createDto: CreateCashDrawerDto = {
-      shiftId: 1,
       openingBalance: 100.0,
-      openedBy: 1,
     };
 
     it('should create a new cash drawer successfully', async () => {
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockResolvedValue(mockOneCashDrawerResponse);
 
-      const result = await controller.create(createDto, mockRequest as any);
+      const result = await controller.create(createDto, mockUser as any);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser);
       expect(result).toEqual(mockOneCashDrawerResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Cash drawer created successfully');
     });
 
     it('should handle service errors during creation', async () => {
-      const errorMessage = 'Shift not found';
+      const errorMessage =
+        'No active shift found. Start a shift before opening a cash drawer.';
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(createDto, mockRequest as any),
+        controller.create(createDto, mockUser as any),
       ).rejects.toThrow(errorMessage);
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
-    });
-
-    it('should throw ForbiddenException if user has no merchant_id', async () => {
-      const requestWithoutMerchant = {
-        user: {
-          id: 1,
-          email: 'test@example.com',
-        },
-      };
-      const createSpy = jest.spyOn(service, 'create');
-      createSpy.mockRejectedValue(
-        new ForbiddenException(
-          'You must be associated with a merchant to create cash drawers',
-        ),
-      );
-
-      await expect(
-        controller.create(createDto, requestWithoutMerchant as any),
-      ).rejects.toThrow(ForbiddenException);
-      expect(createSpy).toHaveBeenCalledWith(createDto, undefined);
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser);
     });
   });
 

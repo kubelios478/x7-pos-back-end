@@ -15,6 +15,8 @@ import {
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 import {
   ApiTags,
@@ -117,11 +119,11 @@ export class CashDrawersController {
     },
   })
   @ApiBadRequestResponse({
-    description: 'Invalid input data',
+    description:
+      'Invalid input data, no active shift, or no linked collaborator profile',
     example: {
       statusCode: 400,
-      message: 'Validation failed',
-      error: 'Bad Request',
+      message: 'No active shift found. Start a shift before opening a cash drawer.',
     },
   })
   @ApiUnauthorizedResponse({
@@ -132,37 +134,26 @@ export class CashDrawersController {
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden - Insufficient permissions or merchant mismatch',
+    description: 'Forbidden - user is not associated with a merchant',
     example: {
       statusCode: 403,
-      message:
-        'You can only create cash drawers for shifts belonging to your merchant',
-    },
-  })
-  @ApiNotFoundResponse({
-    description: 'Resource not found',
-    example: {
-      statusCode: 404,
-      message: 'Shift not found',
+      message: 'You must be associated with a merchant to create cash drawers',
     },
   })
   @ApiConflictResponse({
-    description: 'Conflict - Business rule violation',
+    description: 'Conflict - the active shift already has an open cash drawer',
     example: {
       statusCode: 409,
-      message: 'There is already an open cash drawer for this shift',
+      message:
+        'An active cash drawer session (#CD-12) is already open for this shift. Please close the active session before opening a new drawer.',
     },
   })
   @ApiBody({ type: CreateCashDrawerDto })
   async create(
     @Body() createCashDrawerDto: CreateCashDrawerDto,
-    @Request() req,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.user?.merchant?.id;
-    return this.cashDrawersService.create(
-      createCashDrawerDto,
-      authenticatedUserMerchantId,
-    );
+    return this.cashDrawersService.create(createCashDrawerDto, user);
   }
 
   @Get()

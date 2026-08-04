@@ -19,6 +19,8 @@ import { UpdateCashDrawerDto } from './dto/update-cash-drawer.dto';
 import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';
 import { CashDrawerStatus } from './constants/cash-drawer-status.enum';
 import { ShiftRole } from '../../shift/shifts/constants/shift-role.enum';
+import { ShiftStatus } from '../../shift/shifts/constants/shift-status.enum';
+import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 
 describe('CashDrawersService', () => {
   let service: CashDrawersService;
@@ -66,6 +68,14 @@ describe('CashDrawersService', () => {
     role: ShiftRole.WAITER,
     status: 'activo',
     merchant: mockMerchant,
+  };
+
+  const mockUser: AuthenticatedUser = {
+    id: 1,
+    email: 'cashier@example.com',
+    role: 'MERCHANT_USER' as any,
+    scope: 'MERCHANT_WEB' as any,
+    merchant: { id: 1 },
   };
 
   const mockCashDrawer = {
@@ -128,9 +138,7 @@ describe('CashDrawersService', () => {
 
   describe('create', () => {
     const createCashDrawerDto: CreateCashDrawerDto = {
-      shiftId: 1,
       openingBalance: 100.0,
-      openedBy: 1,
     };
 
     it('should create a cash drawer successfully', async () => {
@@ -140,23 +148,21 @@ describe('CashDrawersService', () => {
       jest
         .spyOn(collaboratorRepository, 'findOne')
         .mockResolvedValue(mockCollaborator as any);
-      jest.spyOn(cashDrawerRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(cashDrawerRepository, 'save')
         .mockResolvedValue(mockCashDrawer as any);
       jest
         .spyOn(cashDrawerRepository, 'findOne')
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(mockCashDrawer as any);
+        .mockResolvedValueOnce(null) // no existing open drawer for the active shift
+        .mockResolvedValueOnce(mockCashDrawer as any); // complete drawer after save
 
-      const result = await service.create(createCashDrawerDto, 1);
+      const result = await service.create(createCashDrawerDto, mockUser);
 
       expect(shiftRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ['merchant'],
+        where: { merchant: { id: 1 }, status: ShiftStatus.ACTIVE },
       });
       expect(collaboratorRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
+        where: { user_id: 1, merchant_id: 1 },
       });
       expect(cashDrawerRepository.save).toHaveBeenCalled();
       expect(result.statusCode).toBe(201);
@@ -165,180 +171,57 @@ describe('CashDrawersService', () => {
     });
 
     it('should throw ForbiddenException when user has no merchant_id', async () => {
+      const userWithoutMerchant = { ...mockUser, merchant: undefined as any };
       await expect(
-        service.create(createCashDrawerDto, undefined as any),
+        service.create(createCashDrawerDto, userWithoutMerchant),
       ).rejects.toThrow(ForbiddenException);
       await expect(
-        service.create(createCashDrawerDto, undefined as any),
+        service.create(createCashDrawerDto, userWithoutMerchant),
       ).rejects.toThrow(
         'You must be associated with a merchant to create cash drawers',
       );
     });
 
-    it('should throw NotFoundException if shift not found', async () => {
+    it('should throw BadRequestException if opening balance is negative', async () => {
+      const dtoWithNegativeBalance = { openingBalance: -10 };
+
+      await expect(
+        service.create(dtoWithNegativeBalance, mockUser),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(dtoWithNegativeBalance, mockUser),
+      ).rejects.toThrow('Opening balance must be non-negative');
+    });
+
+    it('should throw BadRequestException when there is no active shift for the merchant', async () => {
       jest.spyOn(shiftRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        'Shift not found',
-      );
-    });
-
-    it('should throw ForbiddenException if shift belongs to different merchant', async () => {
-      const shiftFromDifferentMerchant = {
-        ...mockShift,
-        merchant: { id: 2, name: 'Other Merchant' },
-      };
-      jest
-        .spyOn(shiftRepository, 'findOne')
-        .mockResolvedValue(shiftFromDifferentMerchant as any);
-
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        ForbiddenException,
-      );
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        'You can only create cash drawers for shifts belonging to your merchant',
+      await expect(
+        service.create(createCashDrawerDto, mockUser),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(createCashDrawerDto, mockUser),
+      ).rejects.toThrow(
+        'No active shift found. Start a shift before opening a cash drawer.',
       );
     });
 
-    it('should throw NotFoundException if openedBy collaborator not found', async () => {
+    it('should throw BadRequestException when the user has no linked collaborator profile', async () => {
       jest
         .spyOn(shiftRepository, 'findOne')
         .mockResolvedValue(mockShift as any);
       jest.spyOn(collaboratorRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        'Opened by collaborator not found',
-      );
-    });
-
-    it('should throw ForbiddenException if openedBy collaborator belongs to different merchant', async () => {
-      const collaboratorFromDifferentMerchant = {
-        ...mockCollaborator,
-        merchant_id: 2,
-      };
-      jest
-        .spyOn(shiftRepository, 'findOne')
-        .mockResolvedValue(mockShift as any);
-      jest
-        .spyOn(collaboratorRepository, 'findOne')
-        .mockResolvedValue(collaboratorFromDifferentMerchant as any);
-
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        ForbiddenException,
-      );
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        'You can only assign collaborators from your merchant',
-      );
-    });
-
-    it('should throw NotFoundException if closedBy collaborator not found', async () => {
-      const dtoWithClosedBy = {
-        ...createCashDrawerDto,
-        closedBy: 2,
-      };
-      jest.clearAllMocks();
-      jest
-        .spyOn(shiftRepository, 'findOne')
-        .mockResolvedValue(mockShift as any);
-      // Mock collaboratorRepository.findOne to return openedBy collaborator first, then null for closedBy
-      jest
-        .spyOn(collaboratorRepository, 'findOne')
-        .mockImplementation((options: any) => {
-          // First call: openedBy (id: 1)
-          if (options?.where?.id === 1) {
-            return Promise.resolve(mockCollaborator as any);
-          }
-          // Second call: closedBy (id: 2)
-          if (options?.where?.id === 2) {
-            return Promise.resolve(null);
-          }
-          return Promise.resolve(null);
-        });
-      jest.spyOn(cashDrawerRepository, 'findOne').mockResolvedValue(null);
-
-      await expect(service.create(dtoWithClosedBy, 1)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.create(dtoWithClosedBy, 1)).rejects.toThrow(
-        'Closed by collaborator not found',
-      );
-    });
-
-    it('should throw BadRequestException if opening balance is negative', async () => {
-      const dtoWithNegativeBalance = {
-        ...createCashDrawerDto,
-        openingBalance: -10,
-      };
-      jest
-        .spyOn(shiftRepository, 'findOne')
-        .mockResolvedValue(mockShift as any);
-      jest
-        .spyOn(collaboratorRepository, 'findOne')
-        .mockResolvedValue(mockCollaborator as any);
-
-      await expect(service.create(dtoWithNegativeBalance, 1)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.create(dtoWithNegativeBalance, 1)).rejects.toThrow(
-        'Opening balance must be non-negative',
-      );
-    });
-
-    it('should throw BadRequestException if closing balance is negative', async () => {
-      const dtoWithNegativeClosingBalance = {
-        ...createCashDrawerDto,
-        closingBalance: -10,
-        closedBy: 1,
-      };
-      jest
-        .spyOn(shiftRepository, 'findOne')
-        .mockResolvedValue(mockShift as any);
-      jest
-        .spyOn(collaboratorRepository, 'findOne')
-        .mockResolvedValue(mockCollaborator as any);
-
       await expect(
-        service.create(dtoWithNegativeClosingBalance, 1),
+        service.create(createCashDrawerDto, mockUser),
       ).rejects.toThrow(BadRequestException);
       await expect(
-        service.create(dtoWithNegativeClosingBalance, 1),
-      ).rejects.toThrow('Closing balance must be non-negative');
+        service.create(createCashDrawerDto, mockUser),
+      ).rejects.toThrow('No collaborator profile is linked to your account.');
     });
 
-    it('should throw BadRequestException if closingBalance provided without closedBy', async () => {
-      const dtoWithOnlyClosingBalance = {
-        ...createCashDrawerDto,
-        closingBalance: 150.0,
-      };
-      jest
-        .spyOn(shiftRepository, 'findOne')
-        .mockResolvedValue(mockShift as any);
-      jest
-        .spyOn(collaboratorRepository, 'findOne')
-        .mockResolvedValue(mockCollaborator as any);
-      jest.spyOn(cashDrawerRepository, 'findOne').mockResolvedValue(null);
-
-      await expect(
-        service.create(dtoWithOnlyClosingBalance, 1),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.create(dtoWithOnlyClosingBalance, 1),
-      ).rejects.toThrow(
-        'Closing balance and closed by must be provided together to close the cash drawer',
-      );
-    });
-
-    it('should throw ConflictException if cash drawer already open for shift', async () => {
-      const existingOpenCashDrawer = {
-        ...mockCashDrawer,
-        id: 2,
-      };
+    it('should throw ConflictException naming the active session id when the shift already has an open drawer', async () => {
+      const existingOpenCashDrawer = { ...mockCashDrawer, id: 12 };
       jest
         .spyOn(shiftRepository, 'findOne')
         .mockResolvedValue(mockShift as any);
@@ -349,46 +232,14 @@ describe('CashDrawersService', () => {
         .spyOn(cashDrawerRepository, 'findOne')
         .mockResolvedValue(existingOpenCashDrawer as any);
 
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        ConflictException,
+      await expect(
+        service.create(createCashDrawerDto, mockUser),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.create(createCashDrawerDto, mockUser),
+      ).rejects.toThrow(
+        'An active cash drawer session (#CD-12) is already open for this shift. Please close the active session before opening a new drawer.',
       );
-      await expect(service.create(createCashDrawerDto, 1)).rejects.toThrow(
-        'There is already an open cash drawer for this shift',
-      );
-    });
-
-    it('should create cash drawer with closing balance and closedBy', async () => {
-      const dtoWithClosing = {
-        ...createCashDrawerDto,
-        closingBalance: 150.0,
-        closedBy: 1,
-      };
-      const closedCashDrawer = {
-        ...mockCashDrawer,
-        closing_balance: 150.0,
-        closed_by: 1,
-        status: CashDrawerStatus.CLOSE,
-        closedByCollaborator: mockCollaborator,
-      };
-      jest
-        .spyOn(shiftRepository, 'findOne')
-        .mockResolvedValue(mockShift as any);
-      jest
-        .spyOn(collaboratorRepository, 'findOne')
-        .mockResolvedValue(mockCollaborator as any);
-      jest.spyOn(cashDrawerRepository, 'findOne').mockResolvedValue(null);
-      jest
-        .spyOn(cashDrawerRepository, 'save')
-        .mockResolvedValue(closedCashDrawer as any);
-      jest
-        .spyOn(cashDrawerRepository, 'findOne')
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(closedCashDrawer as any);
-
-      const result = await service.create(dtoWithClosing, 1);
-
-      expect(result.statusCode).toBe(201);
-      expect(result.data.status).toBe(CashDrawerStatus.CLOSE);
     });
   });
 
