@@ -37,7 +37,7 @@ import {
 } from '@nestjs/swagger';
 import { CashDrawersService } from './cash-drawers.service';
 import { CreateCashDrawerDto } from './dto/create-cash-drawer.dto';
-import { UpdateCashDrawerDto } from './dto/update-cash-drawer.dto';
+import { CloseCashDrawerDto } from './dto/close-cash-drawer.dto';
 import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';
 import {
   CashDrawerResponseDto,
@@ -453,7 +453,8 @@ export class CashDrawersController {
     },
   })
   @ApiBadRequestResponse({
-    description: 'Invalid input data or cash drawer ID',
+    description:
+      'Invalid input data, cash drawer ID, or no linked collaborator profile',
     example: {
       statusCode: 400,
       message: 'Cash drawer ID must be a valid positive number',
@@ -474,32 +475,27 @@ export class CashDrawersController {
     },
   })
   @ApiNotFoundResponse({
-    description: 'Cash drawer or related resource not found',
+    description: 'Cash drawer not found',
     example: {
       statusCode: 404,
       message: 'Cash drawer not found',
     },
   })
   @ApiConflictResponse({
-    description: 'Conflict - Business rule violation',
+    description: 'Conflict - the cash drawer is not currently open',
     example: {
       statusCode: 409,
-      message: 'Validation failed',
+      message: 'Only an open cash drawer can be closed',
     },
   })
   @ApiParam({ name: 'id', type: Number, description: 'Cash drawer ID' })
-  @ApiBody({ type: UpdateCashDrawerDto })
+  @ApiBody({ type: CloseCashDrawerDto })
   async update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateCashDrawerDto: UpdateCashDrawerDto,
-    @Request() req,
+    @Body() closeCashDrawerDto: CloseCashDrawerDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.user?.merchant?.id;
-    return this.cashDrawersService.update(
-      id,
-      updateCashDrawerDto,
-      authenticatedUserMerchantId,
-    );
+    return this.cashDrawersService.update(id, closeCashDrawerDto, user);
   }
 
   @Delete(':id')

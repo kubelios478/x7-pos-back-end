@@ -11,7 +11,7 @@ import { CashDrawer } from './entities/cash-drawer.entity';
 import { Shift } from '../../shift/shifts/entities/shift.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 import { CreateCashDrawerDto } from './dto/create-cash-drawer.dto';
-import { UpdateCashDrawerDto } from './dto/update-cash-drawer.dto';
+import { CloseCashDrawerDto } from './dto/close-cash-drawer.dto';
 import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';
 import {
   CashDrawerResponseDto,
@@ -333,24 +333,22 @@ export class CashDrawersService {
 
   async update(
     id: number,
-    updateCashDrawerDto: UpdateCashDrawerDto,
-    authenticatedUserMerchantId: number,
+    closeCashDrawerDto: CloseCashDrawerDto,
+    user: AuthenticatedUser,
   ): Promise<OneCashDrawerResponseDto> {
-    // Validate ID
     if (!id || id <= 0) {
       throw new BadRequestException(
         'Cash drawer ID must be a valid positive number',
       );
     }
 
-    // Validate user has merchant
+    const authenticatedUserMerchantId = user?.merchant?.id;
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'You must be associated with a merchant to update cash drawers',
       );
     }
 
-    // Find existing cash drawer
     const existingCashDrawer = await this.cashDrawerRepository.findOne({
       where: { id },
       relations: [
@@ -366,113 +364,45 @@ export class CashDrawersService {
       throw new NotFoundException('Cash drawer not found');
     }
 
-    // Validate merchant ownership
     if (existingCashDrawer.merchant_id !== authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'You can only update cash drawers from your merchant',
       );
     }
 
-    // Validate shift if provided
-    if (updateCashDrawerDto.shiftId) {
-      const shift = await this.shiftRepository.findOne({
-        where: { id: updateCashDrawerDto.shiftId },
-        relations: ['merchant'],
-      });
-
-      if (!shift) {
-        throw new NotFoundException('Shift not found');
-      }
-
-      if (shift.merchant.id !== authenticatedUserMerchantId) {
-        throw new ForbiddenException(
-          'You can only assign shifts from your merchant',
-        );
-      }
+    if (existingCashDrawer.status !== CashDrawerStatus.OPEN) {
+      throw new ConflictException('Only an open cash drawer can be closed');
     }
 
-    // Validate opened by collaborator if provided
-    if (updateCashDrawerDto.openedBy) {
-      const openedByCollaborator = await this.collaboratorRepository.findOne({
-        where: { id: updateCashDrawerDto.openedBy },
-      });
-
-      if (!openedByCollaborator) {
-        throw new NotFoundException('Opened by collaborator not found');
-      }
-
-      if (openedByCollaborator.merchant_id !== authenticatedUserMerchantId) {
-        throw new ForbiddenException(
-          'You can only assign collaborators from your merchant',
-        );
-      }
-    }
-
-    // Validate closed by collaborator if provided
-    if (updateCashDrawerDto.closedBy) {
-      const closedByCollaborator = await this.collaboratorRepository.findOne({
-        where: { id: updateCashDrawerDto.closedBy },
-      });
-
-      if (!closedByCollaborator) {
-        throw new NotFoundException('Closed by collaborator not found');
-      }
-
-      if (closedByCollaborator.merchant_id !== authenticatedUserMerchantId) {
-        throw new ForbiddenException(
-          'You can only assign collaborators from your merchant',
-        );
-      }
-    }
-
-    // If one of closingBalance/closedBy is provided without the other, it's invalid
-    const providedClosingBalanceU =
-      updateCashDrawerDto.closingBalance !== undefined;
-    const providedClosedByU = updateCashDrawerDto.closedBy !== undefined;
-    if (
-      (providedClosingBalanceU && !providedClosedByU) ||
-      (!providedClosingBalanceU && providedClosedByU)
-    ) {
-      throw new BadRequestException(
-        'Closing balance and closed by must be provided together to close the cash drawer',
-      );
-    }
-
-    // Business rule validation: amounts
-    if (
-      updateCashDrawerDto.openingBalance !== undefined &&
-      updateCashDrawerDto.openingBalance < 0
-    ) {
-      throw new BadRequestException('Opening balance must be non-negative');
-    }
-    if (
-      updateCashDrawerDto.closingBalance !== undefined &&
-      updateCashDrawerDto.closingBalance < 0
-    ) {
+    if (closeCashDrawerDto.closingBalance < 0) {
       throw new BadRequestException('Closing balance must be non-negative');
     }
 
-    // Update cash drawer
-    const updateData: any = {};
-    if (updateCashDrawerDto.shiftId !== undefined)
-      updateData.shift_id = updateCashDrawerDto.shiftId;
-    if (updateCashDrawerDto.openingBalance !== undefined)
-      updateData.opening_balance = updateCashDrawerDto.openingBalance;
-    if (updateCashDrawerDto.closingBalance !== undefined)
-      updateData.closing_balance = updateCashDrawerDto.closingBalance;
-    if (updateCashDrawerDto.openedBy !== undefined)
-      updateData.opened_by = updateCashDrawerDto.openedBy;
-    if (updateCashDrawerDto.closedBy !== undefined)
-      updateData.closed_by = updateCashDrawerDto.closedBy;
+    const collaborator = await this.collaboratorRepository.findOne({
+      where: { user_id: user.id, merchant_id: authenticatedUserMerchantId },
+    });
 
-    // If both closing fields provided, set status to CLOSE automatically
-    if (providedClosingBalanceU && providedClosedByU) {
-      updateData.status = CashDrawerStatus.CLOSE;
+    if (!collaborator) {
+      throw new BadRequestException(
+        'No collaborator profile is linked to your account.',
+      );
     }
 
-    await this.cashDrawerRepository.update(id, updateData);
+    // `current_balance`/`closingBalance` can arrive as numeric strings (decimal
+    // column), so coerce both sides before comparing.
+    const currentBalance = Number(existingCashDrawer.current_balance);
+    const closingBalance = Number(closeCashDrawerDto.closingBalance);
+    const status =
+      closingBalance === currentBalance
+        ? CashDrawerStatus.CLOSE
+        : CashDrawerStatus.DISCREPANCY;
 
-    // Fetch updated cash drawer
+    await this.cashDrawerRepository.update(id, {
+      closing_balance: closeCashDrawerDto.closingBalance,
+      closed_by: collaborator.id,
+      status,
+    });
+
     const updatedCashDrawer = await this.cashDrawerRepository.findOne({
       where: { id },
       relations: [
