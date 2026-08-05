@@ -43,7 +43,7 @@ export class CashShiftsController {
         @Body() dto: CreateCashShiftDto,
         @CurrentUser() user: AuthenticatedUser,
     ) {
-        return this.cashShiftsService.openShift(dto, user.merchant.id);
+        return this.cashShiftsService.openShift(dto, user);
     }
 
     @ApiOperation({ summary: 'List all cash shifts' })

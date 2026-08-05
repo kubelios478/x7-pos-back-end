@@ -84,8 +84,18 @@ export class CashShiftsService {
       id: shift.id,
       merchantId: shift.merchantId,
       cashDrawerId: shift.cashDrawerId,
-      openedBy: shift.openedBy,
-      closedBy: shift.closedBy,
+      openedByCollaborator: {
+        id: shift.openedByCollaborator.id,
+        name: shift.openedByCollaborator.name,
+        role: shift.openedByCollaborator.role,
+      },
+      closedByCollaborator: shift.closedByCollaborator
+        ? {
+            id: shift.closedByCollaborator.id,
+            name: shift.closedByCollaborator.name,
+            role: shift.closedByCollaborator.role,
+          }
+        : null,
       openingBalance: Number(shift.openingBalance),
       systemAmount:
         shift.systemAmount !== null ? Number(shift.systemAmount) : null,
@@ -113,15 +123,25 @@ export class CashShiftsService {
    */
   async openShift(
     dto: CreateCashShiftDto,
-    merchantId: number,
+    user: AuthenticatedUser,
   ): Promise<OneCashShiftResponseDto> {
+    const merchantId = user.merchant?.id;
     if (!merchantId) {
       throw new ForbiddenException('User must belong to a merchant');
     }
 
+    const collaborator = await this.collaboratorRepo.findOne({
+      where: { user_id: user.id, merchant_id: merchantId },
+    });
+    if (!collaborator) {
+      throw new ForbiddenException(
+        'Your user account is not linked to any collaborator record. Cannot open cash shift.',
+      );
+    }
+
     // Validate that the collaborator does not already have an active shift
     const existingCollaboratorShift = await this.cashShiftRepo.findOne({
-      where: { openedBy: dto.collaboratorId, status: CashShiftStatus.OPEN },
+      where: { openedBy: collaborator.id, status: CashShiftStatus.OPEN },
     });
     if (existingCollaboratorShift) {
       throw new ConflictException(
@@ -135,7 +155,7 @@ export class CashShiftsService {
     });
     if (existingDrawerShift) {
       throw new ConflictException(
-        `This cash drawer already has an open cash shift (ID: ${existingDrawerShift.id}). Close it before opening a new one.`,
+        `Cash Drawer #${dto.cashDrawerId} already has an active shift session (#CS-${existingDrawerShift.id}) in progress. Please close the active shift before opening a new one.`,
       );
     }
 
@@ -159,20 +179,10 @@ export class CashShiftsService {
       );
     }
 
-    // Validate collaborator
-    const collaborator = await this.collaboratorRepo.findOne({
-      where: { id: dto.collaboratorId, merchant_id: merchantId },
-    });
-    if (!collaborator) {
-      throw new NotFoundException(
-        `Collaborator with ID ${dto.collaboratorId} not found or does not belong to your merchant`,
-      );
-    }
-
     const shift = this.cashShiftRepo.create({
       merchantId,
       cashDrawerId: dto.cashDrawerId,
-      openedBy: dto.collaboratorId,
+      openedBy: collaborator.id,
       closedBy: null,
       openingBalance: dto.openingBalance,
       systemAmount: null,
@@ -184,10 +194,15 @@ export class CashShiftsService {
 
     const saved = await this.cashShiftRepo.save(shift);
 
+    const shiftWithRelations = await this.cashShiftRepo.findOne({
+      where: { id: saved.id },
+      relations: ['openedByCollaborator', 'closedByCollaborator'],
+    });
+
     return {
       statusCode: 201,
       message: 'Cash shift opened successfully',
-      data: this.format(saved),
+      data: this.format(shiftWithRelations || saved),
     };
   }
 
@@ -280,7 +295,7 @@ export class CashShiftsService {
     const closed = await this.cashShiftRepo.save(shift);
     const shiftWithRelations = await this.cashShiftRepo.findOne({
       where: { id: shiftId },
-      relations: ['cashMovements'],
+      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
     });
     const salesSummary = await this.cashShiftRepo.getSalesSummary(shiftId);
 
@@ -422,7 +437,7 @@ export class CashShiftsService {
 
     const shift = await this.cashShiftRepo.findOne({
       where: { merchantId, status: CashShiftStatus.OPEN },
-      relations: ['cashMovements'],
+      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
     });
 
     if (!shift) {
@@ -451,7 +466,7 @@ export class CashShiftsService {
 
     const shifts = await this.cashShiftRepo.find({
       where: { merchantId },
-      relations: ['cashMovements'],
+      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
       order: { openedAt: 'DESC' },
     });
 
@@ -480,7 +495,7 @@ export class CashShiftsService {
 
     const shift = await this.cashShiftRepo.findOne({
       where: { id },
-      relations: ['cashMovements'],
+      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
     });
 
     if (!shift) {
