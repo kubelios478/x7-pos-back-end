@@ -274,8 +274,7 @@ describe('CashShiftsService', () => {
 
   describe('closeShift', () => {
     const closeDto: CloseCashShiftDto = {
-      declaredAmount: 150,
-      collaboratorId: 5,
+      declaredAmount: 120,
     };
 
     const activeShift = {
@@ -288,7 +287,7 @@ describe('CashShiftsService', () => {
       openedAt: new Date(),
     };
 
-    it('should close a shift successfully and calculate discrepancy (difference)', async () => {
+    it('should resolve closedBy from the JWT and close a shift, calculating the difference', async () => {
       jest
         .spyOn(cashShiftRepo, 'findOne')
         .mockResolvedValueOnce({ ...activeShift } as any)
@@ -296,8 +295,8 @@ describe('CashShiftsService', () => {
           ...activeShift,
           status: CashShiftStatus.CLOSED,
           systemAmount: 120,
-          declaredAmount: 150,
-          difference: 30,
+          declaredAmount: 120,
+          difference: 0,
           closedBy: 5,
           closedAt: new Date(),
           openedByCollaborator: mockCollaborator,
@@ -305,9 +304,8 @@ describe('CashShiftsService', () => {
         } as any);
       jest
         .spyOn(collaboratorRepo, 'findOne')
-        .mockResolvedValueOnce(mockCollaborator as any) // check for MERCHANT_USER self check
-        .mockResolvedValueOnce(mockCollaborator as any); // check for closing collaborator
-      jest.spyOn(cashShiftRepo, 'getLiveBalance').mockResolvedValue(120); // 100 opening + 20 sales
+        .mockResolvedValue(mockCollaborator as any);
+      jest.spyOn(cashShiftRepo, 'getLiveBalance').mockResolvedValue(120);
       jest
         .spyOn(cashShiftRepo, 'save')
         .mockImplementation(async (s) => s as any);
@@ -317,35 +315,94 @@ describe('CashShiftsService', () => {
 
       const result = await service.closeShift(99, closeDto, activeUser);
 
+      expect(collaboratorRepo.findOne).toHaveBeenCalledWith({
+        where: { user_id: 1, merchant_id: 10 },
+      });
+      expect(cashShiftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ closedBy: 5, status: CashShiftStatus.CLOSED }),
+      );
       expect(result.statusCode).toBe(200);
       expect(result.data.systemAmount).toBe(120);
-      expect(result.data.declaredAmount).toBe(150);
-      expect(result.data.difference).toBe(30); // 150 declared - 120 system = 30 overage
+      expect(result.data.declaredAmount).toBe(120);
+      expect(result.data.difference).toBe(0);
       expect(result.data.status).toBe(CashShiftStatus.CLOSED);
-      expect(result.data.closedByCollaborator).toEqual({
-        id: 5,
-        name: 'John Doe',
-        role: 'WAITER',
-      });
-      expect(result.data.salesSummary).toEqual([
-        { method: 'Cash', amount: 20 },
-      ]);
     });
 
-    it('should throw ForbiddenException if MERCHANT_USER tries to close other collaborator shift', async () => {
+    it('should set status to DISCREPANCY when declaredAmount does not match systemAmount, rounded to cents', async () => {
+      // declaredAmount 119.999 rounds to 120.00; getLiveBalance below returns
+      // 100, so systemAmount rounds to 100.00 — a genuine 20.00 overage, not
+      // sub-cent noise, so this must land on DISCREPANCY.
+      const mismatchedDto: CloseCashShiftDto = { declaredAmount: 119.999 };
       jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValue({ ...activeShift, openedBy: 8 } as any); // Opened by collaborator 8
+        .mockResolvedValueOnce({ ...activeShift } as any)
+        .mockResolvedValueOnce({
+          ...activeShift,
+          status: CashShiftStatus.DISCREPANCY,
+          systemAmount: 100,
+          declaredAmount: 120,
+          difference: 20,
+          closedBy: 5,
+          openedByCollaborator: mockCollaborator,
+          closedByCollaborator: mockCollaborator,
+        } as any);
       jest
         .spyOn(collaboratorRepo, 'findOne')
-        .mockResolvedValue(mockCollaborator as any); // Current user is collaborator 5
+        .mockResolvedValue(mockCollaborator as any);
+      jest.spyOn(cashShiftRepo, 'getLiveBalance').mockResolvedValue(100);
+      jest
+        .spyOn(cashShiftRepo, 'save')
+        .mockImplementation(async (s) => s as any);
+      jest.spyOn(cashShiftRepo, 'getSalesSummary').mockResolvedValue([]);
+
+      const result = await service.closeShift(99, mismatchedDto, activeUser);
+
+      expect(cashShiftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: CashShiftStatus.DISCREPANCY }),
+      );
+    });
+
+    it('should set status to CLOSED (not DISCREPANCY) when the difference is only sub-cent noise', async () => {
+      const nearMatchDto: CloseCashShiftDto = { declaredAmount: 100.001 };
+      jest
+        .spyOn(cashShiftRepo, 'findOne')
+        .mockResolvedValueOnce({ ...activeShift } as any)
+        .mockResolvedValueOnce({
+          ...activeShift,
+          status: CashShiftStatus.CLOSED,
+          openedByCollaborator: mockCollaborator,
+          closedByCollaborator: mockCollaborator,
+        } as any);
+      jest
+        .spyOn(collaboratorRepo, 'findOne')
+        .mockResolvedValue(mockCollaborator as any);
+      jest.spyOn(cashShiftRepo, 'getLiveBalance').mockResolvedValue(100);
+      jest
+        .spyOn(cashShiftRepo, 'save')
+        .mockImplementation(async (s) => s as any);
+      jest.spyOn(cashShiftRepo, 'getSalesSummary').mockResolvedValue([]);
+
+      await service.closeShift(99, nearMatchDto, activeUser);
+
+      expect(cashShiftRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: CashShiftStatus.CLOSED }),
+      );
+    });
+
+    it('should throw ForbiddenException if MERCHANT_USER tries to close a shift opened by someone else', async () => {
+      jest
+        .spyOn(cashShiftRepo, 'findOne')
+        .mockResolvedValue({ ...activeShift, openedBy: 8 } as any);
+      jest
+        .spyOn(collaboratorRepo, 'findOne')
+        .mockResolvedValue(mockCollaborator as any); // Current user resolves to collaborator 5
 
       await expect(
         service.closeShift(99, closeDto, activeUser),
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should allow MERCHANT_ADMIN to close other collaborator shift', async () => {
+    it('should allow MERCHANT_ADMIN to close a shift opened by someone else', async () => {
       const adminUser = { ...activeUser, role: UserRole.MERCHANT_ADMIN };
       jest
         .spyOn(cashShiftRepo, 'findOne')
@@ -363,7 +420,7 @@ describe('CashShiftsService', () => {
         } as any);
       jest
         .spyOn(collaboratorRepo, 'findOne')
-        .mockResolvedValue(mockCollaborator as any); // Closing collaborator is 5
+        .mockResolvedValue(mockCollaborator as any);
       jest.spyOn(cashShiftRepo, 'getLiveBalance').mockResolvedValue(100);
       jest
         .spyOn(cashShiftRepo, 'save')
@@ -373,8 +430,29 @@ describe('CashShiftsService', () => {
       const result = await service.closeShift(99, closeDto, adminUser);
 
       expect(result.statusCode).toBe(200);
-      expect(result.data.status).toBe(CashShiftStatus.CLOSED);
       expect(result.data.closedByCollaborator?.id).toBe(5);
+    });
+
+    it('should throw ForbiddenException when the closing user has no linked collaborator profile', async () => {
+      jest
+        .spyOn(cashShiftRepo, 'findOne')
+        .mockResolvedValue({ ...activeShift } as any);
+      jest.spyOn(collaboratorRepo, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.closeShift(99, closeDto, activeUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw BadRequestException if the shift is not OPEN', async () => {
+      jest.spyOn(cashShiftRepo, 'findOne').mockResolvedValue({
+        ...activeShift,
+        status: CashShiftStatus.CLOSED,
+      } as any);
+
+      await expect(
+        service.closeShift(99, closeDto, activeUser),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

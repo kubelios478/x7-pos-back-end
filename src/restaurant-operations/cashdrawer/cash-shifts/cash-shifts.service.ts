@@ -245,52 +245,42 @@ export class CashShiftsService {
       );
     }
 
-    // Enforce CAT 3: MERCHANT_USER can only close their own shift
-    if (user.role === UserRole.MERCHANT_USER) {
-      const currentUserCollaborator = await this.collaboratorRepo.findOne({
-        where: { user_id: user.id, merchant_id: merchantId },
-      });
-      if (!currentUserCollaborator) {
-        throw new ForbiddenException(
-          'Your user account is not linked to any collaborator record. Cannot close cash shift.',
-        );
-      }
-      if (shift.openedBy !== currentUserCollaborator.id) {
-        throw new ForbiddenException(
-          'You are not authorized to close this cash shift. You can only close your own active cash shifts.',
-        );
-      }
-      if (dto.collaboratorId !== currentUserCollaborator.id) {
-        throw new ForbiddenException(
-          'You must use your own collaborator ID to close this cash shift.',
-        );
-      }
-    }
-
-    // Validate collaborator closing the shift
     const collaborator = await this.collaboratorRepo.findOne({
-      where: { id: dto.collaboratorId, merchant_id: merchantId },
+      where: { user_id: user.id, merchant_id: merchantId },
     });
     if (!collaborator) {
-      throw new NotFoundException(
-        `Collaborator with ID ${dto.collaboratorId} not found or does not belong to your merchant`,
+      throw new ForbiddenException(
+        'Your user account is not linked to any collaborator record. Cannot close cash shift.',
+      );
+    }
+
+    // Enforce CAT 3: MERCHANT_USER can only close their own shift
+    if (user.role === UserRole.MERCHANT_USER && shift.openedBy !== collaborator.id) {
+      throw new ForbiddenException(
+        'You are not authorized to close this cash shift. You can only close your own active cash shifts.',
       );
     }
 
     // Step 1: obtain systemAmount from the DB (delegated 100% to SQL engine)
-    const systemAmount = await this.cashShiftRepo.getLiveBalance(shiftId);
+    const rawSystemAmount = await this.cashShiftRepo.getLiveBalance(shiftId);
 
-    // Step 2: calculate difference on the server
-    const declaredAmount = Number(dto.declaredAmount);
-    const difference = declaredAmount - systemAmount;
+    // Step 2: round both sides to cents before comparing/persisting — the
+    // declared amount is user-entered and the live balance is SQL-summed
+    // decimal(12,2) data, so sub-cent floating point noise on either side
+    // must not manufacture a false Discrepancy.
+    const systemAmount = Math.round(rawSystemAmount * 100) / 100;
+    const declaredAmount = Math.round(Number(dto.declaredAmount) * 100) / 100;
+    const difference = Math.round((declaredAmount - systemAmount) * 100) / 100;
+    const status =
+      difference === 0 ? CashShiftStatus.CLOSED : CashShiftStatus.DISCREPANCY;
 
     // Step 3 & 4: update the record with closing data
     shift.systemAmount = systemAmount;
     shift.declaredAmount = declaredAmount;
     shift.difference = difference;
-    shift.closedBy = dto.collaboratorId;
+    shift.closedBy = collaborator.id;
     shift.closedAt = new Date();
-    shift.status = CashShiftStatus.CLOSED;
+    shift.status = status;
 
     const closed = await this.cashShiftRepo.save(shift);
     const shiftWithRelations = await this.cashShiftRepo.findOne({
