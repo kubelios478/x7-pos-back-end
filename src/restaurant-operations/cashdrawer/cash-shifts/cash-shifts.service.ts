@@ -84,11 +84,13 @@ export class CashShiftsService {
       id: shift.id,
       merchantId: shift.merchantId,
       cashDrawerId: shift.cashDrawerId,
-      openedByCollaborator: {
-        id: shift.openedByCollaborator.id,
-        name: shift.openedByCollaborator.name,
-        role: shift.openedByCollaborator.role,
-      },
+      openedByCollaborator: shift.openedByCollaborator
+        ? {
+            id: shift.openedByCollaborator.id,
+            name: shift.openedByCollaborator.name,
+            role: shift.openedByCollaborator.role,
+          }
+        : { id: shift.openedBy, name: 'Unknown', role: '—' },
       closedByCollaborator: shift.closedByCollaborator
         ? {
             id: shift.closedByCollaborator.id,

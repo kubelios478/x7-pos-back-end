@@ -389,6 +389,42 @@ describe('CashShiftsService', () => {
       );
     });
 
+    it('should not throw and should fall back to a placeholder when openedByCollaborator resolves to null (orphaned FK)', async () => {
+      jest
+        .spyOn(cashShiftRepo, 'findOne')
+        .mockResolvedValueOnce({ ...activeShift } as any)
+        .mockResolvedValueOnce({
+          ...activeShift,
+          status: CashShiftStatus.CLOSED,
+          systemAmount: 120,
+          declaredAmount: 120,
+          difference: 0,
+          closedBy: 5,
+          closedAt: new Date(),
+          openedByCollaborator: null, // simulates a deleted/missing collaborator row
+          closedByCollaborator: mockCollaborator,
+        } as any);
+      jest
+        .spyOn(collaboratorRepo, 'findOne')
+        .mockResolvedValue(mockCollaborator as any);
+      jest.spyOn(cashShiftRepo, 'getLiveBalance').mockResolvedValue(120);
+      jest
+        .spyOn(cashShiftRepo, 'save')
+        .mockImplementation(async (s) => s as any);
+      jest
+        .spyOn(cashShiftRepo, 'getSalesSummary')
+        .mockResolvedValue([{ method: 'Cash', amount: 20 }]);
+
+      const result = await service.closeShift(99, closeDto, activeUser);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.data.openedByCollaborator).toEqual({
+        id: activeShift.openedBy,
+        name: 'Unknown',
+        role: '—',
+      });
+    });
+
     it('should throw ForbiddenException if MERCHANT_USER tries to close a shift opened by someone else', async () => {
       jest
         .spyOn(cashShiftRepo, 'findOne')
