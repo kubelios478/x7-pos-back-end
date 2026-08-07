@@ -27,8 +27,10 @@ import { Collaborator } from '../../../finance-hr/hr/collaborators/entities/coll
 import { Order } from '../../../restaurant-operations/pos/orders/entities/order.entity';
 import {
   OneCashTransactionResponseDto,
+  OneCashTransactionDetailResponseDto,
   PaginatedCashTransactionsResponseDto,
   CashTransactionResponseDto,
+  CashTransactionDetailResponseDto,
 } from './dto/cash-transaction-response.dto';
 import { CashDrawerHistoryService } from '../cash-drawer-history/cash-drawer-history.service';
 import { CreateCashDrawerHistoryDto } from '../cash-drawer-history/dto/create-cash-drawer-history.dto';
@@ -371,13 +373,20 @@ export class CashTransactionsService {
   async findOne(
     id: number,
     authenticatedUserMerchantId: number,
-  ): Promise<OneCashTransactionResponseDto> {
+  ): Promise<OneCashTransactionDetailResponseDto> {
     if (!id || id <= 0) throw new BadRequestException('Invalid id');
     if (!authenticatedUserMerchantId)
       throw new ForbiddenException('You must be associated with a merchant');
 
     const row = await this.cashTransactionRepo.findOne({
       where: { id, status: CashTransactionStatus.ACTIVE },
+      relations: [
+        'collaborator',
+        'cashShift',
+        'cashShift.openedByCollaborator',
+        'cashShift.closedByCollaborator',
+        'loyaltyPointTransactions',
+      ],
     });
     if (!row) throw new NotFoundException('Cash transaction not found');
 
@@ -393,7 +402,7 @@ export class CashTransactionsService {
     return {
       statusCode: 200,
       message: 'Cash transaction retrieved successfully',
-      data: this.format(row),
+      data: this.formatDetail(row),
     };
   }
 
@@ -495,6 +504,62 @@ export class CashTransactionsService {
       notes: row.notes ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
+    };
+  }
+
+  private formatDetail(row: CashTransaction): CashTransactionDetailResponseDto {
+    const toBasicCollaborator = (
+      c: Collaborator | null | undefined,
+      fallbackId: number,
+    ) =>
+      c
+        ? { id: c.id, name: c.name, role: c.role }
+        : { id: fallbackId, name: 'Unknown', role: '—' };
+
+    return {
+      ...this.format(row),
+      collaborator: toBasicCollaborator(row.collaborator, row.collaborator_id),
+      cashShift: row.cashShift
+        ? {
+            id: row.cashShift.id,
+            status: row.cashShift.status,
+            openedAt: row.cashShift.openedAt,
+            closedAt: row.cashShift.closedAt,
+            openingBalance: Number(row.cashShift.openingBalance),
+            systemAmount:
+              row.cashShift.systemAmount !== null
+                ? Number(row.cashShift.systemAmount)
+                : null,
+            declaredAmount:
+              row.cashShift.declaredAmount !== null
+                ? Number(row.cashShift.declaredAmount)
+                : null,
+            difference:
+              row.cashShift.difference !== null
+                ? Number(row.cashShift.difference)
+                : null,
+            openedByCollaborator: toBasicCollaborator(
+              row.cashShift.openedByCollaborator,
+              row.cashShift.openedBy,
+            ),
+            closedByCollaborator: row.cashShift.closedByCollaborator
+              ? toBasicCollaborator(
+                  row.cashShift.closedByCollaborator,
+                  row.cashShift.closedBy ?? 0,
+                )
+              : null,
+          }
+        : null,
+      loyaltyPointTransactions: (row.loyaltyPointTransactions ?? []).map(
+        (lpt) => ({
+          id: lpt.id,
+          description: lpt.description ?? null,
+          source: lpt.source,
+          points: lpt.points,
+          loyaltyCustomerId: lpt.loyaltyCustomerId,
+          createdAt: lpt.createdAt,
+        }),
+      ),
     };
   }
 }

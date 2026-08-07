@@ -42,6 +42,7 @@ import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import {
   OneCashTransactionResponseDto,
+  OneCashTransactionDetailResponseDto,
   PaginatedCashTransactionsResponseDto,
 } from './dto/cash-transaction-response.dto';
 import {
@@ -237,7 +238,7 @@ export class CashTransactionsController {
   @ApiParam({ name: 'id', type: Number, description: 'Cash transaction ID' })
   @ApiOkResponse({
     description: 'Cash transaction retrieved successfully',
-    type: OneCashTransactionResponseDto,
+    type: OneCashTransactionDetailResponseDto,
     example: {
       statusCode: 200,
       message: 'Cash transaction retrieved successfully',
@@ -262,7 +263,7 @@ export class CashTransactionsController {
   async findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<OneCashTransactionResponseDto> {
+  ): Promise<OneCashTransactionDetailResponseDto> {
     const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashTransactionsService.findOne(
       id,

@@ -637,10 +637,127 @@ describe('CashTransactionsService', () => {
 
       expect(cashTransactionRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1, status: CashTransactionStatus.ACTIVE },
+        relations: [
+          'collaborator',
+          'cashShift',
+          'cashShift.openedByCollaborator',
+          'cashShift.closedByCollaborator',
+          'loyaltyPointTransactions',
+        ],
       });
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Cash transaction retrieved successfully');
       expect(result.data.id).toBe(1);
+    });
+
+    it('should map collaborator, cashShift, and loyaltyPointTransactions onto the detail response', async () => {
+      const fullTransaction = {
+        ...mockCashTransaction,
+        collaborator: { id: 1, name: 'Jhon Doe', role: 'waiter' },
+        cashShift: {
+          id: 7,
+          status: 'OPEN',
+          openedAt: new Date('2024-01-15T07:00:00Z'),
+          closedAt: null,
+          openingBalance: 100,
+          systemAmount: null,
+          declaredAmount: null,
+          difference: null,
+          openedBy: 1,
+          closedBy: null,
+          openedByCollaborator: { id: 1, name: 'Jhon Doe', role: 'waiter' },
+          closedByCollaborator: null,
+        },
+        loyaltyPointTransactions: [
+          {
+            id: 55,
+            description: 'Points earned from order',
+            source: 'ORDER',
+            points: 150,
+            loyaltyCustomerId: 3,
+            createdAt: new Date('2024-01-15T08:00:00Z'),
+          },
+        ],
+      };
+      jest
+        .spyOn(cashTransactionRepository, 'findOne')
+        .mockResolvedValue(fullTransaction as any);
+      jest
+        .spyOn(cashDrawerRepository, 'findOne')
+        .mockResolvedValue(mockCashDrawer as any);
+
+      const result = await service.findOne(1, 1);
+
+      expect(result.data.collaborator).toEqual({
+        id: 1,
+        name: 'Jhon Doe',
+        role: 'waiter',
+      });
+      expect(result.data.cashShift).toEqual({
+        id: 7,
+        status: 'OPEN',
+        openedAt: fullTransaction.cashShift.openedAt,
+        closedAt: null,
+        openingBalance: 100,
+        systemAmount: null,
+        declaredAmount: null,
+        difference: null,
+        openedByCollaborator: { id: 1, name: 'Jhon Doe', role: 'waiter' },
+        closedByCollaborator: null,
+      });
+      expect(result.data.loyaltyPointTransactions).toEqual([
+        {
+          id: 55,
+          description: 'Points earned from order',
+          source: 'ORDER',
+          points: 150,
+          loyaltyCustomerId: 3,
+          createdAt: fullTransaction.loyaltyPointTransactions[0].createdAt,
+        },
+      ]);
+    });
+
+    it('should return cashShift: null and loyaltyPointTransactions: [] when neither relation is present', async () => {
+      const bareTransaction = {
+        ...mockCashTransaction,
+        collaborator: { id: 1, name: 'Jhon Doe', role: 'waiter' },
+        cashShift: null,
+        loyaltyPointTransactions: [],
+      };
+      jest
+        .spyOn(cashTransactionRepository, 'findOne')
+        .mockResolvedValue(bareTransaction as any);
+      jest
+        .spyOn(cashDrawerRepository, 'findOne')
+        .mockResolvedValue(mockCashDrawer as any);
+
+      const result = await service.findOne(1, 1);
+
+      expect(result.data.cashShift).toBeNull();
+      expect(result.data.loyaltyPointTransactions).toEqual([]);
+    });
+
+    it('should fall back to an Unknown collaborator when the relation is missing', async () => {
+      const noCollaboratorTransaction = {
+        ...mockCashTransaction,
+        collaborator: null,
+        cashShift: null,
+        loyaltyPointTransactions: [],
+      };
+      jest
+        .spyOn(cashTransactionRepository, 'findOne')
+        .mockResolvedValue(noCollaboratorTransaction as any);
+      jest
+        .spyOn(cashDrawerRepository, 'findOne')
+        .mockResolvedValue(mockCashDrawer as any);
+
+      const result = await service.findOne(1, 1);
+
+      expect(result.data.collaborator).toEqual({
+        id: mockCashTransaction.collaborator_id,
+        name: 'Unknown',
+        role: '—',
+      });
     });
 
     it('should throw BadRequestException if id is invalid', async () => {
