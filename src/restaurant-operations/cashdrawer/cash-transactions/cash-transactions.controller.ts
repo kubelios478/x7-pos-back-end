@@ -7,13 +7,13 @@ import {
   Delete,
   UseGuards,
   Query,
-  Request,
   ParseIntPipe,
   Put,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 import { CashTransactionsService } from './cash-transactions.service';
 import { CreateCashTransactionDto } from './dto/create-cash-transaction.dto';
@@ -106,9 +106,9 @@ export class CashTransactionsController {
   })
   async create(
     @Body() dto: CreateCashTransactionDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCashTransactionResponseDto> {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashTransactionsService.create(
       dto,
       authenticatedUserMerchantId,
@@ -212,9 +212,9 @@ export class CashTransactionsController {
   @ApiForbiddenResponse({ description: 'Forbidden', type: ErrorResponse })
   async findAll(
     @Query() query: GetCashTransactionsQueryDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedCashTransactionsResponseDto> {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashTransactionsService.findAll(
       query,
       authenticatedUserMerchantId,
@@ -261,9 +261,9 @@ export class CashTransactionsController {
   @ApiNotFoundResponse({ description: 'Not found', type: ErrorResponse })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCashTransactionResponseDto> {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashTransactionsService.findOne(
       id,
       authenticatedUserMerchantId,
@@ -312,9 +312,9 @@ export class CashTransactionsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCashTransactionDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCashTransactionResponseDto> {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashTransactionsService.update(
       id,
       dto,
@@ -362,9 +362,9 @@ export class CashTransactionsController {
   @ApiNotFoundResponse({ description: 'Not found', type: ErrorResponse })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneCashTransactionResponseDto> {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashTransactionsService.remove(id, authenticatedUserMerchantId);
   }
 }
