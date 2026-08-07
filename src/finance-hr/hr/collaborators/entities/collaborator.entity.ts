@@ -62,6 +62,24 @@ export class Collaborator {
   name: string;
 
   @ApiProperty({
+    example: 'EMP-00123',
+    description: 'Internal employee identifier used by HR/payroll',
+    required: false,
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 60, nullable: true })
+  employeeId: string | null;
+
+  @ApiProperty({
+    example: 'Kitchen',
+    description: 'Department the collaborator belongs to',
+    required: false,
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  department: string | null;
+
+  @ApiProperty({
     example: ShiftRole.WAITER,
     enum: ShiftRole,
     description: 'Role of the Collaborator (waiter, cashier, cook, etc.)',

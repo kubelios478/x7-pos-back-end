@@ -8,11 +8,14 @@ import {
   ParseIntPipe,
   UseGuards,
   Put,
+  Patch,
   Req,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { UpdateUserStatusDto } from './dtos/update-user-status.dto';
+import { UserHrSummaryResponseDto } from './dtos/user-hr-summary.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -63,8 +66,11 @@ export class UsersController {
   @ApiBadRequestResponse({ description: 'Invalid input data' })
   @ApiConflictResponse({ description: 'Email already exists' })
   @ApiBody({ type: CreateUserDto })
-  create(@Body() dto: CreateUserDto): Promise<OneUserResponseDto> {
-    return this.usersService.create(dto);
+  create(
+    @Body() dto: CreateUserDto,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ): Promise<OneUserResponseDto> {
+    return this.usersService.create(dto, req.user);
   }
 
   @Get()
@@ -167,5 +173,80 @@ export class UsersController {
   ): Promise<OneUserResponseDto> {
     const currentUser = req.user;
     return this.usersService.update(id, dto, currentUser);
+  }
+
+  @Patch(':id/status')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Activate or deactivate a user (soft, non-destructive)' })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiBody({ type: UpdateUserStatusDto })
+  @ApiOkResponse({
+    description: 'User status updated successfully',
+    type: OneUserResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  setStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserStatusDto,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ): Promise<OneUserResponseDto> {
+    return this.usersService.setActiveStatus(id, dto.isActive, req.user);
+  }
+
+  @Post(':id/reset-password')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Trigger a password reset email for a user (admin-initiated)',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiOkResponse({ description: 'Password reset link dispatched' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  triggerPasswordReset(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ): Promise<{ statusCode: number; message: string }> {
+    return this.usersService.triggerPasswordReset(id, req.user);
+  }
+
+  @Get(':id/hr-summary')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Get a user together with their linked HR collaborator records',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiOkResponse({
+    description: 'User HR summary found',
+    type: UserHrSummaryResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  getHrSummary(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ): Promise<UserHrSummaryResponseDto> {
+    return this.usersService.getHrSummary(id, req.user);
   }
 }

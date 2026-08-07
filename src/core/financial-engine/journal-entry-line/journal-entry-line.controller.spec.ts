@@ -41,7 +41,6 @@ describe('JournalEntryLineController', () => {
       findAllByEntry: jest.fn(),
       findOne: jest.fn(),
       update: jest.fn(),
-      remove: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -131,22 +130,6 @@ describe('JournalEntryLineController', () => {
 
       expect(service.update).toHaveBeenCalledWith(mockUser.merchant.id, 1, dto);
       expect(result).toEqual(updated);
-    });
-  });
-
-  describe('remove', () => {
-    it('should call service.remove with merchantId and id', async () => {
-      const deleted = {
-        ...mockResponse,
-        statusCode: 201,
-        message: 'Journal Entry Line Deleted successfully',
-      };
-      service.remove.mockResolvedValueOnce(deleted as any);
-
-      const result = await controller.remove(mockUser, 1);
-
-      expect(service.remove).toHaveBeenCalledWith(mockUser.merchant.id, 1);
-      expect(result).toEqual(deleted);
     });
   });
 });

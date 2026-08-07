@@ -1,9 +1,9 @@
 // src/merchants/dtos/update-merchant.dto.ts
 import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { IsInt, IsOptional, Min } from 'class-validator';
-import { CreateMerchantDto } from './create-merchant.dto';
+import { CreateCompanyMerchantDto } from './create-company-merchant.dto';
 
-export class UpdateMerchantDto extends PartialType(CreateMerchantDto) {
+export class UpdateMerchantDto extends PartialType(CreateCompanyMerchantDto) {
   @ApiPropertyOptional({
     example: 1,
     description:

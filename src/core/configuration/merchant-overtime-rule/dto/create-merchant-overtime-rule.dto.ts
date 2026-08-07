@@ -6,88 +6,36 @@ import {
   IsBoolean,
   IsInt,
   IsNotEmpty,
-  IsIn,
-  IsDate,
+  IsOptional,
+  MaxLength,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import { OvertimeCalculationType } from '../../constants/overtime-calculation-type.enum';
 import { OvertimeRateType } from '../../constants/overtime-rate-type.enum';
 
 export class CreateMerchantOvertimeRuleDto {
   @ApiProperty({
-    example: 1,
-    description: 'Identifier of the related company',
-  })
-  @IsInt()
-  companyId: number;
-
-  @ApiProperty({
-    example: 1,
-    description: 'Identifier of the related merchant',
-  })
-  @IsInt()
-  merchantId: number;
-
-  @ApiProperty({
-    example: '26-09-2023',
-    description: 'Date when the merchant overtime rule was created',
-  })
-  @Type(() => Date)
-  @IsDate()
-  @IsNotEmpty()
-  createdAt: Date;
-
-  @ApiProperty({
-    example: '26-09-2023',
-    description: 'Date when the merchant overtime rule was last updated',
-  })
-  @Type(() => Date)
-  @IsDate()
-  @IsNotEmpty()
-  updatedAt: Date;
-
-  @ApiProperty({
-    example: 5,
-    description: 'User ID who created the merchant overtime rule',
-  })
-  @IsInt()
-  @IsNotEmpty()
-  createdById: number;
-
-  @ApiProperty({
-    example: 5,
-    description: 'User ID who last updated the merchant overtime rule',
-  })
-  @IsInt()
-  @IsNotEmpty()
-  updatedById: number;
-
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
-  @IsString()
-  @IsNotEmpty()
-  @IsIn(['active', 'inactive'])
-  status: string;
-
-  @ApiProperty({
-    example: 'Merchant overtime rule name',
+    example: 'Daily Overtime',
     description: 'Name of the merchant overtime rule',
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(50)
   name: string;
 
   @ApiProperty({
-    example: 'Merchant overtime rule description',
+    example: 'Standard daily overtime after threshold',
     description: 'Description of the merchant overtime rule',
   })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   description: string;
 
   @ApiProperty({
     example: 'daily',
+    enum: OvertimeCalculationType,
     description:
-      'Method used to calculate overtime (e.g., Daily, weekly, holiday, special day)',
+      'Method used to calculate overtime (daily, weekly, holiday, special_day)',
   })
   @IsEnum(OvertimeCalculationType)
   @IsNotEmpty()
@@ -95,24 +43,29 @@ export class CreateMerchantOvertimeRuleDto {
 
   @ApiProperty({
     example: 8,
-    description: 'threshold hours for overtime calculation',
+    required: false,
+    description:
+      'Threshold hours for overtime calculation. Required when calculationMethod is daily or weekly; ignored (forced to null) otherwise.',
   })
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  thresholdHours: number;
+  thresholdHours?: number | null;
 
   @ApiProperty({
-    example: 8,
-    description: 'max hours per day for overtime calculation',
+    example: 12,
+    required: false,
+    description:
+      'Max hours per day for overtime calculation. Required when calculationMethod is daily or weekly; ignored (forced to null) otherwise.',
   })
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  maxHours: number;
+  maxHours?: number | null;
 
   @ApiProperty({
     example: 'percentage',
+    enum: OvertimeRateType,
     description:
-      'Method used to rate overtime (e.g., Percentage, Multiplier, Fixed Amount)',
+      'Method used to rate overtime (percentage, multiplier, fixed_amount)',
   })
   @IsEnum(OvertimeRateType)
   @IsNotEmpty()
@@ -129,8 +82,7 @@ export class CreateMerchantOvertimeRuleDto {
 
   @ApiProperty({
     example: true,
-    description:
-      'Indicates whether the overtime rule applies on holidays (true or false)',
+    description: 'Indicates whether the overtime rule applies on holidays',
   })
   @IsBoolean()
   @IsNotEmpty()
@@ -138,8 +90,7 @@ export class CreateMerchantOvertimeRuleDto {
 
   @ApiProperty({
     example: true,
-    description:
-      'Indicates whether the overtime rule applies on weekends (true or false)',
+    description: 'Indicates whether the overtime rule applies on weekends',
   })
   @IsBoolean()
   @IsNotEmpty()

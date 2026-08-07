@@ -94,7 +94,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       role: user.role,
       scope: user.scope,
-      merchant: { id: user.merchant.id },
+      merchant: { id: user.merchant.id, companyId: user.merchant.companyId },
       planId,
       authorizedFeatureIds,
     };

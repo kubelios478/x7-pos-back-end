@@ -265,39 +265,4 @@ export class JournalEntryLineService {
       ErrorHandler.handleDatabaseError(error);
     }
   }
-
-  // ─── Remove ────────────────────────────────────────────────────────────────
-
-  async remove(
-    merchantId: number,
-    id: number,
-  ): Promise<OneJournalEntryLineResponse> {
-    if (!id || id <= 0)
-      ErrorHandler.badRequest('Journal Entry Line ID incorrect');
-
-    const companyId = await this.getCompanyId(merchantId);
-    const line = await this.fetchOne(id, companyId, 'Remove');
-
-    if (line.journal_entry?.status !== JournalEntryStatus.DRAFT) {
-      ErrorHandler.badRequest(
-        'Lines can only be deleted on journal entries in DRAFT status',
-      );
-    }
-
-    const snapshot = this.toResponseDto(line);
-
-    try {
-      line.is_active = false;
-      await this.lineRepository.save(line);
-      await this.recalculateEntryTotals(line.journal_entry_id);
-
-      return {
-        statusCode: 201,
-        message: 'Journal Entry Line Deleted successfully',
-        data: snapshot,
-      };
-    } catch (error) {
-      ErrorHandler.handleDatabaseError(error);
-    }
-  }
 }

@@ -38,6 +38,12 @@ export class UserSafeDto {
   scope: Scope;
 
   @ApiProperty({
+    example: true,
+    description: 'Whether the user account is active',
+  })
+  isActive: boolean;
+
+  @ApiProperty({
     example: 1,
     description: 'Merchant ID associated with the User',
   })

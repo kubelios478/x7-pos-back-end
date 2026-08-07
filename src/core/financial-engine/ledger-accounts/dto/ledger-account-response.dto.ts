@@ -20,6 +20,12 @@ export class LedgerAccountResponseDto {
   type: AccountType;
 
   @ApiProperty({
+    example: true,
+    description: 'Whether the account is active',
+  })
+  is_active: boolean;
+
+  @ApiProperty({
     example: null,
     nullable: true,
     description: 'Parent account ID',

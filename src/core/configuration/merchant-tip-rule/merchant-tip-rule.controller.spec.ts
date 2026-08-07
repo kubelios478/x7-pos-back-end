@@ -4,9 +4,14 @@ import { MerchantTipRuleController } from './merchant-tip-rule.controller';
 import { MerchantTipRuleService } from './merchant-tip-rule.service';
 import { MerchantTipRule } from './entity/merchant-tip-rule-entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TipCalculationMethod } from '../constants/tip-calculation-method.enum';
 import { TipDistributionMethod } from '../constants/tip-distribution-method.enum';
 import { User } from 'src/platform-saas/users/entities/user.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { UpdateMerchantTipRuleDto } from './dto/update-merchant-tip-rule.dto';
 
 describe('MerchantTipRuleController', () => {
   let controller: MerchantTipRuleController;
@@ -33,9 +38,19 @@ describe('MerchantTipRuleController', () => {
     id: 1,
   } as User;
 
+  const mockAuthenticatedUser: AuthenticatedUser = {
+    id: 1,
+    email: 'merchant-admin@test.com',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 10 },
+  };
+
   const mockMerchantTipRule: MerchantTipRule = {
     id: 1,
     company: mockCompany,
+    merchant_id: 10,
+    merchant: { id: 10 } as Merchant,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: mockUser,
@@ -48,19 +63,10 @@ describe('MerchantTipRuleController', () => {
     fixedAmountOptions: [1, 2, 3],
     allowCustomTip: true,
     maximumTipPercentage: 25,
-    includeKitchenStaff: false,
-    includeManagers: false,
     autoDistribute: true,
   } as MerchantTipRule;
 
   const mockCreateMerchantTipRuleDto = {
-    id: 1,
-    companyId: mockCompany.id,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdById: mockUser.id,
-    updatedById: mockUser.id,
-    status: 'active',
     name: 'Test Merchant Tip Rule',
     tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
     tipDistributionMethod: TipDistributionMethod.INDIVIDUAL,
@@ -68,8 +74,6 @@ describe('MerchantTipRuleController', () => {
     fixedAmountOptions: [1, 2, 3],
     allowCustomTip: true,
     maximumTipPercentage: 25,
-    includeKitchenStaff: false,
-    includeManagers: false,
     autoDistribute: true,
   };
 
@@ -93,12 +97,7 @@ describe('MerchantTipRuleController', () => {
     data: mockMerchantTipRule,
   };
 
-  const mockUpdateMerchantTipRuleDto = {
-    companyId: mockCompany.id,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdById: mockUser.id,
-    updatedById: mockUser.id,
+  const mockUpdateMerchantTipRuleDto: UpdateMerchantTipRuleDto = {
     status: 'active',
     name: 'Test Merchant Tip Rule 2',
     tipCalculationMethod: TipCalculationMethod.CUSTOM,
@@ -107,8 +106,6 @@ describe('MerchantTipRuleController', () => {
     fixedAmountOptions: [1, 2, 3],
     allowCustomTip: false,
     maximumTipPercentage: 50,
-    includeKitchenStaff: true,
-    includeManagers: true,
     autoDistribute: true,
   };
 
@@ -162,9 +159,15 @@ describe('MerchantTipRuleController', () => {
         .mockResolvedValue(expectedResponse);
       createSpy.mockResolvedValue(expectedResponse);
 
-      const result = await controller.create(mockCreateMerchantTipRuleDto);
+      const result = await controller.create(
+        mockCreateMerchantTipRuleDto,
+        mockAuthenticatedUser,
+      );
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantTipRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateMerchantTipRuleDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(expectedResponse);
     });
 
@@ -176,10 +179,13 @@ describe('MerchantTipRuleController', () => {
       createSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(mockCreateMerchantTipRuleDto),
+        controller.create(mockCreateMerchantTipRuleDto, mockAuthenticatedUser),
       ).rejects.toThrow(errorMessage);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantTipRuleDto);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateMerchantTipRuleDto,
+        mockAuthenticatedUser,
+      );
     });
   });
   //--------------------------------------------------------------
@@ -192,9 +198,15 @@ describe('MerchantTipRuleController', () => {
         .mockResolvedValue(mockPaginatedResponse);
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(mockPaginatedResponse);
     });
 
@@ -216,9 +228,15 @@ describe('MerchantTipRuleController', () => {
         .mockResolvedValue(emptyPaginatedResponse);
       findAllSpy.mockResolvedValue(emptyPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(emptyPaginatedResponse);
     });
 
@@ -229,11 +247,14 @@ describe('MerchantTipRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
     });
   });
   //--------------------------------------------------------------
@@ -246,9 +267,9 @@ describe('MerchantTipRuleController', () => {
         .mockResolvedValue(mockOneMerchantTipRuleResponse);
       findOneSpy.mockResolvedValue(mockOneMerchantTipRuleResponse);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, mockAuthenticatedUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(mockOneMerchantTipRuleResponse);
     });
 
@@ -259,9 +280,11 @@ describe('MerchantTipRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(1)).rejects.toThrow(errorMessage);
+      await expect(
+        controller.findOne(1, mockAuthenticatedUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
   });
   //--------------------------------------------------------------
@@ -279,9 +302,17 @@ describe('MerchantTipRuleController', () => {
         .mockResolvedValue(updatedResponse);
       updateSpy.mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, mockUpdateMerchantTipRuleDto);
+      const result = await controller.update(
+        1,
+        mockUpdateMerchantTipRuleDto,
+        mockAuthenticatedUser,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantTipRuleDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        mockUpdateMerchantTipRuleDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(updatedResponse);
     });
 
@@ -293,10 +324,14 @@ describe('MerchantTipRuleController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, mockUpdateMerchantTipRuleDto),
+        controller.update(1, mockUpdateMerchantTipRuleDto, mockAuthenticatedUser),
       ).rejects.toThrow(errorMessage);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantTipRuleDto);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        mockUpdateMerchantTipRuleDto,
+        mockAuthenticatedUser,
+      );
     });
   });
   //--------------------------------------------------------------

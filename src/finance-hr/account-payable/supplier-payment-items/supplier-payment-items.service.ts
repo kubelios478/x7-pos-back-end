@@ -42,6 +42,7 @@ export class SupplierPaymentItemsService {
 
   private async assertPaymentExists(
     paymentId: number,
+    scopedCompanyId?: number,
   ): Promise<SupplierPayment> {
     const payment = await this.paymentRepo.findOne({
       where: { id: paymentId, deleted_at: IsNull() },
@@ -51,13 +52,20 @@ export class SupplierPaymentItemsService {
         `Supplier payment with ID ${paymentId} not found`,
       );
     }
+    // Multi-tenant guard: merchant users can only touch items of their own company's payments.
+    if (scopedCompanyId != null && payment.company_id !== scopedCompanyId) {
+      throw new NotFoundException(
+        `Supplier payment with ID ${paymentId} not found`,
+      );
+    }
     return payment;
   }
 
   async create(
     dto: CreateSupplierPaymentItemDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierPaymentItemResponseDto> {
-    await this.assertPaymentExists(dto.payment_id);
+    await this.assertPaymentExists(dto.payment_id, scopedCompanyId);
 
     const row = this.itemRepo.create({
       payment_id: dto.payment_id,
@@ -75,6 +83,7 @@ export class SupplierPaymentItemsService {
 
   async findAll(
     query: GetSupplierPaymentItemsQueryDto,
+    scopedCompanyId?: number,
   ): Promise<PaginatedSupplierPaymentItemsResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -85,6 +94,16 @@ export class SupplierPaymentItemsService {
     const qb = this.itemRepo
       .createQueryBuilder('spi')
       .where('spi.deleted_at IS NULL');
+
+    // Multi-tenant guard: merchant users only see items of their own company's payments.
+    if (scopedCompanyId != null) {
+      qb.innerJoin(
+        SupplierPayment,
+        'sp',
+        'sp.id = spi.payment_id AND sp.company_id = :companyId',
+        { companyId: scopedCompanyId },
+      );
+    }
 
     if (query.payment_id != null) {
       qb.andWhere('spi.payment_id = :paymentId', {
@@ -151,6 +170,7 @@ export class SupplierPaymentItemsService {
   async update(
     id: number,
     dto: UpdateSupplierPaymentItemDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierPaymentItemResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier payment item ID');
@@ -164,9 +184,11 @@ export class SupplierPaymentItemsService {
         `Supplier payment item with ID ${id} not found`,
       );
     }
+    // Scope guard: the item's payment must belong to the user's company.
+    await this.assertPaymentExists(item.payment_id, scopedCompanyId);
 
     if (dto.payment_id != null) {
-      await this.assertPaymentExists(dto.payment_id);
+      await this.assertPaymentExists(dto.payment_id, scopedCompanyId);
       item.payment_id = dto.payment_id;
     }
     if (dto.document_number != null) {
@@ -187,7 +209,10 @@ export class SupplierPaymentItemsService {
     };
   }
 
-  async remove(id: number): Promise<OneSupplierPaymentItemResponseDto> {
+  async remove(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierPaymentItemResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier payment item ID');
     }
@@ -200,6 +225,8 @@ export class SupplierPaymentItemsService {
         `Supplier payment item with ID ${id} not found`,
       );
     }
+    // Scope guard: the item's payment must belong to the user's company.
+    await this.assertPaymentExists(item.payment_id, scopedCompanyId);
 
     item.deleted_at = new Date();
     await this.itemRepo.save(item);

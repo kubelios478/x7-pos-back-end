@@ -124,8 +124,20 @@ export class SupplierInvoicesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async create(
     @Body() dto: CreateSupplierInvoiceDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceResponseDto> {
-    return this.supplierInvoicesService.create(dto);
+    return this.supplierInvoicesService.create(dto, this.merchantCompanyScope(user));
+  }
+
+  /**
+   * For merchant users, returns the company that owns their merchant so the service can
+   * enforce multi-tenant scoping (they can only read/write their own company's invoices).
+   * Portal users get `undefined`, preserving cross-company access via the optional filter.
+   */
+  private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
+    const isMerchant =
+      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+    return isMerchant ? user.merchant?.companyId : undefined;
   }
 
   @Get()
@@ -153,8 +165,9 @@ export class SupplierInvoicesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findAll(
     @Query() query: GetSupplierInvoicesQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierInvoicesResponseDto> {
-    return this.supplierInvoicesService.findAll(query);
+    return this.supplierInvoicesService.findAll(query, this.merchantCompanyScope(user));
   }
 
   @Get(':id')
@@ -234,5 +247,30 @@ export class SupplierInvoicesController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<OneSupplierInvoiceResponseDto> {
     return this.supplierInvoicesService.remove(id);
+  }
+
+  @Post(':id/restore')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({ summary: 'Restore a soft-deleted (archived) supplier invoice' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiOkResponse({
+    description: 'Supplier invoice restored successfully',
+    type: OneSupplierInvoiceResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'Archived supplier invoice not found' })
+  @ApiBadRequestResponse({ description: 'Invalid ID' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiForbiddenResponse({ description: 'Forbidden' })
+  async restore(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<OneSupplierInvoiceResponseDto> {
+    return this.supplierInvoicesService.restore(id);
   }
 }

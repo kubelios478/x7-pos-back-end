@@ -12,6 +12,28 @@ import { QueryMerchantPayrollRuleDto } from './dto/query-merchant-payroll-rule.d
 import { PaginatedMerchantPayrollRuleResponseDto } from './dto/paginated-merchant-payroll-rule-response.dto';
 import { UpdateMerchantPayrollRuleDto } from './dto/update-merchant-payroll-rule.dto';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import {
+  resolveMerchantContext,
+  assertOwnsCompany,
+} from '../utils/merchant-scoping.util';
+import { PayrollFrequency } from '../constants/payroll-frequency.enum';
+
+const AUDIT_USER_SELECT: (keyof User)[] = ['id', 'username', 'email'];
+
+const PAYROLL_RULE_SELECT_FIELDS = [
+  'merchantPayrollRule',
+  'company.id',
+  'createdBy.id',
+  'createdBy.username',
+  'createdBy.email',
+  'updatedBy.id',
+  'updatedBy.username',
+  'updatedBy.email',
+  'merchant.id',
+  'merchant.name',
+];
 
 @Injectable()
 export class MerchantPayrollRuleService {
@@ -29,61 +51,79 @@ export class MerchantPayrollRuleService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  private resolvePayrollDayFields(
+    frequencyPayroll: PayrollFrequency,
+    payDayOfWeek?: number | null,
+    payDayOfMonth?: number | null,
+  ): { payDayOfWeek: number | null; payDayOfMonth: number | null } {
+    if (
+      frequencyPayroll === PayrollFrequency.WEEKLY ||
+      frequencyPayroll === PayrollFrequency.BIWEEKLY
+    ) {
+      if (payDayOfWeek == null) {
+        ErrorHandler.invalidInput(
+          'payDayOfWeek is required when frequencyPayroll is weekly or biweekly',
+        );
+      }
+      return { payDayOfWeek, payDayOfMonth: null };
+    }
+
+    if (frequencyPayroll === PayrollFrequency.MONTHLY) {
+      if (payDayOfMonth == null) {
+        ErrorHandler.invalidInput(
+          'payDayOfMonth is required when frequencyPayroll is monthly',
+        );
+      }
+      return { payDayOfWeek: null, payDayOfMonth };
+    }
+
+    return { payDayOfWeek: null, payDayOfMonth: null };
+  }
+
   async create(
     dto: CreateMerchantPayrollRuleDto,
+    user: AuthenticatedUser,
   ): Promise<OneMerchantPayrollRuleResponseDto> {
-    if (dto.companyId && !Number.isInteger(dto.companyId)) {
-      ErrorHandler.invalidId('Company ID must be a positive integer');
-    }
+    const { merchant, companyId } = await resolveMerchantContext(
+      this.merchantRepository,
+      user,
+    );
 
-    let company: Company | null = null;
-    if (dto.companyId) {
-      company = await this.companyRepository.findOne({
-        where: { id: dto.companyId },
-      });
-      if (!company) {
-        ErrorHandler.notFound('Company not found');
-      }
-    }
-
-    let merchant: Merchant | null = null;
-    if (dto.merchantId) {
-      merchant = await this.merchantRepository.findOne({
-        where: { id: dto.merchantId },
-      });
-      if (!merchant) {
-        ErrorHandler.notFound('Merchant not found');
-      }
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
+    if (!company) {
+      ErrorHandler.notFound('Company not found');
     }
 
     const createdByUser = await this.userRepository.findOne({
-      where: { id: dto.createdById },
+      where: { id: user.id },
+      select: AUDIT_USER_SELECT,
     });
-
     if (!createdByUser) {
-      ErrorHandler.notFound('CreatedBy user not found');
+      ErrorHandler.userNotFound();
     }
 
-    const updatedByUser = await this.userRepository.findOne({
-      where: { id: dto.updatedById },
-    });
+    const now = new Date();
 
-    if (!updatedByUser) {
-      ErrorHandler.notFound('UpdatedBy user not found');
-    }
+    const { payDayOfWeek, payDayOfMonth } = this.resolvePayrollDayFields(
+      dto.frequencyPayroll,
+      dto.payDayOfWeek,
+      dto.payDayOfMonth,
+    );
 
     const merchantPayrollRule = this.merchantPayrollRuleRepository.create({
-      company: company,
-      merchant: merchant,
-      createdAt: dto.createdAt,
-      updatedAt: dto.updatedAt,
+      company,
+      merchant,
+      createdAt: now,
+      updatedAt: now,
       createdBy: createdByUser,
-      updatedBy: updatedByUser,
-      status: dto.status,
+      updatedBy: createdByUser,
+      status: 'active',
       name: dto.name,
       frequencyPayroll: dto.frequencyPayroll,
-      payDayOfWeek: dto.payDayOfWeek,
-      payDayOfMonth: dto.payDayOfMonth,
+      payDayOfWeek,
+      payDayOfMonth,
       allowNegativePayroll: dto.allowNegativePayroll,
       roundingPrecision: dto.roundingPrecision,
       currency: dto.currency,
@@ -102,6 +142,7 @@ export class MerchantPayrollRuleService {
 
   async findAll(
     query: QueryMerchantPayrollRuleDto,
+    user: AuthenticatedUser,
   ): Promise<PaginatedMerchantPayrollRuleResponseDto> {
     const {
       status,
@@ -118,19 +159,19 @@ export class MerchantPayrollRuleService {
     const qb = this.merchantPayrollRuleRepository
       .createQueryBuilder('merchantPayrollRule')
       .leftJoin('merchantPayrollRule.company', 'company')
-      .leftJoin('merchantPayrollRule.merchant', 'merchant')
       .leftJoin('merchantPayrollRule.createdBy', 'createdBy')
       .leftJoin('merchantPayrollRule.updatedBy', 'updatedBy')
-      .select([
-        'merchantPayrollRule',
-        'company.id',
-        'createdBy.id',
-        'createdBy.email',
-        'updatedBy.id',
-        'updatedBy.email',
-        'merchant.id',
-        'merchant.name',
-      ]);
+      .leftJoin('merchantPayrollRule.merchant', 'merchant')
+      .select(PAYROLL_RULE_SELECT_FIELDS);
+
+    if (user.role !== UserRole.PORTAL_ADMIN) {
+      const { companyId } = await resolveMerchantContext(
+        this.merchantRepository,
+        user,
+      );
+      qb.andWhere('company.id = :companyId', { companyId });
+    }
+
     if (status) {
       qb.andWhere('merchantPayrollRule.status = :status', { status });
     } else {
@@ -161,19 +202,37 @@ export class MerchantPayrollRuleService {
     };
   }
 
-  async findOne(id: number): Promise<OneMerchantPayrollRuleResponseDto> {
+  async findOne(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantPayrollRuleResponseDto> {
     if (!Number.isInteger(id) || id < 1) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
-    const merchantPayrollRule =
-      await this.merchantPayrollRuleRepository.findOne({
-        where: { id, status: In(['active', 'inactive']) },
-        relations: ['company', 'createdBy', 'updatedBy', 'merchant'],
-      });
+    const merchantPayrollRule = await this.merchantPayrollRuleRepository
+      .createQueryBuilder('merchantPayrollRule')
+      .leftJoin('merchantPayrollRule.company', 'company')
+      .leftJoin('merchantPayrollRule.createdBy', 'createdBy')
+      .leftJoin('merchantPayrollRule.updatedBy', 'updatedBy')
+      .leftJoin('merchantPayrollRule.merchant', 'merchant')
+      .select(PAYROLL_RULE_SELECT_FIELDS)
+      .where('merchantPayrollRule.id = :id', { id })
+      .andWhere('merchantPayrollRule.status IN (:...statuses)', {
+        statuses: ['active', 'inactive'],
+      })
+      .getOne();
+
     if (!merchantPayrollRule) {
       ErrorHandler.merchantPayrollRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantPayrollRule.company.id,
+    );
+
     return {
       statusCode: 200,
       message: 'Merchant Payroll Rule retrieved successfully',
@@ -184,6 +243,7 @@ export class MerchantPayrollRuleService {
   async update(
     id: number,
     dto: UpdateMerchantPayrollRuleDto,
+    user: AuthenticatedUser,
   ): Promise<OneMerchantPayrollRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
@@ -197,16 +257,40 @@ export class MerchantPayrollRuleService {
       ErrorHandler.merchantPayrollRuleNotFound();
     }
 
-    if (dto.updatedById) {
-      const updatedByUser = await this.userRepository.findOne({
-        where: { id: dto.updatedById },
-      });
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantPayrollRule.company.id,
+    );
 
-      if (!updatedByUser) {
-        ErrorHandler.notFound('UpdatedBy user not found');
-      }
+    const updatedByUser = await this.userRepository.findOne({
+      where: { id: user.id },
+      select: AUDIT_USER_SELECT,
+    });
+    if (!updatedByUser) {
+      ErrorHandler.notFound('UpdatedBy user not found');
+    }
+    merchantPayrollRule.updatedBy = updatedByUser;
+    merchantPayrollRule.updatedAt = new Date();
 
-      merchantPayrollRule.updatedBy = updatedByUser;
+    if (
+      dto.frequencyPayroll !== undefined ||
+      dto.payDayOfWeek !== undefined ||
+      dto.payDayOfMonth !== undefined
+    ) {
+      const effectiveFrequency = dto.frequencyPayroll ?? merchantPayrollRule.frequencyPayroll;
+      const effectivePayDayOfWeek =
+        dto.payDayOfWeek !== undefined ? dto.payDayOfWeek : merchantPayrollRule.payDayOfWeek;
+      const effectivePayDayOfMonth =
+        dto.payDayOfMonth !== undefined ? dto.payDayOfMonth : merchantPayrollRule.payDayOfMonth;
+
+      const resolved = this.resolvePayrollDayFields(
+        effectiveFrequency,
+        effectivePayDayOfWeek,
+        effectivePayDayOfMonth,
+      );
+      dto.payDayOfWeek = resolved.payDayOfWeek;
+      dto.payDayOfMonth = resolved.payDayOfMonth;
     }
 
     Object.assign(merchantPayrollRule, dto);
