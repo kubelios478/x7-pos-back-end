@@ -264,7 +264,7 @@ export class CashDrawersController {
     name: 'status',
     required: false,
     enum: CashDrawerStatus,
-    description: 'Filter by cash drawer status (Open, Close, Pause)',
+    description: 'Filter by cash drawer status (Open, Close, Pause, Discrepancy)',
   })
   @ApiQuery({
     name: 'createdDate',
