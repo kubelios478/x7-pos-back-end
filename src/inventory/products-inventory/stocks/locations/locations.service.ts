@@ -16,6 +16,7 @@ import {
 
 import { Item } from '../items/entities/item.entity';
 import { Variant } from '../../variants/entities/variant.entity';
+import { Supply } from 'src/inventory/supplies/entities/supply.entity';
 
 @Injectable()
 export class LocationsService {
@@ -53,21 +54,20 @@ export class LocationsService {
     }
   }
 
-  private async initializeStockForNewLocation(locationId: number, merchantId: number) {
-    // Buscar todas las variantes activas de productos pertenecientes a este merchant
-    const variants = await this.variantRepository.createQueryBuilder('variant')
-      .innerJoinAndSelect('variant.product', 'product')
-      .where('product.merchantId = :merchantId', { merchantId })
-      .andWhere('variant.isActive = :isActive', { isActive: true })
-      .andWhere('product.isActive = :isActive', { isActive: true })
-      .getMany();
+  private async initializeRawMaterialStockForNewLocation(locationId: number, merchantId: number) {
+    const merchant = await this.merchantRepo.findOne({ where: { id: merchantId } });
+    const companyId = merchant?.companyId;
+    if (!companyId) return;
 
-    for (const variant of variants) {
-      // Verificar si ya existe para evitar duplicados
+    // Buscar todas las materias primas (supplies) activas de esta empresa
+    const supplies = await this.itemRepository.manager.find(Supply, {
+      where: { company_id: companyId, isActive: true }
+    });
+
+    for (const supply of supplies) {
       const existing = await this.itemRepository.findOne({
         where: {
-          productId: variant.productId,
-          variantId: variant.id,
+          supplyId: supply.id,
           locationId: locationId
         }
       });
@@ -76,15 +76,15 @@ export class LocationsService {
         const newStockItem = this.itemRepository.create({
           currentQty: 0,
           minimumQty: 5,
-          productId: variant.productId,
-          variantId: variant.id,
+          supplyId: supply.id,
           locationId: locationId,
           isActive: true,
-          weightedAverageUnitCost: '0.0000'
+          weightedAverageUnitCost: String(supply.cost_per_unit || 0)
         });
         await this.itemRepository.save(newStockItem);
       }
     }
+
   }
 
   async create(
@@ -125,7 +125,7 @@ export class LocationsService {
       if (existingButIsNotActive) {
         existingButIsNotActive.isActive = true;
         await this.locationRepository.save(existingButIsNotActive);
-        await this.initializeStockForNewLocation(existingButIsNotActive.id, merchant_id);
+        await this.initializeRawMaterialStockForNewLocation(existingButIsNotActive.id, merchant_id);
         return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
       } else {
         const newLocation = this.locationRepository.create({
@@ -134,9 +134,11 @@ export class LocationsService {
           merchantId: merchant_id,
         });
         const savedLocation = await this.locationRepository.save(newLocation);
-        await this.initializeStockForNewLocation(savedLocation.id, merchant_id);
+        await this.initializeRawMaterialStockForNewLocation(savedLocation.id, merchant_id);
         return this.findOne(savedLocation.id, merchant_id, 'Created');
       }
+
+
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
