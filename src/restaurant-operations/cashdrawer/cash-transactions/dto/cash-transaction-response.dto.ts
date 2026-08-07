@@ -94,15 +94,6 @@ export class CashTransactionCashShiftDto {
   @ApiProperty({ example: 1000.0 })
   openingBalance: number;
 
-  @ApiProperty({ example: 1500.0, nullable: true })
-  systemAmount: number | null;
-
-  @ApiProperty({ example: 1480.0, nullable: true })
-  declaredAmount: number | null;
-
-  @ApiProperty({ example: -20.0, nullable: true })
-  difference: number | null;
-
   @ApiProperty({ type: () => BasicCollaboratorInfoDto })
   openedByCollaborator: BasicCollaboratorInfoDto;
 

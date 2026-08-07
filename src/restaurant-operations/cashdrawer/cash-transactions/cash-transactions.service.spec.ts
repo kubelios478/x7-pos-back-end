@@ -676,6 +676,7 @@ describe('CashTransactionsService', () => {
             points: 150,
             loyaltyCustomerId: 3,
             createdAt: new Date('2024-01-15T08:00:00Z'),
+            is_active: true,
           },
         ],
       };
@@ -699,9 +700,6 @@ describe('CashTransactionsService', () => {
         openedAt: fullTransaction.cashShift.openedAt,
         closedAt: null,
         openingBalance: 100,
-        systemAmount: null,
-        declaredAmount: null,
-        difference: null,
         openedByCollaborator: { id: 1, name: 'Jhon Doe', role: 'waiter' },
         closedByCollaborator: null,
       });
@@ -757,6 +755,77 @@ describe('CashTransactionsService', () => {
         id: mockCashTransaction.collaborator_id,
         name: 'Unknown',
         role: '—',
+      });
+    });
+
+    it('should handle wire-format bigint/decimal fields, filter inactive loyalty rows, and populate closedByCollaborator', async () => {
+      // Fixture matching actual Postgres driver wire format: bigint/decimal as strings
+      const closedShiftTransaction = {
+        ...mockCashTransaction,
+        collaborator: { id: 1, name: 'Jhon Doe', role: 'waiter' },
+        cashShift: {
+          id: 7,
+          status: 'CLOSED',
+          openedAt: new Date('2024-01-15T07:00:00Z'),
+          closedAt: new Date('2024-01-15T20:00:00Z'),
+          openingBalance: '1000.00', // String, as Postgres driver returns decimals
+          systemAmount: null,
+          declaredAmount: null,
+          difference: null,
+          openedBy: 1,
+          closedBy: 2,
+          openedByCollaborator: { id: 1, name: 'Jhon Doe', role: 'waiter' },
+          closedByCollaborator: { id: 2, name: 'Jane Smith', role: 'manager' },
+        },
+        loyaltyPointTransactions: [
+          {
+            id: '55', // String, as Postgres driver returns bigint
+            description: 'Points earned from order',
+            source: 'ORDER',
+            points: 150,
+            loyaltyCustomerId: '3', // String, as Postgres driver returns bigint
+            createdAt: new Date('2024-01-15T08:00:00Z'),
+            is_active: true,
+          },
+          {
+            id: '56', // String bigint
+            description: 'Points reversed from refund',
+            source: 'ORDER_REVERSAL',
+            points: -150,
+            loyaltyCustomerId: '3', // String bigint
+            createdAt: new Date('2024-01-15T08:30:00Z'),
+            is_active: false, // Should be filtered out
+          },
+        ],
+      };
+      jest
+        .spyOn(cashTransactionRepository, 'findOne')
+        .mockResolvedValue(closedShiftTransaction as any);
+      jest
+        .spyOn(cashDrawerRepository, 'findOne')
+        .mockResolvedValue(mockCashDrawer as any);
+
+      const result = await service.findOne(1, 1);
+
+      // Verify bigint coercion on loyalty points
+      expect(result.data.loyaltyPointTransactions).toHaveLength(1);
+      expect(result.data.loyaltyPointTransactions[0].id).toBe(55);
+      expect(typeof result.data.loyaltyPointTransactions[0].id).toBe('number');
+      expect(result.data.loyaltyPointTransactions[0].loyaltyCustomerId).toBe(3);
+      expect(typeof result.data.loyaltyPointTransactions[0].loyaltyCustomerId).toBe('number');
+
+      // Verify is_active filter (inactive row should be excluded)
+      expect(result.data.loyaltyPointTransactions.some((lpt) => lpt.points === -150)).toBe(false);
+
+      // Verify decimal coercion on cashShift.openingBalance
+      expect(result.data.cashShift?.openingBalance).toBe(1000.0);
+      expect(typeof result.data.cashShift?.openingBalance).toBe('number');
+
+      // Verify closedByCollaborator is properly populated
+      expect(result.data.cashShift?.closedByCollaborator).toEqual({
+        id: 2,
+        name: 'Jane Smith',
+        role: 'manager',
       });
     });
 

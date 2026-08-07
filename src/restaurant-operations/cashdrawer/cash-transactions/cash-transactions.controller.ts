@@ -253,6 +253,26 @@ export class CashTransactionsController {
         notes: 'Some notes',
         createdAt: '2024-01-15T08:00:00Z',
         updatedAt: '2024-01-15T08:00:00Z',
+        collaborator: { id: 5, name: 'John Doe', role: 'waiter' },
+        cashShift: {
+          id: 7,
+          status: 'CLOSED',
+          openedAt: '2024-01-15T07:00:00Z',
+          closedAt: '2024-01-15T20:00:00Z',
+          openingBalance: 1000.0,
+          openedByCollaborator: { id: 5, name: 'John Doe', role: 'waiter' },
+          closedByCollaborator: { id: 5, name: 'John Doe', role: 'waiter' },
+        },
+        loyaltyPointTransactions: [
+          {
+            id: 55,
+            description: 'Points earned from order',
+            source: 'ORDER',
+            points: 150,
+            loyaltyCustomerId: 3,
+            createdAt: '2024-01-15T08:00:00Z',
+          },
+        ],
       },
     },
   })

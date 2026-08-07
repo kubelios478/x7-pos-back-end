@@ -526,40 +526,29 @@ export class CashTransactionsService {
             openedAt: row.cashShift.openedAt,
             closedAt: row.cashShift.closedAt,
             openingBalance: Number(row.cashShift.openingBalance),
-            systemAmount:
-              row.cashShift.systemAmount !== null
-                ? Number(row.cashShift.systemAmount)
-                : null,
-            declaredAmount:
-              row.cashShift.declaredAmount !== null
-                ? Number(row.cashShift.declaredAmount)
-                : null,
-            difference:
-              row.cashShift.difference !== null
-                ? Number(row.cashShift.difference)
-                : null,
             openedByCollaborator: toBasicCollaborator(
               row.cashShift.openedByCollaborator,
               row.cashShift.openedBy,
             ),
             closedByCollaborator: row.cashShift.closedByCollaborator
-              ? toBasicCollaborator(
-                  row.cashShift.closedByCollaborator,
-                  row.cashShift.closedBy ?? 0,
-                )
+              ? {
+                  id: row.cashShift.closedByCollaborator.id,
+                  name: row.cashShift.closedByCollaborator.name,
+                  role: row.cashShift.closedByCollaborator.role,
+                }
               : null,
           }
         : null,
-      loyaltyPointTransactions: (row.loyaltyPointTransactions ?? []).map(
-        (lpt) => ({
-          id: lpt.id,
+      loyaltyPointTransactions: (row.loyaltyPointTransactions ?? [])
+        .filter((lpt) => lpt.is_active)
+        .map((lpt) => ({
+          id: Number(lpt.id),
           description: lpt.description ?? null,
           source: lpt.source,
           points: lpt.points,
-          loyaltyCustomerId: lpt.loyaltyCustomerId,
+          loyaltyCustomerId: Number(lpt.loyaltyCustomerId),
           createdAt: lpt.createdAt,
-        }),
-      ),
+        })),
     };
   }
 }
