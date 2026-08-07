@@ -66,15 +66,10 @@ export class CashDrawersService {
       );
     }
 
-    const collaborator = await this.collaboratorRepository.findOne({
-      where: { user_id: user.id, merchant_id: authenticatedUserMerchantId },
-    });
-
-    if (!collaborator) {
-      throw new BadRequestException(
-        'No collaborator profile is linked to your account.',
-      );
-    }
+    const collaborator = await this.resolveCollaborator(
+      user.id,
+      authenticatedUserMerchantId,
+    );
 
     const existingOpenCashDrawer = await this.cashDrawerRepository.findOne({
       where: {
@@ -381,15 +376,10 @@ export class CashDrawersService {
       throw new BadRequestException('Closing balance must be non-negative');
     }
 
-    const collaborator = await this.collaboratorRepository.findOne({
-      where: { user_id: user.id, merchant_id: authenticatedUserMerchantId },
-    });
-
-    if (!collaborator) {
-      throw new BadRequestException(
-        'No collaborator profile is linked to your account.',
-      );
-    }
+    const collaborator = await this.resolveCollaborator(
+      user.id,
+      authenticatedUserMerchantId,
+    );
 
     // `current_balance`/`closingBalance` can arrive as numeric strings (decimal
     // column), so coerce both sides before comparing. Both sides are also rounded
@@ -482,6 +472,23 @@ export class CashDrawersService {
       message: 'Cash drawer deleted successfully',
       data: this.formatCashDrawerResponse(existingCashDrawer),
     };
+  }
+
+  private async resolveCollaborator(
+    userId: number,
+    merchantId: number,
+  ): Promise<Collaborator> {
+    const collaborator = await this.collaboratorRepository.findOne({
+      where: { user_id: userId, merchant_id: merchantId },
+    });
+
+    if (!collaborator) {
+      throw new BadRequestException(
+        'No collaborator profile is linked to your account.',
+      );
+    }
+
+    return collaborator;
   }
 
   private formatCashDrawerResponse(
