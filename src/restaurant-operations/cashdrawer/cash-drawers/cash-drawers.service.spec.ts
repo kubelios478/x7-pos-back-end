@@ -242,6 +242,39 @@ describe('CashDrawersService', () => {
         'An active cash drawer session (#CD-12) is already open for this shift. Please close the active session before opening a new drawer.',
       );
     });
+
+    it('should not conflict with an open drawer for the same shift that belongs to a different merchant', async () => {
+      // An OPEN drawer with the same shift_id exists, but it belongs to merchant_id 2 — a
+      // different merchant than mockUser's (merchant_id 1). The guard query filters by
+      // merchant_id, so in production this drawer would never be returned by
+      // cashDrawerRepository.findOne() for mockUser's request; we simulate that filtered
+      // result here (null) and assert the query was built with merchant_id, proving the
+      // guard is merchant-scoped and not just shift-scoped.
+      jest
+        .spyOn(shiftRepository, 'findOne')
+        .mockResolvedValue(mockShift as any);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as any);
+      jest
+        .spyOn(cashDrawerRepository, 'findOne')
+        .mockResolvedValueOnce(null) // merchant-scoped guard query excludes the other merchant's open drawer
+        .mockResolvedValueOnce(mockCashDrawer as any); // complete drawer after save
+      jest
+        .spyOn(cashDrawerRepository, 'save')
+        .mockResolvedValue(mockCashDrawer as any);
+
+      const result = await service.create(createCashDrawerDto, mockUser);
+
+      expect(cashDrawerRepository.findOne).toHaveBeenNthCalledWith(1, {
+        where: {
+          shift_id: mockShift.id,
+          merchant_id: mockUser.merchant.id,
+          status: CashDrawerStatus.OPEN,
+        },
+      });
+      expect(result.statusCode).toBe(201);
+    });
   });
 
   describe('findAll', () => {
@@ -527,6 +560,36 @@ describe('CashDrawersService', () => {
 
       expect(cashDrawerRepository.update).toHaveBeenCalledWith(1, {
         closing_balance: 90.0,
+        closed_by: 1,
+        status: CashDrawerStatus.DISCREPANCY,
+      });
+      expect(result.data.status).toBe(CashDrawerStatus.DISCREPANCY);
+    });
+
+    it('should mark the drawer as Discrepancy when the closing balance is over the current balance', async () => {
+      const overBalanceDto: CloseCashDrawerDto = { closingBalance: 110.0 };
+      const discrepancyCashDrawer = {
+        ...mockCashDrawer,
+        closing_balance: 110.0,
+        closed_by: 1,
+        status: CashDrawerStatus.DISCREPANCY,
+        closedByCollaborator: mockCollaborator,
+      };
+      jest
+        .spyOn(cashDrawerRepository, 'findOne')
+        .mockResolvedValueOnce(mockCashDrawer as any) // current_balance = 100.0
+        .mockResolvedValueOnce(discrepancyCashDrawer as any);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as any);
+      jest
+        .spyOn(cashDrawerRepository, 'update')
+        .mockResolvedValue(undefined as any);
+
+      const result = await service.update(1, overBalanceDto, mockUser);
+
+      expect(cashDrawerRepository.update).toHaveBeenCalledWith(1, {
+        closing_balance: 110.0,
         closed_by: 1,
         status: CashDrawerStatus.DISCREPANCY,
       });
