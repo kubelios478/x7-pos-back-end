@@ -8,6 +8,8 @@ export interface AuthenticatedUser {
   scope: Scope;
   merchant: {
     id: number;
+    /** Company that owns this merchant (set by login / JwtStrategy). Used to scope multi-tenant data. */
+    companyId?: number;
   };
   /** `subscription_plan.id` for the merchant's active subscription (set by login / JwtStrategy). */
   planId?: number;

@@ -60,14 +60,16 @@ export class SupplierInvoicesService {
 
   async create(
     dto: CreateSupplierInvoiceDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierInvoiceResponseDto> {
+    // Merchant users are forced to their own company (scopedCompanyId); the client-supplied
+    // dto.company_id is never trusted for them. Portal users may target any company via dto.
+    const companyId = scopedCompanyId ?? dto.company_id;
     const company = await this.companyRepo.findOne({
-      where: { id: dto.company_id },
+      where: { id: companyId },
     });
     if (!company) {
-      throw new NotFoundException(
-        `Company with ID ${dto.company_id} not found`,
-      );
+      throw new NotFoundException(`Company with ID ${companyId} not found`);
     }
 
     const supplier = await this.supplierRepo.findOne({
@@ -89,7 +91,7 @@ export class SupplierInvoicesService {
     }
 
     const invoice = this.invoiceRepo.create({
-      company_id: dto.company_id,
+      company_id: companyId,
       supplier_id: dto.supplier_id,
       invoice_number: dto.invoice_number,
       invoice_date: new Date(dto.invoice_date),
@@ -113,6 +115,7 @@ export class SupplierInvoicesService {
 
   async findAll(
     query: GetSupplierInvoicesQueryDto,
+    scopedCompanyId?: number,
   ): Promise<PaginatedSupplierInvoicesResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -128,9 +131,12 @@ export class SupplierInvoicesService {
           : 'inv.deleted_at IS NULL',
       );
 
-    if (query.company_id != null) {
+    // Merchant users are locked to their own company (scopedCompanyId); portal users may
+    // optionally narrow by query.company_id but see all companies by default.
+    const effectiveCompanyId = scopedCompanyId ?? query.company_id;
+    if (effectiveCompanyId != null) {
       qb.andWhere('inv.company_id = :companyId', {
-        companyId: query.company_id,
+        companyId: effectiveCompanyId,
       });
     }
     if (query.supplier_id != null) {
