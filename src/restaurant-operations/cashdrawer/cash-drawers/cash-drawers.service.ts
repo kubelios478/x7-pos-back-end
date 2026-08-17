@@ -22,6 +22,7 @@ import { PaginatedCashDrawersResponseDto } from './dto/paginated-cash-drawers-re
 import { CashDrawerStatus } from './constants/cash-drawer-status.enum';
 import { ShiftStatus } from '../../shift/shifts/constants/shift-status.enum';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { CashDrawerHistoryService } from '../cash-drawer-history/cash-drawer-history.service';
 
 @Injectable()
 export class CashDrawersService {
@@ -32,6 +33,7 @@ export class CashDrawersService {
     private readonly shiftRepository: Repository<Shift>,
     @InjectRepository(Collaborator)
     private readonly collaboratorRepository: Repository<Collaborator>,
+    private readonly cashDrawerHistoryService: CashDrawerHistoryService,
   ) {}
 
   async create(
@@ -70,20 +72,6 @@ export class CashDrawersService {
       user.id,
       authenticatedUserMerchantId,
     );
-
-    const existingOpenCashDrawer = await this.cashDrawerRepository.findOne({
-      where: {
-        shift_id: activeShift.id,
-        merchant_id: authenticatedUserMerchantId,
-        status: CashDrawerStatus.OPEN,
-      },
-    });
-
-    if (existingOpenCashDrawer) {
-      throw new ConflictException(
-        `An active cash drawer session (#CD-${existingOpenCashDrawer.id}) is already open for this shift. Please close the active session before opening a new drawer.`,
-      );
-    }
 
     const cashDrawer = new CashDrawer();
     cashDrawer.merchant_id = authenticatedUserMerchantId;
@@ -399,6 +387,22 @@ export class CashDrawersService {
       status,
     });
 
+    try {
+      await this.cashDrawerHistoryService.create(
+        {
+          cashDrawerId: id,
+          openingBalance: Number(existingCashDrawer.opening_balance),
+          closingBalance: closingBalance,
+          openedBy: existingCashDrawer.opened_by,
+          closedBy: collaborator.id,
+        },
+        authenticatedUserMerchantId,
+      );
+    } catch (err) {
+      // Log warning if history snapshot creation encounters an issue, but complete the drawer update
+      console.warn(`[CashDrawersService] Failed to persist history record for CD #${id}:`, err);
+    }
+
     const updatedCashDrawer = await this.cashDrawerRepository.findOne({
       where: { id },
       relations: [
@@ -502,26 +506,49 @@ export class CashDrawersService {
       createdAt: cashDrawer.created_at,
       updatedAt: cashDrawer.updated_at,
       status: cashDrawer.status,
-      merchant: {
-        id: cashDrawer.merchant.id,
-        name: cashDrawer.merchant.name,
-      },
-      shift: {
-        id: cashDrawer.shift.id,
-        name: `Shift ${cashDrawer.shift.id}`, // Generate a name since Shift doesn't have a name field
-        startTime: cashDrawer.shift.startTime,
-        endTime: cashDrawer.shift.endTime || new Date(), // Provide default if undefined
-        status: cashDrawer.shift.status,
-        merchant: {
-          id: cashDrawer.shift.merchant.id,
-          name: cashDrawer.shift.merchant.name,
-        },
-      },
-      openedByCollaborator: {
-        id: cashDrawer.openedByCollaborator.id,
-        name: cashDrawer.openedByCollaborator.name,
-        role: cashDrawer.openedByCollaborator.role,
-      },
+      merchant: cashDrawer.merchant
+        ? {
+            id: cashDrawer.merchant.id,
+            name: cashDrawer.merchant.name,
+          }
+        : {
+            id: cashDrawer.merchant_id,
+            name: 'Merchant',
+          },
+      shift: cashDrawer.shift
+        ? {
+            id: cashDrawer.shift.id,
+            name: `Shift ${cashDrawer.shift.id}`,
+            startTime: cashDrawer.shift.startTime,
+            endTime: cashDrawer.shift.endTime || new Date(),
+            status: cashDrawer.shift.status,
+            merchant: {
+              id: cashDrawer.shift.merchant?.id ?? cashDrawer.merchant?.id ?? cashDrawer.merchant_id,
+              name: cashDrawer.shift.merchant?.name ?? cashDrawer.merchant?.name ?? 'Merchant',
+            },
+          }
+        : ({
+            id: cashDrawer.shift_id || 0,
+            name: `Shift ${cashDrawer.shift_id || 0}`,
+            startTime: cashDrawer.created_at,
+            endTime: cashDrawer.updated_at,
+            status: 'ACTIVE',
+            merchant: {
+              id: cashDrawer.merchant?.id ?? cashDrawer.merchant_id,
+              name: cashDrawer.merchant?.name ?? 'Merchant',
+            },
+          } as any),
+      openedByCollaborator: cashDrawer.openedByCollaborator
+        ? {
+            id: cashDrawer.openedByCollaborator.id,
+            name: cashDrawer.openedByCollaborator.name,
+            role: cashDrawer.openedByCollaborator.role,
+          }
+        : {
+            id: cashDrawer.opened_by,
+            name: `Collaborator ${cashDrawer.opened_by}`,
+            role: 'WAITER',
+          },
       closedByCollaborator: cashDrawer.closedByCollaborator
         ? {
             id: cashDrawer.closedByCollaborator.id,

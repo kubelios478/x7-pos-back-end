@@ -8,6 +8,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   Repository,
   In,
+  Between,
+  MoreThanOrEqual,
+  LessThanOrEqual,
   type FindOptionsOrder,
   type FindOptionsWhere,
 } from 'typeorm';
@@ -291,6 +294,18 @@ export class CashTransactionsService {
     if (query.orderId) where.order_id = query.orderId;
     if (query.type) where.type = query.type;
     if (query.status) where.status = query.status;
+    if (query.shiftId) where.shift_id = query.shiftId;
+
+    // Date range filter on created_at
+    if (query.startDate && query.endDate) {
+      const start = new Date(query.startDate + 'T00:00:00.000Z');
+      const end = new Date(query.endDate + 'T23:59:59.999Z');
+      where.created_at = Between(start, end) as any;
+    } else if (query.startDate) {
+      where.created_at = MoreThanOrEqual(new Date(query.startDate + 'T00:00:00.000Z')) as any;
+    } else if (query.endDate) {
+      where.created_at = LessThanOrEqual(new Date(query.endDate + 'T23:59:59.999Z')) as any;
+    }
 
     const sortDir = query.sortOrder || 'DESC';
     let order: FindOptionsOrder<CashTransaction>;

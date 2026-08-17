@@ -234,17 +234,20 @@ describe('CashShiftsService', () => {
       );
     });
 
-    it('should throw ConflictException if the resolved collaborator already has an open shift', async () => {
+    it('should allow opening shift even when collaborator already has an active shift elsewhere', async () => {
       jest
         .spyOn(collaboratorRepo, 'findOne')
         .mockResolvedValue(mockCollaborator as any);
       jest
+        .spyOn(cashDrawerRepo, 'findOne')
+        .mockResolvedValue({ id: 1, merchant_id: 10, status: CashDrawerStatus.OPEN } as any);
+      jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValueOnce({ id: 98, status: CashShiftStatus.OPEN } as any);
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 99, status: CashShiftStatus.OPEN, openedByCollaborator: mockCollaborator } as any);
 
-      await expect(service.openShift(createDto, activeUser)).rejects.toThrow(
-        ConflictException,
-      );
+      const result = await service.openShift(createDto, activeUser);
+      expect(result.statusCode).toBe(201);
     });
 
     it('should throw ConflictException naming the active session id when the drawer already has an open shift', async () => {

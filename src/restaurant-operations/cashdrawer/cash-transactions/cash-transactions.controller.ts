@@ -130,10 +130,22 @@ export class CashTransactionsController {
       "Retrieves all cash transactions for the authenticated user's merchant with filtering and pagination support.",
   })
   @ApiQuery({
+    name: 'merchantId',
+    required: false,
+    type: Number,
+    description: 'Merchant context (derived from JWT; whitelisted for client compatibility)',
+  })
+  @ApiQuery({
     name: 'cashDrawerId',
     required: false,
     type: Number,
     description: 'Filter by cash drawer ID',
+  })
+  @ApiQuery({
+    name: 'shiftId',
+    required: false,
+    type: Number,
+    description: 'Filter by cash shift ID',
   })
   @ApiQuery({
     name: 'orderId',
@@ -146,13 +158,25 @@ export class CashTransactionsController {
     required: false,
     enum: CashTransactionType,
     description:
-      'Filter by transaction type (opening, sale, refund, tip, withdrawal, adjustment_up, adjustment_down, close, pause)',
+      'Filter by transaction type (opening, sale, refund, tip, withdrawal, adjustment_up, adjustment_down, close, pause). Also accepts uppercase labels: SALE, REFUND, PAY_IN, PAY_OUT, DRAWER_DROP.',
   })
   @ApiQuery({
     name: 'status',
     required: false,
     enum: CashTransactionStatus,
-    description: 'Filter by transaction status (active, deleted)',
+    description: 'Filter by transaction status (active, deleted). Also accepts ACTIVE, VOIDED, AUDITED, RECONCILED.',
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    type: String,
+    description: 'Filter by created_at >= startDate (YYYY-MM-DD)',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    type: String,
+    description: 'Filter by created_at <= endDate (YYYY-MM-DD)',
   })
   @ApiQuery({
     name: 'page',

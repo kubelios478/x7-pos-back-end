@@ -18,6 +18,7 @@ import { CreateCashDrawerDto } from './dto/create-cash-drawer.dto';
 import { CloseCashDrawerDto } from './dto/close-cash-drawer.dto';
 import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';
 import { CashDrawerStatus } from './constants/cash-drawer-status.enum';
+import { CashDrawerHistoryService } from '../cash-drawer-history/cash-drawer-history.service';
 import { ShiftRole } from '../../shift/shifts/constants/shift-role.enum';
 import { ShiftStatus } from '../../shift/shifts/constants/shift-status.enum';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
@@ -153,7 +154,6 @@ describe('CashDrawersService', () => {
         .mockResolvedValue(mockCashDrawer as any);
       jest
         .spyOn(cashDrawerRepository, 'findOne')
-        .mockResolvedValueOnce(null) // no existing open drawer for the active shift
         .mockResolvedValueOnce(mockCashDrawer as any); // complete drawer after save
 
       const result = await service.create(createCashDrawerDto, mockUser);
@@ -221,8 +221,7 @@ describe('CashDrawersService', () => {
       ).rejects.toThrow('No collaborator profile is linked to your account.');
     });
 
-    it('should throw ConflictException naming the active session id when the shift already has an open drawer', async () => {
-      const existingOpenCashDrawer = { ...mockCashDrawer, id: 12 };
+    it('should allow creating a cash drawer even when another cash drawer is already open', async () => {
       jest
         .spyOn(shiftRepository, 'findOne')
         .mockResolvedValue(mockShift as any);
@@ -230,17 +229,14 @@ describe('CashDrawersService', () => {
         .spyOn(collaboratorRepository, 'findOne')
         .mockResolvedValue(mockCollaborator as any);
       jest
+        .spyOn(cashDrawerRepository, 'save')
+        .mockResolvedValue(mockCashDrawer as any);
+      jest
         .spyOn(cashDrawerRepository, 'findOne')
-        .mockResolvedValue(existingOpenCashDrawer as any);
+        .mockResolvedValue(mockCashDrawer as any);
 
-      await expect(
-        service.create(createCashDrawerDto, mockUser),
-      ).rejects.toThrow(ConflictException);
-      await expect(
-        service.create(createCashDrawerDto, mockUser),
-      ).rejects.toThrow(
-        'An active cash drawer session (#CD-12) is already open for this shift. Please close the active session before opening a new drawer.',
-      );
+      const result = await service.create(createCashDrawerDto, mockUser);
+      expect(result.statusCode).toBe(201);
     });
 
     it('should not conflict with an open drawer for the same shift that belongs to a different merchant', async () => {
@@ -258,7 +254,6 @@ describe('CashDrawersService', () => {
         .mockResolvedValue(mockCollaborator as any);
       jest
         .spyOn(cashDrawerRepository, 'findOne')
-        .mockResolvedValueOnce(null) // merchant-scoped guard query excludes the other merchant's open drawer
         .mockResolvedValueOnce(mockCashDrawer as any); // complete drawer after save
       jest
         .spyOn(cashDrawerRepository, 'save')

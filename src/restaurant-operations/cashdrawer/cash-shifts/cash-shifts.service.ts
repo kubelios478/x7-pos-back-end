@@ -141,16 +141,6 @@ export class CashShiftsService {
       );
     }
 
-    // Validate that the collaborator does not already have an active shift
-    const existingCollaboratorShift = await this.cashShiftRepo.findOne({
-      where: { openedBy: collaborator.id, status: CashShiftStatus.OPEN },
-    });
-    if (existingCollaboratorShift) {
-      throw new ConflictException(
-        `This collaborator already has an open cash shift (ID: ${existingCollaboratorShift.id}). Close it before opening a new one.`,
-      );
-    }
-
     // Validate that the cash drawer does not already have an active shift
     const existingDrawerShift = await this.cashShiftRepo.findOne({
       where: { cashDrawerId: dto.cashDrawerId, status: CashShiftStatus.OPEN },
