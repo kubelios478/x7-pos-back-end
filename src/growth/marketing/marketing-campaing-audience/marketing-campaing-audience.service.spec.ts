@@ -153,7 +153,7 @@ describe('MarketingCampaingAudienceService', () => {
       };
 
     it('should create a marketing campaign audience entry successfully', async () => {
-      // Mock para verificar que la campaña existe
+      // Mockup to verify that the campaign exists
       const mockCampaignQueryBuilder = createMockQueryBuilder();
       mockCampaignQueryBuilder.getOne.mockResolvedValue(
         mockMarketingCampaign as any,
@@ -166,21 +166,21 @@ describe('MarketingCampaingAudienceService', () => {
         .spyOn(customerRepository, 'findOne')
         .mockResolvedValue(mockCustomer as any);
 
-      // Mock para verificar que NO existe una audiencia (debe devolver null)
+      // Mockup to verify that the audience does not exist (should return null)
       const mockCheckAudienceQueryBuilder = createMockQueryBuilder();
       mockCheckAudienceQueryBuilder.getOne.mockResolvedValue(null);
 
-      // Mock para obtener la audiencia creada después de guardar
+      // Mockup to obtain the created audience after saving
       const mockGetAudienceQueryBuilder = createMockQueryBuilder();
       mockGetAudienceQueryBuilder.getOne.mockResolvedValue(
         mockMarketingCampaignAudience as any,
       );
 
-      // Configurar el mock para devolver diferentes QueryBuilders en diferentes llamadas
+      // Configure the mock to return different QueryBuilders on different calls
       jest
         .spyOn(marketingCampaignAudienceRepository, 'createQueryBuilder')
-        .mockReturnValueOnce(mockCheckAudienceQueryBuilder as any) // Primera llamada: verificar si existe
-        .mockReturnValueOnce(mockGetAudienceQueryBuilder as any); // Segunda llamada: obtener la creada
+        .mockReturnValueOnce(mockCheckAudienceQueryBuilder as any) // First call: check if it exists
+        .mockReturnValueOnce(mockGetAudienceQueryBuilder as any); // Second call: obtain the created one
 
       jest
         .spyOn(marketingCampaignAudienceRepository, 'save')
@@ -204,7 +204,7 @@ describe('MarketingCampaingAudienceService', () => {
       const dtoWithoutStatus = { ...createMarketingCampaignAudienceDto };
       delete dtoWithoutStatus.status;
 
-      // Mock para verificar que la campaña existe
+      // Mockup to verify that the campaign exists
       const mockCampaignQueryBuilder = createMockQueryBuilder();
       mockCampaignQueryBuilder.getOne.mockResolvedValue(
         mockMarketingCampaign as any,
@@ -216,7 +216,7 @@ describe('MarketingCampaingAudienceService', () => {
         .spyOn(customerRepository, 'findOne')
         .mockResolvedValue(mockCustomer as any);
 
-      // Mock para verificar que NO existe una audiencia (debe devolver null)
+      // Mockup to verify that the audience does not exist (should return null)
       const mockCheckAudienceQueryBuilder = createMockQueryBuilder();
       mockCheckAudienceQueryBuilder.getOne.mockResolvedValue(null);
 
@@ -228,17 +228,17 @@ describe('MarketingCampaingAudienceService', () => {
         .spyOn(marketingCampaignAudienceRepository, 'save')
         .mockResolvedValue(audienceWithDefaultStatus as any);
 
-      // Mock para obtener la audiencia creada después de guardar
+      // Mockup to obtain the created audience after saving
       const mockGetAudienceQueryBuilder = createMockQueryBuilder();
       mockGetAudienceQueryBuilder.getOne.mockResolvedValue(
         audienceWithDefaultStatus as any,
       );
 
-      // Configurar el mock para devolver diferentes QueryBuilders en diferentes llamadas
+      // Configure the mock to return different QueryBuilders on different calls
       jest
         .spyOn(marketingCampaignAudienceRepository, 'createQueryBuilder')
-        .mockReturnValueOnce(mockCheckAudienceQueryBuilder as any) // Primera llamada: verificar si existe
-        .mockReturnValueOnce(mockGetAudienceQueryBuilder as any); // Segunda llamada: obtener la creada
+        .mockReturnValueOnce(mockCheckAudienceQueryBuilder as any) // First call: check if it exists
+        .mockReturnValueOnce(mockGetAudienceQueryBuilder as any); // Second call: obtain the created one
 
       const result = await service.create(dtoWithoutStatus, 1);
 

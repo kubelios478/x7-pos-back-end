@@ -164,7 +164,7 @@ export class LedgerAccountsService implements OnModuleInit {
     }
   }
 
-  // ─── Helpers privados ──────────────────────────────────────────────────────
+  // ─── privateHelpers  ──────────────────────────────────────────────────────
 
   private async getCompanyId(merchantId: number): Promise<number> {
     const merchant = await this.merchantRepository.findOne({
@@ -224,7 +224,7 @@ export class LedgerAccountsService implements OnModuleInit {
     };
   }
 
-  /** Búsqueda interna por company_id directo (sin need to resolve from merchantId) */
+  /** Internal search by direct company_id (without need to resolve from merchantId) */
   private async fetchOne(
     id: number,
     company_id: number,
@@ -247,7 +247,7 @@ export class LedgerAccountsService implements OnModuleInit {
     return this.buildResponse(account, createdUpdateDelete);
   }
 
-  // ─── CRUD público ──────────────────────────────────────────────────────────
+  // ─── Public CRUD ──────────────────────────────────────────────────────────
 
   async create(
     merchantId: number,

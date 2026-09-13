@@ -59,7 +59,9 @@ export class RecipeTheoreticalCostService {
     const legacyLines = baseLines.filter((l) => !l.rawMaterialId);
     const rawMaterialLines = baseLines.filter((l) => !!l.rawMaterialId);
 
-    const variantIds = [...new Set(legacyLines.map((l) => l.supplyVariantId as number))];
+    const variantIds = [
+      ...new Set(legacyLines.map((l) => l.supplyVariantId as number)),
+    ];
     const variants =
       variantIds.length > 0
         ? await manager.find(Variant, { where: { id: In(variantIds) } })

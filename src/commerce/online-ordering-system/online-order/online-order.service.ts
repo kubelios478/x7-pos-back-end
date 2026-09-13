@@ -18,10 +18,7 @@ import {
   GetOnlineOrderQueryDto,
   OnlineOrderSortBy,
 } from './dto/get-online-order-query.dto';
-import {
-  OnlineOrderResponseDto,
-  OneOnlineOrderResponseDto,
-} from './dto/online-order-response.dto';
+import { OneOnlineOrderResponseDto } from './dto/online-order-response.dto';
 import { PaginatedOnlineOrderResponseDto } from './dto/paginated-online-order-response.dto';
 import { OnlineStoreStatus } from '../online-stores/constants/online-store-status.enum';
 import { OnlineOrderStatus } from './constants/online-order-status.enum';
@@ -47,7 +44,7 @@ export class OnlineOrderService {
     private readonly onlineOrderItemRepository: Repository<OnlineOrderItem>,
   ) {}
 
-  /** Joins líneas online, cocina y relaciones para respuesta anidada (list/detail). */
+  /** Joins lines online, kitchen and relationships for nested response (list/detail). */
   private addOnlineOrderDetailJoins(
     qb: SelectQueryBuilder<OnlineOrder>,
   ): SelectQueryBuilder<OnlineOrder> {

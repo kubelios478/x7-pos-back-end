@@ -138,10 +138,9 @@ describe('ItemsService', () => {
         { provide: getRepositoryToken(Location), useValue: mockLocationRepo },
         { provide: getRepositoryToken(Variant), useValue: mockVariantRepo },
         { provide: MovementsService, useValue: mockMovementsService },
-      
+
         {
-          // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
-          // de pruebas no compilaba y la suite entera contaba como fallo.
+          // The service gained this dependency and the spec never registered it: the test module did not compile and the entire suite counted as a failure.
           provide: getRepositoryToken(Supply),
           useValue: {
             find: jest.fn(),
@@ -156,9 +155,9 @@ describe('ItemsService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
-          // Dependencia que el servicio ganó y este spec nunca registró.
+          // Dependency that the service won and this spec never registered.
           provide: StockLevelMonitorService,
           useValue: {
             create: jest.fn(),

@@ -26,7 +26,7 @@ import { ContractType } from './constants/contract-type.enum';
 import { EmploymentType } from './constants/employment-type.enum';
 import { PayFrequency } from './constants/pay-frequency.enum';
 
-/** Términos cuyo cambio queda registrado en la bitácora de enmiendas. */
+/** Terms whose change is recorded in the amendment log. */
 const AUDITED_FIELDS = [
   'employment_type',
   'contract_type',
@@ -68,11 +68,9 @@ export class CollaboratorContractsService {
   }
 
   /**
-   * Tarifa pactada según el periodo.
+   * Rate agreed upon according to the period.
    *
-   * La nómina sigue leyendo `hourly_rate` y `base_salary`, así que el importe único que
-   * maneja RRHH se guarda en uno u otro y se reconstruye aquí. Sin esto la parrilla tendría
-   * que adivinar cuál de los dos campos mirar en cada fila.
+   * The payroll system still reads `hourly_rate` and `base_salary`, so the single amount handled by HR is stored in one or the other and reconstructed here. Without this, the spreadsheet would have to guess which of the two fields to look at in each row.
    */
   private wageRateOf(c: CollaboratorContract): number {
     return c.pay_frequency === PayFrequency.HOURLY
@@ -104,7 +102,8 @@ export class CollaboratorContractsService {
       start_date: this.toDateOnly(c.start_date) ?? '',
       end_date: this.toDateOnly(c.end_date),
       created_at: c.created_at?.toISOString() ?? '',
-      updated_at: c.updated_at?.toISOString() ?? c.created_at?.toISOString() ?? '',
+      updated_at:
+        c.updated_at?.toISOString() ?? c.created_at?.toISOString() ?? '',
       collaborator: c.collaborator
         ? {
             id: c.collaborator.id,
@@ -130,11 +129,11 @@ export class CollaboratorContractsService {
   }
 
   /**
-   * Contrato vigente que impediría abrir otro para el mismo colaborador.
+   * Active contract that would prevent opening another for the same collaborator.
    *
-   * Un contrato marcado como activo pero ya caducado no bloquea: la renovación es
-   * justamente el caso en el que RRHH necesita dar de alta el siguiente. Sólo estorba el que
-   * sigue en vigor —sin fecha de fin, o con una que aún no ha llegado—.
+   * An contract marked as active but already expired does not block: renewal is
+   * exactly the case that HR needs: the old contract is still marked as active but its end date has already passed, so it shouldn't interfere with the next one. Only the one that
+   * is still in force —without an end date, or with one that hasn't arrived yet—.
    */
   private async blockingActiveContract(
     collaboratorId: number,
@@ -165,11 +164,11 @@ export class CollaboratorContractsService {
   }
 
   /**
-   * Reparte el importe único del formulario entre los campos que consume la nómina.
+   * Distributes the unique amount from the form among the fields consumed by the payroll system.
    *
-   * RRHH pacta "22,50 por hora" o "3.500 al mes"; el motor de pagos necesita saber en cuál
-   * de los dos campos vive esa cifra y con qué modelo (`contract_type`) calcular. Se deriva
-   * aquí para que el formulario no tenga que conocer el modelo de nómina.
+   * HR agrees on "22.50 per hour" or "3,500 per month"; the payroll engine needs to know in which
+   * of the two fields that amount lives and with which model (`contract_type`) to calculate. This is
+   * derived here so the form doesn't have to know about the payroll model.
    */
   private resolveCompensation(
     dto: Pick<
@@ -234,7 +233,9 @@ export class CollaboratorContractsService {
       where: { id: dto.company_id },
     });
     if (!company)
-      throw new NotFoundException(`Company with ID ${dto.company_id} not found`);
+      throw new NotFoundException(
+        `Company with ID ${dto.company_id} not found`,
+      );
 
     const merchant = await this.merchantRepo.findOne({
       where: { id: dto.merchant_id },
@@ -307,8 +308,7 @@ export class CollaboratorContractsService {
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
 
-    // La ficha del colaborador viaja con el contrato: la parrilla muestra nombre y rol en
-    // cada fila y sin el join tendría que pedirlos uno a uno.
+    // The collaborator's information travels with the contract: the grid shows name and role in each row and without the join I would have to request them one by one.
     const qb = this.contractRepo
       .createQueryBuilder('contract')
       .leftJoinAndSelect('contract.collaborator', 'collaborator')
@@ -552,7 +552,7 @@ export class CollaboratorContractsService {
     };
   }
 
-  /** Enlaza el documento firmado ya almacenado y lo deja anotado en la bitácora. */
+  /** It links the already stored signed document and records it in the log.. */
   async attachDocument(
     id: number,
     document: { url: string; name: string },

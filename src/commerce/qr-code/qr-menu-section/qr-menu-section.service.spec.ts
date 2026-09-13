@@ -34,7 +34,7 @@ describe('QrMenuSectionService', () => {
   const mockUpdateQrMenuSectionDto: UpdateQRMenuSectionDto = {
     qrMenu: 1,
     name: 'Drinks Section',
-    description: 'This is de Driks section of the menu',
+    description: 'This is the Drinks section of the menu',
     status: 'active',
     display_order: 500,
   };
@@ -149,7 +149,7 @@ describe('QrMenuSectionService', () => {
     it('should return all qr menu sections', async () => {
       const mockQRMenuSection = [mockQrMenuSection as QRMenuSection];
 
-      // QueryBuilder ya mockeado en el beforeEach
+      // QueryBuilder already mocked in beforeEach
       const qb = repository.createQueryBuilder() as Partial<
         SelectQueryBuilder<QRMenuSection>
       >;

@@ -297,7 +297,10 @@ describe('MerchantTipRuleService', () => {
     it('rejects suggested percentages that do not sum to 100 for percentage calculation', async () => {
       await expect(
         service.create(
-          { ...mockCreateMerchantTipRuleDto, suggestedPercentages: [0.15, 0.2] },
+          {
+            ...mockCreateMerchantTipRuleDto,
+            suggestedPercentages: [0.15, 0.2],
+          },
           mockMerchantAdminUser,
         ),
       ).rejects.toThrow('Suggested percentages must sum to 100%');
@@ -365,7 +368,7 @@ describe('MerchantTipRuleService', () => {
     it('should return all merchant tip rules', async () => {
       const mockMerchantTipRules = [mockMerchantTipRule as MerchantTipRule];
 
-      // QueryBuilder ya mockeado en el beforeEach
+      // QueryBuilder already mocked in beforeEach
       const qb = merchantTipRuleRepository.createQueryBuilder() as Partial<
         SelectQueryBuilder<MerchantTipRule>
       >;
@@ -490,9 +493,7 @@ describe('MerchantTipRuleService', () => {
     });
 
     it('should throw error for invalid ID (zero)', async () => {
-      await expect(
-        service.findOne(0, mockMerchantAdminUser),
-      ).rejects.toThrow();
+      await expect(service.findOne(0, mockMerchantAdminUser)).rejects.toThrow();
     });
 
     it('should throw error for invalid ID (negative)', async () => {
@@ -505,9 +506,9 @@ describe('MerchantTipRuleService', () => {
       const qb = merchantTipRuleRepository.createQueryBuilder() as any;
       qb.getOne.mockResolvedValue(null);
 
-      await expect(
-        service.findOne(999, mockMerchantAdminUser),
-      ).rejects.toThrow('Merchant Tip Rule not found');
+      await expect(service.findOne(999, mockMerchantAdminUser)).rejects.toThrow(
+        'Merchant Tip Rule not found',
+      );
     });
 
     it('scopes findOne to a safe field list via queryBuilder instead of loading raw relations', async () => {
@@ -549,9 +550,7 @@ describe('MerchantTipRuleService', () => {
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue({ id: 10, companyId: 999 } as Merchant);
 
-      await expect(
-        service.findOne(1, mockMerchantAdminUser),
-      ).rejects.toThrow();
+      await expect(service.findOne(1, mockMerchantAdminUser)).rejects.toThrow();
     });
   });
 
@@ -618,7 +617,11 @@ describe('MerchantTipRuleService', () => {
       findOneSpy.mockResolvedValue(null);
 
       await expect(
-        service.update(999, mockUpdateMerchantTipRuleDto, mockMerchantAdminUser),
+        service.update(
+          999,
+          mockUpdateMerchantTipRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow('Merchant Tip Rule not found');
       expect(findOneSpy).toHaveBeenCalledWith({
         where: {
@@ -672,13 +675,21 @@ describe('MerchantTipRuleService', () => {
         id: 10,
         companyId: (mockMerchantTipRule.company as Company).id,
       } as Merchant);
-      const sessionUser = { id: 1, username: 'session-user', email: 'session@test.com' } as User;
+      const sessionUser = {
+        id: 1,
+        username: 'session-user',
+        email: 'session@test.com',
+      } as User;
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(sessionUser);
       const saveSpy = jest
         .spyOn(merchantTipRuleRepository, 'save')
         .mockImplementation(async (entity) => entity as MerchantTipRule);
 
-      await service.update(1, mockUpdateMerchantTipRuleDto, mockMerchantAdminUser);
+      await service.update(
+        1,
+        mockUpdateMerchantTipRuleDto,
+        mockMerchantAdminUser,
+      );
 
       expect(saveSpy).toHaveBeenCalledWith(
         expect.objectContaining({

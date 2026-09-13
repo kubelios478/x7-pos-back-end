@@ -199,7 +199,7 @@ describe('QRLocationService', () => {
     it('should return all qr location', async () => {
       const mockQRLocations = [mockQRLocation as QRLocation];
 
-      // QueryBuilder ya mockeado en el beforeEach
+      // QueryBuilder already mocked in beforeEach
       const qb = repository.createQueryBuilder() as Partial<
         SelectQueryBuilder<QRLocation>
       >;

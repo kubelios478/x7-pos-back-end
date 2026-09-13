@@ -70,7 +70,7 @@ export class LoyaltyProgramsService {
     }
   }
 
-  /** Crea todos los tiers definidos por defecto al crear el programa. */
+  /** Create all the tiers defined by default when creating the program. */
   private async createDefaultTiers(loyaltyProgramId: number): Promise<void> {
     for (const tierData of DEFAULT_PROGRAM_TIERS) {
       const tier = this.loyaltyTierRepo.create({

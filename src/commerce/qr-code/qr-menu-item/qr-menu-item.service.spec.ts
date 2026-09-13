@@ -195,7 +195,7 @@ describe('QrMenuItemService', () => {
     it('should return all qr menu items', async () => {
       const mockQRMenuItems = [mockQRMenuItem as QRMenuItem];
 
-      // QueryBuilder ya mockeado en el beforeEach
+      // QueryBuilder already mocked in beforeEach
       const qb = repository.createQueryBuilder() as Partial<
         SelectQueryBuilder<QRMenuItem>
       >;

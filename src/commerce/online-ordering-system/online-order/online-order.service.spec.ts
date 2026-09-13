@@ -15,10 +15,7 @@ import { Order } from '../../../restaurant-operations/pos/orders/entities/order.
 import { Customer } from '../../../core/business-partners/customers/entities/customer.entity';
 import { CreateOnlineOrderDto } from './dto/create-online-order.dto';
 import { UpdateOnlineOrderDto } from './dto/update-online-order.dto';
-import {
-  GetOnlineOrderQueryDto,
-  OnlineOrderSortBy,
-} from './dto/get-online-order-query.dto';
+import { GetOnlineOrderQueryDto } from './dto/get-online-order-query.dto';
 import { OnlineStoreStatus } from '../online-stores/constants/online-store-status.enum';
 import { OnlineOrderStatus } from './constants/online-order-status.enum';
 import { OnlineOrderType } from './constants/online-order-type.enum';

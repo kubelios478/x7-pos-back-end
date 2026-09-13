@@ -11,8 +11,8 @@ export interface OnlineOrderUpdatedPayload {
 }
 
 /**
- * Contrato de tiempo real: emite eventos en proceso. Sustituir/adaptar el
- * transporte (WebSocket, SSE, etc.) sin cambiar los productores de dominio.
+ * Real-time contract: emits events in progress. Replace/adapt the
+ * transport (WebSocket, SSE, etc.) without changing the domain producers.
  */
 @Injectable()
 export class OnlineOrderRealtimePublisher {

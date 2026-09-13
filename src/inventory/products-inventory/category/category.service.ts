@@ -61,7 +61,10 @@ export class CategoryService {
         where: { name, merchantId: merchant_id, isActive: false },
       });
 
-      const isActiveValue = createCategoryDto.isActive !== undefined ? createCategoryDto.isActive : true;
+      const isActiveValue =
+        createCategoryDto.isActive !== undefined
+          ? createCategoryDto.isActive
+          : true;
 
       if (existingButIsNotActive) {
         existingButIsNotActive.isActive = isActiveValue;
@@ -91,7 +94,7 @@ export class CategoryService {
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // 2. Build query with filters (se elimina el filtro restrictivo de isActive para permitir traer las inactivas)
+    // 2. Build query with filters (the restrictive filter of isActive is removed to allow retrieving inactive ones)
     const queryBuilder = this.categoryRepo
       .createQueryBuilder('category')
       .leftJoinAndSelect('category.merchant', 'merchant')
@@ -302,14 +305,20 @@ export class CategoryService {
 
         for (const sub of subCategories) {
           await hideRecursive(sub.id);
-          await this.productsService.softRemoveByCategoryId(sub.id, merchant_id);
+          await this.productsService.softRemoveByCategoryId(
+            sub.id,
+            merchant_id,
+          );
           sub.isActive = false;
           await this.categoryRepo.save(sub);
         }
       };
 
       await hideRecursive(category.id);
-      await this.productsService.softRemoveByCategoryId(category.id, merchant_id);
+      await this.productsService.softRemoveByCategoryId(
+        category.id,
+        merchant_id,
+      );
       category.isActive = false;
       await this.categoryRepo.save(category);
       return this.findOne(id, merchant_id, 'Deleted');

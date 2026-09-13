@@ -29,9 +29,9 @@ const mockUser = {
   merchant: { id: MERCHANT_ID },
 };
 /**
- * Forma REAL del request: Passport cuelga el usuario en `req.user`.
- * Antes esto aliasaba el usuario pelado, así que el spec verificaba un contrato
- * que producción no cumplía.
+ * ACTUAL form of the request: Passport hangs the user in `req.user`.
+ * Previously, this aliased the bare user, so the spec was verifying a contract
+ * that production wasn't fulfilling.
  */
 const mockRequest = { user: mockUser } as unknown as ExpressRequest & {
   user?: AuthenticatedUser;

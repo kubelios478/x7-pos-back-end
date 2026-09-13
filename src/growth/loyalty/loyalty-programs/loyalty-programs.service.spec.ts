@@ -114,7 +114,7 @@ describe('LoyaltyProgramsService', () => {
 
   describe('Create', () => {
     const mockCreateDto: CreateLoyaltyProgramDto = {
-      redeem_points_per_currency: 1, // fixture al día con el tipo
+      redeem_points_per_currency: 1, // fixture up to date with the type
       name: 'New Program',
       description: 'A new test program',
       points_per_currency: 10,

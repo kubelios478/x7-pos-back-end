@@ -321,7 +321,7 @@ describe('LoyaltyCustomerService', () => {
       loyaltyTierRepo.findOneBy.mockResolvedValue(mockLoyaltyTier as any);
       loyaltyTierRepo.find.mockResolvedValue([mockLoyaltyTier as any]);
       customerRepo.findOneBy.mockResolvedValue(mockCustomer as any);
-      mockQueryBuilder.getOne.mockResolvedValueOnce(newLoyaltyCustomer as any); // alreadyInProgram → ya existe activo
+      mockQueryBuilder.getOne.mockResolvedValueOnce(newLoyaltyCustomer as any); // alreadyInProgram → It already exists
       jest.spyOn(ErrorHandler, 'exists').mockImplementation(() => {
         throw new Error(ErrorMessage.LOYALTY_CUSTOMER_EXISTS);
       });

@@ -359,7 +359,7 @@ export class PurchaseOrderItemService {
 
     try {
       purchaseOrderItem.isActive = false;
-      await this.purchaseOrderItemRepository.save(purchaseOrderItem); // Corregir el repositorio
+      await this.purchaseOrderItemRepository.save(purchaseOrderItem); // Fix the repository
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);

@@ -9,7 +9,7 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import type { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('SupplierInvoicesController', () => {
-  /** El controlador recibe el usuario con @CurrentUser en TODOS sus endpoints. */
+  /** The controller receives the user with @CurrentUser on ALL its endpoints.*/
   const mockCurrentUser: AuthenticatedUser = {
     id: 1,
     email: 'a@b.c',
@@ -117,7 +117,10 @@ describe('SupplierInvoicesController', () => {
         paginationMeta: {},
       });
       await controller.findAll(query, mockCurrentUser);
-      expect(mockSupplierInvoicesService.findAll).toHaveBeenCalledWith(query, 3);
+      expect(mockSupplierInvoicesService.findAll).toHaveBeenCalledWith(
+        query,
+        3,
+      );
     });
   });
 });
