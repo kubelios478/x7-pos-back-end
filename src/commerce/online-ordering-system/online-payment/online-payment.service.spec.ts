@@ -14,10 +14,7 @@ import { OnlinePayment } from './entities/online-payment.entity';
 import { OnlineOrder } from '../online-order/entities/online-order.entity';
 import { CreateOnlinePaymentDto } from './dto/create-online-payment.dto';
 import { UpdateOnlinePaymentDto } from './dto/update-online-payment.dto';
-import {
-  GetOnlinePaymentQueryDto,
-  OnlinePaymentSortBy,
-} from './dto/get-online-payment-query.dto';
+import { GetOnlinePaymentQueryDto } from './dto/get-online-payment-query.dto';
 import { OnlineStoreStatus } from '../online-stores/constants/online-store-status.enum';
 import { OnlineOrderStatus } from '../online-order/constants/online-order-status.enum';
 import { OnlineOrderPaymentStatus } from '../online-order/constants/online-order-payment-status.enum';

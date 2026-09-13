@@ -21,14 +21,14 @@ const mockReqUser: AuthenticatedUser = {
   merchant: { id: MERCHANT_ID },
 };
 
-  /**
-   * Forma REAL del request: Passport cuelga el usuario en `req.user`.
-   * Pasar el usuario pelado hacía que el spec verificara un contrato que
-   * producción no cumple, y por eso el 403 del módulo pasó desapercibido.
-   */
-  const mockReq = { user: mockReqUser } as unknown as ExpressRequest & {
-    user?: AuthenticatedUser;
-  };
+/**
+ * REAL form of the request: Passport hangs the user in `req.user`.
+ * Passing the bare user caused the spec to verify a contract that
+ * production doesn't comply with, and that's why the module's 403 error went unnoticed.
+ */
+const mockReq = { user: mockReqUser } as unknown as ExpressRequest & {
+  user?: AuthenticatedUser;
+};
 
 const mockOneResponse: OneReceiptItemResponseDto = {
   statusCode: 200,
@@ -133,7 +133,9 @@ describe('ReceiptItemController', () => {
 
   describe('update', () => {
     it('should call service.update with id, dto and merchantId', async () => {
-      const dto: UpdateReceiptItemDto = { metadata: '{"notes":"Sin cebolla"}' };
+      const dto: UpdateReceiptItemDto = {
+        metadata: '{"notes":"Without onion"}',
+      };
       const updated = {
         ...mockOneResponse,
         data: { ...mockOneResponse.data, metadata: dto.metadata },

@@ -26,8 +26,7 @@ export async function findOrCreateAvailableTier(
   merchantId: number,
   tierRepo: Repository<LoyaltyTier>,
 ): Promise<LoyaltyTier> {
-  // Buscar el nivel base (el de menor puntos) para este programa
-  // En el nuevo sistema, el nivel base será el que tenga level >= 11 o el de menor puntos
+  // To find the base level (the one with the fewest points) for this program in the new system, the base level will be the one with level >= 11 or the one with the fewest points
   const baseTier = await tierRepo.findOne({
     where: {
       loyalty_program_id: loyaltyProgramId,
@@ -40,7 +39,7 @@ export async function findOrCreateAvailableTier(
     return baseTier;
   }
 
-  // Si por alguna razón no existe, creamos el default ("Level 1")
+  // If for some reason it does not exist, we create the default ("Level 1")
   const defaultData = DEFAULT_PROGRAM_TIERS[0];
   const tier = tierRepo.create({
     ...defaultData,
@@ -52,10 +51,10 @@ export async function findOrCreateAvailableTier(
 }
 
 /**
- * Recalcula los niveles de todos los tiers activos de un programa.
- * Ordena por min_points DESC → el de más puntos recibe level 1 (mejor),
- * y así sucesivamente. El merchant define los nombres; el sistema solo
- * asigna el número de nivel según los puntos mínimos.
+ * Recalculates the levels of all active tiers in a program.
+ * Sorts by min_points DESC → the one with the most points receives level 1 (best),
+ * and so on. The merchant defines the names; the system only
+ * assigns the level number based on the minimum points.
  */
 export async function recalculateProgramLevels(
   loyaltyProgramId: number,
@@ -88,7 +87,7 @@ export async function recalculateProgramLevels(
 }
 
 /**
- * Evalúa si un loyalty customer debe subir de tier dado su lifetimePoints.
+ * Evaluates if a loyalty customer should upgrade their tier based on their lifetimePoints.
  */
 export async function evaluateTierUpgrade(
   loyaltyCustomer: LoyaltyCustomer,
@@ -106,7 +105,7 @@ export async function evaluateTierUpgrade(
     return null;
   }
 
-  // Obtener todos los tiers activos del programa, ordenados de mayor a menor min_points
+  // Retrieve all active tiers of the program, ordered from highest to lowest min_points
   const tiers = await tierRepo.find({
     where: {
       loyalty_program_id: programId,
@@ -119,7 +118,7 @@ export async function evaluateTierUpgrade(
     `Evaluating upgrade for Customer ${loyaltyCustomer.id}. Points: ${loyaltyCustomer.lifetimePoints}. Current Tier ID: ${loyaltyCustomer.loyaltyTierId}. Found ${tiers.length} tiers in program ${programId}`,
   );
 
-  // Encontrar el tier de mayor umbral que el cliente ya superó
+  // Find the tier with the highest threshold that the customer has already exceeded
   const eligibleTier = tiers.find(
     (t) => loyaltyCustomer.lifetimePoints >= t.min_points,
   );
@@ -138,7 +137,7 @@ export async function evaluateTierUpgrade(
 
   if (!eligibleTier) return null;
 
-  // Solo hacer upgrade si el tier elegible difiere del actual
+  // Only upgrade if the eligible tier differs from the current one.
   if (loyaltyCustomer.loyaltyTierId === eligibleTier.id) return null;
 
   return eligibleTier;

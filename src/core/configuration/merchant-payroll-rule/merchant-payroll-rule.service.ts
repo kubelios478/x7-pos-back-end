@@ -278,11 +278,16 @@ export class MerchantPayrollRuleService {
       dto.payDayOfWeek !== undefined ||
       dto.payDayOfMonth !== undefined
     ) {
-      const effectiveFrequency = dto.frequencyPayroll ?? merchantPayrollRule.frequencyPayroll;
+      const effectiveFrequency =
+        dto.frequencyPayroll ?? merchantPayrollRule.frequencyPayroll;
       const effectivePayDayOfWeek =
-        dto.payDayOfWeek !== undefined ? dto.payDayOfWeek : merchantPayrollRule.payDayOfWeek;
+        dto.payDayOfWeek !== undefined
+          ? dto.payDayOfWeek
+          : merchantPayrollRule.payDayOfWeek;
       const effectivePayDayOfMonth =
-        dto.payDayOfMonth !== undefined ? dto.payDayOfMonth : merchantPayrollRule.payDayOfMonth;
+        dto.payDayOfMonth !== undefined
+          ? dto.payDayOfMonth
+          : merchantPayrollRule.payDayOfMonth;
 
       const resolved = this.resolvePayrollDayFields(
         effectiveFrequency,

@@ -30,7 +30,7 @@ describe('JournalEntryService', () => {
   };
   let mockQueryBuilder: MockQueryBuilder;
 
-  // ─── Mocks de datos ────────────────────────────────────────────────────────
+  // ─── Data Mocks ────────────────────────────────────────────────────────
 
   const mockMerchant = {
     id: 1,
@@ -305,7 +305,7 @@ describe('JournalEntryService', () => {
         ...mockCreateDto,
         lines: [
           { account_id: 1, debit: 1000, credit: 0 },
-          { account_id: 1, debit: 0, credit: 500 }, // no balancea
+          { account_id: 1, debit: 0, credit: 500 }, // It doesn't balance
         ],
       };
 
@@ -518,7 +518,7 @@ describe('JournalEntryService', () => {
       const unbalancedUpdate: UpdateJournalEntryDto = {
         lines: [
           { account_id: 1, debit: 500, credit: 0 },
-          { account_id: 1, debit: 0, credit: 999 }, // no balancea
+          { account_id: 1, debit: 0, credit: 999 }, // It doesn't balance
         ],
       };
 

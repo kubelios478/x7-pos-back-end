@@ -325,7 +325,11 @@ describe('MerchantTipRuleController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, mockUpdateMerchantTipRuleDto, mockAuthenticatedUser),
+        controller.update(
+          1,
+          mockUpdateMerchantTipRuleDto,
+          mockAuthenticatedUser,
+        ),
       ).rejects.toThrow(errorMessage);
 
       expect(updateSpy).toHaveBeenCalledWith(

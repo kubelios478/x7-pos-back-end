@@ -39,7 +39,7 @@ export class LoyaltyCustomerService {
   ): Promise<OneLoyaltyCustomerResponse> {
     let { loyalty_program_id, customer_id } = createLoyaltyCustomerDto;
 
-    // Si no se proporciona ID, buscar el primero programa activo encontrado (por fecha de creación)
+    // If no ID is provided, search for the first active program found (by creation date)
     if (!loyalty_program_id) {
       const bestProgram = await this.loyaltyProgramRepo.findOne({
         where: { merchantId: merchant_id, is_active: true },
@@ -60,10 +60,10 @@ export class LoyaltyCustomerService {
       }
     }
 
-    // Determinar qué tier asignar
+    // Determine which tier to assign
     let assignedTier;
     if (createLoyaltyCustomerDto.loyalty_tier_id) {
-      // Si se provee un tier específico, validarlo directamente
+      // If a specific tier is provided, validate it directly
       assignedTier = await this.loyaltyTierRepo.findOneBy({
         id: createLoyaltyCustomerDto.loyalty_tier_id,
         loyalty_program_id: loyalty_program_id,
@@ -74,7 +74,7 @@ export class LoyaltyCustomerService {
         ErrorHandler.notFound(ErrorMessage.LOYALTY_TIER_NOT_FOUND);
       }
     } else {
-      // Sin tier específico: asignar el tier base del programa
+      // If no specific tier is provided: assign the base tier of the program
       assignedTier = await findOrCreateAvailableTier(
         loyalty_program_id,
         merchant_id,
@@ -90,7 +90,7 @@ export class LoyaltyCustomerService {
       ErrorHandler.notFound(ErrorMessage.CUSTOMER_NOT_FOUND);
     }
 
-    // Verificar si el customer ya está inscrito en CUALQUIER programa del merchant
+    // Verify if the customer is already enrolled in ANY program of the merchant
     const alreadyInProgram = await this.loyaltyCustomerRepository
       .createQueryBuilder('lc')
       .innerJoin('lc.loyaltyProgram', 'lp')
@@ -129,7 +129,7 @@ export class LoyaltyCustomerService {
       const savedLoyaltyCustomer =
         await this.loyaltyCustomerRepository.save(newLoyaltyCustomer);
 
-      // Evaluar si califica para un tier mejor de inmediato
+      // Evaluate if the customer qualifies for a better tier immediately
       const newTierOnCreate = await evaluateTierUpgrade(
         savedLoyaltyCustomer,
         this.loyaltyTierRepo,
@@ -398,13 +398,13 @@ export class LoyaltyCustomerService {
       loyaltyCustomer.loyaltyTierId = loyalty_tier_id;
     }
 
-    // Mapear campos snake_case a camelCase del modelo
+    // Map snake_case fields to camelCase of the model
     if (current_points !== undefined)
       loyaltyCustomer.currentPoints = current_points;
     if (lifetime_points !== undefined)
       loyaltyCustomer.lifetimePoints = lifetime_points;
 
-    // Aplicar otros campos (como is_active)
+    // Apply other fields (like is_active)
     Object.assign(loyaltyCustomer, other_data);
 
     try {

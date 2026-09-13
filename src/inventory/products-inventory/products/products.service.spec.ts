@@ -203,9 +203,9 @@ describe('ProductsService', () => {
           provide: VariantsService,
           useValue: mockVariantsService,
         },
-      
+
         {
-          // Dependencia que el servicio ganó y este spec nunca registró.
+          // Dependency that the service won and this spec never registered.
           provide: ItemsService,
           useValue: {
             create: jest.fn(),
@@ -215,9 +215,9 @@ describe('ProductsService', () => {
             remove: jest.fn(),
           },
         },
-      
+
         {
-          // Dependencia que el servicio ganó y este spec nunca registró.
+          // Dependency that the service won and this spec never registered.
           provide: PurchaseOrderItemService,
           useValue: {
             create: jest.fn(),
@@ -227,9 +227,9 @@ describe('ProductsService', () => {
             remove: jest.fn(),
           },
         },
-      
+
         {
-          // Dependencia que el servicio ganó y este spec nunca registró.
+          // Dependency that the service won and this spec never registered.
           provide: StockAvailabilityService,
           useValue: {
             create: jest.fn(),
@@ -639,7 +639,7 @@ describe('ProductsService', () => {
           isActive: true,
         },
       });
-      // Mock para la llamada final this.findOne
+      // Mock for the final call to this.findOne
       expect(productRepo.findOne).toHaveBeenCalledWith({
         where: {
           id: mockProduct.id,

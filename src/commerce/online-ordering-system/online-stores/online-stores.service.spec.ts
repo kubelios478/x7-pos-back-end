@@ -349,11 +349,11 @@ describe('OnlineStoresService', () => {
 
     it('should throw BadRequestException if page is less than 1', async () => {
       const invalidQuery = { ...query, page: 0 };
-      // El servicio valida con `query.page && query.page < 1`, pero 0 es falsy
-      // Necesitamos usar un valor negativo o verificar que el servicio valida correctamente
-      // Mirando el código del servicio, veo que usa `query.page && query.page < 1`
-      // Esto significa que si page es 0, no entra en el if. El servicio tiene un bug.
-      // Por ahora, vamos a usar un valor negativo para que pase la validación
+      // The service validates with `query.page && query.page < 1`, but 0 is falsy.
+      // We need to use a negative value or verify that the service validates correctly.
+      // Looking at the service code, I see that it uses `query.page && query.page < 1`.
+      // This means that if `page` is 0, it doesn't enter the `if` block. The service has a bug.
+      // For now, we'll use a negative value to pass the validation.
       const invalidQueryNegative = { ...query, page: -1 };
       await expect(service.findAll(invalidQueryNegative, 1)).rejects.toThrow(
         BadRequestException,
@@ -365,9 +365,9 @@ describe('OnlineStoresService', () => {
 
     it('should throw BadRequestException if limit is less than 1', async () => {
       const invalidQuery = { ...query, limit: 0 };
-      // El servicio valida con `query.limit && (query.limit < 1 || query.limit > 100)`
-      // Pero 0 es falsy, así que no entra en el if. El servicio tiene un bug.
-      // Por ahora, vamos a usar un valor negativo para que pase la validación
+      // The service validates with `query.limit && (query.limit < 1 || query.limit > 100)`.
+      // But 0 is falsy, so it doesn't enter the if statement. The service has a bug.
+      // For now, we'll use a negative value to pass the validation.
       const invalidQueryNegative = { ...query, limit: -1 };
       await expect(service.findAll(invalidQueryNegative, 1)).rejects.toThrow(
         BadRequestException,

@@ -35,9 +35,9 @@ describe('CollaboratorTimeEntriesService', () => {
         { provide: getRepositoryToken(Merchant), useValue: mockRepository },
         { provide: getRepositoryToken(Collaborator), useValue: mockRepository },
         { provide: getRepositoryToken(Shift), useValue: mockRepository },
-      
+
         {
-          // Dependencia que el servicio ganó y este spec nunca registró.
+          // Dependency that the service won and this spec never registered.
           provide: getRepositoryToken(TimeEntryRevision),
           useValue: {
             find: jest.fn(),

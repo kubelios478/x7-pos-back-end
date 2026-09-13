@@ -7,8 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-// Se importa desde la raíz del paquete: el `exports` de typeorm no publica la ruta
-// profunda `typeorm/query-builder/QueryPartialEntity`, así que tsc la resolvía pero jest no.
+// It is imported from the root of the package: typeorm's `exports` does not publish the deep path `typeorm/query-builder/QueryPartialEntity`, so tsc resolved it but jest did not.
 import type { QueryDeepPartialEntity } from 'typeorm';
 import { MarketingCouponRedemption } from './entities/marketing-coupon-redemption.entity';
 import { MarketingCoupon } from '../marketing-coupons/entities/marketing-coupon.entity';

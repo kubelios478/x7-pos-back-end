@@ -1,6 +1,6 @@
 /**
- * Reglas de negocio del directorio de contratos: solape de vigencias, derivación de la
- * retribución hacia los campos que consume la nómina y bitácora de enmiendas.
+ * Contract directory business rules: overlapping validity periods, allocation of
+ * compensation to the fields consumed by payroll and amendment log.
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -53,7 +53,7 @@ function contractFixture(
     end_date: null,
     created_at: new Date('2026-01-01T09:00:00Z'),
     updated_at: new Date('2026-01-01T09:00:00Z'),
-    collaborator: { id: COLLABORATOR_ID, name: 'Juan Pérez', role: 'waiter' },
+    collaborator: { id: COLLABORATOR_ID, name: 'Jhon Doe', role: 'waiter' },
     ...overrides,
   } as CollaboratorContract;
 }
@@ -99,7 +99,7 @@ describe('CollaboratorContractsService — lifecycle', () => {
       findOne: jest.fn().mockResolvedValue({
         id: COLLABORATOR_ID,
         merchant_id: MERCHANT_ID,
-        name: 'Juan Pérez',
+        name: 'Jhon Doe',
         role: 'waiter',
       }),
     };
@@ -125,7 +125,10 @@ describe('CollaboratorContractsService — lifecycle', () => {
             findOne: jest.fn().mockResolvedValue({ id: MERCHANT_ID }),
           },
         },
-        { provide: getRepositoryToken(Collaborator), useValue: collaboratorRepo },
+        {
+          provide: getRepositoryToken(Collaborator),
+          useValue: collaboratorRepo,
+        },
       ],
     }).compile();
 
@@ -141,7 +144,9 @@ describe('CollaboratorContractsService — lifecycle', () => {
 
   describe('overlap guard', () => {
     it('rejects a second contract while the current one is still in force', async () => {
-      contractRepo.find.mockResolvedValue([contractFixture({ end_date: null })]);
+      contractRepo.find.mockResolvedValue([
+        contractFixture({ end_date: null }),
+      ]);
 
       await expect(
         service.create({ ...baseCreateDto }, MERCHANT_ID),
@@ -158,8 +163,7 @@ describe('CollaboratorContractsService — lifecycle', () => {
       ).rejects.toThrow(/already has an active contract/);
     });
 
-    // La renovación es justo el caso que RRHH necesita: el contrato viejo sigue marcado
-    // como activo pero su fecha de fin ya pasó, así que no debe estorbar al siguiente.
+    // Renewal is exactly the case that HR needs: the old contract is still marked as active but its end date has already passed, so it shouldn't interfere with the next one.
     it('allows a renewal when the previous contract already expired', async () => {
       contractRepo.find.mockResolvedValue([
         contractFixture({ end_date: dateOffset(-1) }),
@@ -272,7 +276,11 @@ describe('CollaboratorContractsService — lifecycle', () => {
     it('rejects an end date that is not after the start date', async () => {
       await expect(
         service.create(
-          { ...baseCreateDto, start_date: '2026-05-01', end_date: '2026-05-01' },
+          {
+            ...baseCreateDto,
+            start_date: '2026-05-01',
+            end_date: '2026-05-01',
+          },
           MERCHANT_ID,
         ),
       ).rejects.toThrow('end_date must be after start_date');
@@ -334,13 +342,13 @@ describe('CollaboratorContractsService — lifecycle', () => {
 
       const res = await service.attachDocument(
         12,
-        { url: '/uploads/contracts/c-1.pdf', name: 'firmado.pdf' },
+        { url: '/uploads/contracts/c-1.pdf', name: 'Singed.pdf' },
         MERCHANT_ID,
         99,
       );
 
       expect(res.data.document_url).toBe('/uploads/contracts/c-1.pdf');
-      expect(res.data.document_name).toBe('firmado.pdf');
+      expect(res.data.document_name).toBe('Singed.pdf');
       const saved = revisionRepo.save.mock.calls[0][0] as Array<{
         field: string;
       }>;
@@ -382,7 +390,7 @@ describe('CollaboratorContractsService — lifecycle', () => {
       );
       expect(res.data[0].collaborator).toEqual({
         id: COLLABORATOR_ID,
-        name: 'Juan Pérez',
+        name: 'Jhon Doe',
         role: 'waiter',
       });
     });

@@ -6,8 +6,8 @@ import { OnlineOrderItem } from '../online-order-item/entities/online-order-item
 import { OnlineOrderItemStatus } from '../online-order-item/constants/online-order-item-status.enum';
 
 /**
- * Precio unitario desde catálogo (sin persistir en filas online).
- * Modificadores JSON no se suman aquí; el total POS tras aceptar es la fuente de verdad.
+ * Unit price from catalog (without persisting in online rows).
+ * JSON modifiers are not included here; the total POS after acceptance is the source of truth.
  */
 export function resolveCatalogUnitPrice(
   product: Product,
@@ -19,7 +19,7 @@ export function resolveCatalogUnitPrice(
   return Number(product.basePrice);
 }
 
-/** Línea con relaciones cargadas: POS enlazado gana sobre catálogo. */
+/** LLine with loaded relationships: POS linked wins over catalog. */
 export function resolveUnitPriceForOnlineOrderItem(
   line: OnlineOrderItem,
 ): number {
@@ -51,7 +51,7 @@ export async function computeOnlineOrderTotalAmount(
   }, 0);
 }
 
-/** Totales para un listado de pedidos (evita N+1 con una query de ítems). */
+/** Totals for a list of orders (avoid N+1 with an item query). */
 export async function computeOnlineOrderTotalAmountsForMany(
   orders: OnlineOrder[],
   itemRepo: Repository<OnlineOrderItem>,

@@ -172,7 +172,7 @@ describe('LoyaltyRewardsRedemptionsService', () => {
       loyaltyRewardRepo.findOne.mockResolvedValue(reward as any);
       orderRepo.findOneBy.mockResolvedValue(order as any);
 
-      // manager.findOne para check de duplicados
+      // manager.findOne to check for duplicates
       mockQueryRunner.manager.findOne = jest.fn().mockResolvedValue(null);
       mockQueryRunner.manager.create.mockReturnValue(newRedemption);
       mockQueryRunner.manager.save.mockResolvedValue(newRedemption);
@@ -448,7 +448,7 @@ describe('LoyaltyRewardsRedemptionsService', () => {
       const customer = getMockLoyaltyCustomer();
       mockQueryBuilder.getOne.mockResolvedValue(redemption as any);
       loyaltyCustomerRepo.findOneBy.mockResolvedValue(customer as any);
-      // El service falla en manager.save (baja lógica)
+      // The service fails at manager.save (low logic)
       mockQueryRunner.manager.save.mockRejectedValue(new Error('DB Error'));
 
       await expect(service.remove(1, merchantId)).rejects.toThrow();

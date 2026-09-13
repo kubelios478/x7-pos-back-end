@@ -107,9 +107,9 @@ describe('CategoryService', () => {
           provide: ProductsInventoryService,
           useValue: mockProductsInventoryService,
         },
-      
+
         {
-          // Dependencia que el servicio ganó y este spec nunca registró.
+          // Dependency that the service won and this spec never registered.
           provide: ProductsService,
           useValue: {
             create: jest.fn(),

@@ -57,7 +57,7 @@ describe('QrMenuSectionController', () => {
   const mockUpdateQrMenuSectionDto: UpdateQRMenuSectionDto = {
     qrMenu: 1,
     name: 'Drinks Section',
-    description: 'This is de Driks section of the menu',
+    description: 'This is the Drinks section of the menu',
     status: 'active',
     display_order: 500,
   };

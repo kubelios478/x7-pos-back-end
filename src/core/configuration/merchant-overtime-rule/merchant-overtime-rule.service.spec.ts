@@ -216,8 +216,12 @@ describe('MerchantOvertimeRuleService', () => {
       const createSpy = jest.spyOn(merchantOvertimeRuleRepository, 'create');
       const saveSpy = jest.spyOn(merchantOvertimeRuleRepository, 'save');
 
-      createSpy.mockReturnValue(mockMerchantOvertimeRule as MerchantOvertimeRule);
-      saveSpy.mockResolvedValue(mockMerchantOvertimeRule as MerchantOvertimeRule);
+      createSpy.mockReturnValue(
+        mockMerchantOvertimeRule as MerchantOvertimeRule,
+      );
+      saveSpy.mockResolvedValue(
+        mockMerchantOvertimeRule as MerchantOvertimeRule,
+      );
 
       const result = await service.create(
         mockCreateMerchantOvertimeRuleDto,
@@ -303,11 +307,16 @@ describe('MerchantOvertimeRuleService', () => {
       const createSpy = jest.spyOn(merchantOvertimeRuleRepository, 'create');
       const saveSpy = jest.spyOn(merchantOvertimeRuleRepository, 'save');
 
-      createSpy.mockReturnValue(mockMerchantOvertimeRule as MerchantOvertimeRule);
+      createSpy.mockReturnValue(
+        mockMerchantOvertimeRule as MerchantOvertimeRule,
+      );
       saveSpy.mockRejectedValue(new Error('Database error'));
 
       await expect(
-        service.create(mockCreateMerchantOvertimeRuleDto, mockMerchantAdminUser),
+        service.create(
+          mockCreateMerchantOvertimeRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow('Database error');
 
       expect(createSpy).toHaveBeenCalledWith(
@@ -320,7 +329,10 @@ describe('MerchantOvertimeRuleService', () => {
       jest.spyOn(merchantRepository, 'findOne').mockResolvedValue(null);
 
       await expect(
-        service.create(mockCreateMerchantOvertimeRuleDto, mockMerchantAdminUser),
+        service.create(
+          mockCreateMerchantOvertimeRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow();
     });
 
@@ -342,7 +354,10 @@ describe('MerchantOvertimeRuleService', () => {
         .spyOn(merchantOvertimeRuleRepository, 'save')
         .mockResolvedValue(mockMerchantOvertimeRule as MerchantOvertimeRule);
 
-      await service.create(mockCreateMerchantOvertimeRuleDto, mockMerchantAdminUser);
+      await service.create(
+        mockCreateMerchantOvertimeRuleDto,
+        mockMerchantAdminUser,
+      );
 
       expect(userFindOneSpy).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -357,7 +372,7 @@ describe('MerchantOvertimeRuleService', () => {
         mockMerchantOvertimeRule as MerchantOvertimeRule,
       ];
 
-      // QueryBuilder ya mockeado en el beforeEach
+      // QueryBuilder already mocked in beforeEach
       const qb = merchantOvertimeRuleRepository.createQueryBuilder() as Partial<
         SelectQueryBuilder<MerchantOvertimeRule>
       >;
@@ -424,7 +439,10 @@ describe('MerchantOvertimeRuleService', () => {
       >;
       jest
         .spyOn(qb, 'getManyAndCount')
-        .mockResolvedValue([[mockMerchantOvertimeRule as MerchantOvertimeRule], 1]);
+        .mockResolvedValue([
+          [mockMerchantOvertimeRule as MerchantOvertimeRule],
+          1,
+        ]);
       const merchantFindOneSpy = jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue({ id: 10, companyId: 7 } as Merchant);
@@ -446,7 +464,10 @@ describe('MerchantOvertimeRuleService', () => {
       >;
       jest
         .spyOn(qb, 'getManyAndCount')
-        .mockResolvedValue([[mockMerchantOvertimeRule as MerchantOvertimeRule], 1]);
+        .mockResolvedValue([
+          [mockMerchantOvertimeRule as MerchantOvertimeRule],
+          1,
+        ]);
       const merchantFindOneSpy = jest.spyOn(merchantRepository, 'findOne');
 
       await service.findAll({ page: 1, limit: 10 }, mockPortalAdminUser);
@@ -477,9 +498,7 @@ describe('MerchantOvertimeRuleService', () => {
     });
 
     it('should throw error for invalid ID (zero)', async () => {
-      await expect(
-        service.findOne(0, mockMerchantAdminUser),
-      ).rejects.toThrow();
+      await expect(service.findOne(0, mockMerchantAdminUser)).rejects.toThrow();
     });
 
     it('should throw error for invalid ID (negative)', async () => {
@@ -492,9 +511,9 @@ describe('MerchantOvertimeRuleService', () => {
       const qb = merchantOvertimeRuleRepository.createQueryBuilder() as any;
       qb.getOne.mockResolvedValue(null);
 
-      await expect(
-        service.findOne(999, mockMerchantAdminUser),
-      ).rejects.toThrow('Merchant Overtime Rule not found');
+      await expect(service.findOne(999, mockMerchantAdminUser)).rejects.toThrow(
+        'Merchant Overtime Rule not found',
+      );
     });
 
     it('scopes findOne to a safe field list via queryBuilder instead of loading raw relations', async () => {
@@ -503,7 +522,10 @@ describe('MerchantOvertimeRuleService', () => {
         id: 1,
         company: { id: 7 },
       } as MerchantOvertimeRule);
-      const repoFindOneSpy = jest.spyOn(merchantOvertimeRuleRepository, 'findOne');
+      const repoFindOneSpy = jest.spyOn(
+        merchantOvertimeRuleRepository,
+        'findOne',
+      );
       jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
         id: 10,
         companyId: 7,
@@ -595,9 +617,7 @@ describe('MerchantOvertimeRuleService', () => {
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue({ id: 10, companyId: 999 } as Merchant);
 
-      await expect(
-        service.findOne(1, mockMerchantAdminUser),
-      ).rejects.toThrow();
+      await expect(service.findOne(1, mockMerchantAdminUser)).rejects.toThrow();
     });
   });
 
@@ -619,12 +639,16 @@ describe('MerchantOvertimeRuleService', () => {
         } as MerchantOvertimeRule);
       const saveSpy = jest.spyOn(merchantOvertimeRuleRepository, 'save');
 
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue({ id: 10, companyId: 7 } as Merchant);
 
-      saveSpy.mockResolvedValue(updatedMerchantOvertimeRule as MerchantOvertimeRule);
+      saveSpy.mockResolvedValue(
+        updatedMerchantOvertimeRule as MerchantOvertimeRule,
+      );
 
       const result = await service.update(
         1,
@@ -661,11 +685,17 @@ describe('MerchantOvertimeRuleService', () => {
         .spyOn(merchantOvertimeRuleRepository, 'save')
         .mockImplementation(async (entity) => entity as MerchantOvertimeRule);
 
-      await service.update(1, mockUpdateMerchantOvertimeRuleDto, mockMerchantAdminUser);
+      await service.update(
+        1,
+        mockUpdateMerchantOvertimeRuleDto,
+        mockMerchantAdminUser,
+      );
 
       const savedEntity = saveSpy.mock.calls[0][0] as MerchantOvertimeRule;
       expect(savedEntity.updatedBy).toEqual(sessionUser);
-      expect(savedEntity.updatedAt.getTime()).not.toBe(originalUpdatedAt.getTime());
+      expect(savedEntity.updatedAt.getTime()).not.toBe(
+        originalUpdatedAt.getTime(),
+      );
     });
 
     it('forbids updating an overtime rule owned by a different company', async () => {
@@ -679,13 +709,21 @@ describe('MerchantOvertimeRuleService', () => {
       } as Merchant);
 
       await expect(
-        service.update(1, mockUpdateMerchantOvertimeRuleDto, mockMerchantAdminUser),
+        service.update(
+          1,
+          mockUpdateMerchantOvertimeRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow();
     });
 
     it('should throw error for invalid ID during update', async () => {
       await expect(
-        service.update(0, mockUpdateMerchantOvertimeRuleDto, mockMerchantAdminUser),
+        service.update(
+          0,
+          mockUpdateMerchantOvertimeRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow();
     });
 
@@ -694,7 +732,11 @@ describe('MerchantOvertimeRuleService', () => {
       findOneSpy.mockResolvedValue(null);
 
       await expect(
-        service.update(999, mockUpdateMerchantOvertimeRuleDto, mockMerchantAdminUser),
+        service.update(
+          999,
+          mockUpdateMerchantOvertimeRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow('Merchant Overtime Rule not found');
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999, status: In(['active', 'inactive']) },
@@ -711,12 +753,18 @@ describe('MerchantOvertimeRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       const saveSpy = jest.spyOn(merchantOvertimeRuleRepository, 'save');
       saveSpy.mockRejectedValue(new Error('Database error'));
 
       await expect(
-        service.update(1, mockUpdateMerchantOvertimeRuleDto, mockMerchantAdminUser),
+        service.update(
+          1,
+          mockUpdateMerchantOvertimeRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow('Database error');
     });
   });

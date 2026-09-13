@@ -36,10 +36,9 @@ describe('SupplierInvoiceItemService', () => {
           provide: getRepositoryToken(Product),
           useValue: productRepoMock,
         },
-      
+
         {
-          // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
-          // de pruebas no compilaba y la suite entera contaba como fallo.
+          // The service gained this dependency and the spec never registered it: the test module did not compile and the entire suite counted as a failure.
           provide: getRepositoryToken(Variant),
           useValue: {
             find: jest.fn(),
@@ -54,9 +53,9 @@ describe('SupplierInvoiceItemService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
-          // Dependencia que el servicio ganó y este spec nunca registró.
+          // Dependency that the service won and this spec never registered.
           provide: getRepositoryToken(Merchant),
           useValue: {
             find: jest.fn(),

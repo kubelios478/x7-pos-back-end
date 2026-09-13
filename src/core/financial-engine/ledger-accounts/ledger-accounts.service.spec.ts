@@ -25,7 +25,7 @@ describe('LedgerAccountsService', () => {
   };
   let mockQueryBuilder: MockQueryBuilder;
 
-  // ─── Mocks de datos ────────────────────────────────────────────────────────
+  // ─── Data Mocks ────────────────────────────────────────────────────────
 
   const mockMerchant = {
     id: 1,
@@ -302,7 +302,10 @@ describe('LedgerAccountsService', () => {
       };
 
       mockQueryBuilder.getCount.mockResolvedValueOnce(2);
-      mockQueryBuilder.getMany.mockResolvedValueOnce([mockLedgerAccount, inactiveAccount]);
+      mockQueryBuilder.getMany.mockResolvedValueOnce([
+        mockLedgerAccount,
+        inactiveAccount,
+      ]);
 
       const result = await service.findAll(mockQuery, mockMerchant.id);
 
@@ -442,8 +445,14 @@ describe('LedgerAccountsService', () => {
       const merchantRepo = service['merchantRepository'];
       const ledgerAccountRepo = service['ledgerAccountRepository'];
 
-      const inactiveAccount: LedgerAccount = { ...mockLedgerAccount, is_active: false };
-      const reactivatedAccount: LedgerAccount = { ...inactiveAccount, is_active: true };
+      const inactiveAccount: LedgerAccount = {
+        ...mockLedgerAccount,
+        is_active: false,
+      };
+      const reactivatedAccount: LedgerAccount = {
+        ...inactiveAccount,
+        is_active: true,
+      };
 
       jest.spyOn(merchantRepo, 'findOne').mockResolvedValue(mockMerchant);
       jest
@@ -456,9 +465,13 @@ describe('LedgerAccountsService', () => {
         .spyOn(ledgerAccountRepo, 'findOne')
         .mockResolvedValueOnce(reactivatedAccount);
 
-      const result = await service.update(mockLedgerAccount.id, mockMerchant.id, {
-        is_active: true,
-      });
+      const result = await service.update(
+        mockLedgerAccount.id,
+        mockMerchant.id,
+        {
+          is_active: true,
+        },
+      );
 
       expect(ledgerAccountRepo.findOneBy).toHaveBeenCalledWith({
         id: mockLedgerAccount.id,
