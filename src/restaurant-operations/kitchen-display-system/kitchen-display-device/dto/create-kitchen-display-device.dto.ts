@@ -6,7 +6,9 @@ import {
   IsString,
   IsBoolean,
   MaxLength,
+  IsEnum,
 } from 'class-validator';
+import { KitchenDisplayDeviceStatus } from '../constants/kitchen-display-device-status.enum';
 
 export class CreateKitchenDisplayDeviceDto {
   @ApiPropertyOptional({
@@ -68,4 +70,14 @@ export class CreateKitchenDisplayDeviceDto {
   })
   @IsOptional()
   lastSync?: Date | null;
+
+  @ApiPropertyOptional({
+    example: KitchenDisplayDeviceStatus.ACTIVE,
+    description: 'Device status (active or deleted)',
+    enum: KitchenDisplayDeviceStatus,
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(KitchenDisplayDeviceStatus, { message: 'Status must be a valid KitchenDisplayDeviceStatus' })
+  status?: KitchenDisplayDeviceStatus;
 }
