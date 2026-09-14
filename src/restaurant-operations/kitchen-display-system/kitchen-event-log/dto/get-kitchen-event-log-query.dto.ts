@@ -87,6 +87,39 @@ export class GetKitchenEventLogQueryDto {
   eventDate?: string;
 
   @ApiPropertyOptional({
+    example: '2024-01-15T08:00:00.000Z',
+    description: 'Filter logs starting from this timestamp (event_time >= startTime)',
+  })
+  @IsOptional()
+  @IsString()
+  startTime?: string;
+
+  @ApiPropertyOptional({
+    example: '2024-01-15T23:59:59.999Z',
+    description: 'Filter logs up to this timestamp (event_time <= endTime)',
+  })
+  @IsOptional()
+  @IsString()
+  endTime?: string;
+
+  @ApiPropertyOptional({
+    example: 'inicio,listo',
+    description: 'Filter by multiple event types (comma-separated)',
+  })
+  @IsOptional()
+  @IsString()
+  eventTypes?: string;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Filter by entity ID (matches Log ID, Order ID, or Item ID)',
+  })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber()
+  searchId?: number;
+
+  @ApiPropertyOptional({
     example: '2024-01-15',
     description: 'Filter by creation date (YYYY-MM-DD format)',
   })

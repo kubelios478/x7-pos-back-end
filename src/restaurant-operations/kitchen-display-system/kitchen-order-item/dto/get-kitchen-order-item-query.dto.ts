@@ -37,6 +37,15 @@ export class GetKitchenOrderItemQueryDto {
 
   @ApiPropertyOptional({
     example: 1,
+    description: 'Filter by kitchen station ID',
+  })
+  @IsOptional()
+  @Transform(({ value }) => parseInt(value))
+  @IsNumber()
+  stationId?: number;
+
+  @ApiPropertyOptional({
+    example: 1,
     description: 'Filter by order item ID',
   })
   @IsOptional()

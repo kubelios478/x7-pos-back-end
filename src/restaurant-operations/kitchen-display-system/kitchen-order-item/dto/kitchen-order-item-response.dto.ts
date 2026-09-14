@@ -6,6 +6,21 @@ import { KitchenOrderItemPreparationStatus } from '../constants/kitchen-order-it
 export class BasicKitchenOrderInfoDto {
   @ApiProperty({ example: 1, description: 'Kitchen Order ID' })
   id: number;
+
+  @ApiProperty({ example: 1, description: 'Kitchen Station ID', nullable: true, required: false })
+  stationId?: number | null;
+
+  @ApiProperty({ example: 'Hot Line & Grill', description: 'Kitchen Station Name', nullable: true, required: false })
+  stationName?: string | null;
+
+  @ApiProperty({ example: 2, description: 'Kitchen Order Priority', nullable: true, required: false })
+  priority?: number;
+
+  @ApiProperty({ example: 'started', description: 'Kitchen Order Business Status', nullable: true, required: false })
+  businessStatus?: string;
+
+  @ApiProperty({ example: 101, description: 'Associated POS Order ID', nullable: true, required: false })
+  orderId?: number | null;
 }
 
 export class BasicOrderItemInfoDto {

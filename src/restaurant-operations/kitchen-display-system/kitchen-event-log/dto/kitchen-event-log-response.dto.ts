@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SuccessResponse } from '../../../../common/dtos/success-response.dto';
 import { KitchenEventLogEventType } from '../constants/kitchen-event-log-event-type.enum';
 import { KitchenEventLogStatus } from '../constants/kitchen-event-log-status.enum';
@@ -6,11 +6,38 @@ import { KitchenEventLogStatus } from '../constants/kitchen-event-log-status.enu
 export class BasicKitchenOrderInfoDto {
   @ApiProperty({ example: 1, description: 'Kitchen Order ID' })
   id: number;
+
+  @ApiPropertyOptional({ example: 'started', description: 'Kitchen Order business status' })
+  businessStatus?: string | null;
+
+  @ApiPropertyOptional({ example: 1, description: 'Order Priority' })
+  priority?: number | null;
+
+  @ApiPropertyOptional({ example: 'No onions on burger', description: 'Kitchen order notes' })
+  notes?: string | null;
+
+  @ApiPropertyOptional({ example: 5, description: 'POS Order ID' })
+  orderId?: number | null;
 }
 
 export class BasicKitchenOrderItemInfoDto {
   @ApiProperty({ example: 1, description: 'Kitchen Order Item ID' })
   id: number;
+
+  @ApiPropertyOptional({ example: 2, description: 'Quantity' })
+  quantity?: number | null;
+
+  @ApiPropertyOptional({ example: 1, description: 'Prepared quantity' })
+  preparedQuantity?: number | null;
+
+  @ApiPropertyOptional({ example: 'in_preparation', description: 'Preparation status' })
+  preparationStatus?: string | null;
+
+  @ApiPropertyOptional({ example: 'Classic Cheeseburger', description: 'Product name' })
+  productName?: string | null;
+
+  @ApiPropertyOptional({ example: 'Double Patty', description: 'Variant name' })
+  variantName?: string | null;
 }
 
 export class BasicKitchenStationInfoDto {
@@ -30,6 +57,14 @@ export class BasicUserInfoDto {
 
   @ApiProperty({ example: 'john@example.com', description: 'User email' })
   email: string;
+
+  @ApiProperty({
+    example: 'john_doe',
+    description: 'Username',
+    required: false,
+    nullable: true,
+  })
+  username?: string | null;
 }
 
 export class KitchenEventLogResponseDto {

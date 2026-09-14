@@ -204,7 +204,9 @@ export class KitchenDisplayDeviceService {
       });
     }
 
-    if (query.stationId) {
+    if (query.unassigned) {
+      queryBuilder.andWhere('kitchenDisplayDevice.station_id IS NULL');
+    } else if (query.stationId) {
       queryBuilder.andWhere('kitchenDisplayDevice.station_id = :stationId', {
         stationId: query.stationId,
       });
