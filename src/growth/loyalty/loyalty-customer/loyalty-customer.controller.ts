@@ -49,7 +49,7 @@ import { OneLoyaltyCustomerResponse } from './dto/loyalty-customer-response.dto'
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Loyalty Customers')
+@ApiTags('Growth - Loyalty - Customers')
 @Controller('loyalty-customers')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_CUSTOMERS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

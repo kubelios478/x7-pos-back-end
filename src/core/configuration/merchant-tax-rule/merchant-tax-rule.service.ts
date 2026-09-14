@@ -62,7 +62,8 @@ export class MerchantTaxRuleService implements OnModuleInit {
           {
             merchant_id: 1,
             name: 'IVA General Standard Sales Tax (19%)',
-            description: 'Standard 19% national value added sales tax applicable to POS items',
+            description:
+              'Standard 19% national value added sales tax applicable to POS items',
             taxType: TaxType.PERCENTAGE,
             rate: 0.19,
             appliesToTips: false,
@@ -74,8 +75,9 @@ export class MerchantTaxRuleService implements OnModuleInit {
           },
           {
             merchant_id: 1,
-            name: 'Impuesto al Consumo ICO F&B (8%)',
-            description: 'National 8% food & beverage consumption tax rate for restaurant sales',
+            name: 'ICO F&B Consumption Tax (8%)',
+            description:
+              'National 8% food & beverage consumption tax rate for restaurant sales',
             taxType: TaxType.PERCENTAGE,
             rate: 0.08,
             appliesToTips: false,
@@ -87,8 +89,9 @@ export class MerchantTaxRuleService implements OnModuleInit {
           },
           {
             merchant_id: 1,
-            name: 'Impuesto Municipal de Licores (5%)',
-            description: 'Compound 5% luxury liquor tax surcharge calculated on subtotal',
+            name: 'Municipal Liquor Tax (5%)',
+            description:
+              'Compound 5% luxury liquor tax surcharge calculated on subtotal',
             taxType: TaxType.COMPOUND,
             rate: 0.05,
             appliesToTips: false,
@@ -100,8 +103,9 @@ export class MerchantTaxRuleService implements OnModuleInit {
           },
           {
             merchant_id: 1,
-            name: 'Tasa Fija por Bolsa Plástica Ecológica ($0.25)',
-            description: 'Fixed $0.25 environmental bag surcharge fee per order transaction',
+            name: 'Fixed Rate per Eco-Friendly Plastic Bag ($0.25)',
+            description:
+              'Fixed $0.25 environmental bag surcharge fee per order transaction',
             taxType: TaxType.FIXED,
             rate: 0.25,
             appliesToTips: false,
@@ -113,10 +117,11 @@ export class MerchantTaxRuleService implements OnModuleInit {
           },
           {
             merchant_id: 1,
-            name: 'Retención de Impuesto sobre Propinas (10%)',
-            description: 'Special 10% tax retention rule applying directly to voluntary customer tips',
+            name: 'Retention of Tax on Tips (10%)',
+            description:
+              'Special 10% tax retention rule applying directly to voluntary customer tips',
             taxType: TaxType.PERCENTAGE,
-            rate: 0.10,
+            rate: 0.1,
             appliesToTips: true,
             appliesToOvertime: false,
             status: 'inactive',

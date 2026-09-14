@@ -50,7 +50,7 @@ import { ReceiveSupplierInventoryDto } from 'src/inventory/supplier-invoice-inve
 import { ReceiveSupplierInventoryResponseDto } from 'src/inventory/supplier-invoice-inventory/dto/receive-supplier-inventory-response.dto';
 import { ApiConflictResponse } from '@nestjs/swagger';
 
-@ApiTags('Supplier invoices (Account payable)')
+@ApiTags('Finance & HR - Account payable - Supplier invoices')
 @ApiBearerAuth()
 @Controller('supplier-invoices')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIER_INVOICES)
@@ -126,7 +126,10 @@ export class SupplierInvoicesController {
     @Body() dto: CreateSupplierInvoiceDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceResponseDto> {
-    return this.supplierInvoicesService.create(dto, this.merchantCompanyScope(user));
+    return this.supplierInvoicesService.create(
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   /**
@@ -136,7 +139,8 @@ export class SupplierInvoicesController {
    */
   private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
     const isMerchant =
-      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+      user.role === UserRole.MERCHANT_ADMIN ||
+      user.role === UserRole.MERCHANT_USER;
     return isMerchant ? user.merchant?.companyId : undefined;
   }
 
@@ -167,7 +171,10 @@ export class SupplierInvoicesController {
     @Query() query: GetSupplierInvoicesQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierInvoicesResponseDto> {
-    return this.supplierInvoicesService.findAll(query, this.merchantCompanyScope(user));
+    return this.supplierInvoicesService.findAll(
+      query,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Get(':id')
@@ -258,7 +265,9 @@ export class SupplierInvoicesController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Restore a soft-deleted (archived) supplier invoice' })
+  @ApiOperation({
+    summary: 'Restore a soft-deleted (archived) supplier invoice',
+  })
   @ApiParam({ name: 'id', type: Number })
   @ApiOkResponse({
     description: 'Supplier invoice restored successfully',

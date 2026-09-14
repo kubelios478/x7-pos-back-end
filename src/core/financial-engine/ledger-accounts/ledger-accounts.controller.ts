@@ -42,9 +42,11 @@ import {
   ApiParam,
   ApiQuery,
   ApiResponse,
+  ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
+@ApiTags('Core - Financial engine - Ledger accounts')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('ledger-accounts')

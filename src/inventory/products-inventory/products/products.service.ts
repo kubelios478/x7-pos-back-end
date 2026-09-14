@@ -71,8 +71,10 @@ export class ProductsService {
         : Promise.resolve(null),
     ]);
 
-    if (categoryId && !category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
-    if (supplierId && !supplier) ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
+    if (categoryId && !category)
+      ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
+    if (supplierId && !supplier)
+      ErrorHandler.notFound(ErrorMessage.SUPPLIER_NOT_FOUND);
 
     const existingProduct = await this.productRepository.findOne({
       where: [
@@ -93,7 +95,10 @@ export class ProductsService {
         where: [{ name: name, merchantId: merchant_id, isActive: false }],
       });
 
-      const isActiveValue = createProductDto.isActive !== undefined ? createProductDto.isActive : true;
+      const isActiveValue =
+        createProductDto.isActive !== undefined
+          ? createProductDto.isActive
+          : true;
 
       if (existingButIsNotActive) {
         Object.assign(existingButIsNotActive, {
@@ -200,18 +205,19 @@ export class ProductsService {
               name: product.merchant.name,
             }
           : null,
-        category: product.category && product.category.merchantId === merchantId
-          ? {
-              id: product.category.id,
-              name: product.category.name,
-              parent: product.category.parent
-                ? ({
-                    id: product.category.parent.id,
-                    name: product.category.parent.name,
-                  } as CategoryLittleResponseDto)
-                : null,
-            }
-          : null,
+        category:
+          product.category && product.category.merchantId === merchantId
+            ? {
+                id: product.category.id,
+                name: product.category.name,
+                parent: product.category.parent
+                  ? ({
+                      id: product.category.parent.id,
+                      name: product.category.parent.name,
+                    } as CategoryLittleResponseDto)
+                  : null,
+              }
+            : null,
         supplier: product.supplier
           ? {
               id: product.supplier.id,
@@ -221,28 +227,28 @@ export class ProductsService {
               company_id: product.supplier.company_id,
             }
           : null,
-          isActive: product.isActive,
-          variants: product.variants
-            ? product.variants
-                .filter((v) => v.isActive)
-                .map((v) => ({
-                  id: v.id,
-                  name: v.name,
-                  price: v.price,
-                  sku: v.sku,
-                  isActive: v.isActive,
-                }))
-            : [],
-          modifiers: product.modifiers
-            ? product.modifiers
-                .filter((m) => m.isActive)
-                .map((m) => ({
-                  id: m.id,
-                  name: m.name,
-                  priceDelta: m.priceDelta,
-                  isActive: m.isActive,
-                }))
-            : [],
+        isActive: product.isActive,
+        variants: product.variants
+          ? product.variants
+              .filter((v) => v.isActive)
+              .map((v) => ({
+                id: v.id,
+                name: v.name,
+                price: v.price,
+                sku: v.sku,
+                isActive: v.isActive,
+              }))
+          : [],
+        modifiers: product.modifiers
+          ? product.modifiers
+              .filter((m) => m.isActive)
+              .map((m) => ({
+                id: m.id,
+                name: m.name,
+                priceDelta: m.priceDelta,
+                isActive: m.isActive,
+              }))
+          : [],
       };
       return result;
     });
@@ -280,7 +286,14 @@ export class ProductsService {
 
     const product = await this.productRepository.findOne({
       where: whereCondition,
-      relations: ['merchant', 'category', 'category.parent', 'supplier', 'variants', 'modifiers'],
+      relations: [
+        'merchant',
+        'category',
+        'category.parent',
+        'supplier',
+        'variants',
+        'modifiers',
+      ],
     });
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
@@ -308,18 +321,20 @@ export class ProductsService {
             name: product.merchant.name,
           }
         : null,
-      category: product.category && (merchantId === undefined || product.category.merchantId === merchantId)
-        ? {
-            id: product.category.id,
-            name: product.category.name,
-            parent: product.category.parent
-              ? ({
-                  id: product.category.parent.id,
-                  name: product.category.parent.name,
-                } as CategoryLittleResponseDto)
-              : null,
-          }
-        : null,
+      category:
+        product.category &&
+        (merchantId === undefined || product.category.merchantId === merchantId)
+          ? {
+              id: product.category.id,
+              name: product.category.name,
+              parent: product.category.parent
+                ? ({
+                    id: product.category.parent.id,
+                    name: product.category.parent.name,
+                  } as CategoryLittleResponseDto)
+                : null,
+            }
+          : null,
       supplier: product.supplier
         ? {
             id: product.supplier.id,
@@ -409,7 +424,10 @@ export class ProductsService {
       await this.modifiersService.softRemoveByProductId(id, merchant_id);
       await this.variantsService.softRemoveByProductId(id, merchant_id);
       await this.itemsService.softRemoveByProductId(id, merchant_id);
-      await this.purchaseOrderItemService.softRemoveByProductId(id, merchant_id);
+      await this.purchaseOrderItemService.softRemoveByProductId(
+        id,
+        merchant_id,
+      );
     }
 
     if (categoryId && categoryId !== product.categoryId) {
@@ -487,7 +505,10 @@ export class ProductsService {
       await this.modifiersService.softRemoveByProductId(id, merchant_id);
       await this.variantsService.softRemoveByProductId(id, merchant_id);
       await this.itemsService.softRemoveByProductId(id, merchant_id);
-      await this.purchaseOrderItemService.softRemoveByProductId(id, merchant_id);
+      await this.purchaseOrderItemService.softRemoveByProductId(
+        id,
+        merchant_id,
+      );
       product.isActive = false;
       await this.productRepository.save(product);
       return this.findOne(id, merchant_id, 'Deleted');

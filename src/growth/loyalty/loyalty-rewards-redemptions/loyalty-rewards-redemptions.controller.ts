@@ -48,7 +48,7 @@ import { OneLoyaltyRewardsRedemptionResponse } from './dto/loyalty-rewards-redem
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Loyalty Rewards Redemptions')
+@ApiTags('Growth - Loyalty - Rewards Redemptions')
 @Controller('loyalty-rewards-redemptions')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_REWARDS_REDEMPTIONS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

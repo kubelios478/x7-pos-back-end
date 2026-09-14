@@ -15,7 +15,7 @@ import { computeOnlineOrderTotalAmount } from './online-order-pricing.util';
 import { OrderItemKitchenStatus } from '../../../restaurant-operations/pos/order-item/constants/order-item-kitchen-status.enum';
 
 /**
- * Proyecta estados POS → filas online enlazadas por `online_order.order_id`.
+ * Projects POS states → online rows linked by `online_order.order_id`.
  */
 @Injectable()
 export class OnlineOrderSyncService {

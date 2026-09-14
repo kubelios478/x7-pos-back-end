@@ -46,7 +46,7 @@ import { UpdateMerchantOvertimeRuleDto } from './dto/update-merchant-overtime-ru
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
-@ApiTags('Merchant Overtime Rule')
+@ApiTags('Core - Configurations - Merchant Overtime Rule')
 @Controller('merchant-overtime-rule')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.MERCHANT_OVERTIME_RULES)
 export class MerchantOvertimeRuleController {
@@ -301,8 +301,10 @@ export class MerchantOvertimeRuleController {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
-    const merchantOvertimeRule =
-      await this.merchantOvertimeRuleService.findOne(id, user);
+    const merchantOvertimeRule = await this.merchantOvertimeRuleService.findOne(
+      id,
+      user,
+    );
     return merchantOvertimeRule;
   }
 

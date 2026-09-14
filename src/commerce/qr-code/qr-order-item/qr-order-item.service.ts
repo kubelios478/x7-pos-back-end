@@ -9,7 +9,7 @@ import { Variant } from 'src/inventory/products-inventory/variants/entities/vari
 import { CreateQROrderItemDto } from './dto/create-qr-order-item.dto';
 import { OneQROrderItemResponseDto } from './dto/qr-order-item-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
-import { QueryQROrderItemDto } from './dto/query-qr-ordero-item.dto';
+import { QueryQROrderItemDto } from './dto/query-qr-order-item.dto';
 import { PaginatedQROrderItemResponseDto } from './dto/paginated-qr-order-item-response.dto';
 
 @Injectable()

@@ -54,7 +54,7 @@ import { CancelKitchenOrderDto } from './dto/cancel-kitchen-order.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Kitchen Orders')
+@ApiTags('Restaurant operations - Kitchen Display System - Kitchen Orders')
 @ApiBearerAuth()
 @Controller('kitchen-orders')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.KITCHEN_ORDERS)
@@ -441,8 +441,8 @@ export class KitchenOrderController {
   async cancelKitchenOrder(
     @Param('id') id: number,
     @Body() dto: CancelKitchenOrderDto,
-    @Request() req,
+    @Request() req: AuthenticatedUser,
   ) {
-    return this.kitchenOrderService.cancelKitchenOrder(id, dto, req.user);
+    return this.kitchenOrderService.cancelKitchenOrder(id, dto, req);
   }
 }

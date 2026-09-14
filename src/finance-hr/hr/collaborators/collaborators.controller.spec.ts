@@ -36,9 +36,8 @@ describe('CollaboratorsController', () => {
   };
 
   /**
-   * Forma REAL del request: Passport cuelga el usuario de `req.user`.
-   * El mock anterior lo ponía en la raíz, así que el spec pasaba mientras producción
-   * respondía 403 en todas las llamadas.
+   * ACTUAL form of the request: Passport hangs the user from `req.user`.
+   * The previous mock was placed in the root directory, so the spec was passing while production was returning 403 on all calls.
    */
   const mockRequest = { user: mockUser } as unknown as Parameters<
     CollaboratorsController['findAll']
@@ -51,7 +50,7 @@ describe('CollaboratorsController', () => {
       id: 1,
       user_id: 1,
       merchant_id: 1,
-      name: 'Juan Pérez',
+      name: 'Jhon Doe',
       role: ShiftRole.WAITER,
       status: CollaboratorStatus.ACTIVE,
       merchant: {
@@ -60,12 +59,11 @@ describe('CollaboratorsController', () => {
       },
       user: {
         id: 1,
-        // firstname/lastname siguen cargando username/email por compatibilidad con el
-        // mapeo original; username/email son los campos con su nombre real.
-        firstname: 'jperez',
-        lastname: 'juan@store.com',
-        username: 'jperez',
-        email: 'juan@store.com',
+        // firstname/lastname continue to load username/email for compatibility with the original mapping; username/email are the fields with your real name.
+        firstname: 'jhondoe',
+        lastname: 'jhondoe@store.com',
+        username: 'jhondoe',
+        email: 'jhondoe@store.com',
       },
       shift_id: null,
       shift: null,
@@ -116,7 +114,7 @@ describe('CollaboratorsController', () => {
     const createDto: CreateCollaboratorDto = {
       user_id: 1,
       merchant_id: 1,
-      name: 'Juan Pérez',
+      name: 'Jhon Doe',
       role: ShiftRole.WAITER,
       status: CollaboratorStatus.ACTIVE,
     };
@@ -127,10 +125,7 @@ describe('CollaboratorsController', () => {
 
       const result = await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(
-        createDto,
-        mockUser.merchant.id,
-      );
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
       expect(result).toEqual(mockCollaboratorResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Collaborator created successfully');
@@ -144,10 +139,7 @@ describe('CollaboratorsController', () => {
       await expect(controller.create(createDto, mockRequest)).rejects.toThrow(
         errorMessage,
       );
-      expect(createSpy).toHaveBeenCalledWith(
-        createDto,
-        mockUser.merchant.id,
-      );
+      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
     });
 
     it('rejects a token with no merchant instead of calling the service with undefined', async () => {
@@ -283,7 +275,7 @@ describe('CollaboratorsController', () => {
 
   describe('PUT /collaborators/:id (update)', () => {
     const updateDto: UpdateCollaboratorDto = {
-      name: 'Juan Pérez Updated',
+      name: 'Jhon Doe Updated',
       role: ShiftRole.COOK,
     };
 
@@ -295,7 +287,7 @@ describe('CollaboratorsController', () => {
         message: 'Collaborator updated successfully',
         data: {
           ...mockCollaboratorResponse.data,
-          name: 'Juan Pérez Updated',
+          name: 'Jhon Doe Updated',
           role: ShiftRole.COOK,
         },
       };

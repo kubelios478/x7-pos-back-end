@@ -26,7 +26,7 @@ import { LoyaltyAnalyticsService } from './loyalty-analytics.service';
 import { GetLoyaltyAnalyticsQueryDto } from './dto/get-loyalty-analytics-query.dto';
 import { OneLoyaltyAnalyticsResponseDto } from './dto/loyalty-analytics-response.dto';
 
-@ApiTags('Loyalty Analytics')
+@ApiTags('Growth - Loyalty - Analytics')
 @ApiBearerAuth()
 @Controller('loyalty-analytics')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_POINT_TRANSACTIONS)

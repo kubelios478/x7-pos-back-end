@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+// import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { DataSource, Not, IsNull, Repository } from 'typeorm';
 import { UsersService } from '../platform-saas/users/users.service';
@@ -296,7 +297,8 @@ export class OnboardingService {
 
     if (dto.businessProfile) {
       Object.assign(session, {
-        legalBusinessName: dto.businessProfile.legalBusinessName ?? session.legalBusinessName,
+        legalBusinessName:
+          dto.businessProfile.legalBusinessName ?? session.legalBusinessName,
         taxId: dto.businessProfile.taxId ?? session.taxId,
         primaryIndustry:
           dto.businessProfile.primaryIndustry ?? session.primaryIndustry,
@@ -390,8 +392,12 @@ export class OnboardingService {
     };
   }
 
-  private async getActiveSession(sessionId: string): Promise<OnboardingSession> {
-    const session = await this.sessionRepo.findOne({ where: { id: sessionId } });
+  private async getActiveSession(
+    sessionId: string,
+  ): Promise<OnboardingSession> {
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+    });
     if (!session) {
       throw new NotFoundException('Onboarding session not found');
     }

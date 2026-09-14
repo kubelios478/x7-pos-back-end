@@ -13,5 +13,12 @@ import { ReservationStatusHistoryModule } from './reservation-status-history/res
     ReservationNoteModule,
     ReservationStatusHistoryModule,
   ],
+  exports: [
+    ReservationModule,
+    ReservationGuestModule,
+    ReservationTableModule,
+    ReservationNoteModule,
+    ReservationStatusHistoryModule,
+  ],
 })
 export class ReservationsModule {}

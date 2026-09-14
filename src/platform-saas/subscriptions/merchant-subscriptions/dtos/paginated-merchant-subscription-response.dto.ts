@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 import { MerchantSubscriptionSummaryDto } from './merchant-subscription-summary.dto';
 
-export class PaginatedMerchantSuscriptionResponseDto extends SuccessResponse {
+export class PaginatedMerchantSubscriptionResponseDto extends SuccessResponse {
   @ApiProperty({
     description: 'List of merchant subscriptions',
     type: [MerchantSubscriptionSummaryDto],

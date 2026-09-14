@@ -31,7 +31,7 @@ import { GetInventoryStockAlertsQueryDto } from './dto/get-inventory-stock-alert
 import { InventoryStockAlertResponseDto } from './dto/inventory-stock-alert-response.dto';
 import { PaginatedInventoryStockAlertsResponseDto } from './dto/paginated-inventory-stock-alerts-response.dto';
 
-@ApiTags('Inventory stock alerts')
+@ApiTags('Inventory - Stock Alerts')
 @ApiBearerAuth()
 @Controller('inventory-stock-alerts')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)

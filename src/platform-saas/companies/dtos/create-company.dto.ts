@@ -8,10 +8,10 @@ import {
   IsOptional,
   Length,
 } from 'class-validator';
-import {
-  IsValidRUT,
-  IsBusinessEmail,
-} from '../../../common/decorators/validation.decorators';
+// import {
+//   IsValidRUT,
+//   IsBusinessEmail,
+// } from '../../../common/decorators/validation.decorators';
 
 export class CreateCompanyDto {
   @IsString({ message: 'Company name must be a string' })
@@ -32,7 +32,7 @@ export class CreateCompanyDto {
   name: string;
 
   @IsEmail({}, { message: 'Please provide a valid email address' })
-  @IsBusinessEmail({ message: 'Please use a business email address' })
+  // @IsBusinessEmail({ message: 'Please use a business email address' })
   @IsNotEmpty({ message: 'Email is required' })
   @ApiProperty({
     example: 'contact@acme.com',
@@ -54,9 +54,9 @@ export class CreateCompanyDto {
   phone?: string;
 
   @IsString({ message: 'RUT must be a string' })
-  @IsNotEmpty({ message: 'RUT is required' })
-  @Length(7, 15, { message: 'RUT must be between 7 and 15 characters' })
-  @IsValidRUT({ message: 'Please provide a valid Chilean RUT format' })
+  // @IsNotEmpty({ message: 'RUT is required' })
+  // @Length(7, 15, { message: 'RUT must be between 7 and 15 characters' })
+  // @IsValidRUT({ message: 'Please provide a valid Chilean RUT format' })
   @ApiProperty({
     example: '12.345.678-9',
     description: 'RUT of the company',

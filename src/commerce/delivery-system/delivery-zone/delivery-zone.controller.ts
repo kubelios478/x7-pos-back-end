@@ -40,7 +40,7 @@ import { PaginatedDeliveryZoneResponseDto } from './dto/paginated-delivery-zone-
 import { QueryDeliveryZoneDto } from './dto/query-delivery-zone.dto';
 import { UpdateDeliveryZoneDto } from './dto/update-delivery-zone.dto';
 
-@ApiTags('Delivery Zone')
+@ApiTags('Commerce - Delivery System - Delivery Zone')
 @Controller('delivery-zone')
 export class DeliveryZoneController {
   constructor(private readonly deliveryZoneService: DeliveryZoneService) {}
@@ -66,8 +66,8 @@ export class DeliveryZoneController {
     schema: {
       example: {
         merchant: 1,
-        name: 'Porvidencia 1459, Santiago',
-        description: 'Zona de entrega en el sector de Providencia, Santiago.',
+        name: '1459 Biscayne Blvd, Miami',
+        description: 'Delivery zone in the Biscayne Boulevard sector, Miami.',
         geojson:
           '{"type":"Polygon","coordinates":[[[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662]]]}',
         status: 'active',
@@ -201,8 +201,8 @@ export class DeliveryZoneController {
       example: {
         id: 1,
         merchant: 1,
-        name: 'Porvidencia 1459, Santiago',
-        description: 'Zona de entrega en el sector de Providencia, Santiago.',
+        name: '1459 Biscayne Blvd, Miami',
+        description: 'Delivery zone in the Biscayne Boulevard sector, Miami.',
         geojson: {
           type: 'Polygon',
           coordinates: [
@@ -307,8 +307,8 @@ export class DeliveryZoneController {
       example: {
         id: 1,
         merchant: 1,
-        name: 'Porvidencia 1459, Santiago',
-        description: 'Zona de entrega en el sector de Providencia, Santiago.',
+        name: '1459 Biscayne Blvd, Miami',
+        description: 'Delivery zone in the Biscayne Boulevard sector, Miami.',
         geojson:
           '{"type":"Polygon","coordinates":[[[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662]]]}',
         status: 'inactive',
@@ -400,8 +400,8 @@ export class DeliveryZoneController {
       example: {
         id: 1,
         merchant: 1,
-        name: 'Porvidencia 1459, Santiago',
-        description: 'Zona de entrega en el sector de Providencia, Santiago.',
+        name: '1459 Biscayne Blvd, Miami',
+        description: 'Delivery zone in the Biscayne Boulevard sector, Miami.',
         geojson:
           '{"type":"Polygon","coordinates":[[[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662]]]}',
         status: 'deleted',

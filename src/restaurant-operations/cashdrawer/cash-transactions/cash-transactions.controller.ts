@@ -53,7 +53,7 @@ import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 import { CashTransactionType } from './constants/cash-transaction-type.enum';
 import { CashTransactionStatus } from './constants/cash-transaction-status.enum';
 
-@ApiTags('Cash Transactions')
+@ApiTags('Restaurant operations - Cashdrawer - Cash Transactions')
 @ApiBearerAuth()
 @ApiExtraModels(ErrorResponse)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
@@ -133,7 +133,8 @@ export class CashTransactionsController {
     name: 'merchantId',
     required: false,
     type: Number,
-    description: 'Merchant context (derived from JWT; whitelisted for client compatibility)',
+    description:
+      'Merchant context (derived from JWT; whitelisted for client compatibility)',
   })
   @ApiQuery({
     name: 'cashDrawerId',
@@ -164,7 +165,8 @@ export class CashTransactionsController {
     name: 'status',
     required: false,
     enum: CashTransactionStatus,
-    description: 'Filter by transaction status (active, deleted). Also accepts ACTIVE, VOIDED, AUDITED, RECONCILED.',
+    description:
+      'Filter by transaction status (active, deleted). Also accepts ACTIVE, VOIDED, AUDITED, RECONCILED.',
   })
   @ApiQuery({
     name: 'startDate',

@@ -45,7 +45,7 @@ import { PaginatedQROrderResponseDto } from './dto/paginated-qr-order-response.d
 import { QueryQROrderDto } from './dto/query-qr-order.dto';
 import { UpdateQROrderDto } from './dto/update-qr-order.dto';
 
-@ApiTags('QR Orders')
+@ApiTags('Commerce - QR-Code - QR Orders')
 @Controller('qr-order')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_ORDERS)
 export class QROrderController {

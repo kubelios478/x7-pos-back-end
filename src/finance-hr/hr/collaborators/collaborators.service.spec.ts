@@ -71,7 +71,7 @@ describe('CollaboratorsService', () => {
     user: mockUser,
   };
 
-  // Turno + las cuatro relaciones de solo lectura del resumen operativo.
+  // Shift + the four read-only relationships of the operational summary.
   const mockShiftRepo = { findOne: jest.fn() };
   const mockCountRepo = () => ({
     count: jest.fn().mockResolvedValue(0),

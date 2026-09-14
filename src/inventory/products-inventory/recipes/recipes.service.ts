@@ -60,7 +60,6 @@ export class RecipesService {
     });
   }
 
-
   async create(
     merchantId: number,
     productId: number,
@@ -590,7 +589,11 @@ export class RecipesService {
 
     if (rawMaterialIds.length > 0) {
       const supplies = await this.dataSource.manager.find(Supply, {
-        where: { id: In(rawMaterialIds), company_id: companyId, isActive: true },
+        where: {
+          id: In(rawMaterialIds),
+          company_id: companyId,
+          isActive: true,
+        },
       });
       if (supplies.length !== rawMaterialIds.length) {
         throw new BadRequestException(

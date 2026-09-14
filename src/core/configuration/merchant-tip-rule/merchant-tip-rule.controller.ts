@@ -46,7 +46,7 @@ import { PaginatedMerchantTipRuleResponseDto } from './dto/paginated-merchant-ti
 import { QueryMerchantTipRuleDto } from './dto/query-merchant-tip-rule.dto';
 import { UpdateMerchantTipRuleDto } from './dto/update-merchant-tip-rule.dto';
 
-@ApiTags('Merchant Tip Rule')
+@ApiTags('Core - Configurations - Merchant Tip Rule')
 @Controller('merchant-tip-rule')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.MERCHANT_TIPS_RULES)
 export class MerchantTipRuleController {

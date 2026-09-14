@@ -51,7 +51,7 @@ import {
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Loyalty Points Transactions')
+@ApiTags('Growth - Loyalty - Points Transactions')
 @Controller('loyalty-points-transactions')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_POINT_TRANSACTIONS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

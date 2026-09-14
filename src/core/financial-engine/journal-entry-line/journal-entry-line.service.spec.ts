@@ -15,7 +15,7 @@ import { UpdateJournalEntryLineDto } from './dto/update-journal-entry-line.dto';
 describe('JournalEntryLineService', () => {
   let service: JournalEntryLineService;
 
-  // ─── Mocks de datos ────────────────────────────────────────────────────────
+  // ─── Data Mocks ────────────────────────────────────────────────────────
 
   const mockMerchant = {
     id: 1,

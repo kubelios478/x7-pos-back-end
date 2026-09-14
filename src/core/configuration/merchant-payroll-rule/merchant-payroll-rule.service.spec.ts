@@ -177,9 +177,9 @@ describe('MerchantPayrollRuleService', () => {
     service = module.get<MerchantPayrollRuleService>(
       MerchantPayrollRuleService,
     );
-    merchantPayrollRuleRepository = module.get<
-      Repository<MerchantPayrollRule>
-    >(getRepositoryToken(MerchantPayrollRule));
+    merchantPayrollRuleRepository = module.get<Repository<MerchantPayrollRule>>(
+      getRepositoryToken(MerchantPayrollRule),
+    );
     companyRepository = module.get<Repository<Company>>(
       getRepositoryToken(Company),
     );
@@ -259,7 +259,10 @@ describe('MerchantPayrollRuleService', () => {
         .spyOn(merchantPayrollRuleRepository, 'save')
         .mockResolvedValue(mockMerchantPayrollRule as MerchantPayrollRule);
 
-      await service.create(mockCreateMerchantPayrollRuleDto, mockMerchantAdminUser);
+      await service.create(
+        mockCreateMerchantPayrollRuleDto,
+        mockMerchantAdminUser,
+      );
 
       expect(userFindOneSpy).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -295,8 +298,12 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({ id: 7 } as Company);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue({ id: 7 } as Company);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
 
       await expect(
         service.create(
@@ -315,8 +322,12 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({ id: 7 } as Company);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue({ id: 7 } as Company);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
 
       await expect(
         service.create(
@@ -335,8 +346,12 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({ id: 7 } as Company);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue({ id: 7 } as Company);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       const createSpy = jest
         .spyOn(merchantPayrollRuleRepository, 'create')
         .mockReturnValue(mockMerchantPayrollRule as MerchantPayrollRule);
@@ -364,8 +379,12 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({ id: 7 } as Company);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue({ id: 7 } as Company);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       const createSpy = jest
         .spyOn(merchantPayrollRuleRepository, 'create')
         .mockReturnValue(mockMerchantPayrollRule as MerchantPayrollRule);
@@ -393,8 +412,12 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(companyRepository, 'findOne').mockResolvedValue({ id: 7 } as Company);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue({ id: 7 } as Company);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       const createSpy = jest
         .spyOn(merchantPayrollRuleRepository, 'create')
         .mockReturnValue(mockMerchantPayrollRule as MerchantPayrollRule);
@@ -437,7 +460,12 @@ describe('MerchantPayrollRuleService', () => {
         statusCode: 200,
         message: 'Merchant Payroll Rules retrieved successfully',
         data: mockRules,
-        pagination: { page: 1, limit: 10, total: mockRules.length, totalPages: 1 },
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: mockRules.length,
+          totalPages: 1,
+        },
       });
     });
 
@@ -466,7 +494,10 @@ describe('MerchantPayrollRuleService', () => {
       >;
       jest
         .spyOn(qb, 'getManyAndCount')
-        .mockResolvedValue([[mockMerchantPayrollRule as MerchantPayrollRule], 1]);
+        .mockResolvedValue([
+          [mockMerchantPayrollRule as MerchantPayrollRule],
+          1,
+        ]);
       const merchantFindOneSpy = jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue({ id: 10, companyId: 7 } as Merchant);
@@ -488,7 +519,10 @@ describe('MerchantPayrollRuleService', () => {
       >;
       jest
         .spyOn(qb, 'getManyAndCount')
-        .mockResolvedValue([[mockMerchantPayrollRule as MerchantPayrollRule], 1]);
+        .mockResolvedValue([
+          [mockMerchantPayrollRule as MerchantPayrollRule],
+          1,
+        ]);
       const merchantFindOneSpy = jest.spyOn(merchantRepository, 'findOne');
 
       await service.findAll({ page: 1, limit: 10 }, mockPortalAdminUser);
@@ -521,15 +555,21 @@ describe('MerchantPayrollRuleService', () => {
       const qb = merchantPayrollRuleRepository.createQueryBuilder() as any;
       qb.getOne.mockResolvedValue(null);
 
-      await expect(
-        service.findOne(999, mockMerchantAdminUser),
-      ).rejects.toThrow('Merchant Payroll Rule not found');
+      await expect(service.findOne(999, mockMerchantAdminUser)).rejects.toThrow(
+        'Merchant Payroll Rule not found',
+      );
     });
 
     it('scopes findOne to a safe field list via queryBuilder instead of loading raw relations', async () => {
       const qb = merchantPayrollRuleRepository.createQueryBuilder() as any;
-      qb.getOne.mockResolvedValue({ id: 1, company: { id: 7 } } as MerchantPayrollRule);
-      const repoFindOneSpy = jest.spyOn(merchantPayrollRuleRepository, 'findOne');
+      qb.getOne.mockResolvedValue({
+        id: 1,
+        company: { id: 7 },
+      } as MerchantPayrollRule);
+      const repoFindOneSpy = jest.spyOn(
+        merchantPayrollRuleRepository,
+        'findOne',
+      );
       jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
         id: 10,
         companyId: 7,
@@ -542,7 +582,11 @@ describe('MerchantPayrollRuleService', () => {
     });
 
     it('allows a merchant admin to view a rule owned by their own company', async () => {
-      const mockFound = { ...mockMerchantPayrollRule, id: 1, company: { id: 7 } as Company } as MerchantPayrollRule;
+      const mockFound = {
+        ...mockMerchantPayrollRule,
+        id: 1,
+        company: { id: 7 } as Company,
+      } as MerchantPayrollRule;
       const qb = merchantPayrollRuleRepository.createQueryBuilder() as any;
       qb.getOne.mockResolvedValue(mockFound);
       jest
@@ -555,16 +599,18 @@ describe('MerchantPayrollRuleService', () => {
     });
 
     it('forbids viewing a payroll rule owned by a different company', async () => {
-      const mockFound = { ...mockMerchantPayrollRule, id: 1, company: { id: 7 } as Company } as MerchantPayrollRule;
+      const mockFound = {
+        ...mockMerchantPayrollRule,
+        id: 1,
+        company: { id: 7 } as Company,
+      } as MerchantPayrollRule;
       const qb = merchantPayrollRuleRepository.createQueryBuilder() as any;
       qb.getOne.mockResolvedValue(mockFound);
       jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue({ id: 10, companyId: 999 } as Merchant);
 
-      await expect(
-        service.findOne(1, mockMerchantAdminUser),
-      ).rejects.toThrow();
+      await expect(service.findOne(1, mockMerchantAdminUser)).rejects.toThrow();
     });
   });
 
@@ -581,7 +627,9 @@ describe('MerchantPayrollRuleService', () => {
         ...mockMerchantPayrollRule,
         company: { id: 7 },
       } as MerchantPayrollRule);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue({ id: 10, companyId: 7 } as Merchant);
@@ -589,7 +637,11 @@ describe('MerchantPayrollRuleService', () => {
         .spyOn(merchantPayrollRuleRepository, 'save')
         .mockResolvedValue(updated as MerchantPayrollRule);
 
-      const result = await service.update(1, mockUpdateMerchantPayrollRuleDto, mockMerchantAdminUser);
+      const result = await service.update(
+        1,
+        mockUpdateMerchantPayrollRuleDto,
+        mockMerchantAdminUser,
+      );
 
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -617,11 +669,17 @@ describe('MerchantPayrollRuleService', () => {
         .spyOn(merchantPayrollRuleRepository, 'save')
         .mockImplementation(async (entity) => entity as MerchantPayrollRule);
 
-      await service.update(1, mockUpdateMerchantPayrollRuleDto, mockMerchantAdminUser);
+      await service.update(
+        1,
+        mockUpdateMerchantPayrollRuleDto,
+        mockMerchantAdminUser,
+      );
 
       const savedEntity = saveSpy.mock.calls[0][0] as MerchantPayrollRule;
       expect(savedEntity.updatedBy).toEqual(sessionUser);
-      expect(savedEntity.updatedAt.getTime()).not.toBe(originalUpdatedAt.getTime());
+      expect(savedEntity.updatedAt.getTime()).not.toBe(
+        originalUpdatedAt.getTime(),
+      );
     });
 
     it('forbids updating a payroll rule owned by a different company', async () => {
@@ -635,15 +693,25 @@ describe('MerchantPayrollRuleService', () => {
       } as Merchant);
 
       await expect(
-        service.update(1, mockUpdateMerchantPayrollRuleDto, mockMerchantAdminUser),
+        service.update(
+          1,
+          mockUpdateMerchantPayrollRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow();
     });
 
     it('should throw error when merchant payroll rule to update not found', async () => {
-      jest.spyOn(merchantPayrollRuleRepository, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(merchantPayrollRuleRepository, 'findOne')
+        .mockResolvedValue(null);
 
       await expect(
-        service.update(999, mockUpdateMerchantPayrollRuleDto, mockMerchantAdminUser),
+        service.update(
+          999,
+          mockUpdateMerchantPayrollRuleDto,
+          mockMerchantAdminUser,
+        ),
       ).rejects.toThrow('Merchant Payroll Rule not found');
     });
 
@@ -659,7 +727,9 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       const saveSpy = jest
         .spyOn(merchantPayrollRuleRepository, 'save')
         .mockImplementation(async (entity) => entity as MerchantPayrollRule);
@@ -687,7 +757,9 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
 
       await expect(
         service.update(
@@ -710,7 +782,9 @@ describe('MerchantPayrollRuleService', () => {
         id: 10,
         companyId: 7,
       } as Merchant);
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue({ id: 1 } as User);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: 1 } as User);
       const saveSpy = jest
         .spyOn(merchantPayrollRuleRepository, 'save')
         .mockImplementation(async (entity) => entity as MerchantPayrollRule);
@@ -740,9 +814,13 @@ describe('MerchantPayrollRuleService', () => {
     });
 
     it('should throw error when merchant payroll rule to remove not found', async () => {
-      jest.spyOn(merchantPayrollRuleRepository, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(merchantPayrollRuleRepository, 'findOne')
+        .mockResolvedValue(null);
 
-      await expect(service.remove(999)).rejects.toThrow('Merchant Payroll Rule not found');
+      await expect(service.remove(999)).rejects.toThrow(
+        'Merchant Payroll Rule not found',
+      );
     });
   });
 });

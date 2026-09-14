@@ -10,7 +10,7 @@ import {
   Query,
   Request,
   ParseIntPipe,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -51,7 +51,7 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { ReceiptTaxScope } from './constants/receipt-tax-scope.enum';
 
-@ApiTags('Receipt Taxes')
+@ApiTags('Core - Billing transactions - Receipt Taxes')
 @ApiBearerAuth()
 @ApiExtraModels(ErrorResponse)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
@@ -61,11 +61,9 @@ export class ReceiptTaxController {
   constructor(private readonly receiptTaxService: ReceiptTaxService) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -78,7 +76,6 @@ export class ReceiptTaxController {
     }
     return merchantId;
   }
-
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)

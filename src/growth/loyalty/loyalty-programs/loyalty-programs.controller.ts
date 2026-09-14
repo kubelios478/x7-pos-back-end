@@ -48,7 +48,7 @@ import { OneLoyaltyProgramResponse } from './dto/loyalty-program-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Loyalty Programs')
+@ApiTags('Growth - Loyalty - Programs')
 @Controller('loyalty-programs')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_PROGRAMS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

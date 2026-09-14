@@ -2,7 +2,11 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CollaboratorTimeEntriesService,
   DAILY_OVERTIME_THRESHOLD_HOURS,
@@ -15,8 +19,7 @@ import { Collaborator } from '../collaborators/entities/collaborator.entity';
 import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 
 /**
- * Lo que estas historias añadieron al módulo: cálculo de horas netas, guardas de
- * cronología y solapamiento, y la traza inmutable de correcciones.
+ * What these stories added to the module: net hours calculation, chronology and overlap guards, and the immutable trace of corrections.
  */
 describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
   let service: CollaboratorTimeEntriesService;
@@ -50,7 +53,9 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
 
   const timeEntryRepo = {
     create: jest.fn((v: unknown) => v),
-    save: jest.fn((v: unknown) => Promise.resolve({ id: 42, ...(v as object) })),
+    save: jest.fn((v: unknown) =>
+      Promise.resolve({ id: 42, ...(v as object) }),
+    ),
     findOne: jest.fn(),
     find: jest.fn().mockResolvedValue([]),
     createQueryBuilder: jest.fn(),
@@ -70,10 +75,16 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       providers: [
         CollaboratorTimeEntriesService,
         { provide: getRepositoryToken(TimeEntry), useValue: timeEntryRepo },
-        { provide: getRepositoryToken(TimeEntryRevision), useValue: revisionRepo },
+        {
+          provide: getRepositoryToken(TimeEntryRevision),
+          useValue: revisionRepo,
+        },
         { provide: getRepositoryToken(Company), useValue: companyRepo },
         { provide: getRepositoryToken(Merchant), useValue: merchantRepo },
-        { provide: getRepositoryToken(Collaborator), useValue: collaboratorRepo },
+        {
+          provide: getRepositoryToken(Collaborator),
+          useValue: collaboratorRepo,
+        },
         { provide: getRepositoryToken(Shift), useValue: shiftRepo },
       ],
     }).compile();
@@ -83,8 +94,8 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    [timeEntryRepo.findOne, timeEntryRepo.find, timeEntryRepo.save].forEach((m) =>
-      m.mockReset(),
+    [timeEntryRepo.findOne, timeEntryRepo.find, timeEntryRepo.save].forEach(
+      (m) => m.mockReset(),
     );
     timeEntryRepo.find.mockResolvedValue([]);
     timeEntryRepo.save.mockImplementation((v: unknown) =>
@@ -93,11 +104,11 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
     revisionRepo.save.mockImplementation((v: unknown) => Promise.resolve(v));
   });
 
-  // ================= Horas netas =================
+  // ================= Net Hours =================
 
   describe('computeHours', () => {
-    it('descuenta el descanso del intervalo bruto', () => {
-      // 8 h de reloj menos 30 min de descanso = 7,5 h pagables.
+    it('deduct the rest period from the gross interval', () => {
+      // 8 hours clock time minus 30 minutes break = 7.5 hours payable.
       expect(service.computeHours(at(8), at(16), 30)).toMatchObject({
         net: 7.5,
         regular: 7.5,
@@ -105,14 +116,14 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       });
     });
 
-    it('parte las horas por el umbral diario', () => {
-      // 10 h netas con umbral de 8 → 8 ordinarias + 2 extra.
+    it('part of the hours by the daily threshold', () => {
+      // 10 net hours with a threshold of 8 → 8 ordinary + 2 extra.
       const r = service.computeHours(at(8), at(18), 0);
       expect(r.regular).toBe(DAILY_OVERTIME_THRESHOLD_HOURS);
       expect(r.overtime).toBe(2);
     });
 
-    it('una jornada abierta todavía no computa nada', () => {
+    it('an open shift does not compute anything yet', () => {
       expect(service.computeHours(at(8), null, 30)).toEqual({
         regular: 0,
         overtime: 0,
@@ -120,19 +131,19 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       });
     });
 
-    it('un descanso desproporcionado no deja el neto en negativo', () => {
+    it('An excessively long break does not leave the net result negative.', () => {
       expect(service.computeHours(at(8), at(9), 600).net).toBe(0);
     });
 
-    it('redondea a dos decimales, que es lo que persiste la columna', () => {
+    it('rounds to two decimal places, which is what persists in the column', () => {
       // 7 h 20 min = 7,33…
       expect(service.computeHours(at(8), at(15, 20), 0).net).toBe(7.33);
     });
   });
 
-  // ================= Guardas =================
+  // ================= Save =================
 
-  describe('guardas al crear', () => {
+  describe('saves when creating', () => {
     const dto = {
       company_id: 1,
       merchant_id: MERCHANT_ID,
@@ -145,37 +156,46 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
     const prime = () => {
       companyRepo.findOne.mockResolvedValue({ id: 1 });
       merchantRepo.findOne.mockResolvedValue({ id: MERCHANT_ID });
-      // El servicio valida que el colaborador sea del mismo comercio.
-      collaboratorRepo.findOne.mockResolvedValue({ id: 4, merchant_id: MERCHANT_ID });
+      // The service validates that the collaborator is from the same merchant.
+      collaboratorRepo.findOne.mockResolvedValue({
+        id: 4,
+        merchant_id: MERCHANT_ID,
+      });
     };
 
-    it('rechaza una salida anterior a la entrada, con el mensaje de la historia', async () => {
+    it('It rejects an exit prior to entry, with the message of history.', async () => {
       prime();
 
       await expect(
         service.create({ ...dto, clock_out: at(7).toISOString() }, MERCHANT_ID),
-      ).rejects.toThrow('Clock-Out timestamp must be after Clock-In timestamp.');
+      ).rejects.toThrow(
+        'Clock-Out timestamp must be after Clock-In timestamp.',
+      );
     });
 
-    it('rechaza un intervalo que solapa con otro fichaje del mismo colaborador', async () => {
+    it('It rejects an interval that overlaps with another time entry of the same collaborator', async () => {
       prime();
-      timeEntryRepo.find.mockResolvedValue([entry({ id: 9, clock_in: at(7), clock_out: at(12) })]);
+      timeEntryRepo.find.mockResolvedValue([
+        entry({ id: 9, clock_in: at(7), clock_out: at(12) }),
+      ]);
 
       await expect(service.create(dto, MERCHANT_ID)).rejects.toThrow(
         'overlaps time entry #TME-9',
       );
     });
 
-    it('una jornada abierta bloquea cualquier fichaje posterior hasta cerrarla', async () => {
+    it('an open shift blocks any subsequent time entry until closed', async () => {
       prime();
       timeEntryRepo.find.mockResolvedValue([
         entry({ id: 9, clock_in: at(6), clock_out: null }),
       ]);
 
-      await expect(service.create(dto, MERCHANT_ID)).rejects.toThrow(BadRequestException);
+      await expect(service.create(dto, MERCHANT_ID)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('deja pasar un intervalo que no toca a los demás', async () => {
+    it('allows a time entry that does not overlap with others', async () => {
       prime();
       timeEntryRepo.find.mockResolvedValue([
         entry({ id: 9, clock_in: at(17), clock_out: at(20) }),
@@ -184,7 +204,7 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       await expect(service.create(dto, MERCHANT_ID)).resolves.toBeDefined();
     });
 
-    it('calcula las horas en el servidor, ignorando las que mande el cliente', async () => {
+    it('calculates the hours on the server, ignoring those sent by the client', async () => {
       prime();
 
       await service.create(
@@ -197,7 +217,7 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       expect(Number(saved.overtime_hours)).toBe(0);
     });
 
-    it('permite un fichaje manual sin turno programado detrás', async () => {
+    it('allows a manual time entry without a scheduled shift', async () => {
       prime();
 
       await service.create(dto, MERCHANT_ID);
@@ -208,18 +228,25 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
     });
   });
 
-  // ================= Traza de auditoría =================
+  // ================= Audit trail =================
 
-  describe('corrección de un fichaje', () => {
-    it('exige justificación para tocar las marcas', async () => {
+  describe('correction of a signing', () => {
+    it('demands justification for touching the trademarks', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
 
       await expect(
-        service.update(42, { clock_out: at(17).toISOString() }, MERCHANT_ID, SUPERVISOR_ID),
-      ).rejects.toThrow('An adjustment reason is required when correcting a punch.');
+        service.update(
+          42,
+          { clock_out: at(17).toISOString() },
+          MERCHANT_ID,
+          SUPERVISOR_ID,
+        ),
+      ).rejects.toThrow(
+        'An adjustment reason is required when correcting a punch.',
+      );
     });
 
-    it('marca la fila como editada y firma quién y cuándo', async () => {
+    it('marks the row as edited and signs who and when', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
 
       await service.update(
@@ -236,7 +263,7 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       expect(saved.adjustment_reason).toBe('Missed Punch');
     });
 
-    it('guarda el antes y el después en el histórico', async () => {
+    it('saves the before and after in the audit trail', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
 
       await service.update(
@@ -251,7 +278,8 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       );
 
       expect(revisionRepo.save).toHaveBeenCalledTimes(1);
-      const revision = revisionRepo.create.mock.calls[0][0] as TimeEntryRevision;
+      const revision = revisionRepo.create.mock
+        .calls[0][0] as TimeEntryRevision;
       expect(revision).toMatchObject({
         time_entry_id: 42,
         edited_by_user_id: SUPERVISOR_ID,
@@ -262,7 +290,7 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       });
     });
 
-    it('recalcula las horas tras la corrección', async () => {
+    it('calculates the hours after the correction', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
 
       await service.update(
@@ -273,12 +301,12 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       );
 
       const saved = timeEntryRepo.save.mock.calls[0][0] as TimeEntry;
-      // 8→19 son 11 h menos 30 min = 10,5 netas → 8 ordinarias + 2,5 extra.
+      // 8→19 are 11 hours minus 30 min = 10.5 net → 8 ordinary + 2.5 extra.
       expect(Number(saved.regular_hours)).toBe(8);
       expect(Number(saved.overtime_hours)).toBe(2.5);
     });
 
-    it('aprobar un fichaje no es una corrección: ni exige motivo ni deja revisión', async () => {
+    it('approving a time entry is not a correction: it does not require a reason nor does it leave a revision', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
 
       await service.update(42, { approved: true }, MERCHANT_ID, SUPERVISOR_ID);
@@ -288,7 +316,7 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       expect(revisionRepo.save).not.toHaveBeenCalled();
     });
 
-    it('la corrección no puede dejar el fichaje solapado con otro', async () => {
+    it('the correction cannot leave the time entry overlapping with another', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
       timeEntryRepo.find.mockResolvedValue([
         entry({ id: 9, clock_in: at(17), clock_out: at(20) }),
@@ -297,21 +325,27 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       await expect(
         service.update(
           42,
-          { clock_out: at(18).toISOString(), adjustment_reason: 'Missed Punch' },
+          {
+            clock_out: at(18).toISOString(),
+            adjustment_reason: 'Missed Punch',
+          },
           MERCHANT_ID,
           SUPERVISOR_ID,
         ),
       ).rejects.toThrow('overlaps time entry #TME-9');
     });
 
-    it('el propio fichaje no cuenta como solapamiento consigo mismo', async () => {
+    it('the time entry itself does not count as overlap with itself', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
       timeEntryRepo.find.mockResolvedValue([entry()]);
 
       await expect(
         service.update(
           42,
-          { clock_out: at(17).toISOString(), adjustment_reason: 'Missed Punch' },
+          {
+            clock_out: at(17).toISOString(),
+            adjustment_reason: 'Missed Punch',
+          },
           MERCHANT_ID,
           SUPERVISOR_ID,
         ),
@@ -319,10 +353,10 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
     });
   });
 
-  // ================= Histórico =================
+  // ================= Audit trail =================
 
   describe('revisions', () => {
-    it('devuelve el histórico de la más reciente a la más antigua', async () => {
+    it('returns the audit trail from the most recent to the oldest', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry());
       revisionRepo.find.mockResolvedValue([{ id: 2 }, { id: 1 }]);
 
@@ -335,16 +369,20 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       });
     });
 
-    it('no enseña el histórico de otro comercio', async () => {
+    it('does not show the audit trail of another merchant', async () => {
       timeEntryRepo.findOne.mockResolvedValue(entry({ merchant_id: 99 }));
 
-      await expect(service.revisions(42, MERCHANT_ID)).rejects.toThrow(ForbiddenException);
+      await expect(service.revisions(42, MERCHANT_ID)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
-    it('falla si el fichaje no existe', async () => {
+    it('fails if the time entry does not exist', async () => {
       timeEntryRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.revisions(404, MERCHANT_ID)).rejects.toThrow(NotFoundException);
+      await expect(service.revisions(404, MERCHANT_ID)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

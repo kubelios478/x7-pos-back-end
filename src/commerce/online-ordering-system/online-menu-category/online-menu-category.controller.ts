@@ -47,7 +47,7 @@ import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Online Menu Categories')
+@ApiTags('Commerce - Online Ordering System - Online menus categories')
 @ApiBearerAuth()
 @Controller('online-menu-categories')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ONLINE_MENU_CATEGORIES)

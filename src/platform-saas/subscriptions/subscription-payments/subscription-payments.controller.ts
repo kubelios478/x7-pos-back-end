@@ -43,7 +43,7 @@ import { SubscriptionPaymentWebhookDto } from './dto/subscription-payment-webhoo
 import { Request as ExpressRequest } from 'express';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
-@ApiTags('Subscription Payments')
+@ApiTags('Platform SaaS - Subscriptions - Subscription Payments')
 @Controller('subscription-payments')
 export class SubscriptionPaymentsController {
   constructor(

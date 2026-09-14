@@ -51,7 +51,7 @@ import { OnlineOrderPaymentStatus } from './constants/online-order-payment-statu
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Online Orders')
+@ApiTags('Commerce - Online Ordering System - Online orders')
 @ApiBearerAuth()
 @Controller('online-orders')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ONLINE_ORDERS)

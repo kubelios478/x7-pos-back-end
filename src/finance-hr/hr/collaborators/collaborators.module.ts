@@ -17,9 +17,7 @@ import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entit
 @Module({
   imports: [
     AuthModule,
-    // Shift entra para poder enganchar al colaborador a su turno recurrente; las otras
-    // cuatro se registran en SOLO LECTURA para el resumen operativo del cajón de detalle.
-    // Cada una sigue siendo propiedad de su módulo, que es quien las escribe.
+    // Shift is used to assign the employee to their recurring shift; the other four are registered in READ ONLY for the operational summary of the detailed log. Each remains the property of its module, which is responsible for creating them.
     TypeOrmModule.forFeature([
       Collaborator,
       User,

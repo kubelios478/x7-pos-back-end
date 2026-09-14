@@ -37,7 +37,7 @@ import { LoyaltyRedeemableBalanceResponseDto } from './dto/loyalty-redeemable-ba
 import { CreateLoyaltyPointsLockDto } from './dto/create-loyalty-points-lock.dto';
 import { LoyaltyPointsLockResponseDto } from './dto/loyalty-points-lock-response.dto';
 
-@ApiTags('Loyalty Points Redemption')
+@ApiTags('Growth - Loyalty - Points Redemption')
 @ApiBearerAuth()
 @Controller('loyalty-points-redemption')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_CUSTOMERS)

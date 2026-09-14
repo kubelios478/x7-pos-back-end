@@ -32,7 +32,7 @@ import { OneReservationGuestResponse } from './dto/reservation-guest-response.dt
 import { AllPaginatedReservationGuests } from './dto/all-paginated-reservation-guests.dto';
 import { GetReservationGuestsQueryDto } from './dto/get-reservation-guests-query.dto';
 
-@ApiTags('Reservation Guests')
+@ApiTags('Restaurant operations - Reservations - Guests')
 @ApiBearerAuth()
 @Controller('reservation-guest')
 @UseGuards(JwtAuthGuard, RolesGuard)

@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { Supplier } from './entities/supplier.entity';
@@ -102,7 +97,7 @@ export class SuppliersService {
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    // 2. Build query with filters (se elimina el filtro restrictivo de isActive para permitir filtrar All/Active/Inactive en el front/back)
+    // 2. Build query with filters (The restrictive isActive filter is removed to allow filtering All/Active/Inactive in the front/back)
     const queryBuilder = this.supplierRepository
       .createQueryBuilder('supplier')
       .leftJoinAndSelect('supplier.products', 'products')

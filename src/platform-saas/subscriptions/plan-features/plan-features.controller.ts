@@ -39,7 +39,7 @@ import { PaginatedFeatureResponseDto } from '../features/dto/paginated-feature-r
 import { QueryPlanFeatureDto } from './dto/query-plan-feature.dto';
 import { PaginatedPlanFeatureResponseDto } from './dto/paginated-plan-feature-response.dto';
 
-@ApiTags('Plan Features')
+@ApiTags('Platform SaaS - Subscriptions - Plan Features')
 @Controller('plan-features')
 export class PlanFeaturesController {
   constructor(private readonly planFeatureService: PlanFeaturesService) {}

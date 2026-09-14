@@ -47,7 +47,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 
-@ApiTags('Supplier payment items (Account payable)')
+@ApiTags('Finance & HR - Account payable - Supplier payment items')
 @ApiBearerAuth()
 @Controller('supplier-payment-items')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIER_PAYMENT_ITEMS)
@@ -84,13 +84,17 @@ export class SupplierPaymentItemsController {
     @Body() dto: CreateSupplierPaymentItemDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierPaymentItemResponseDto> {
-    return this.supplierPaymentItemsService.create(dto, this.merchantCompanyScope(user));
+    return this.supplierPaymentItemsService.create(
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   /** Merchant users are locked to their own company; portal users get `undefined`. */
   private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
     const isMerchant =
-      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+      user.role === UserRole.MERCHANT_ADMIN ||
+      user.role === UserRole.MERCHANT_USER;
     return isMerchant ? user.merchant?.companyId : undefined;
   }
 
@@ -124,7 +128,10 @@ export class SupplierPaymentItemsController {
     @Query() query: GetSupplierPaymentItemsQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierPaymentItemsResponseDto> {
-    return this.supplierPaymentItemsService.findAll(query, this.merchantCompanyScope(user));
+    return this.supplierPaymentItemsService.findAll(
+      query,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Get(':id')
@@ -177,7 +184,11 @@ export class SupplierPaymentItemsController {
     @Body() dto: UpdateSupplierPaymentItemDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierPaymentItemResponseDto> {
-    return this.supplierPaymentItemsService.update(id, dto, this.merchantCompanyScope(user));
+    return this.supplierPaymentItemsService.update(
+      id,
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Delete(':id')
@@ -203,6 +214,9 @@ export class SupplierPaymentItemsController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierPaymentItemResponseDto> {
-    return this.supplierPaymentItemsService.remove(id, this.merchantCompanyScope(user));
+    return this.supplierPaymentItemsService.remove(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 }

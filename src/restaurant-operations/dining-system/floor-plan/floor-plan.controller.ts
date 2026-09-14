@@ -44,7 +44,7 @@ import { PaginatedFloorPlanResponseDto } from './dto/paginated-floor-plan-respon
 import { QueryFloorPlanDto } from './dto/query-floor-plan.dto';
 import { UpdateFloorPlanDto } from './dto/update-floor-plan.dto';
 
-@ApiTags('Floor Plan')
+@ApiTags('Restaurant operations - Dining System - Floor Plan')
 @Controller('floor-plan')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.FLOOR_PLANS)
 export class FloorPlanController {

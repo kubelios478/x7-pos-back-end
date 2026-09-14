@@ -34,32 +34,137 @@ export class LedgerAccountsService implements OnModuleInit {
   async seedDatabaseIfEmpty() {
     try {
       const count = await this.ledgerAccountRepository.count();
-      if (count === 0) {
-        const seedAccounts = [
-          { company_id: 1, code: '1000', name: 'Assets', type: AccountType.ASSET, is_active: true, parent_account_id: undefined },
-          { company_id: 1, code: '1100', name: 'Raw Material Inventory', type: AccountType.ASSET, is_active: true, parent_account_id: 1 },
-          { company_id: 1, code: '1200', name: 'Finished Goods Inventory', type: AccountType.ASSET, is_active: true, parent_account_id: 1 },
-          { company_id: 1, code: '1300', name: 'Cash & Bank Accounts', type: AccountType.ASSET, is_active: true, parent_account_id: 1 },
-          { company_id: 1, code: '2000', name: 'Liabilities', type: AccountType.LIABILITY, is_active: true, parent_account_id: undefined },
-          { company_id: 1, code: '2100', name: 'Accounts Payable', type: AccountType.LIABILITY, is_active: true, parent_account_id: 5 },
-          { company_id: 1, code: '2200', name: 'Tax Payable', type: AccountType.LIABILITY, is_active: true, parent_account_id: 5 },
-          { company_id: 1, code: '3000', name: 'Equity', type: AccountType.EQUITY, is_active: true, parent_account_id: undefined },
-          { company_id: 1, code: '3100', name: 'Owner Capital', type: AccountType.EQUITY, is_active: true, parent_account_id: 8 },
-          { company_id: 1, code: '4000', name: 'Revenue', type: AccountType.REVENUE, is_active: true, parent_account_id: undefined },
-          { company_id: 1, code: '4100', name: 'POS Food & Beverage Sales', type: AccountType.REVENUE, is_active: true, parent_account_id: 10 },
-          { company_id: 1, code: '5000', name: 'Expenses', type: AccountType.EXPENSE, is_active: true, parent_account_id: undefined },
-          { company_id: 1, code: '5100', name: 'Cost of Goods Sold', type: AccountType.EXPENSE, is_active: true, parent_account_id: 12 },
-          { company_id: 1, code: '5200', name: 'Waste & Shrinkage Expense', type: AccountType.EXPENSE, is_active: true, parent_account_id: 12 },
-          { company_id: 1, code: '5300', name: 'Inventory Adjustment Variance', type: AccountType.EXPENSE, is_active: true, parent_account_id: 12 },
-        ];
-        await this.ledgerAccountRepository.save(seedAccounts as any);
-      }
+      // if (count === 0) {
+      //   const seedAccounts = [
+      //     {
+      //       company_id: 1,
+      //       code: '1000',
+      //       name: 'Assets',
+      //       type: AccountType.ASSET,
+      //       is_active: true,
+      //       parent_account_id: undefined,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '1100',
+      //       name: 'Raw Material Inventory',
+      //       type: AccountType.ASSET,
+      //       is_active: true,
+      //       parent_account_id: 1,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '1200',
+      //       name: 'Finished Goods Inventory',
+      //       type: AccountType.ASSET,
+      //       is_active: true,
+      //       parent_account_id: 1,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '1300',
+      //       name: 'Cash & Bank Accounts',
+      //       type: AccountType.ASSET,
+      //       is_active: true,
+      //       parent_account_id: 1,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '2000',
+      //       name: 'Liabilities',
+      //       type: AccountType.LIABILITY,
+      //       is_active: true,
+      //       parent_account_id: undefined,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '2100',
+      //       name: 'Accounts Payable',
+      //       type: AccountType.LIABILITY,
+      //       is_active: true,
+      //       parent_account_id: 5,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '2200',
+      //       name: 'Tax Payable',
+      //       type: AccountType.LIABILITY,
+      //       is_active: true,
+      //       parent_account_id: 5,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '3000',
+      //       name: 'Equity',
+      //       type: AccountType.EQUITY,
+      //       is_active: true,
+      //       parent_account_id: undefined,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '3100',
+      //       name: 'Owner Capital',
+      //       type: AccountType.EQUITY,
+      //       is_active: true,
+      //       parent_account_id: 8,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '4000',
+      //       name: 'Revenue',
+      //       type: AccountType.REVENUE,
+      //       is_active: true,
+      //       parent_account_id: undefined,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '4100',
+      //       name: 'POS Food & Beverage Sales',
+      //       type: AccountType.REVENUE,
+      //       is_active: true,
+      //       parent_account_id: 10,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '5000',
+      //       name: 'Expenses',
+      //       type: AccountType.EXPENSE,
+      //       is_active: true,
+      //       parent_account_id: undefined,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '5100',
+      //       name: 'Cost of Goods Sold',
+      //       type: AccountType.EXPENSE,
+      //       is_active: true,
+      //       parent_account_id: 12,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '5200',
+      //       name: 'Waste & Shrinkage Expense',
+      //       type: AccountType.EXPENSE,
+      //       is_active: true,
+      //       parent_account_id: 12,
+      //     },
+      //     {
+      //       company_id: 1,
+      //       code: '5300',
+      //       name: 'Inventory Adjustment Variance',
+      //       type: AccountType.EXPENSE,
+      //       is_active: true,
+      //       parent_account_id: 12,
+      //     },
+      //   ];
+      //   await this.ledgerAccountRepository.save(seedAccounts as any);
+      // }
     } catch (err: any) {
       console.log('LedgerAccounts DB seed check deferred:', err.message);
     }
   }
 
-  // ─── Helpers privados ──────────────────────────────────────────────────────
+  // ─── privateHelpers  ──────────────────────────────────────────────────────
 
   private async getCompanyId(merchantId: number): Promise<number> {
     const merchant = await this.merchantRepository.findOne({
@@ -119,7 +224,7 @@ export class LedgerAccountsService implements OnModuleInit {
     };
   }
 
-  /** Búsqueda interna por company_id directo (sin need to resolve from merchantId) */
+  /** Internal search by direct company_id (without need to resolve from merchantId) */
   private async fetchOne(
     id: number,
     company_id: number,
@@ -142,7 +247,7 @@ export class LedgerAccountsService implements OnModuleInit {
     return this.buildResponse(account, createdUpdateDelete);
   }
 
-  // ─── CRUD público ──────────────────────────────────────────────────────────
+  // ─── Public CRUD ──────────────────────────────────────────────────────────
 
   async create(
     merchantId: number,

@@ -41,7 +41,7 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { CompanyProfileResponseDto } from './dtos/company-profile.dto';
 import { CompanyConfigurationsResponseDto } from './dtos/company-configurations.dto';
 
-@ApiTags('Companies')
+@ApiTags('Platform SaaS - Companies')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('companies')
@@ -159,7 +159,9 @@ export class CompaniesController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get configuration records for the authenticated user company' })
+  @ApiOperation({
+    summary: 'Get configuration records for the authenticated user company',
+  })
   @ApiResponse({
     status: 200,
     description: 'Company configurations found',

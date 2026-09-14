@@ -118,11 +118,17 @@ describe('MerchantPayrollRuleController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MerchantPayrollRuleController],
-      providers: [{ provide: MerchantPayrollRuleService, useValue: mockService }],
+      providers: [
+        { provide: MerchantPayrollRuleService, useValue: mockService },
+      ],
     }).compile();
 
-    controller = module.get<MerchantPayrollRuleController>(MerchantPayrollRuleController);
-    service = module.get<MerchantPayrollRuleService>(MerchantPayrollRuleService);
+    controller = module.get<MerchantPayrollRuleController>(
+      MerchantPayrollRuleController,
+    );
+    service = module.get<MerchantPayrollRuleService>(
+      MerchantPayrollRuleService,
+    );
   });
 
   describe('Controller Initialization', () => {
@@ -141,11 +147,19 @@ describe('MerchantPayrollRuleController', () => {
         message: 'Merchant Payroll Rule created successfully',
         data: mockMerchantPayrollRule,
       };
-      const createSpy = jest.spyOn(service, 'create').mockResolvedValue(expectedResponse);
+      const createSpy = jest
+        .spyOn(service, 'create')
+        .mockResolvedValue(expectedResponse);
 
-      const result = await controller.create(mockCreateMerchantPayrollRuleDto, mockAuthenticatedUser);
+      const result = await controller.create(
+        mockCreateMerchantPayrollRuleDto,
+        mockAuthenticatedUser,
+      );
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateMerchantPayrollRuleDto, mockAuthenticatedUser);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateMerchantPayrollRuleDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(expectedResponse);
     });
 
@@ -154,18 +168,29 @@ describe('MerchantPayrollRuleController', () => {
       jest.spyOn(service, 'create').mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(mockCreateMerchantPayrollRuleDto, mockAuthenticatedUser),
+        controller.create(
+          mockCreateMerchantPayrollRuleDto,
+          mockAuthenticatedUser,
+        ),
       ).rejects.toThrow(errorMessage);
     });
   });
 
   describe('GET /merchant-payroll-rule', () => {
     it('should retrieve all merchant payroll rules successfully', async () => {
-      const findAllSpy = jest.spyOn(service, 'findAll').mockResolvedValue(mockPaginatedResponse);
+      const findAllSpy = jest
+        .spyOn(service, 'findAll')
+        .mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser);
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, mockAuthenticatedUser);
+      expect(findAllSpy).toHaveBeenCalledWith(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(mockPaginatedResponse);
     });
 
@@ -178,7 +203,10 @@ describe('MerchantPayrollRuleController', () => {
       };
       jest.spyOn(service, 'findAll').mockResolvedValue(emptyResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 }, mockAuthenticatedUser);
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        mockAuthenticatedUser,
+      );
 
       expect(result).toEqual(emptyResponse);
     });
@@ -207,7 +235,9 @@ describe('MerchantPayrollRuleController', () => {
     it('should handle errors when retrieving by ID', async () => {
       jest.spyOn(service, 'findOne').mockRejectedValue(new Error('not found'));
 
-      await expect(controller.findOne(1, mockAuthenticatedUser)).rejects.toThrow('not found');
+      await expect(
+        controller.findOne(1, mockAuthenticatedUser),
+      ).rejects.toThrow('not found');
     });
   });
 
@@ -218,11 +248,21 @@ describe('MerchantPayrollRuleController', () => {
         message: 'Merchant Payroll Rule updated successfully',
         data: mockMerchantPayrollRule,
       };
-      const updateSpy = jest.spyOn(service, 'update').mockResolvedValue(updatedResponse);
+      const updateSpy = jest
+        .spyOn(service, 'update')
+        .mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, mockUpdateMerchantPayrollRuleDto, mockAuthenticatedUser);
+      const result = await controller.update(
+        1,
+        mockUpdateMerchantPayrollRuleDto,
+        mockAuthenticatedUser,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateMerchantPayrollRuleDto, mockAuthenticatedUser);
+      expect(updateSpy).toHaveBeenCalledWith(
+        1,
+        mockUpdateMerchantPayrollRuleDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(updatedResponse);
     });
 
@@ -230,7 +270,11 @@ describe('MerchantPayrollRuleController', () => {
       jest.spyOn(service, 'update').mockRejectedValue(new Error('forbidden'));
 
       await expect(
-        controller.update(1, mockUpdateMerchantPayrollRuleDto, mockAuthenticatedUser),
+        controller.update(
+          1,
+          mockUpdateMerchantPayrollRuleDto,
+          mockAuthenticatedUser,
+        ),
       ).rejects.toThrow('forbidden');
     });
   });
@@ -242,7 +286,9 @@ describe('MerchantPayrollRuleController', () => {
         message: 'Merchant Payroll Rule deleted successfully',
         data: mockMerchantPayrollRule,
       };
-      const removeSpy = jest.spyOn(service, 'remove').mockResolvedValue(deleteResponse);
+      const removeSpy = jest
+        .spyOn(service, 'remove')
+        .mockResolvedValue(deleteResponse);
 
       const result = await controller.remove(1);
 

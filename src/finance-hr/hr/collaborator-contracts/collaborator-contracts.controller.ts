@@ -15,7 +15,7 @@ import {
   UseGuards,
   Request,
   Query,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -64,10 +64,9 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 
 /**
- * Fichero subido, con los campos que da el almacenamiento en memoria.
+ * File uploaded, with the fields provided by the memory storage.
  *
- * Se declara aquí porque el proyecto no incluye `@types/multer`, y el adjunto se escribe a
- * disco a mano en lugar de con `diskStorage` para no depender de esos tipos.
+ * It is declared here because the project does not include `@types/multer`, and the attachment is written to disk manually instead of using `diskStorage` to avoid relying on those types.
  */
 interface UploadedContractDocument {
   originalname: string;
@@ -76,7 +75,7 @@ interface UploadedContractDocument {
   buffer: Buffer;
 }
 
-/** Persiste el adjunto bajo `uploads/contracts`, que main.ts ya sirve como estático. */
+/** The attachment under `uploads/contracts` persists, which main.ts already serves as static.. */
 function storeContractDocument(file: UploadedContractDocument): string {
   const dir = join(process.cwd(), CONTRACT_DOCUMENT_DIR);
   mkdirSync(dir, { recursive: true });
@@ -86,7 +85,7 @@ function storeContractDocument(file: UploadedContractDocument): string {
   return filename;
 }
 
-@ApiTags('Collaborator contracts')
+@ApiTags('Finance & HR - HR - Collaborator contracts')
 @ApiBearerAuth()
 @Controller('collaborator-contracts')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.COLLABORATOR_CONTRACTS)
@@ -97,11 +96,9 @@ export class CollaboratorContractsController {
   ) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -115,13 +112,12 @@ export class CollaboratorContractsController {
     return merchantId;
   }
 
-  /** Autor de la enmienda. Nunca bloquea: la bitácora acepta un autor desconocido. */
+  /** Obtains the user ID of the authenticated user. */
   private userIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
   ): number | null {
     return req.user?.id ?? null;
   }
-
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -273,10 +269,9 @@ export class CollaboratorContractsController {
   }
 
   /**
-   * Alias de PUT para las enmiendas parciales.
+   * PUT alias for partial amendments.
    *
-   * El DTO ya es enteramente opcional, así que ambos verbos hacen lo mismo; se expone PATCH
-   * porque es lo que espera el cliente al enviar sólo los términos que cambian.
+   * The DTO is now entirely optional, so both verbs do the same thing; PATCH is exposed because that's what the client expects when sending only the terms that change..
    */
   @Patch(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

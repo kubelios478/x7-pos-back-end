@@ -46,7 +46,7 @@ import { PaginatedMerchantTaxRuleResponseDto } from './dto/paginated-merchant-ta
 import { QueryMerchantTaxRuleDto } from './dto/query-merchant-tax-rule.dto';
 import { UpdateMerchantTaxRuleDto } from './dto/update-merchant-tax-rule.dto';
 
-@ApiTags('Merchant Tax Rule')
+@ApiTags('Core - Configurations - Merchant Tax Rule')
 @Controller('merchant-tax-rule')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.MERCHANT_TAX_RULES)
 export class MerchantTaxRuleController {
@@ -295,10 +295,7 @@ export class MerchantTaxRuleController {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
-    const merchantTaxRule = await this.merchantTaxRuleService.findOne(
-      id,
-      user,
-    );
+    const merchantTaxRule = await this.merchantTaxRuleService.findOne(id, user);
     return merchantTaxRule;
   }
 

@@ -46,7 +46,7 @@ import { GetTableAssignmentsQueryDto } from './dto/get-table-assignments-query.d
 import { OneTableAssignmentResponseDto } from './dto/table-assignment-response.dto';
 import { PaginatedTableAssignmentsResponseDto } from './dto/paginated-table-assignments-response.dto';
 
-@ApiTags('Table Assignments')
+@ApiTags('Restaurant operations - Dining System - Table Assignments')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 @Controller('table-assignments')

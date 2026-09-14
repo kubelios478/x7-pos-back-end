@@ -56,7 +56,7 @@ import { RefundOrderDto } from './dto/refund-order.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Orders')
+@ApiTags('Restaurant operations - POS - Orders')
 @ApiBearerAuth()
 @ApiExtraModels(ErrorResponse)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
@@ -576,9 +576,9 @@ export class OrdersController {
   async completePurchase(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CompletePurchaseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedUser,
   ) {
-    return this.ordersService.completePurchase(id, dto, req.user);
+    return this.ordersService.completePurchase(id, dto, req);
   }
 
   @Post('payment')
@@ -590,12 +590,11 @@ export class OrdersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  async processPayment(@Body() dto: ProcessPaymentDto, @Req() req) {
-    return this.ordersService.processPayment(
-      dto,
-      req.user.merchant.id,
-      req.user,
-    );
+  async processPayment(
+    @Body() dto: ProcessPaymentDto,
+    @Req() req: AuthenticatedUser,
+  ) {
+    return this.ordersService.processPayment(dto, req.merchant.id, req);
   }
 
   @Post('refund')
@@ -607,7 +606,10 @@ export class OrdersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  async refundOrder(@Body() dto: RefundOrderDto, @Req() req) {
-    return this.ordersService.refundOrder(dto, req.user.merchant?.id, req.user);
+  async refundOrder(
+    @Body() dto: RefundOrderDto,
+    @Req() req: AuthenticatedUser,
+  ) {
+    return this.ordersService.refundOrder(dto, req.merchant?.id, req);
   }
 }

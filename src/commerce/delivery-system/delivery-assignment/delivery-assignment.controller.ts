@@ -40,7 +40,7 @@ import { PaginatedDeliveryAssignmentResponseDto } from './dto/paginated-delivery
 import { QueryDeliveryAssignmentDto } from './dto/query-delivery-assignment.dto';
 import { UpdateDeliveryAssignmentDto } from './dto/update-delivery-assignment.dto';
 
-@ApiTags('Delivery Assignment')
+@ApiTags('Commerce - Delivery System - Delivery Assignment')
 @Controller('delivery-assignment')
 export class DeliveryAssignmentController {
   constructor(

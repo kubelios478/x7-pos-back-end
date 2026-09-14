@@ -40,7 +40,7 @@ import { UpdatePlanApplicationDto } from './dto/update-plan-application.dto';
 import { PaginatedPlanApplicationResponseDto } from './dto/paginated-plan-application-response.dto';
 import { QueryPlanApplicationDto } from './dto/query-plan-application.dto';
 
-@ApiTags('Plan Applications')
+@ApiTags('Platform SaaS - Subscriptions - Plan Applications')
 @Controller('plan-applications')
 export class PlanApplicationsController {
   constructor(private readonly planAppService: PlanApplicationsService) {}

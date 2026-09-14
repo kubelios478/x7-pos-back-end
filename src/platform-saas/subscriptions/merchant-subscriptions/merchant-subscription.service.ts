@@ -10,7 +10,7 @@ import { OneMerchantSubscriptionSummaryDto } from './dtos/merchant-subscription-
 import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscription.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { QueryMerchantSubscriptionDto } from './dtos/query-merchant-subscription.dto';
-import { PaginatedMerchantSuscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
+import { PaginatedMerchantSubscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
 
 @Injectable()
 export class MerchantSubscriptionService {
@@ -78,7 +78,7 @@ export class MerchantSubscriptionService {
   }
   async findAll(
     query: QueryMerchantSubscriptionDto,
-  ): Promise<PaginatedMerchantSuscriptionResponseDto> {
+  ): Promise<PaginatedMerchantSubscriptionResponseDto> {
     const {
       status,
       page = 1,

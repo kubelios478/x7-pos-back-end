@@ -38,7 +38,7 @@ import { RecipesService } from './recipes.service';
 import { UpsertProductRecipeDto } from './dto/upsert-product-recipe.dto';
 import { ProductRecipe } from './entities/product-recipe.entity';
 
-@ApiTags('recipes')
+@ApiTags('Inventory - Products - Recipes')
 @ApiExtraModels(ErrorResponse, UpsertProductRecipeDto)
 @ApiBearerAuth()
 @Controller('products/:productId/recipes')

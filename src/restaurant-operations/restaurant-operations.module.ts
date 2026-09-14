@@ -26,6 +26,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     CashdrawerModule,
     KitchenDisplaySystemModule,
     DiningSystemModule,
+    ReservationsModule,
   ],
 })
 export class RestaurantOperationsModule {}

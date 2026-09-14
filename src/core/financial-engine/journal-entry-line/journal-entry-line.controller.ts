@@ -39,12 +39,9 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import {
-  JournalEntryLineResponseDto,
-  OneJournalEntryLineResponse,
-} from './dto/journal-entry-line-response.dto';
+import { OneJournalEntryLineResponse } from './dto/journal-entry-line-response.dto';
 
-@ApiTags('Journal Entry Lines')
+@ApiTags('Core - Financial engine - Journal Entry Lines')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)

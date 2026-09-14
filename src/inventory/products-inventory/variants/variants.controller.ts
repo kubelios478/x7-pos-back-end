@@ -31,6 +31,7 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
   ApiQuery,
+  ApiTags,
 } from '@nestjs/swagger';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -43,6 +44,7 @@ import { Variant } from './entities/variant.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+@ApiTags('Inventory - Products - Variants')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('variants')

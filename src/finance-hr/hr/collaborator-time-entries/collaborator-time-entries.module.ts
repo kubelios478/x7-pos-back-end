@@ -15,7 +15,7 @@ import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.ent
   imports: [
     AuthModule,
     TypeOrmModule.forFeature([
-      // Histórico inmutable de correcciones de fichaje.
+      // Unchanging historical record of transfer corrections.
       TimeEntryRevision,
       TimeEntry,
       Company,

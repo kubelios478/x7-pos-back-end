@@ -44,7 +44,7 @@ import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { AdjustmentType } from './constants/adjustment-type.enum';
 import { PayrollAdjustmentSortBy } from './dto/get-payroll-adjustments-query.dto';
 
-@ApiTags('Payroll adjustments')
+@ApiTags('Finance & HR - Payroll - Payroll adjustments')
 @ApiBearerAuth()
 @Controller('payroll-adjustments')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PAYROLL_ADJUSTMENTS)

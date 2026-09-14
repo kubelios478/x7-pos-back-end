@@ -47,7 +47,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 
-@ApiTags('Online Menu Items')
+@ApiTags('Commerce - Online Ordering System - Online menus Items')
 @ApiBearerAuth()
 @Controller('online-menu-items')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ONLINE_MENU_ITEMS)

@@ -47,7 +47,7 @@ import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 
-@ApiTags('Collaborators')
+@ApiTags('Finance & HR - HR - Collaborators')
 @ApiBearerAuth()
 @Controller('collaborators')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.COLLABORATORS)
@@ -56,11 +56,9 @@ export class CollaboratorsController {
   constructor(private readonly collaboratorsService: CollaboratorsService) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Antes esto se leía como `req.merchant?.id`
-   * —tipando el request como AuthenticatedUser, que hacía pasar el error por delante del
-   * compilador— y siempre valía undefined: el módulo entero respondía 403.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -365,14 +363,21 @@ export class CollaboratorsController {
     description:
       'Counts and recent rows for everything the collaborator is bound to: shift assignments, dining table assignments, cash drawer sessions in their custody (opened and closed) and POS orders taken, plus the total sales volume. Feeds the HR detail drawer.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Collaborator ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Collaborator ID',
+    example: 1,
+  })
   @ApiOkResponse({
     description: 'Summary retrieved successfully',
     type: CollaboratorSummaryResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Invalid collaborator ID' })
   @ApiNotFoundResponse({ description: 'Collaborator not found' })
-  @ApiForbiddenResponse({ description: 'Collaborator belongs to another merchant' })
+  @ApiForbiddenResponse({
+    description: 'Collaborator belongs to another merchant',
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   async summary(
     @Param('id', ParseIntPipe) id: number,

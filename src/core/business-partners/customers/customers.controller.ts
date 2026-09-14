@@ -10,7 +10,7 @@ import {
   UseGuards,
   Request,
   ParseIntPipe,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -36,7 +36,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Customer } from './entities/customer.entity';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 
-@ApiTags('Customers')
+@ApiTags('Core - Business partners - Customers')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('customers')
@@ -46,11 +46,9 @@ export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -65,8 +63,7 @@ export class CustomersController {
   }
 
   /**
-   * Usuario autenticado completo. Este servicio recibe el usuario, no sólo su comercio,
-   * así que hace falta el objeto entero — y sigue viniendo de `req.user`.
+   * Fully authenticated user. This service receives the user, not just their merchant, so the entire object is required — and it still comes from `req.user`.
    */
   private userOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -79,7 +76,6 @@ export class CustomersController {
     }
     return user;
   }
-
 
   @Post()
   @ApiOperation({ summary: 'Create a new customer' })
@@ -103,7 +99,10 @@ export class CustomersController {
   // 'portal_admin', 'portal_user', 'merchant_admin', 'merchant_user'
   @ApiBody({ type: CreateCustomerDto })
   @Roles('portal_admin', 'merchant_admin', 'customer_admin')
-  create(@Body() dto: CreateCustomerDto, @Request() req: ExpressRequest & { user?: AuthenticatedUser }) {
+  create(
+    @Body() dto: CreateCustomerDto,
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
+  ) {
     return this.customersService.create(dto, this.userOf(req));
   }
 

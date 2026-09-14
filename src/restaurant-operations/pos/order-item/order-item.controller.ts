@@ -49,7 +49,7 @@ import { OrderItemStatus } from './constants/order-item-status.enum';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Order Items')
+@ApiTags('Restaurant operations - POS - Order Items')
 @ApiBearerAuth()
 @Controller('order-item')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDER_ITEMS)

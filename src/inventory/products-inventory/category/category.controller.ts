@@ -28,6 +28,7 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
   ApiQuery,
+  ApiTags,
 } from '@nestjs/swagger';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -45,6 +46,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+@ApiTags('Inventory - Products - Categories')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('category')

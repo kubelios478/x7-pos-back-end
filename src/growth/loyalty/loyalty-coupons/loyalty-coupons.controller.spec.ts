@@ -64,7 +64,7 @@ describe('LoyaltyCouponsController', () => {
   // ─── create ────────────────────────────────────────────────────────────────
 
   describe('create', () => {
-    it('debería crear un cupón y retornar el resultado del servicio', async () => {
+    it('It should create a coupon and return the service result.', async () => {
       const expectedResult = {
         statusCode: 201,
         message: 'Loyalty Coupon created successfully',
@@ -82,7 +82,7 @@ describe('LoyaltyCouponsController', () => {
       );
     });
 
-    it('debería propagar el error del servicio al crear un cupón', async () => {
+    it('It should propagate the error from the service when creating a coupon', async () => {
       mockLoyaltyCouponsService.create.mockRejectedValue(
         new Error('Conflict: coupon already exists'),
       );
@@ -100,7 +100,7 @@ describe('LoyaltyCouponsController', () => {
   // ─── findAll ───────────────────────────────────────────────────────────────
 
   describe('findAll', () => {
-    it('debería retornar la lista paginada de cupones', async () => {
+    it('It should return the paginated list of coupons', async () => {
       const query: GetLoyaltyCouponsQueryDto = { page: 1, limit: 10 };
       const expectedResult = {
         statusCode: 200,
@@ -125,7 +125,7 @@ describe('LoyaltyCouponsController', () => {
       );
     });
 
-    it('debería propagar el error del servicio al obtener la lista de cupones', async () => {
+    it('It should propagate the error from the service when finding all coupons', async () => {
       const query: GetLoyaltyCouponsQueryDto = { page: 1, limit: 10 };
       mockLoyaltyCouponsService.findAll.mockRejectedValue(
         new Error('Internal Server Error'),
@@ -144,7 +144,7 @@ describe('LoyaltyCouponsController', () => {
   // ─── findOne ───────────────────────────────────────────────────────────────
 
   describe('findOne', () => {
-    it('debería retornar un cupón por su ID', async () => {
+    it('It should return a coupon by its ID', async () => {
       const id = 1;
       const expectedResult = {
         statusCode: 200,
@@ -163,7 +163,7 @@ describe('LoyaltyCouponsController', () => {
       );
     });
 
-    it('debería propagar el error cuando el cupón no existe', async () => {
+    it('It should propagate the error when the coupon does not exist', async () => {
       const id = 999;
       mockLoyaltyCouponsService.findOne.mockRejectedValue(
         new Error('Loyalty Coupon not found'),
@@ -182,7 +182,7 @@ describe('LoyaltyCouponsController', () => {
   // ─── update ────────────────────────────────────────────────────────────────
 
   describe('update', () => {
-    it('debería actualizar el status de un cupón', async () => {
+    it('It should update the status of a coupon', async () => {
       const id = 1;
       const updateDto: UpdateLoyaltyCouponDto = {
         status: LoyaltyCouponStatus.REDEEMED,
@@ -206,7 +206,7 @@ describe('LoyaltyCouponsController', () => {
       );
     });
 
-    it('debería propagar el error cuando el cupón a actualizar no existe', async () => {
+    it('It should propagate the error when the coupon to update does not exist', async () => {
       const id = 999;
       const updateDto: UpdateLoyaltyCouponDto = {
         status: LoyaltyCouponStatus.CANCELLED,
@@ -229,7 +229,7 @@ describe('LoyaltyCouponsController', () => {
   // ─── remove ────────────────────────────────────────────────────────────────
 
   describe('remove', () => {
-    it('debería eliminar (baja lógica) un cupón por su ID', async () => {
+    it('It should delete (logically) a coupon by its ID', async () => {
       const id = 1;
       const expectedResult = {
         statusCode: 200,
@@ -248,7 +248,7 @@ describe('LoyaltyCouponsController', () => {
       );
     });
 
-    it('debería propagar el error cuando el cupón a eliminar no existe', async () => {
+    it('It should propagate the error when the coupon to delete does not exist', async () => {
       const id = 999;
       mockLoyaltyCouponsService.remove.mockRejectedValue(
         new Error('Loyalty Coupon not found'),
@@ -267,7 +267,7 @@ describe('LoyaltyCouponsController', () => {
   // ─── Service Integration ───────────────────────────────────────────────────
 
   describe('Service Integration', () => {
-    it('debería llamar a todos los métodos del servicio con los parámetros correctos', async () => {
+    it('It should call all service methods with the correct parameters', async () => {
       const query: GetLoyaltyCouponsQueryDto = { page: 1, limit: 10 };
       const updateDto: UpdateLoyaltyCouponDto = {
         status: LoyaltyCouponStatus.REDEEMED,

@@ -3,7 +3,12 @@ import { KitchenAnalyticsService } from './kitchen-analytics.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
-import { ApiBearerAuth, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { PrepTimeResponseDto } from './dto/prep-time-response.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
@@ -12,6 +17,7 @@ import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { GetCancelledOrdersDto } from './dto/get-cancelled-orders.dto';
 import { GetExecutiveAnalyticsQueryDto } from './dto/executive-analytics.dto';
 
+@ApiTags('Restaurant operations - Kitchen Display System - Kitchen Analytics')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('kitchen-analytics')
@@ -48,10 +54,10 @@ export class KitchenAnalyticsController {
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   async getCancelledOrders(
     @Query() query: GetCancelledOrdersDto,
-    @Request() req,
+    @Request() req: AuthenticatedUser,
   ) {
     const data = await this.service.getCancelledKitchenOrders(
-      req.user.merchant.id,
+      req.merchant.id,
       query.startDate,
       query.endDate,
     );
@@ -65,10 +71,8 @@ export class KitchenAnalyticsController {
 
   @Get('cancelled-orders/summary')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
-  async getSummary(@Request() req) {
-    const data = await this.service.getCancellationSummary(
-      req.user.merchant.id,
-    );
+  async getSummary(@Request() req: AuthenticatedUser) {
+    const data = await this.service.getCancellationSummary(req.merchant.id);
 
     return {
       statusCode: 200,

@@ -50,7 +50,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 
-@ApiTags('Online Order Items')
+@ApiTags('Commerce - Online Ordering System - Online order items')
 @ApiBearerAuth()
 @Controller('online-order-items')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ONLINE_ORDER_ITEMS)

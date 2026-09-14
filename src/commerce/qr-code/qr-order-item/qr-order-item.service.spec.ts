@@ -272,7 +272,7 @@ describe('QROrderItemService', () => {
     it('should return all qr order items', async () => {
       const mockQROrderItems = [mockQROrderItem as QROrderItem];
 
-      // QueryBuilder ya mockeado en el beforeEach
+      // QueryBuilder already mocked in beforeEach
       const qb = qrOrderItemRepository.createQueryBuilder() as Partial<
         SelectQueryBuilder<QROrderItem>
       >;

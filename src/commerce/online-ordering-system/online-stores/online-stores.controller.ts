@@ -49,7 +49,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { OnlineStoreStatus } from './constants/online-store-status.enum';
 
-@ApiTags('Online Stores')
+@ApiTags('Commerce - Online Ordering System - Online stores')
 @ApiBearerAuth()
 @Controller('online-stores')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ONLINE_STORES)

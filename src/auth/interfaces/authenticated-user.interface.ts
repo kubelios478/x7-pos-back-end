@@ -15,6 +15,6 @@ export interface AuthenticatedUser {
   planId?: number;
   /** Feature entity IDs the merchant may manage under their current subscription plan (set by login / JwtStrategy). */
   authorizedFeatureIds?: number[];
-  /** ID del turno de caja activo del merchant (inyectado por ActiveShiftGuard). */
+  /** Merchant's active cash register shift ID (injected by ActiveShiftGuard). */
   activeShiftId?: number;
 }

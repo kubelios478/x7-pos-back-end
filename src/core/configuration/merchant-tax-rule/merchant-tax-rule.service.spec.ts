@@ -359,7 +359,11 @@ describe('MerchantTaxRuleService', () => {
       saveSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
 
       await service.create(
-        { ...mockCreateMerchantTaxRuleDto, taxType: TaxType.PERCENTAGE, rate: 1 },
+        {
+          ...mockCreateMerchantTaxRuleDto,
+          taxType: TaxType.PERCENTAGE,
+          rate: 1,
+        },
         mockMerchantAdminUser,
       );
 

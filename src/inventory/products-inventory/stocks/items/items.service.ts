@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
@@ -43,8 +47,14 @@ export class ItemsService {
     merchant_id: number,
     createItemDto: CreateItemDto,
   ): Promise<OneItemResponse> {
-    const { productId, locationId, variantId, supplyId, currentQty, minimumQty } =
-      createItemDto;
+    const {
+      productId,
+      locationId,
+      variantId,
+      supplyId,
+      currentQty,
+      minimumQty,
+    } = createItemDto;
     const merchantId = merchant_id;
 
     if (!supplyId && (!productId || !variantId)) {
@@ -67,7 +77,7 @@ export class ItemsService {
     let supply: Supply | null = null;
 
     if (supplyId) {
-      // Buscar insumo asociado a la compañía del merchant
+      // Search for input associated with the merchant's company
       const merchant = await this.locationRepository.manager.findOne(Merchant, {
         where: { id: merchant_id },
         select: ['companyId'],
@@ -78,7 +88,9 @@ export class ItemsService {
         company_id: merchant?.companyId,
       });
       if (!supply) {
-        throw new NotFoundException('Raw material supply not found or inactive');
+        throw new NotFoundException(
+          'Raw material supply not found or inactive',
+        );
       }
 
       const existingItem = await this.itemRepository.findOne({
@@ -90,7 +102,9 @@ export class ItemsService {
 
       if (existingItem) {
         if (existingItem.isActive) {
-          ErrorHandler.exists('Stock item already exists for this raw material at this location');
+          ErrorHandler.exists(
+            'Stock item already exists for this raw material at this location',
+          );
         } else {
           existingItem.isActive = true;
           const activatedItem = await this.itemRepository.save(existingItem);
@@ -174,10 +188,13 @@ export class ItemsService {
       .leftJoinAndSelect('item.variant', 'variant')
       .leftJoinAndSelect('item.location', 'location')
       .leftJoinAndSelect('item.supply', 'supply')
-      .where('(product.merchantId = :merchantId OR supply.company_id = :companyId)', {
-        merchantId,
-        companyId: merchant?.companyId,
-      })
+      .where(
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        {
+          merchantId,
+          companyId: merchant?.companyId,
+        },
+      )
       .andWhere('item.isActive = :isActive', { isActive: true });
 
     if (query.productName) {
@@ -394,8 +411,14 @@ export class ItemsService {
       ErrorHandler.invalidId('Item ID is incorrect');
     }
     const merchantId = merchant_id;
-    const { productId, locationId, variantId, supplyId, currentQty, minimumQty } =
-      updateItemDto;
+    const {
+      productId,
+      locationId,
+      variantId,
+      supplyId,
+      currentQty,
+      minimumQty,
+    } = updateItemDto;
 
     const merchant = await this.locationRepository.manager.findOne(Merchant, {
       where: { id: merchantId },
@@ -409,10 +432,13 @@ export class ItemsService {
       .leftJoinAndSelect('item.variant', 'variant')
       .leftJoinAndSelect('item.supply', 'supply')
       .where('item.id = :id', { id })
-      .andWhere('(product.merchantId = :merchantId OR supply.company_id = :companyId)', {
-        merchantId,
-        companyId: merchant?.companyId,
-      })
+      .andWhere(
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        {
+          merchantId,
+          companyId: merchant?.companyId,
+        },
+      )
       .andWhere('item.isActive = :isActive', { isActive: true })
       .getOne();
 
@@ -514,10 +540,13 @@ export class ItemsService {
       .leftJoinAndSelect('item.product', 'product')
       .leftJoinAndSelect('item.supply', 'supply')
       .where('item.id = :id', { id })
-      .andWhere('(product.merchantId = :merchantId OR supply.company_id = :companyId)', {
-        merchantId,
-        companyId: merchant?.companyId,
-      })
+      .andWhere(
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        {
+          merchantId,
+          companyId: merchant?.companyId,
+        },
+      )
       .andWhere('item.isActive = :isActive', { isActive: true })
       .getOne();
 
@@ -571,10 +600,13 @@ export class ItemsService {
       .leftJoinAndSelect('item.location', 'location')
       .leftJoinAndSelect('item.supply', 'supply')
       .where('item.id = :id', { id })
-      .andWhere('(product.merchantId = :merchantId OR supply.company_id = :companyId)', {
-        merchantId,
-        companyId: merchant?.companyId,
-      })
+      .andWhere(
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        {
+          merchantId,
+          companyId: merchant?.companyId,
+        },
+      )
       .andWhere('item.isActive = :isActive', { isActive: true })
       .getOne();
 

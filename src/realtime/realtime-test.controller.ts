@@ -10,7 +10,7 @@ import { companyRoom } from './realtime.constants';
 import { RealtimeEventBusService } from './realtime-event-bus.service';
 import { RealtimeTestBroadcastDto } from './dto/realtime-test-broadcast.dto';
 
-@ApiTags('Realtime (test)')
+@ApiTags('Real time - Realtime (test)')
 @ApiBearerAuth()
 @Controller('realtime/test')
 export class RealtimeTestController {

@@ -51,7 +51,7 @@ import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interf
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Kitchen Stations')
+@ApiTags('Restaurant operations - Kitchen Display System - Stations')
 @ApiBearerAuth()
 @Controller('kitchen-station')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.KITCHEN_STATIONS)

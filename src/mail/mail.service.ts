@@ -33,11 +33,14 @@ export class MailService {
   private readonly smtpEnabled: boolean;
 
   constructor() {
-    this.smtpEnabled = (process.env.SMTP_ENABLED ?? 'true').toLowerCase() !== 'false';
+    this.smtpEnabled =
+      (process.env.SMTP_ENABLED ?? 'true').toLowerCase() !== 'false';
 
     if (!this.smtpEnabled) {
       this.transporter = null;
-      this.logger.warn('SMTP is disabled (SMTP_ENABLED=false). Emails will be logged only.');
+      this.logger.warn(
+        'SMTP is disabled (SMTP_ENABLED=false). Emails will be logged only.',
+      );
       return;
     }
 

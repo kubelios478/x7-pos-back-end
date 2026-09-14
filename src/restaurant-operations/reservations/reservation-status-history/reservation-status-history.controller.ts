@@ -26,7 +26,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-@ApiTags('Reservation Status History')
+@ApiTags('Restaurant operations - Reservations - Status History')
 @ApiBearerAuth()
 @Controller('reservation-status-history')
 @UseGuards(JwtAuthGuard, RolesGuard)

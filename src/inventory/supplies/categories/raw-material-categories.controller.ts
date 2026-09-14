@@ -30,7 +30,7 @@ import { CreateRawMaterialCategoryDto } from './dto/create-raw-material-category
 import { UpdateRawMaterialCategoryDto } from './dto/update-raw-material-category.dto';
 import { FilterRawMaterialCategoryDto } from './dto/filter-raw-material-category.dto';
 
-@ApiTags('Raw Material Categories')
+@ApiTags('Inventory - Supplies - Raw Material Categories')
 @ApiBearerAuth()
 @Controller('v1/raw-material-categories')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PRODUCT_MANAGEMENT)

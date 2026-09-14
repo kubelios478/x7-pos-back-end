@@ -25,8 +25,9 @@ import { ModifierAnalyticsService } from './modifier-analytics.service';
 
 import { GetModifierAnalyticsQueryDto } from './dto/get-modifier-analytics-query.dto';
 import { PaginatedModifierAnalyticsResponseDto } from './dto/paginated-modifier-analytics-response.dto';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
-@ApiTags('Modifier Analytics')
+@ApiTags('Restaurant operations - POS - Modifier Analytics')
 @ApiBearerAuth()
 @Controller('modifier-analytics')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDER_ITEM_MODIFIERS)
@@ -54,10 +55,10 @@ export class ModifierAnalyticsController {
   })
   async getTopModifiers(
     @Query() query: GetModifierAnalyticsQueryDto,
-    @Request() req,
+    @Request() req: AuthenticatedUser,
   ): Promise<PaginatedModifierAnalyticsResponseDto> {
     return this.modifierAnalyticsService.getTopModifiers(
-      req.user.merchant.id,
+      req.merchant.id,
       query,
     );
   }

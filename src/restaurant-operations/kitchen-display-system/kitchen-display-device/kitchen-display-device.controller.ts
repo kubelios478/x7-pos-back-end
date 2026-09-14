@@ -50,7 +50,7 @@ import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Kitchen Display Devices')
+@ApiTags('Restaurant operations - Kitchen Display System - Devices')
 @ApiBearerAuth()
 @Controller('kitchen-display-devices')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.KITCHEN_DISPLAY_DEVICES)

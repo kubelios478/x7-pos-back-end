@@ -2,171 +2,24 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
-import { AccountPayableModule } from './finance-hr/account-payable/account-payable.module';
+// Core & Platform Modules
 import { AuthModule } from './auth/auth.module';
-import { ConfigurationModule } from './core/configuration/configuration.module';
 import { CoreModule } from './core/core.module';
-import { ReceiptItemModule } from './core/billing-transactions/receipt-item/receipt-item.module';
-import { ReceiptTaxModule } from './core/billing-transactions/receipt-tax/receipt-tax.module';
-import { ReceiptsModule } from './core/billing-transactions/receipts/receipts.module';
-import { HrModule } from './finance-hr/hr/hr.module';
-import { InventoryModule } from './inventory/inventory.module';
-import { MailModule } from './mail/mail.module';
-import { OrderItemModule } from './restaurant-operations/pos/order-item/order-item.module';
-import { OrdersModule } from './restaurant-operations/pos/orders/orders.module';
-import { PayrollAdjustmentsModule } from './finance-hr/payroll/payroll-adjustments/payroll-adjustments.module';
-import { PayrollEntriesModule } from './finance-hr/payroll/payroll-entries/payroll-entries.module';
-import { PayrollRunsModule } from './finance-hr/payroll/payroll-runs/payroll-runs.module';
-import { PayrollTaxDetailsModule } from './finance-hr/payroll/payroll-tax-details/payroll-tax-details.module';
-import { RestaurantOperationsModule } from './restaurant-operations/restaurant-operations.module';
 import { PlatformSaasModule } from './platform-saas/platform-saas.module';
+import { MailModule } from './mail/mail.module';
+import { RealtimeModule } from './realtime/realtime.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
+
+// Business & Operations Modules
 import { CommerceModule } from './commerce/commerce.module';
 import { GrowthModule } from './growth/growth.module';
-
-import { ApplicationEntity } from './platform-saas/subscriptions/applications/entity/application-entity';
-import { CashDrawer } from './restaurant-operations/cashdrawer/cash-drawers/entities/cash-drawer.entity';
-import { CashDrawerHistory } from './restaurant-operations/cashdrawer/cash-drawer-history/entities/cash-drawer-history.entity';
-import { CashTipMovement } from './restaurant-operations/tips/cash-tip-movements/entities/cash-tip-movement.entity';
-import { CashTransaction } from './restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
-import { CashShift } from './restaurant-operations/cashdrawer/cash-shifts/entities/cash-shift.entity';
-import { CashMovement } from './restaurant-operations/cashdrawer/cash-movements/entities/cash-movement.entity';
-import { Category } from './inventory/products-inventory/category/entities/category.entity';
-import { Supply } from './inventory/supplies/entities/supply.entity';
-import { SupplySupplier } from './inventory/supplies/entities/supply-supplier.entity';
-import { RawMaterialCategory } from './inventory/supplies/categories/entities/raw-material-category.entity';
-import { Collaborator } from './finance-hr/hr/collaborators/entities/collaborator.entity';
-import { CollaboratorContract } from './finance-hr/hr/collaborator-contracts/entities/collaborator-contract.entity';
-import { CollaboratorContractRevision } from './finance-hr/hr/collaborator-contracts/entities/collaborator-contract-revision.entity';
-import { Company } from './platform-saas/companies/entities/company.entity';
-import { Configuration } from './core/configuration/entity/configuration-entity';
-import { CompanyDefaultConfiguration } from './core/configuration/company-default/entity/company-default-configuration.entity';
-import { Customer } from './core/business-partners/customers/entities/customer.entity';
-import { FeatureEntity } from './platform-saas/subscriptions/features/entity/features.entity';
-import { Item } from './inventory/products-inventory/stocks/items/entities/item.entity';
-import { InventoryStockAlert } from './inventory/stock-alerts/entities/inventory-stock-alert.entity';
-import { JournalEntry } from './core/financial-engine/journal-entry/entities/journal-entry.entity';
-import { JournalEntryLine } from './core/financial-engine/journal-entry-line/entities/journal-entry-line.entity';
-import { KitchenDisplayDevice } from './restaurant-operations/kitchen-display-system/kitchen-display-device/entities/kitchen-display-device.entity';
-import { KitchenEventLog } from './restaurant-operations/kitchen-display-system/kitchen-event-log/entities/kitchen-event-log.entity';
-import { KitchenOrder } from './restaurant-operations/kitchen-display-system/kitchen-order/entities/kitchen-order.entity';
-import { KitchenOrderItem } from './restaurant-operations/kitchen-display-system/kitchen-order-item/entities/kitchen-order-item.entity';
-import { KitchenStation } from './restaurant-operations/kitchen-display-system/kitchen-station/entities/kitchen-station.entity';
-import { LedgerAccount } from './core/financial-engine/ledger-accounts/entities/ledger-account.entity';
-import { Location } from './inventory/products-inventory/stocks/locations/entities/location.entity';
-import { LoyaltyCoupon } from './growth/loyalty/loyalty-coupons/entities/loyalty-coupon.entity';
-import { LoyaltyCustomer } from './growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
-import { LoyaltyPointTransaction } from './growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
-import { LoyaltyPointsLock } from './growth/loyalty/loyalty-points-redemption/entities/loyalty-points-lock.entity';
-import { LoyaltyRedemptionAuditLog } from './growth/loyalty/loyalty-points-redemption/entities/loyalty-redemption-audit-log.entity';
-import { LoyaltyProgram } from './growth/loyalty/loyalty-programs/entities/loyalty-program.entity';
-import { LoyaltyReward } from './growth/loyalty/loyalty-reward/entities/loyalty-reward.entity';
-import { LoyaltyRewardsRedemption } from './growth/loyalty/loyalty-rewards-redemptions/entities/loyalty-rewards-redemption.entity';
-import { LoyaltyTier } from './growth/loyalty/loyalty-tier/entities/loyalty-tier.entity';
-import { MarketingAutomation } from './growth/marketing/marketing-automations/entities/marketing-automation.entity';
-import { MarketingAutomationAction } from './growth/marketing/marketing-automation-actions/entities/marketing-automation-action.entity';
-import { MarketingCampaign } from './growth/marketing/marketing_campaing/entities/marketing_campaing.entity';
-import { MarketingCampaignAudience } from './growth/marketing/marketing-campaing-audience/entities/marketing-campaing-audience.entity';
-import { MarketingCoupon } from './growth/marketing/marketing-coupons/entities/marketing-coupon.entity';
-import { MarketingCouponRedemption } from './growth/marketing/marketing-coupon-redemptions/entities/marketing-coupon-redemption.entity';
-import { MarketingMessageLog } from './growth/marketing/marketing-message-logs/entities/marketing-message-log.entity';
-import { MarketingSegment } from './growth/marketing/marketing-segments/entities/marketing-segment.entity';
-import { MarketingSegmentRule } from './growth/marketing/marketing-segment-rules/entities/marketing-segment-rule.entity';
-import { Merchant } from './platform-saas/merchants/entities/merchant.entity';
-import { MerchantOvertimeRule } from './core/configuration/merchant-overtime-rule/entity/merchant-overtime-rule.entity';
-import { MerchantPayrollRule } from './core/configuration/merchant-payroll-rule/entity/merchant-payroll-rule.entity';
-import { MerchantSubscription } from './platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
-import { CompanySubscription } from './platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
-import { MerchantTaxRule } from './core/configuration/merchant-tax-rule/entity/merchant-tax-rule.entity';
-import { MerchantTipRule } from './core/configuration/merchant-tip-rule/entity/merchant-tip-rule-entity';
-import { Modifier } from './inventory/products-inventory/modifiers/entities/modifier.entity';
-import { Movement } from './inventory/products-inventory/stocks/movements/entities/movement.entity';
-import { OnlineDeliveryInfo } from './commerce/online-ordering-system/online-delivery-info/entities/online-delivery-info.entity';
-import { OnlineMenu } from './commerce/online-ordering-system/online-menu/entities/online-menu.entity';
-import { OnlineMenuCategory } from './commerce/online-ordering-system/online-menu-category/entities/online-menu-category.entity';
-import { OnlineMenuItem } from './commerce/online-ordering-system/online-menu-item/entities/online-menu-item.entity';
-import { OnlineOrder } from './commerce/online-ordering-system/online-order/entities/online-order.entity';
-import { OnlineOrderItem } from './commerce/online-ordering-system/online-order-item/entities/online-order-item.entity';
-import { OnlinePayment } from './commerce/online-ordering-system/online-payment/entities/online-payment.entity';
-import { OnlineStore } from './commerce/online-ordering-system/online-stores/entities/online-store.entity';
-import { Order } from './restaurant-operations/pos/orders/entities/order.entity';
-import { OrderItem } from './restaurant-operations/pos/order-item/entities/order-item.entity';
-import { OrderItemModifier } from './restaurant-operations/pos/order-item-modifiers/entities/order-item-modifier.entity';
-import { OrderPayment } from './restaurant-operations/pos/order-payments/entities/order-payment.entity';
-import { OrderTax } from './restaurant-operations/pos/order-taxes/entities/order-tax.entity';
-import { PayrollAdjustment } from './finance-hr/payroll/payroll-adjustments/entities/payroll-adjustment.entity';
-import { PayrollEntry } from './finance-hr/payroll/payroll-entries/entities/payroll-entry.entity';
-import { PayrollRun } from './finance-hr/payroll/payroll-runs/entities/payroll-run.entity';
-import { PayrollTaxDetail } from './finance-hr/payroll/payroll-tax-details/entities/payroll-tax-detail.entity';
-import { PlanApplication } from './platform-saas/subscriptions/plan-applications/entity/plan-applications.entity';
-import { PlanFeature } from './platform-saas/subscriptions/plan-features/entity/plan-features.entity';
-import { Product } from './inventory/products-inventory/products/entities/product.entity';
-import { ProductRecipe } from './inventory/products-inventory/recipes/entities/product-recipe.entity';
-import { ProductRecipeLine } from './inventory/products-inventory/recipes/entities/product-recipe-line.entity';
-import { PurchaseOrder } from './inventory/products-inventory/purchase-order/entities/purchase-order.entity';
-import { PurchaseOrderItem } from './inventory/products-inventory/purchase-order-item/entities/purchase-order-item.entity';
-import { QRLocation } from './commerce/qr-code/qr-location/entity/qr-location.entity';
-import { QRMenu } from './commerce/qr-code/qr-menu/entity/qr-menu.entity';
-import { QRMenuItem } from './commerce/qr-code/qr-menu-item/entity/qr-menu-item.entity';
-import { QRMenuSection } from './commerce/qr-code/qr-menu-section/entity/qr-menu-section.entity';
-import { QROrder } from './commerce/qr-code/qr-order/entity/qr-order.entity';
-import { QROrderItem } from './commerce/qr-code/qr-order-item/entity/qr-order-item.entity';
-import { Receipt } from './core/billing-transactions/receipts/entities/receipt.entity';
-import { ReceiptItem } from './core/billing-transactions/receipt-item/entities/receipt-item.entity';
-import { ReceiptTax } from './core/billing-transactions/receipt-tax/entities/receipt-tax.entity';
-import { Shift } from './restaurant-operations/shift/shifts/entities/shift.entity';
-import { ShiftAssignment } from './restaurant-operations/shift/shift-assignments/entities/shift-assignment.entity';
-import { SubscriptionApplication } from './platform-saas/subscriptions/subscription-application/entity/subscription-application.entity';
-import { SubscriptionPayment } from './platform-saas/subscriptions/subscription-payments/entity/subscription-payments.entity';
-import { SubscriptionPlan } from './platform-saas/subscriptions/subscription-plan/entity/subscription-plan.entity';
-import { SubscriptionPlanDisplayFeature } from './platform-saas/subscriptions/subscription-plan/entity/subscription-plan-display-feature.entity';
-import { SupplierInvoice } from './finance-hr/account-payable/supplier-invoices/entities/supplier-invoice.entity';
-import { SupplierInvoiceItem } from './finance-hr/account-payable/supplier-invoice-item/entities/supplier-invoice-item.entity';
-import { Supplier } from './core/business-partners/suppliers/entities/supplier.entity';
-import { SupplierCreditNote } from './finance-hr/account-payable/supplier-credit-notes/entities/supplier-credit-note.entity';
-import { SupplierPayment } from './finance-hr/account-payable/supplier-payments/entities/supplier-payment.entity';
-import { SupplierPaymentAllocation } from './finance-hr/account-payable/supplier_payment_allocations/entities/supplier_payment_allocation.entity';
-import { SupplierPaymentItem } from './finance-hr/account-payable/supplier-payment-items/entities/supplier-payment-item.entity';
-import { Table } from './restaurant-operations/dining-system/tables/entities/table.entity';
-import { TableTransferLog } from './restaurant-operations/dining-system/tables/entities/table-transfer-log.entity';
-import { TableAssignment } from './restaurant-operations/dining-system/table-assignments/entities/table-assignment.entity';
-import { TimeEntry } from './finance-hr/hr/collaborator-time-entries/entities/time-entry.entity';
-import { TimeEntryRevision } from './finance-hr/hr/collaborator-time-entries/entities/time-entry-revision.entity';
-import { Tip } from './restaurant-operations/tips/tips/entities/tip.entity';
-import { TipAllocation } from './restaurant-operations/tips/tip-allocations/entities/tip-allocation.entity';
-import { TipPool } from './restaurant-operations/tips/tip-pools/entities/tip-pool.entity';
-import { TipPoolMember } from './restaurant-operations/tips/tip-pool-members/entities/tip-pool-member.entity';
-import { TipSettlement } from './restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
-import { User } from './platform-saas/users/entities/user.entity';
-import { Variant } from './inventory/products-inventory/variants/entities/variant.entity';
 import { FinanceHrModule } from './finance-hr/finance-hr.module';
-import { FloorZone } from './restaurant-operations/dining-system/floor-zone/entity/floor-zone.entity';
-import { FloorPlan } from './restaurant-operations/dining-system/floor-plan/entity/floor-plan.entity';
-import { Reservation } from './restaurant-operations/reservations/reservation/entities/reservation.entity';
-import { ReservationTable } from './restaurant-operations/reservations/reservation-table/entities/reservation-table.entity';
-import { ReservationStatusHistory } from './restaurant-operations/reservations/reservation-status-history/entities/reservation-status-history.entity';
-import { ReservationGuest } from './restaurant-operations/reservations/reservation-guest/entities/reservation-guest.entity';
-import { ReservationNote } from './restaurant-operations/reservations/reservation-note/entities/reservation-note.entity';
-import { DeliverySystemModule } from './commerce/delivery-system/delivery-system.module';
-import { DeliveryZoneModule } from './commerce/delivery-system/delivery-zone/delivery-zone.module';
-import { DeliveryFeeModule } from './commerce/delivery-system/delivery-fee/delivery-fee.module';
-import { DeliveryDriverModule } from './commerce/delivery-system/delivery-driver/delivery-driver.module';
-import { DeliveryTrackingModule } from './commerce/delivery-system/delivery-tracking/delivery-tracking.module';
-import { DeliveryAssignmentModule } from './commerce/delivery-system/delivery-assignment/delivery-assignment.module';
-import { DeliveryZone } from './commerce/delivery-system/delivery-zone/entity/delivery-zone.entity';
-import { DeliveryFee } from './commerce/delivery-system/delivery-fee/entity/delivery-fee.entity';
-import { DeliveryDriver } from './commerce/delivery-system/delivery-driver/entity/delivery-driver.entity';
-import { DeliveryAssignment } from './commerce/delivery-system/delivery-assignment/entity/delivery-assignment.entity';
-import { DeliveryTracking } from './commerce/delivery-system/delivery-tracking/entity/delivery-tracking.entity';
-import { RealtimeModule } from './realtime/realtime.module';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { MerchantTaxRuleModule } from './core/configuration/merchant-tax-rule/merchant-tax-rule.module';
-import { MerchantOvertimeRuleModule } from './core/configuration/merchant-overtime-rule/merchant-overtime-rule.module';
-import { MerchantPayrollRuleModule } from './core/configuration/merchant-payroll-rule/merchant-payroll-rule.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { RestaurantOperationsModule } from './restaurant-operations/restaurant-operations.module';
+
 import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
-import { ModifierAnalyticsModule } from './restaurant-operations/pos/modifier-analytics/modifier-analytics.module';
-import { OnboardingModule } from './onboarding/onboarding.module';
-import { OnboardingSession } from './onboarding/entities/onboarding-session.entity';
 
 @Module({
   imports: [
@@ -175,183 +28,52 @@ import { OnboardingSession } from './onboarding/entities/onboarding-session.enti
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('DB_HOST'),
-        port: parseInt(config.get('DB_PORT', '5432')),
-        username: config.get('DB_USERNAME'),
-        password: config.get('DB_PASSWORD'),
-        database: config.get('DB_NAME'),
-        entities: [
-          ApplicationEntity,
-          CashDrawer,
-          CashDrawerHistory,
-          CashTipMovement,
-          CashTransaction,
-          CashShift,
-          CashMovement,
-          Category,
-          Supply,
-          SupplySupplier,
-          RawMaterialCategory,
-          Variant,
-          Modifier,
-          Location,
-          Item,
-          InventoryStockAlert,
-          Movement,
-          PurchaseOrder,
-          PurchaseOrderItem,
-          Receipt,
-          ReceiptItem,
-          ReceiptTax,
-          KitchenStation,
-          Collaborator,
-          CollaboratorContract,
-          CollaboratorContractRevision,
-          Company,
-          Configuration,
-          CompanyDefaultConfiguration,
-          Customer,
-          FeatureEntity,
-          KitchenDisplayDevice,
-          KitchenEventLog,
-          KitchenOrder,
-          KitchenOrderItem,
-          LedgerAccount,
-          JournalEntry,
-          JournalEntryLine,
-          LoyaltyCoupon,
-          LoyaltyCustomer,
-          LoyaltyPointTransaction,
-          LoyaltyPointsLock,
-          LoyaltyRedemptionAuditLog,
-          LoyaltyProgram,
-          LoyaltyReward,
-          LoyaltyRewardsRedemption,
-          LoyaltyTier,
-          MarketingAutomation,
-          MarketingAutomationAction,
-          MarketingCampaign,
-          MarketingCampaignAudience,
-          MarketingCoupon,
-          MarketingCouponRedemption,
-          MarketingMessageLog,
-          MarketingSegment,
-          MarketingSegmentRule,
-          Merchant,
-          MerchantOvertimeRule,
-          MerchantPayrollRule,
-          MerchantSubscription,
-          CompanySubscription,
-          MerchantTaxRule,
-          MerchantTipRule,
-          OnlineDeliveryInfo,
-          OnlineMenu,
-          OnlineMenuCategory,
-          OnlineMenuItem,
-          OnlineOrder,
-          OnlineOrderItem,
-          OnlinePayment,
-          OnlineStore,
-          Order,
-          OrderItem,
-          OrderItemModifier,
-          OrderPayment,
-          OrderTax,
-          PayrollAdjustment,
-          PayrollEntry,
-          PayrollRun,
-          PayrollTaxDetail,
-          PlanApplication,
-          PlanFeature,
-          Product,
-          ProductRecipe,
-          ProductRecipeLine,
-          QRLocation,
-          QRLocation,
-          QRMenu,
-          QRMenuItem,
-          QRMenuSection,
-          QROrder,
-          QROrderItem,
-          Reservation,
-          ReservationTable,
-          ReservationStatusHistory,
-          ReservationGuest,
-          ReservationNote,
-          Shift,
-          ShiftAssignment,
-          SubscriptionApplication,
-          SubscriptionPayment,
-          SubscriptionPlan,
-          SubscriptionPlanDisplayFeature,
-          SupplierInvoice,
-          SupplierInvoiceItem,
-          Supplier,
-          SupplierCreditNote,
-          SupplierPayment,
-          SupplierPaymentAllocation,
-          SupplierPaymentItem,
-          Table,
-          TableTransferLog,
-          TableAssignment,
-          TimeEntry,
-          TimeEntryRevision,
-          Tip,
-          TipAllocation,
-          TipPool,
-          TipPoolMember,
-          TipSettlement,
-          User,
-          Variant,
-          MerchantTaxRule,
-          FloorZone,
-          FloorPlan,
-          DeliveryZone,
-          DeliveryFee,
-          DeliveryDriver,
-          DeliveryAssignment,
-          DeliveryTracking,
-          OnboardingSession,
-        ],
-        synchronize: true,
-      }),
+      useFactory: (config: ConfigService) => {
+        const isDev = config.get('NODE_ENV') === 'development';
+        return {
+          type: 'postgres',
+          host: config.get('DB_HOST'),
+          port: parseInt(config.get('DB_PORT', '5432')),
+          username: config.get('DB_USERNAME'),
+          password: config.get('DB_PASSWORD'),
+          database: config.get('DB_NAME'),
+
+          // Only print SQL queries in development
+          logging: isDev,
+
+          // Automatic loading of all entities declared in each submodule (forFeature)
+          autoLoadEntities: true,
+
+          synchronize: false,
+          ssl: {
+            rejectUnauthorized: false,
+          },
+          extra: {
+            ssl: {
+              rejectUnauthorized: false,
+            },
+            max: 5,
+            idleTimeoutMillis: 10000,
+            connectionTimeoutMillis: 10000,
+            prepare: false,
+            statement_timeout: 10000,
+          },
+        };
+      },
     }),
-    AccountPayableModule,
+    // AccountPayableModule,
     AuthModule,
     OnboardingModule,
-    ConfigurationModule,
     CoreModule,
-    HrModule,
     InventoryModule,
     MailModule,
-    OrderItemModule,
-    OrdersModule,
-    PayrollAdjustmentsModule,
-    PayrollEntriesModule,
-    PayrollRunsModule,
-    PayrollTaxDetailsModule,
-    ReceiptItemModule,
-    ReceiptTaxModule,
-    ReceiptsModule,
     RestaurantOperationsModule,
     PlatformSaasModule,
     CommerceModule,
     GrowthModule,
     FinanceHrModule,
-    DeliverySystemModule,
-    DeliveryZoneModule,
-    DeliveryFeeModule,
-    DeliveryDriverModule,
-    DeliveryTrackingModule,
-    DeliveryAssignmentModule,
     RealtimeModule,
-    MerchantTaxRuleModule,
-    MerchantOvertimeRuleModule,
-    MerchantPayrollRuleModule,
     KitchenAnalyticsModule,
-    ModifierAnalyticsModule,
   ],
 })
 export class AppModule {}

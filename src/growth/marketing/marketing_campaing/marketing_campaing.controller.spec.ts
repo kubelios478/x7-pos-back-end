@@ -44,9 +44,9 @@ describe('MarketingCampaignController', () => {
   };
 
   /**
-   * Forma REAL del request: Passport cuelga el usuario en `req.user`.
-   * Pasar el usuario pelado hacía que el spec verificara un contrato que
-   * producción no cumple, y por eso el 403 del módulo pasó desapercibido.
+   * REAL form of the request: Passport hangs the user in `req.user`.
+   * Passing the bare user caused the spec to verify a contract that
+   * production doesn't comply with, and that's why the module's 403 error went unnoticed.
    */
   const mockRequest = { user: mockRequestUser } as unknown as ExpressRequest & {
     user?: AuthenticatedUser;
@@ -150,9 +150,11 @@ describe('MarketingCampaignController', () => {
         .spyOn(service, 'create')
         .mockResolvedValue(mockCampaignResponse as any);
 
-      await expect(controller.create(createDto, requestWithoutMerchant as any)).rejects.toThrow(ForbiddenException);
+      await expect(
+        controller.create(createDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
 
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(service.create).not.toHaveBeenCalled();
     });
   });
@@ -307,9 +309,11 @@ describe('MarketingCampaignController', () => {
         .spyOn(service, 'findOne')
         .mockResolvedValue(mockCampaignResponse as any);
 
-      await expect(controller.findOne(1, requestWithoutMerchant as any)).rejects.toThrow(ForbiddenException);
+      await expect(
+        controller.findOne(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
 
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(service.findOne).not.toHaveBeenCalled();
     });
   });
@@ -404,9 +408,11 @@ describe('MarketingCampaignController', () => {
         .spyOn(service, 'update')
         .mockResolvedValue(mockCampaignResponse as any);
 
-      await expect(controller.update(1, updateDto, requestWithoutMerchant as any)).rejects.toThrow(ForbiddenException);
+      await expect(
+        controller.update(1, updateDto, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
 
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(service.update).not.toHaveBeenCalled();
     });
   });
@@ -467,9 +473,11 @@ describe('MarketingCampaignController', () => {
         .spyOn(service, 'remove')
         .mockResolvedValue(mockCampaignResponse as any);
 
-      await expect(controller.remove(1, requestWithoutMerchant as any)).rejects.toThrow(ForbiddenException);
+      await expect(
+        controller.remove(1, requestWithoutMerchant as any),
+      ).rejects.toThrow(ForbiddenException);
 
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(service.remove).not.toHaveBeenCalled();
     });
   });

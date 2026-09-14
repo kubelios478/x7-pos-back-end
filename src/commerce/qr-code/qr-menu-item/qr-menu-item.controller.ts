@@ -45,7 +45,7 @@ import { PaginatedQRMenuItemResponseDto } from './dto/paginated-qr-menu-item-res
 import { QueryQRMenuItemDto } from './dto/query-qr-menu-item.dto';
 import { UpdateQRMenuItemDto } from './dto/update-qr-menu-item.dto';
 
-@ApiTags('QR Menu Item')
+@ApiTags('Commerce - QR-Code - QR Menu Item')
 @Controller('qr-menu-item')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_MENU_ITEMS)
 export class QRMenuItemController {

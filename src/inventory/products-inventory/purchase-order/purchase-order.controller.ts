@@ -29,6 +29,7 @@ import {
   ApiOperation,
   ApiQuery,
   ApiResponse,
+  ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -44,6 +45,7 @@ import { PurchaseOrderStatus } from './constants/purchase-order-status.enum';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 
+@ApiTags('Inventory - Products - Purchase Orders')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('v1/purchase-orders')
@@ -67,7 +69,7 @@ export class PurchaseOrderController {
   })
   @ApiOkResponse({
     description: 'Purchase order created successfully',
-    // type: PurchaseOrderResponseDto, // Asumo que existe un DTO de respuesta para PurchaseOrder
+    // type: PurchaseOrderResponseDto, // I assume there is a response DTO for PurchaseOrder
     schema: {
       example: {
         id: 1,
@@ -297,7 +299,7 @@ export class PurchaseOrderController {
   })
   @ApiOkResponse({
     description: 'Purchase order retrieved successfully',
-    // type: OnePurchaseOrderResponse, // Asumo que existe un DTO de respuesta para OnePurchaseOrderResponse
+    // type: OnePurchaseOrderResponse, // I assume there is a response DTO for OnePurchaseOrderResponse
     schema: {
       example: {
         statusCode: 200,
@@ -385,7 +387,7 @@ export class PurchaseOrderController {
   })
   @ApiOkResponse({
     description: 'Purchase order updated successfully',
-    // type: OnePurchaseOrderResponse, // Asumo que existe un DTO de respuesta para OnePurchaseOrderResponse
+    // type: OnePurchaseOrderResponse, // I assume there is a response DTO for OnePurchaseOrderResponse
     schema: {
       example: {
         statusCode: 200,
@@ -499,7 +501,7 @@ export class PurchaseOrderController {
   })
   @ApiOkResponse({
     description: 'Purchase order deleted successfully',
-    // type: OnePurchaseOrderResponse, // Asumo que existe un DTO de respuesta para OnePurchaseOrderResponse
+    // type: OnePurchaseOrderResponse, // I assume there is a response DTO for OnePurchaseOrderResponse
     schema: {
       example: {
         statusCode: 200,
@@ -574,7 +576,10 @@ export class PurchaseOrderController {
   @Put(':id')
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
-  @ApiOperation({ summary: 'Update PO details or item quantities (allowed only in DRAFT or SENT states)' })
+  @ApiOperation({
+    summary:
+      'Update PO details or item quantities (allowed only in DRAFT or SENT states)',
+  })
   async updateFull(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
@@ -605,13 +610,21 @@ export class PurchaseOrderController {
   @Post(':id/receive')
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
-  @ApiOperation({ summary: 'Receive full or partial items, updating stock balances and logging inventory movements' })
+  @ApiOperation({
+    summary:
+      'Receive full or partial items, updating stock balances and logging inventory movements',
+  })
   async receiveItems(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ReceiveItemsDto,
   ) {
     const merchantId = user.merchant.id;
-    return this.purchaseOrderService.receiveOrderItems(id, merchantId, dto, user.email);
+    return this.purchaseOrderService.receiveOrderItems(
+      id,
+      merchantId,
+      dto,
+      user.email,
+    );
   }
 }

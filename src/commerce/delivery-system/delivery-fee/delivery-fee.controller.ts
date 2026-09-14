@@ -40,7 +40,7 @@ import { PaginatedDeliveryFeeResponseDto } from './dto/paginated-delivery-fee-re
 import { QueryDeliveryFeeDto } from './dto/query-delivery-fee.dto';
 import { UpdateDeliveryFeeDto } from './dto/update-delivery-fee.dto';
 
-@ApiTags('Delivery Fee')
+@ApiTags('Commerce - Delivery System - Delivery Fee')
 @Controller('delivery-fee')
 export class DeliveryFeeController {
   constructor(private readonly deliveryFeeService: DeliveryFeeService) {}

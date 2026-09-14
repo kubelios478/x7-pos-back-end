@@ -10,7 +10,7 @@ import {
   UseGuards,
   Request,
   Query,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -44,7 +44,7 @@ import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 
-@ApiTags('Collaborator time entries')
+@ApiTags('Finance & HR - HR - Collaborator time entries')
 @ApiBearerAuth()
 @Controller('collaborator-time-entries')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.COLLABORATOR_TIME_ENTRIES)
@@ -55,11 +55,9 @@ export class CollaboratorTimeEntriesController {
   ) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -72,7 +70,6 @@ export class CollaboratorTimeEntriesController {
     }
     return merchantId;
   }
-
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -142,7 +139,12 @@ export class CollaboratorTimeEntriesController {
     description:
       'Every supervisor correction, newest first, with the punch values before and after. Insert-only: nothing rewrites this history, which is what makes it usable in a payroll dispute.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Time entry ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Time entry ID',
+    example: 1,
+  })
   async revisions(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: ExpressRequest & { user?: AuthenticatedUser },
@@ -204,7 +206,7 @@ export class CollaboratorTimeEntriesController {
     @Request() req: ExpressRequest & { user?: AuthenticatedUser },
   ): Promise<OneTimeEntryResponseDto> {
     const merchantId = this.merchantIdOf(req);
-    // El id del supervisor viaja al servicio: es la firma de la corrección en el histórico.
+    // The supervisor's ID is sent to the service: it's the signature of the correction in the history..
     return this.collaboratorTimeEntriesService.update(
       id,
       dto,

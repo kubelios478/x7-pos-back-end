@@ -34,9 +34,13 @@ export class ActiveShiftGuard implements CanActivate {
       );
     }
 
-    const body = request.body || {};
-    const query = request.query || {};
-    const collaboratorId = body.collaboratorId || query.collaboratorId;
+    const body = (request.body as Record<string, unknown> | undefined) || {};
+    const query = (request.query as Record<string, unknown> | undefined) || {};
+
+    const collaboratorId = (body.collaboratorId ?? query.collaboratorId) as
+      | number
+      | string
+      | undefined;
 
     if (!collaboratorId) {
       throw new PreconditionFailedException(
@@ -47,7 +51,7 @@ export class ActiveShiftGuard implements CanActivate {
     const activeShift = await this.dataSource.getRepository(CashShift).findOne({
       where: {
         merchantId: user.merchant.id,
-        openedBy: collaboratorId,
+        openedBy: collaboratorId as unknown as number, // Or the expected ID type in the entity (number/string)
         status: CashShiftStatus.OPEN,
       },
       select: ['id'],

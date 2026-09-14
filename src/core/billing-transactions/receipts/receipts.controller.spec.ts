@@ -46,9 +46,9 @@ describe('ReceiptsController', () => {
   };
 
   /**
-   * Forma REAL del request: Passport cuelga el usuario en `req.user`.
-   * Pasar el usuario pelado hacía que el spec verificara un contrato que
-   * producción no cumple, y por eso el 403 del módulo pasó desapercibido.
+   * REAL form of the request: Passport hangs the user in `req.user`.
+   * Passing the bare user caused the spec to verify a contract that
+   * production doesn't comply with, and that's why the module's 403 error went unnoticed.
    */
   const mockRequest = { user: mockRequestUser } as unknown as ExpressRequest & {
     user?: AuthenticatedUser;
@@ -157,7 +157,7 @@ describe('ReceiptsController', () => {
       await expect(
         controller.create(createDto, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(createSpy).not.toHaveBeenCalled();
     });
 
@@ -245,7 +245,7 @@ describe('ReceiptsController', () => {
       await expect(
         controller.findAll(query, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(findAllSpy).not.toHaveBeenCalled();
     });
   });
@@ -291,7 +291,7 @@ describe('ReceiptsController', () => {
       await expect(
         controller.findOne(receiptId, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(findOneSpy).not.toHaveBeenCalled();
     });
 
@@ -394,7 +394,7 @@ describe('ReceiptsController', () => {
       await expect(
         controller.update(receiptId, updateDto, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(updateSpy).not.toHaveBeenCalled();
     });
 
@@ -463,7 +463,7 @@ describe('ReceiptsController', () => {
       await expect(
         controller.remove(receiptId, requestWithoutMerchant as any),
       ).rejects.toThrow(ForbiddenException);
-      // El controlador rechaza el token sin comercio ANTES de tocar el servicio.
+      // The controller rejects the token without a trade BEFORE it touches the service.
       expect(removeSpy).not.toHaveBeenCalled();
     });
 

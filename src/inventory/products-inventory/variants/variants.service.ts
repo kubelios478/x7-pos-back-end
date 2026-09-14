@@ -31,14 +31,17 @@ export class VariantsService {
     private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
 
-  private async initializeStockForVariant(variant: Variant, merchantId: number) {
+  private async initializeStockForVariant(
+    variant: Variant,
+    merchantId: number,
+  ) {
     const locations = await this.locationRepository.findBy({
       merchantId,
       isActive: true,
     });
 
     for (const location of locations) {
-      // Verificar si ya existe para evitar duplicación
+      // Check if it already exists to avoid duplication
       const existingItem = await this.itemRepository.findOne({
         where: {
           productId: variant.productId,
@@ -103,7 +106,9 @@ export class VariantsService {
         productId: product.data.id,
         isActive: true,
       });
-      const savedVariant = await this.variantRepository.save(existingButIsNotActive);
+      const savedVariant = await this.variantRepository.save(
+        existingButIsNotActive,
+      );
       await this.initializeStockForVariant(savedVariant, merchant_id);
       return this.findOne(savedVariant.id, merchant_id, 'Created');
     } else {

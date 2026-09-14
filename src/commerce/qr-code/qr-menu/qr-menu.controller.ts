@@ -17,17 +17,18 @@ import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
 
 import {
-  ApiBadRequestResponse,
-  ApiBody,
-  ApiCreatedResponse,
-  ApiForbiddenResponse,
-  ApiInternalServerErrorResponse,
-  ApiOperation,
   ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
   ApiUnauthorizedResponse,
+  ApiNotFoundResponse,
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
   ApiOkResponse,
   ApiParam,
-  ApiNotFoundResponse,
+  ApiBody,
+  ApiForbiddenResponse,
+  ApiInternalServerErrorResponse,
 } from '@nestjs/swagger';
 import { QrMenuService } from './qr-menu.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -45,7 +46,8 @@ import { PaginatedQRMenuResponseDto } from './dto/paginated-qr-menu-response.dto
 import { QueryQRMenuDto } from './dto/query-qr-menu.dto';
 import { UpdateQRMenuDto } from './dto/update-qr-menu.dto';
 
-@ApiTags('QR Menu')
+@ApiTags('Commerce - QR-Code - QR Menu')
+@ApiBearerAuth()
 @Controller('qr-menu')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_MENUS)
 export class QrMenuController {

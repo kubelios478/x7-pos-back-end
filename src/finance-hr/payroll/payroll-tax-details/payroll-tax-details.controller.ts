@@ -43,7 +43,7 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { PayrollTaxDetailSortBy } from './dto/get-payroll-tax-details-query.dto';
 
-@ApiTags('Payroll tax details')
+@ApiTags('Finance & HR - Payroll - Payroll tax details')
 @ApiBearerAuth()
 @Controller('payroll-tax-details')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PAYROLL_TAX_DETAIL)

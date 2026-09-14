@@ -32,7 +32,7 @@ import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interf
 import { OneReservationResponse } from './dto/reservation-response.dto';
 import { AllPaginatedReservations } from './dto/all-paginated-reservations.dto';
 
-@ApiTags('Reservation')
+@ApiTags('Restaurant operations - Reservations - Reservation')
 @ApiBearerAuth()
 @Controller('reservation')
 @UseGuards(JwtAuthGuard, RolesGuard)

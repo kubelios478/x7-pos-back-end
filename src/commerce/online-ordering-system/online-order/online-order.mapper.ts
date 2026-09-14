@@ -8,7 +8,7 @@ import { OnlineOrderItemStatus } from '../online-order-item/constants/online-ord
 import { KitchenOrderStatus } from '../../../restaurant-operations/kitchen-display-system/kitchen-order/constants/kitchen-order-status.enum';
 import { resolveUnitPriceForOnlineOrderItem } from './online-order-pricing.util';
 
-/** totalAmount: POS `order.total` si hay enlace; si no, suma catálogo × cantidad (ver online-order-pricing.util). */
+/** totalAmount: POS `order.total` if there is a link; otherwise, sum catalog × quantity (see online-order-pricing.util). */
 export function formatOnlineOrderToDto(
   onlineOrder: OnlineOrder,
   totalAmount: number,

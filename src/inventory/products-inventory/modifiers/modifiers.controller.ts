@@ -31,6 +31,7 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
   ApiQuery,
+  ApiTags,
 } from '@nestjs/swagger';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -43,6 +44,7 @@ import { Modifier } from './entities/modifier.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+@ApiTags('Inventory - Products - Modifiers')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('modifiers')

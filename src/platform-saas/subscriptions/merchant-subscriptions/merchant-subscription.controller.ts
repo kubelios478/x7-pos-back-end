@@ -39,10 +39,10 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscription.dto';
-import { PaginatedMerchantSuscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
+import { PaginatedMerchantSubscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
 import { QueryMerchantSubscriptionDto } from './dtos/query-merchant-subscription.dto';
 
-@ApiTags('Merchant Subscriptions')
+@ApiTags('Platform SaaS - Subscriptions - Merchant Subscriptions')
 @ApiBearerAuth()
 @Controller('merchant-subscription')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -151,7 +151,7 @@ export class MerchantSubscriptionController {
   })
   @ApiOkResponse({
     description: 'Paginated list of merchant subscriptions',
-    type: PaginatedMerchantSuscriptionResponseDto,
+    type: PaginatedMerchantSubscriptionResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized. Authentication required',
@@ -185,7 +185,7 @@ export class MerchantSubscriptionController {
   })
   async findAll(
     @Query() query: QueryMerchantSubscriptionDto,
-  ): Promise<PaginatedMerchantSuscriptionResponseDto> {
+  ): Promise<PaginatedMerchantSubscriptionResponseDto> {
     return this.merchantSubscriptionService.findAll(query);
   }
   @Get(':id')

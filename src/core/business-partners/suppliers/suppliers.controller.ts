@@ -28,6 +28,7 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
   ApiQuery,
+  ApiTags,
 } from '@nestjs/swagger';
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
@@ -45,6 +46,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { SupplierResponseDto } from './dto/supplier-response.dto';
 
+@ApiTags('Core - Business partners - Suppliers')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('v1/inventory/suppliers')

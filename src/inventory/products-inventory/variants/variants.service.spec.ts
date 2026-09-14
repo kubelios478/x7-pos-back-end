@@ -17,7 +17,7 @@ describe('VariantsService', () => {
   let service: VariantsService;
   let variantRepository: jest.Mocked<Repository<Variant> & { save: jest.Mock }>;
   let productRepository: jest.Mocked<Repository<Product> & { save: jest.Mock }>;
-  let productsService: jest.Mocked<ProductsService>; // Declarar productsService aquí
+  let productsService: jest.Mocked<ProductsService>; // Declare productsService here
 
   type MockQueryBuilder = {
     leftJoinAndSelect: jest.Mock;
@@ -158,7 +158,7 @@ describe('VariantsService', () => {
     service = module.get<VariantsService>(VariantsService);
     variantRepository = module.get(getRepositoryToken(Variant));
     productRepository = module.get(getRepositoryToken(Product));
-    productsService = module.get(ProductsService); // Asignar productsService aquí
+    productsService = module.get(ProductsService); // Assign productsService here
 
     jest.clearAllMocks();
   });
@@ -287,7 +287,7 @@ describe('VariantsService', () => {
     });
 
     it('should throw NotFoundException if product is not found', async () => {
-      productsService.findOne.mockResolvedValueOnce(null as any); // Simular que el producto no se encuentra
+      productsService.findOne.mockResolvedValueOnce(null as any); // Simulate that the product is not found
 
       await expect(
         async () => await service.create(merchantId, mockCreateVariantDto),
@@ -368,7 +368,7 @@ describe('VariantsService', () => {
 
       const result = await service.findAll(mockQuery, merchantId);
 
-      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id); // Agregada aserción para productsService.findOne
+      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id); // Added assertion for productsService.findOne
       expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         'variant.product',
         'product',
@@ -481,7 +481,7 @@ describe('VariantsService', () => {
 
       const result = await service.findOne(mockVariant.id!, merchantId);
 
-      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id!); // Agregada aserción para productsService.findOne
+      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id!); // Added assertion for productsService.findOne
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('variant.id = :id', {
         id: mockVariant.id,
       });
@@ -522,7 +522,7 @@ describe('VariantsService', () => {
 
       const result = await service.findOne(mockVariant.id!);
 
-      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id!); // Agregada aserción para productsService.findOne
+      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id!); // Added assertion for productsService.findOne
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('variant.id = :id', {
         id: mockVariant.id,
       });

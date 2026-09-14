@@ -51,7 +51,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { OnlineOrderPaymentStatus } from '../online-order/constants/online-order-payment-status.enum';
 
-@ApiTags('Online Payments')
+@ApiTags('Commerce - Online Ordering System - Online payments')
 @ApiBearerAuth()
 @Controller('online-payments')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ONLINE_PAYMENTS)

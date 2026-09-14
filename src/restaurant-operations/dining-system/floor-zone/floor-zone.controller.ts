@@ -44,7 +44,7 @@ import { QueryFloorZoneDto } from './dto/query-floor-zone.dto';
 import { PaginatedFloorZoneResponseDto } from './dto/paginated-floor-zone-response.dto';
 import { UpdateFloorZoneDto } from './dto/update-floor-zone.dto';
 
-@ApiTags('Floor Zone')
+@ApiTags('Restaurant operations - Dining System - Floor Zone')
 @Controller('floor-zone')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.TABLE_ZONES)
 export class FloorZoneController {

@@ -48,7 +48,7 @@ import { SupplierPaymentStatus } from './constants/supplier-payment-status.enum'
 import { OneSupplierPaymentResponseDto } from './dto/supplier-payment-response.dto';
 import { PaginatedSupplierPaymentsResponseDto } from './dto/paginated-supplier-payments-response.dto';
 
-@ApiTags('Supplier payments (Account payable)')
+@ApiTags('Finance & HR - Account payable - Supplier payments')
 @ApiBearerAuth()
 @Controller('supplier-payments')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIER_PAYMENTS)
@@ -97,7 +97,8 @@ export class SupplierPaymentsController {
    */
   private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
     const isMerchant =
-      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+      user.role === UserRole.MERCHANT_ADMIN ||
+      user.role === UserRole.MERCHANT_USER;
     return isMerchant ? user.merchant?.companyId : undefined;
   }
 
@@ -128,7 +129,10 @@ export class SupplierPaymentsController {
     @Query() query: GetSupplierPaymentsQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierPaymentsResponseDto> {
-    return this.supplierPaymentsService.findAll(query, this.merchantCompanyScope(user));
+    return this.supplierPaymentsService.findAll(
+      query,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Get(':id')

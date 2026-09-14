@@ -38,7 +38,8 @@ import { CashShiftStatus } from '../../cashdrawer/cash-shifts/constants/cash-shi
 import { TipPayoutDto } from './dto/tip-payout.dto';
 import { ShiftRole } from 'src/finance-hr/hr/collaborators/constants/shift-role.enum';
 import { CashMovement } from '../../cashdrawer/cash-movements/entities/cash-movement.entity';
-import { CashMovementType } from '../../cashdrawer/cash-movements/constants/cash-movement-type.enum';
+// import { CashMovementType } from '../../cashdrawer/cash-movements/constants/cash-movement-type.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class TipSettlementsService {
@@ -443,7 +444,10 @@ export class TipSettlementsService {
     };
   }
 
-  async getSettlementReport(query: QueryTipSettlementReportDto, user: User) {
+  async getSettlementReport(
+    query: QueryTipSettlementReportDto,
+    user: AuthenticatedUser,
+  ) {
     if (!user.merchant) {
       throw new ForbiddenException('Merchant not found');
     }
@@ -489,7 +493,10 @@ export class TipSettlementsService {
     };
   }
 
-  async liquidatedTipSettlements(dto: LiquidatedTipSettlementsDto, user: User) {
+  async liquidatedTipSettlements(
+    dto: LiquidatedTipSettlementsDto,
+    user: AuthenticatedUser,
+  ) {
     if (user.role !== UserRole.MERCHANT_ADMIN) {
       throw new ForbiddenException('Only merchant admins can settle tips');
     }
@@ -497,7 +504,7 @@ export class TipSettlementsService {
     const settlements = await this.tipSettlementRepository.find({
       where: {
         id: In(dto.settlementIds),
-        merchant_id: user.merchant!.id,
+        merchant_id: user.merchant.id,
       },
     });
 
@@ -536,26 +543,28 @@ export class TipSettlementsService {
     if (!merchantId) {
       throw new ForbiddenException('User must belong to a merchant');
     }
- 
+
     const shift = await this.cashShiftRepo.findOne({
       where: { id: shiftId },
       relations: ['merchant'],
     });
- 
+
     if (!shift) {
       throw new NotFoundException(`Cash shift with ID ${shiftId} not found`);
     }
- 
+
     if (shift.merchantId !== merchantId) {
-      throw new ForbiddenException('You can only perform tip payouts for shifts belonging to your merchant');
+      throw new ForbiddenException(
+        'You can only perform tip payouts for shifts belonging to your merchant',
+      );
     }
- 
+
     if (shift.status !== CashShiftStatus.OPEN) {
       throw new BadRequestException(
         `The cash register shift is ${shift.status.toLowerCase()}. Tips can only be paid out if there is a cash register shift in OPEN status.`,
       );
     }
- 
+
     // 1. Fetch cash tips collected during the shift with COLLECTED status
     const tips = await this.tipRepository
       .createQueryBuilder('tip')
@@ -564,75 +573,107 @@ export class TipSettlementsService {
       .andWhere('tip.method = :method', { method: TipMethod.CASH })
       .andWhere('tip.status = :status', { status: TipStatus.COLLECTED })
       .getMany();
- 
-    const totalTipsCollected = tips.reduce((sum, t) => sum + Number(t.amount), 0);
- 
+
+    const totalTipsCollected = tips.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
+
     // Calculate total amount to pay out from the DTO
     const totalPayout = dto.payments.reduce((sum, p) => sum + p.amount, 0);
- 
+
     // AC 1: Validate that payout amount does not exceed collected cash tips
     if (totalPayout > totalTipsCollected) {
       throw new BadRequestException(
         `Cannot payout ${totalPayout} in tips. Only ${totalTipsCollected} was collected in cash during this shift.`,
       );
     }
- 
+
     // Fetch collaborators to validate roles and identities
     const collaboratorIds = dto.payments.map((p) => p.collaboratorId);
     const collaborators = await this.collaboratorRepository.find({
       where: { id: In(collaboratorIds), merchant_id: merchantId },
     });
- 
+
     if (collaborators.length !== collaboratorIds.length) {
-      throw new NotFoundException('Some collaborators were not found or do not belong to your merchant');
+      throw new NotFoundException(
+        'Some collaborators were not found or do not belong to your merchant',
+      );
     }
- 
+
     // CAT 3: Validate distribution according to active TipRule
     const activeRule = await this.merchantTipRuleRepository.findOne({
       where: { merchant: { id: merchantId }, status: 'active' },
     });
 
     if (!activeRule) {
-      throw new BadRequestException('No active tip distribution rule found for this merchant. Please configure a tip rule first.');
+      throw new BadRequestException(
+        'No active tip distribution rule found for this merchant. Please configure a tip rule first.',
+      );
     }
- 
+
     if (activeRule) {
-      if (activeRule.tipDistributionMethod === TipDistributionMethod.ROLE_BASED) {
+      if (
+        activeRule.tipDistributionMethod === TipDistributionMethod.ROLE_BASED
+      ) {
         const staffPercentage = Number(activeRule.staffPercentage || 0);
         const kitchenPercentage = Number(activeRule.kitchenPercentage || 0);
         const managerPercentage = Number(activeRule.managerPercentage || 0);
- 
-        const hasManagers = collaborators.some((c) => c.role === ShiftRole.MANAGER);
+
+        const hasManagers = collaborators.some(
+          (c) => c.role === ShiftRole.MANAGER,
+        );
         const hasKitchen = collaborators.some((c) => c.role === ShiftRole.COOK);
-        const hasStaff = collaborators.some((c) => c.role !== ShiftRole.MANAGER && c.role !== ShiftRole.COOK);
- 
+        const hasStaff = collaborators.some(
+          (c) => c.role !== ShiftRole.MANAGER && c.role !== ShiftRole.COOK,
+        );
+
         const totalPresentPercentage =
           (hasManagers ? managerPercentage : 0) +
           (hasKitchen ? kitchenPercentage : 0) +
           (hasStaff ? staffPercentage : 0);
- 
+
         if (totalPresentPercentage === 0) {
-          throw new BadRequestException('Configured TipRule has 0% assigned to all selected collaborator categories.');
+          throw new BadRequestException(
+            'Configured TipRule has 0% assigned to all selected collaborator categories.',
+          );
         }
- 
-        const adjustedManagerPct = hasManagers ? managerPercentage / totalPresentPercentage : 0;
-        const adjustedKitchenPct = hasKitchen ? kitchenPercentage / totalPresentPercentage : 0;
-        const adjustedStaffPct = hasStaff ? staffPercentage / totalPresentPercentage : 0;
- 
+
+        const adjustedManagerPct = hasManagers
+          ? managerPercentage / totalPresentPercentage
+          : 0;
+        const adjustedKitchenPct = hasKitchen
+          ? kitchenPercentage / totalPresentPercentage
+          : 0;
+        const adjustedStaffPct = hasStaff
+          ? staffPercentage / totalPresentPercentage
+          : 0;
+
         const expectedManagerTotal = totalPayout * adjustedManagerPct;
         const expectedKitchenTotal = totalPayout * adjustedKitchenPct;
         const expectedStaffTotal = totalPayout * adjustedStaffPct;
- 
-        const managerCount = collaborators.filter((c) => c.role === ShiftRole.MANAGER).length;
-        const kitchenCount = collaborators.filter((c) => c.role === ShiftRole.COOK).length;
-        const staffCount = collaborators.filter((c) => c.role !== ShiftRole.MANAGER && c.role !== ShiftRole.COOK).length;
- 
-        const expectedManagerAmount = managerCount > 0 ? expectedManagerTotal / managerCount : 0;
-        const expectedKitchenAmount = kitchenCount > 0 ? expectedKitchenTotal / kitchenCount : 0;
-        const expectedStaffAmount = staffCount > 0 ? expectedStaffTotal / staffCount : 0;
- 
+
+        const managerCount = collaborators.filter(
+          (c) => c.role === ShiftRole.MANAGER,
+        ).length;
+        const kitchenCount = collaborators.filter(
+          (c) => c.role === ShiftRole.COOK,
+        ).length;
+        const staffCount = collaborators.filter(
+          (c) => c.role !== ShiftRole.MANAGER && c.role !== ShiftRole.COOK,
+        ).length;
+
+        const expectedManagerAmount =
+          managerCount > 0 ? expectedManagerTotal / managerCount : 0;
+        const expectedKitchenAmount =
+          kitchenCount > 0 ? expectedKitchenTotal / kitchenCount : 0;
+        const expectedStaffAmount =
+          staffCount > 0 ? expectedStaffTotal / staffCount : 0;
+
         for (const payment of dto.payments) {
-          const collab = collaborators.find((c) => c.id === payment.collaboratorId)!;
+          const collab = collaborators.find(
+            (c) => c.id === payment.collaboratorId,
+          )!;
           let expected = 0;
           if (collab.role === ShiftRole.MANAGER) {
             expected = expectedManagerAmount;
@@ -641,14 +682,16 @@ export class TipSettlementsService {
           } else {
             expected = expectedStaffAmount;
           }
- 
+
           if (Math.abs(payment.amount - expected) > 0.02) {
             throw new BadRequestException(
               `Tip payout of ${payment.amount} for collaborator ${collab.name} (${collab.role}) does not conform to the configured ROLE_BASED TipRule. Expected: ${expected.toFixed(2)}.`,
             );
           }
         }
-      } else if (activeRule.tipDistributionMethod === TipDistributionMethod.POOL) {
+      } else if (
+        activeRule.tipDistributionMethod === TipDistributionMethod.POOL
+      ) {
         const expectedAmount = totalPayout / collaborators.length;
         for (const payment of dto.payments) {
           if (Math.abs(payment.amount - expectedAmount) > 0.02) {
@@ -659,33 +702,37 @@ export class TipSettlementsService {
         }
       }
     }
- 
+
     // Start database transaction
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
- 
+
     try {
       // Pessimistic write lock on cash shift
       const lockedShift = await queryRunner.manager.findOne(CashShift, {
         where: { id: shiftId, status: CashShiftStatus.OPEN },
         lock: { mode: 'pessimistic_write' },
       });
- 
+
       if (!lockedShift) {
-        throw new BadRequestException('The active cash shift has been closed or is unavailable.');
+        throw new BadRequestException(
+          'The active cash shift has been closed or is unavailable.',
+        );
       }
- 
+
       // Fetch and lock associated cash drawer
       const cashDrawer = await queryRunner.manager.findOne(CashDrawer, {
         where: { id: lockedShift.cashDrawerId },
         lock: { mode: 'pessimistic_write' },
       });
- 
+
       if (!cashDrawer) {
-        throw new NotFoundException(`Cash drawer associated with this shift not found`);
+        throw new NotFoundException(
+          `Cash drawer associated with this shift not found`,
+        );
       }
- 
+
       // Calculate live balance of standard transactions (sales, refunds, etc.) at this moment
       const txResult = await queryRunner.manager
         .createQueryBuilder(CashShift, 'cs')
@@ -708,7 +755,9 @@ export class TipSettlementsService {
         .addGroupBy('cs.opening_balance')
         .getRawOne<{ txBalance: string }>();
 
-      let liveBalance = txResult ? Number(txResult.txBalance) : Number(lockedShift.openingBalance);
+      let liveBalance = txResult
+        ? Number(txResult.txBalance)
+        : Number(lockedShift.openingBalance);
 
       // Deduct previously recorded expenses (outflow) in cash_movements for this shift
       const movementsResult = await queryRunner.manager
@@ -732,7 +781,9 @@ export class TipSettlementsService {
         })
         .getRawOne<{ tipSettlementSum: string | null }>();
 
-      const tipSettlementSum = Number(tipSettlementsResult?.tipSettlementSum ?? 0);
+      const tipSettlementSum = Number(
+        tipSettlementsResult?.tipSettlementSum ?? 0,
+      );
       liveBalance = liveBalance - movementSum - tipSettlementSum;
 
       // Validate that tip payout does not exceed physical cash available in the shift register
@@ -743,47 +794,58 @@ export class TipSettlementsService {
       }
 
       // Deduct the total payout from cash drawer current_balance
-      const newDrawerBalance = Number(cashDrawer.current_balance) - Number(totalPayout);
+      const newDrawerBalance =
+        Number(cashDrawer.current_balance) - Number(totalPayout);
       if (newDrawerBalance < 0) {
-        throw new BadRequestException('Tip payout would result in a negative balance for the cash drawer.');
+        throw new BadRequestException(
+          'Tip payout would result in a negative balance for the cash drawer.',
+        );
       }
       cashDrawer.current_balance = newDrawerBalance;
       await queryRunner.manager.save(CashDrawer, cashDrawer);
- 
+
       // Update tips status to PAID_OUT
       const tipIds = tips.map((t) => t.id);
       if (tipIds.length > 0) {
-        await queryRunner.manager.update(Tip, tipIds, { status: TipStatus.PAID_OUT });
+        await queryRunner.manager.update(Tip, tipIds, {
+          status: TipStatus.PAID_OUT,
+        });
       }
- 
+
       // Record settlements in tip_settlements
       const companyId = shift.merchant.companyId;
-      const personalShift = await queryRunner.manager.getRepository(Shift).findOne({
-        where: { merchantId },
-        order: { id: 'DESC' },
-      });
+      const personalShift = await queryRunner.manager
+        .getRepository(Shift)
+        .findOne({
+          where: { merchantId },
+          order: { id: 'DESC' },
+        });
 
       if (!personalShift) {
-        throw new BadRequestException('No personal work shift found for this merchant. Create a work shift first.');
+        throw new BadRequestException(
+          'No personal work shift found for this merchant. Create a work shift first.',
+        );
       }
 
       for (const payment of dto.payments) {
-        const settlement = queryRunner.manager.getRepository(TipSettlement).create({
-          company_id: companyId,
-          merchant_id: merchantId,
-          collaborator_id: payment.collaboratorId,
-          shift_id: personalShift.id,
-          total_amount: payment.amount,
-          settlement_method: SettlementMethod.CASH,
-          settled_by: userId,
-          settled_at: new Date(),
-          status: SettlementStatus.LIQUIDATED,
-        });
+        const settlement = queryRunner.manager
+          .getRepository(TipSettlement)
+          .create({
+            company_id: companyId,
+            merchant_id: merchantId,
+            collaborator_id: payment.collaboratorId,
+            shift_id: personalShift.id,
+            total_amount: payment.amount,
+            settlement_method: SettlementMethod.CASH,
+            settled_by: userId,
+            settled_at: new Date(),
+            status: SettlementStatus.LIQUIDATED,
+          });
         await queryRunner.manager.save(TipSettlement, settlement);
       }
- 
+
       await queryRunner.commitTransaction();
- 
+
       // Return the digital payment receipt (Ticket Payment Receipt - AC 2)
       return {
         statusCode: 201,
@@ -795,7 +857,9 @@ export class TipSettlementsService {
           paymentDate: new Date(),
           settledBy: userId,
           details: dto.payments.map((p) => {
-            const collab = collaborators.find((c) => c.id === p.collaboratorId)!;
+            const collab = collaborators.find(
+              (c) => c.id === p.collaboratorId,
+            )!;
             return {
               collaboratorId: p.collaboratorId,
               collaboratorName: collab.name,
@@ -816,7 +880,11 @@ export class TipSettlementsService {
   async getCollectedTipsSummary(
     shiftId: number,
     merchantId: number,
-  ): Promise<{ shiftId: number; totalTipsCollected: number; tipsCount: number }> {
+  ): Promise<{
+    shiftId: number;
+    totalTipsCollected: number;
+    tipsCount: number;
+  }> {
     if (!merchantId) {
       throw new ForbiddenException('User must belong to a merchant');
     }
@@ -830,7 +898,9 @@ export class TipSettlementsService {
     }
 
     if (shift.merchantId !== merchantId) {
-      throw new ForbiddenException('You can only view tips for shifts belonging to your merchant');
+      throw new ForbiddenException(
+        'You can only view tips for shifts belonging to your merchant',
+      );
     }
 
     const tips = await this.tipRepository
@@ -841,7 +911,10 @@ export class TipSettlementsService {
       .andWhere('tip.status = :status', { status: TipStatus.COLLECTED })
       .getMany();
 
-    const totalTipsCollected = tips.reduce((sum, t) => sum + Number(t.amount), 0);
+    const totalTipsCollected = tips.reduce(
+      (sum, t) => sum + Number(t.amount),
+      0,
+    );
 
     return {
       shiftId,

@@ -1,4 +1,4 @@
-//src/qr-code/qr-order-item/dto/query-qr-ordero-item.dto.ts
+//src/qr-code/qr-order-item/dto/query-qr-order-item.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';

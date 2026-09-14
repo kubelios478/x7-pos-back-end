@@ -31,7 +31,7 @@ import { UpdateSupplyDto } from './dto/update-supply.dto';
 import { SetSupplySuppliersDto } from './dto/set-supply-suppliers.dto';
 import { FilterRawMaterialDto } from './dto/filter-raw-material.dto';
 
-@ApiTags('Supplies / Raw Materials')
+@ApiTags('Inventory - Supplies - Raw Materials')
 @ApiBearerAuth()
 @Controller(['v1/inventory/raw-materials', 'v1/raw-materials', 'supplies'])
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PRODUCT_MANAGEMENT)
@@ -56,7 +56,8 @@ export class SuppliesController {
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({
-    summary: 'Paginated list of raw materials with filtering (by category/status)',
+    summary:
+      'Paginated list of raw materials with filtering (by category/status)',
   })
   async findAll(
     @Query() filter: FilterRawMaterialDto,
@@ -142,7 +143,10 @@ export class SuppliesController {
   @Get(':id/usage')
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
-  @ApiOperation({ summary: 'Check if raw material is used in active recipes or stock movements' })
+  @ApiOperation({
+    summary:
+      'Check if raw material is used in active recipes or stock movements',
+  })
   async checkUsage(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: ExpressRequest & { user?: AuthenticatedUser },

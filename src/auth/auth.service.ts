@@ -2,6 +2,7 @@
 import {
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   UnauthorizedException,
@@ -10,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { UsersService } from '../platform-saas/users/users.service';
 import { MailService } from '../mail/mail.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../platform-saas/users/entities/user.entity';
@@ -47,12 +48,26 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    const user = await this.userRepository.findOne({
-      where: { email: dto.email },
-      relations: ['merchant'],
-    });
+    let user: User | null = null;
 
-    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
+    try {
+      user = await this.userRepository.findOne({
+        where: { email: dto.email },
+        relations: ['merchant'],
+      });
+    } catch (dbError) {
+      this.logger.error('Database connection failure during login', dbError);
+      throw new InternalServerErrorException(
+        'Database connection error. Please try again.',
+      );
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid Credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(dto.password, user.password);
+    if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid Credentials');
     }
 
@@ -66,9 +81,9 @@ export class AuthService {
       user.role === UserRole.PORTAL_ADMIN || user.role === UserRole.PORTAL_USER;
 
     let planId: number | undefined;
-    let authorizedFeatureIds: number[];
+    let authorizedFeatureIds: number[] = [];
+
     if (isPortalStaff) {
-      // Platform users are not limited by a merchant plan for login; they can access all catalog features.
       planId = undefined;
       authorizedFeatureIds = getAllSubscriptionFeatureIds();
     } else {
@@ -94,12 +109,16 @@ export class AuthService {
           planId = undefined;
           authorizedFeatureIds = [];
         } else {
-          throw err;
+          this.logger.warn(
+            `Failed to evaluate subscription access for companyId: ${companyId}`,
+            err,
+          );
+          planId = undefined;
+          authorizedFeatureIds = [];
         }
       }
     }
 
-    console.log('User found:', user);
     const payload = {
       sub: user.id,
       email: user.email,
@@ -116,7 +135,14 @@ export class AuthService {
       secret: process.env.JWT_REFRESH_SECRET,
     });
 
-    await this.usersService.updateRefreshToken(user.id, refreshToken);
+    try {
+      await this.usersService.updateRefreshToken(user.id, refreshToken);
+    } catch (refreshErr) {
+      this.logger.error(
+        `Failed to persist refresh token for user ${user.id}`,
+        refreshErr,
+      );
+    }
 
     return {
       access_token: accessToken,
@@ -132,6 +158,7 @@ export class AuthService {
       },
     };
   }
+
   async sendResetLink(email: string) {
     const neutralMessage =
       'If the email matches an active account, a recovery link has been sent.';
@@ -167,12 +194,9 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    // const testToken = 'fe211622-e117-4c95-8c87-de59d058fc96';
-    // const user = await this.usersService.findByResetToken(testToken);
     const user = await this.usersService.findByResetToken(token);
     if (!user) throw new NotFoundException('Invalid or expired token');
-    console.log('token:', token);
-    console.log('newPassword:', newPassword);
+
     const hashed = await bcrypt.hash(newPassword, 10);
     await this.usersService.updatePassword(user.id, hashed);
     return { message: 'Password updated successfully' };
@@ -320,13 +344,4 @@ export class AuthService {
       },
     };
   }
-
-  // async refreshToken(refreshToken: string) {
-  //   const user = await this.usersService.findByRefreshToken(refreshToken);
-  //   if (!user) throw new UnauthorizedException('Invalid refresh token');
-
-  //   const payload = { sub: user.id, email: user.email };
-  //   const newAccessToken = this.jwtService.sign(payload);
-  //   return { accessToken: newAccessToken };
-  // }
 }

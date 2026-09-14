@@ -32,7 +32,7 @@ import { OneReservationTableResponse } from './dto/reservation-table-response.dt
 import { AllPaginatedReservationTables } from './dto/all-paginated-reservation-tables.dto';
 import { GetReservationTablesQueryDto } from './dto/get-reservation-tables-query.dto';
 
-@ApiTags('Reservation Tables')
+@ApiTags('Restaurant operations - Reservations - Tables')
 @ApiBearerAuth()
 @Controller('reservation-table')
 @UseGuards(JwtAuthGuard, RolesGuard)

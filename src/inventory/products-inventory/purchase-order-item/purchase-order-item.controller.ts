@@ -30,6 +30,7 @@ import {
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
   ApiBadRequestResponse,
+  ApiTags,
 } from '@nestjs/swagger';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -39,6 +40,7 @@ import { GetPurchaseOrdersItemsQueryDto } from './dto/get-purchase-order-item-qu
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+@ApiTags('Inventory - Products - Purchase order items')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('purchase-order-item')

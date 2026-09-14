@@ -44,7 +44,7 @@ import { LoyaltyCouponResponseDto } from './dto/loyalty-coupon-response.dto';
 import { AllPaginatedLoyaltyCouponsDto } from './dto/all-paginated-loyalty-coupons.dto';
 import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 
-@ApiTags('Loyalty Coupons')
+@ApiTags('Growth - Loyalty - Coupons')
 @ApiBearerAuth()
 @Controller('loyalty-coupons')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_COUPONS)

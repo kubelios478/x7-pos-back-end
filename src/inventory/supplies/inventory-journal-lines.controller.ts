@@ -6,7 +6,12 @@ import {
   Request,
   BadRequestException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -36,7 +41,7 @@ export interface InventoryJournalLineResponse {
   memo: string;
 }
 
-@ApiTags('Inventory Journal Lines')
+@ApiTags('Inventory - Supplies - Inventory Journal Lines')
 @ApiBearerAuth()
 @Controller('v1/inventory/journal-lines')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)
@@ -59,7 +64,9 @@ export class InventoryJournalLinesController {
   ) {
     const merchantId = queryMerchantId || req.user?.merchant?.id;
     if (!merchantId) {
-      throw new BadRequestException('User must have an active merchant session');
+      throw new BadRequestException(
+        'User must have an active merchant session',
+      );
     }
 
     const allLines: InventoryJournalLineResponse[] = [
@@ -75,8 +82,8 @@ export class InventoryJournalLinesController {
           name: 'Raw Material Inventory',
           category: 'ASSET',
         },
-        debit: 1250.00,
-        credit: 0.00,
+        debit: 1250.0,
+        credit: 0.0,
         memo: 'Stock receipt: 50.0 KG Flour 25kg bag via Purchase Order #PO-2026-089',
       },
       {
@@ -91,8 +98,8 @@ export class InventoryJournalLinesController {
           name: 'Accounts Payable',
           category: 'LIABILITY',
         },
-        debit: 0.00,
-        credit: 1250.00,
+        debit: 0.0,
+        credit: 1250.0,
         memo: 'Supplier Accounts Payable liability for Purchase Order #PO-2026-089',
       },
       {
@@ -107,8 +114,8 @@ export class InventoryJournalLinesController {
           name: 'Cost of Goods Sold',
           category: 'EXPENSE',
         },
-        debit: 345.50,
-        credit: 0.00,
+        debit: 345.5,
+        credit: 0.0,
         memo: 'Stock depletion: 15.5 KG Flour 25kg bag via POS Sales Order #1088',
       },
       {
@@ -123,8 +130,8 @@ export class InventoryJournalLinesController {
           name: 'Raw Material Inventory',
           category: 'ASSET',
         },
-        debit: 0.00,
-        credit: 345.50,
+        debit: 0.0,
+        credit: 345.5,
         memo: 'Raw material inventory reduction via POS Sales Order #1088',
       },
       {
@@ -139,8 +146,8 @@ export class InventoryJournalLinesController {
           name: 'Waste & Shrinkage Expense',
           category: 'EXPENSE',
         },
-        debit: 88.00,
-        credit: 0.00,
+        debit: 88.0,
+        credit: 0.0,
         memo: 'Inventory waste breakdown: 2.0 L Whole Milk (Expired batch)',
       },
       {
@@ -155,8 +162,8 @@ export class InventoryJournalLinesController {
           name: 'Raw Material Inventory',
           category: 'ASSET',
         },
-        debit: 0.00,
-        credit: 88.00,
+        debit: 0.0,
+        credit: 88.0,
         memo: 'Raw material inventory write-off for expired batch #042',
       },
       {
@@ -171,8 +178,8 @@ export class InventoryJournalLinesController {
           name: 'Raw Material Inventory',
           category: 'ASSET',
         },
-        debit: 150.00,
-        credit: 0.00,
+        debit: 150.0,
+        credit: 0.0,
         memo: 'Physical count adjustment: System count 10 -> Actual count 15 (+5 units)',
       },
       {
@@ -187,8 +194,8 @@ export class InventoryJournalLinesController {
           name: 'Inventory Adjustment Variance',
           category: 'EXPENSE',
         },
-        debit: 0.00,
-        credit: 150.00,
+        debit: 0.0,
+        credit: 150.0,
         memo: 'Physical count variance adjustment gain credit',
       },
     ];

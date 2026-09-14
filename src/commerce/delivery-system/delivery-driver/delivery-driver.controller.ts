@@ -40,7 +40,7 @@ import { PaginatedDeliveryDriverResponseDto } from './dto/paginated-delivery-dri
 import { QueryDeliveryDriverDto } from './dto/query-delivery-driver.dto';
 import { UpdateDeliveryDriverDto } from './dto/update-delivery-driver.dto';
 
-@ApiTags('Delivery Driver')
+@ApiTags('Commerce - Delivery System - Delivery Driver')
 @Controller('delivery-driver')
 export class DeliveryDriverController {
   constructor(private readonly deliveryDriverService: DeliveryDriverService) {}

@@ -10,7 +10,7 @@ import {
   UseGuards,
   Request,
   Query,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -51,7 +51,7 @@ import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { MarketingCouponType } from './constants/marketing-coupon-type.enum';
 import { MarketingCouponAppliesTo } from './constants/marketing-coupon-applies-to.enum';
 
-@ApiTags('Marketing Coupons')
+@ApiTags('Growth - Marketing - Coupons')
 @ApiBearerAuth()
 @Controller('marketing-coupons')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.MARKETING_COUPON)
@@ -62,11 +62,9 @@ export class MarketingCouponsController {
   ) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -79,7 +77,6 @@ export class MarketingCouponsController {
     }
     return merchantId;
   }
-
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

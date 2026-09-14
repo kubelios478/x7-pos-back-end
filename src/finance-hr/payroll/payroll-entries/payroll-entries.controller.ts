@@ -43,7 +43,7 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { PayrollEntrySortBy } from './dto/get-payroll-entries-query.dto';
 
-@ApiTags('Payroll entries')
+@ApiTags('Finance & HR - Payroll - Payroll entries')
 @ApiBearerAuth()
 @Controller('payroll-entries')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PAYROLL_ENTRIES)

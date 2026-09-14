@@ -44,7 +44,7 @@ import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { PayrollRunStatus } from './constants/payroll-run-status.enum';
 import { PayrollRunSortBy } from './dto/get-payroll-runs-query.dto';
 
-@ApiTags('Payroll runs')
+@ApiTags('Finance & HR - Payroll - Payroll runs')
 @ApiBearerAuth()
 @Controller('payroll-runs')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PAYROLL_RUNS)

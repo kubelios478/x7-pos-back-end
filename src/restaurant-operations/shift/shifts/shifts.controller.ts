@@ -48,7 +48,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 
-@ApiTags('Shifts')
+@ApiTags('Restaurant operations - Shifts - Shifts')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('shifts')

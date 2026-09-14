@@ -48,7 +48,7 @@ import { AllPaginatedLoyaltyTierDto } from './dto/all-paginated-loyalty-tier.dto
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Loyalty Tiers')
+@ApiTags('Growth - Loyalty - Tiers')
 @Controller('loyalty-tiers')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_TIERS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

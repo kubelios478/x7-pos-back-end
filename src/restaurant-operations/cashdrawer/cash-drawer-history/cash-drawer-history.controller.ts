@@ -8,7 +8,6 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
-  Request,
   Query,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -47,7 +46,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { CashDrawerHistoryStatus } from './constants/cash-drawer-history-status.enum';
 
-@ApiTags('Cash Drawer History')
+@ApiTags('Restaurant operations - Cashdrawer - Cash Drawer History')
 @ApiBearerAuth()
 @Controller('cash-drawer-history')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.CASH_DRAWER_HISTORY)

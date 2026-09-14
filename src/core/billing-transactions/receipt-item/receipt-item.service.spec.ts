@@ -311,7 +311,7 @@ describe('ReceiptItemService', () => {
   // ─── update ──────────────────────────────────────────────────────────────────
 
   describe('update', () => {
-    const dto: UpdateReceiptItemDto = { metadata: '{"notes":"Sin cebolla"}' };
+    const dto: UpdateReceiptItemDto = { metadata: '{"notes":"Without onion"}' };
 
     it('should update metadata successfully', async () => {
       const saved = { ...mockItem, metadata: dto.metadata };

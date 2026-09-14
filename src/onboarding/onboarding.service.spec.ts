@@ -25,7 +25,12 @@ const mockPlans: SubscriptionPlan[] = [
     recommended: false,
     isCustomPricing: false,
     displayFeatures: [
-      { id: 1, subscriptionPlanId: 1, label: 'Up to 2 Standard Terminals', sortOrder: 1 },
+      {
+        id: 1,
+        subscriptionPlanId: 1,
+        label: 'Up to 2 Standard Terminals',
+        sortOrder: 1,
+      },
     ],
   } as SubscriptionPlan,
   {
@@ -66,8 +71,10 @@ describe('OnboardingService', () => {
   };
 
   const sessionRepo = {
-    create: jest.fn((payload) => payload),
-    save: jest.fn(async (payload) => payload),
+    create: jest.fn((payload: unknown) => payload as OnboardingSession),
+    save: jest.fn((payload: unknown) =>
+      Promise.resolve(payload as OnboardingSession),
+    ),
     findOne: jest.fn(),
   };
 
@@ -82,7 +89,10 @@ describe('OnboardingService', () => {
           provide: SubscriptionAccessService,
           useValue: { getSubscriptionAccessForCompany: jest.fn() },
         },
-        { provide: getRepositoryToken(OnboardingSession), useValue: sessionRepo },
+        {
+          provide: getRepositoryToken(OnboardingSession),
+          useValue: sessionRepo,
+        },
         { provide: getRepositoryToken(User), useValue: { exists: jest.fn() } },
         {
           provide: getRepositoryToken(Company),
@@ -113,8 +123,8 @@ describe('OnboardingService', () => {
 
   it('rejects executive tier during select-subscription', async () => {
     planRepo.findOne.mockResolvedValue(mockPlans[2]);
-    await expect(service.selectSubscription('executive')).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.selectSubscription('executive'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

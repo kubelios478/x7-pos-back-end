@@ -22,11 +22,9 @@ import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.ent
 import { TimeEntryRevision } from './entities/time-entry-revision.entity';
 
 /**
- * Umbral diario a partir del cual las horas cuentan como extra.
- *
- * El módulo `core/configuration/merchant-overtime-rule` es el dueño natural de este número
- * (tiene `thresholdHours` por comercio); mientras no se enganche aquí, se usa la jornada
- * estándar de 8 h para no inventar una regla de negocio que ya existe en otro sitio.
+* Daily threshold beyond which hours are counted as overtime.
+
+* The `core/configuration/merchant-overtime-rule` module is the natural owner of this number (it has `thresholdHours` per merchant); until it's linked here, the standard 8-hour workday is used to avoid creating a business rule that already exists elsewhere.
  */
 export const DAILY_OVERTIME_THRESHOLD_HOURS = 8;
 @Injectable()
@@ -46,12 +44,10 @@ export class CollaboratorTimeEntriesService {
     private readonly revisionRepo: Repository<TimeEntryRevision>,
   ) {}
 
-  // ================= Reglas del fichaje =================
+  // ================= Signing rules =================
 
   /**
-   * Horas pagables: el intervalo bruto menos el descanso no retribuido, partido en
-   * ordinarias y extra por el umbral diario. Un fichaje sin salida todavía no computa:
-   * la jornada está abierta y cualquier número sería una invención.
+   * Payable hours: gross time minus unpaid rest, split between regular and overtime hours multiplied by the daily threshold. A signing without a transfer fee is not yet included in the calculation; the workday is open, and any number would be arbitrary.
    */
   computeHours(
     clockIn: Date,
@@ -60,12 +56,14 @@ export class CollaboratorTimeEntriesService {
   ): { regular: number; overtime: number; net: number } {
     if (!clockOut) return { regular: 0, overtime: 0, net: 0 };
     const rawHours = (clockOut.getTime() - clockIn.getTime()) / 3_600_000;
-    // El descanso nunca puede dejar el neto en negativo, por mucho que se teclee.
+    // The rest period can never leave the net hours in negative, no matter how much is entered.
     const net = Math.max(0, rawHours - Math.max(0, breakMinutes) / 60);
     const regular = Math.min(net, DAILY_OVERTIME_THRESHOLD_HOURS);
     return {
       regular: Number(regular.toFixed(2)),
-      overtime: Number(Math.max(0, net - DAILY_OVERTIME_THRESHOLD_HOURS).toFixed(2)),
+      overtime: Number(
+        Math.max(0, net - DAILY_OVERTIME_THRESHOLD_HOURS).toFixed(2),
+      ),
       net: Number(net.toFixed(2)),
     };
   }
@@ -79,12 +77,12 @@ export class CollaboratorTimeEntriesService {
   }
 
   /**
-   * Nadie puede estar fichado en dos sitios a la vez.
+   * No one can be signed in at two locations at the same time.
    *
-   * Dos intervalos se solapan si cada uno empieza antes de que el otro acabe. Una jornada
-   * abierta (sin salida) se trata como "hasta el infinito": mientras no se cierre, cualquier
-   * fichaje posterior del mismo colaborador choca con ella, que es justo la incidencia que
-   * el supervisor tiene que resolver antes de seguir.
+   * Two intervals overlap if each starts before the other ends. An open shift
+   * (without a sign-out) is treated as "until infinity": as long as it's not closed, any
+   * subsequent sign-in by the same collaborator will clash with it, which is exactly the issue
+   * that the supervisor needs to resolve before proceeding.
    */
   private async assertNoOverlap(
     collaboratorId: number,
@@ -194,9 +192,11 @@ export class CollaboratorTimeEntriesService {
       );
     }
 
-    // El turno es opcional: un fichaje manual por olvido puede no tener ninguno detrás.
+    // The shift is optional: a manual sign-in due to forgetting can have none behind it.
     if (dto.shift_id != null) {
-      const shift = await this.shiftRepo.findOne({ where: { id: dto.shift_id } });
+      const shift = await this.shiftRepo.findOne({
+        where: { id: dto.shift_id },
+      });
       if (!shift)
         throw new NotFoundException(`Shift with ID ${dto.shift_id} not found`);
       if (shift.merchantId !== dto.merchant_id) {
@@ -212,7 +212,7 @@ export class CollaboratorTimeEntriesService {
     await this.assertNoOverlap(dto.collaborator_id, clockIn, clockOut);
 
     const breakMinutes = dto.break_minutes ?? 0;
-    // Las horas se calculan aquí y no se aceptan del cliente: son el dato que va a nómina.
+    // The hours are calculated here and not accepted from the client: they are the data that goes to payroll.
     const hours = this.computeHours(clockIn, clockOut, breakMinutes);
 
     const entry = this.timeEntryRepo.create({
@@ -355,7 +355,7 @@ export class CollaboratorTimeEntriesService {
       );
     }
 
-    // Fotografía del estado previo: es lo que la revisión guardará como "antes".
+    // Photograph of the previous state: this is what the review will save as "before"".
     const before = {
       clock_in: entry.clock_in,
       clock_out: entry.clock_out,
@@ -408,8 +408,7 @@ export class CollaboratorTimeEntriesService {
       entry.double_overtime_hours = dto.double_overtime_hours as any;
     if (dto.approved !== undefined) entry.approved = dto.approved;
 
-    // ¿Se ha tocado el fichaje en sí? El resto de campos (aprobación, turno) no exige
-    // justificación; corregir las marcas o el descanso sí, porque cambia lo que se paga.
+    // Has the signing itself been changed? The other fields (approval, shift) do not require justification; correcting the marks or the rest does, because it changes what is paid.
     const punchChanged =
       dto.clock_in != null ||
       dto.clock_out !== undefined ||
@@ -430,8 +429,8 @@ export class CollaboratorTimeEntriesService {
         entry.id,
       );
 
-      // Las horas se recalculan siempre: aceptarlas del cliente permitiría cuadrar la
-      // nómina a mano sin que las marcas lo respalden.
+      // The hours are recalculated always: accepting them from the client would allow adjusting the
+      // payroll manually without the punches supporting it.
       const hours = this.computeHours(
         entry.clock_in,
         entry.clock_out,
@@ -448,8 +447,8 @@ export class CollaboratorTimeEntriesService {
 
     const saved = await this.timeEntryRepo.save(entry);
 
-    // La revisión se inserta DESPUÉS de guardar: si el guardado falla, no queda una línea
-    // de histórico describiendo un cambio que nunca ocurrió.
+    // The revision is inserted AFTER saving: if the save fails, no line remains
+    // of the historical description of a change that never happened.
     if (punchChanged) {
       await this.revisionRepo.save(
         this.revisionRepo.create({
@@ -473,11 +472,15 @@ export class CollaboratorTimeEntriesService {
     };
   }
 
-  /** Histórico de correcciones de un fichaje, de la más reciente a la más antigua. */
+  /** Historical record of corrections to a time entry, from the most recent to the oldest. */
   async revisions(
     id: number,
     authenticatedUserMerchantId: number | undefined,
-  ): Promise<{ statusCode: number; message: string; data: TimeEntryRevision[] }> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: TimeEntryRevision[];
+  }> {
     if (!id || id <= 0) throw new BadRequestException('Invalid time entry ID');
 
     const entry = await this.timeEntryRepo.findOne({

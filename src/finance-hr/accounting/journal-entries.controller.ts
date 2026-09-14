@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
   Delete,
   Body,
   Param,
@@ -10,7 +9,12 @@ import {
   UseGuards,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -48,10 +52,11 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
     id: 1,
     entry_number: 'JE-2026-001',
     entry_date: '2026-08-20',
-    description: 'Stock Receipt: 50 KG Flour 25kg bag via Purchase Order #PO-2026-089',
+    description:
+      'Stock Receipt: 50 KG Flour 25kg bag via Purchase Order #PO-2026-089',
     status: 'POSTED',
-    total_debit: 1250.00,
-    total_credit: 1250.00,
+    total_debit: 1250.0,
+    total_credit: 1250.0,
     is_balanced: true,
     reference_type: 'INVENTORY',
     reference_id: 89,
@@ -62,16 +67,18 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
       {
         id: 101,
         account: { id: 2, code: '1100', name: 'Raw Material Inventory' },
-        debit: 1250.00,
-        credit: 0.00,
-        description: 'Stock receipt: 50.0 KG Flour 25kg bag via PO #PO-2026-089',
+        debit: 1250.0,
+        credit: 0.0,
+        description:
+          'Stock receipt: 50.0 KG Flour 25kg bag via PO #PO-2026-089',
       },
       {
         id: 102,
         account: { id: 6, code: '2100', name: 'Accounts Payable' },
-        debit: 0.00,
-        credit: 1250.00,
-        description: 'Supplier Accounts Payable liability for Purchase Order #PO-2026-089',
+        debit: 0.0,
+        credit: 1250.0,
+        description:
+          'Supplier Accounts Payable liability for Purchase Order #PO-2026-089',
       },
     ],
   },
@@ -81,8 +88,8 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
     entry_date: '2026-08-19',
     description: 'POS Sales Depletion & Cost Allocation Order #1088',
     status: 'POSTED',
-    total_debit: 345.50,
-    total_credit: 345.50,
+    total_debit: 345.5,
+    total_credit: 345.5,
     is_balanced: true,
     reference_type: 'ORDER',
     reference_id: 1088,
@@ -93,16 +100,18 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
       {
         id: 103,
         account: { id: 13, code: '5100', name: 'Cost of Goods Sold' },
-        debit: 345.50,
-        credit: 0.00,
-        description: 'Stock depletion: 15.5 KG Flour 25kg bag via POS Sales Order #1088',
+        debit: 345.5,
+        credit: 0.0,
+        description:
+          'Stock depletion: 15.5 KG Flour 25kg bag via POS Sales Order #1088',
       },
       {
         id: 104,
         account: { id: 2, code: '1100', name: 'Raw Material Inventory' },
-        debit: 0.00,
-        credit: 345.50,
-        description: 'Raw material inventory reduction via POS Sales Order #1088',
+        debit: 0.0,
+        credit: 345.5,
+        description:
+          'Raw material inventory reduction via POS Sales Order #1088',
       },
     ],
   },
@@ -112,8 +121,8 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
     entry_date: '2026-08-18',
     description: 'Stock Waste Write-off: Expired Whole Milk Batch #042',
     status: 'POSTED',
-    total_debit: 88.00,
-    total_credit: 88.00,
+    total_debit: 88.0,
+    total_credit: 88.0,
     is_balanced: true,
     reference_type: 'INVENTORY',
     reference_id: 42,
@@ -124,15 +133,16 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
       {
         id: 105,
         account: { id: 14, code: '5200', name: 'Waste & Shrinkage Expense' },
-        debit: 88.00,
-        credit: 0.00,
-        description: 'Inventory waste breakdown: 2.0 L Whole Milk (Expired batch)',
+        debit: 88.0,
+        credit: 0.0,
+        description:
+          'Inventory waste breakdown: 2.0 L Whole Milk (Expired batch)',
       },
       {
         id: 106,
         account: { id: 2, code: '1100', name: 'Raw Material Inventory' },
-        debit: 0.00,
-        credit: 88.00,
+        debit: 0.0,
+        credit: 88.0,
         description: 'Raw material inventory write-off for expired batch #042',
       },
     ],
@@ -143,8 +153,8 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
     entry_date: '2026-08-17',
     description: 'Physical Inventory Audit Adjustment - Main Storage Hub',
     status: 'DRAFT',
-    total_debit: 150.00,
-    total_credit: 150.00,
+    total_debit: 150.0,
+    total_credit: 150.0,
     is_balanced: true,
     reference_type: 'ADJUSTMENT',
     reference_id: 15,
@@ -155,22 +165,27 @@ let MOCK_JOURNAL_ENTRIES: JournalEntryDto[] = [
       {
         id: 107,
         account: { id: 2, code: '1100', name: 'Raw Material Inventory' },
-        debit: 150.00,
-        credit: 0.00,
-        description: 'Physical count adjustment: System count 10 -> Actual count 15 (+5 units)',
+        debit: 150.0,
+        credit: 0.0,
+        description:
+          'Physical count adjustment: System count 10 -> Actual count 15 (+5 units)',
       },
       {
         id: 108,
-        account: { id: 15, code: '5300', name: 'Inventory Adjustment Variance' },
-        debit: 0.00,
-        credit: 150.00,
+        account: {
+          id: 15,
+          code: '5300',
+          name: 'Inventory Adjustment Variance',
+        },
+        debit: 0.0,
+        credit: 150.0,
         description: 'Physical count variance adjustment gain credit',
       },
     ],
   },
 ];
 
-@ApiTags('Journal Entries Engine')
+@ApiTags('Finance & HR - Accounting - Journal Entries Engine')
 @ApiBearerAuth()
 @Controller('journal-entry')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -195,7 +210,11 @@ export class JournalEntriesController {
         (e) =>
           e.entry_number.toLowerCase().includes(term) ||
           e.description.toLowerCase().includes(term) ||
-          e.lines.some((l) => l.account?.code.toLowerCase().includes(term) || l.account?.name.toLowerCase().includes(term)),
+          e.lines.some(
+            (l) =>
+              l.account?.code.toLowerCase().includes(term) ||
+              l.account?.name.toLowerCase().includes(term),
+          ),
       );
     }
 
@@ -221,17 +240,19 @@ export class JournalEntriesController {
     const nextSeq = MOCK_JOURNAL_ENTRIES.length + 1;
     const entryNumber = `JE-2026-00${nextSeq}`;
 
-    const lines: JournalEntryLineDto[] = (dto.lines || []).map((l: any, idx: number) => ({
-      id: Date.now() + idx,
-      account: {
-        id: l.account_id || 1100,
-        code: l.account_code || '1100',
-        name: l.account_name || 'Raw Material Inventory',
-      },
-      debit: Number(l.debit || 0),
-      credit: Number(l.credit || 0),
-      description: l.description || '',
-    }));
+    const lines: JournalEntryLineDto[] = (dto.lines || []).map(
+      (l: any, idx: number) => ({
+        id: Date.now() + idx,
+        account: {
+          id: l.account_id || 1100,
+          code: l.account_code || '1100',
+          name: l.account_name || 'Raw Material Inventory',
+        },
+        debit: Number(l.debit || 0),
+        credit: Number(l.credit || 0),
+        description: l.description || '',
+      }),
+    );
 
     const totalDebit = lines.reduce((acc, l) => acc + l.debit, 0);
     const totalCredit = lines.reduce((acc, l) => acc + l.credit, 0);
@@ -291,7 +312,9 @@ export class JournalEntriesController {
   @ApiOperation({ summary: 'Delete draft journal entry' })
   async deleteEntry(@Param('id') id: string) {
     const numericId = Number(id);
-    MOCK_JOURNAL_ENTRIES = MOCK_JOURNAL_ENTRIES.filter((e) => e.id !== numericId);
+    MOCK_JOURNAL_ENTRIES = MOCK_JOURNAL_ENTRIES.filter(
+      (e) => e.id !== numericId,
+    );
     return { success: true };
   }
 }

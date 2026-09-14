@@ -15,8 +15,9 @@ import {
 } from './dtos/user-response.dto';
 import { UserHrSummaryResponseDto } from './dtos/user-hr-summary.dto';
 import { UserRole } from './constants/role.enum';
-import * as bcrypt from 'bcrypt';
-import { console } from 'inspector';
+// import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
+// import { console } from 'inspector';
 import { ErrorHandler } from '../../common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { MailService } from '../../mail/mail.service';

@@ -46,7 +46,7 @@ import { UpdateMerchantPayrollRuleDto } from './dto/update-merchant-payroll-rule
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
-@ApiTags('Merchant Payroll Rule')
+@ApiTags('Core - Configurations - Merchant Payroll Rule')
 @Controller('merchant-payroll-rule')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.MERCHANT_PAYROLL_RULES)
 export class MerchantPayrollRuleController {
@@ -299,8 +299,10 @@ export class MerchantPayrollRuleController {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
-    const merchantPayrollRule =
-      await this.merchantPayrollRuleService.findOne(id, user);
+    const merchantPayrollRule = await this.merchantPayrollRuleService.findOne(
+      id,
+      user,
+    );
     return merchantPayrollRule;
   }
 

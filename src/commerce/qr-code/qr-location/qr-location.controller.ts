@@ -45,7 +45,7 @@ import { PaginatedQRLocationResponseDto } from './dto/paginated-qr-location-resp
 import { QueryQRLocationDto } from './dto/query-qr-location.dto';
 import { UpdateQrLocationDto } from './dto/update-qr-location.dto';
 
-@ApiTags('QR Location')
+@ApiTags('Commerce - QR-Code - QR Location')
 @Controller('qr-location')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_LOCATIONS)
 export class QRLocationController {

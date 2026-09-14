@@ -43,7 +43,7 @@ import {
 } from './dtos/user-response.dto';
 
 @Controller('users')
-@ApiTags('Users')
+@ApiTags('Platform SaaS - Users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
@@ -184,7 +184,9 @@ export class UsersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Activate or deactivate a user (soft, non-destructive)' })
+  @ApiOperation({
+    summary: 'Activate or deactivate a user (soft, non-destructive)',
+  })
   @ApiParam({ name: 'id', type: Number, description: 'User ID' })
   @ApiBody({ type: UpdateUserStatusDto })
   @ApiOkResponse({

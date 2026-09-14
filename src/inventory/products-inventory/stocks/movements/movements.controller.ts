@@ -49,7 +49,7 @@ import { OneMovementResponse } from './dto/movement-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Stock Movements')
+@ApiTags('Inventory - Products - Stock - Stock Movements')
 @Controller('movements')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

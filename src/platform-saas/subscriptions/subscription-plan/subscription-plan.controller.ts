@@ -40,7 +40,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { PaginatedSubscriptionPlanResponseDto } from './dto/paginated-subscription-plan-response.dto';
 
-@ApiTags('Subscription Plans')
+@ApiTags('Platform SaaS - Subscriptions - Subscription Plans')
 @Controller('subscription-plan')
 export class SubscriptionPlanController {
   constructor(

@@ -12,9 +12,13 @@ import {
   Query,
   Request,
   UseGuards,
-  NotFoundException,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -36,7 +40,7 @@ import { MovementsService } from '../products-inventory/stocks/movements/movemen
 import { CreateMovementDto } from '../products-inventory/stocks/movements/dto/create-movement.dto';
 import { GetMovementsQueryDto } from '../products-inventory/stocks/movements/dto/get-movements-query.dto';
 
-@ApiTags('Raw Material Stock')
+@ApiTags('Inventory - Supplies - Raw Material Stock')
 @ApiBearerAuth()
 @Controller('v1/raw-material-stock')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)
@@ -56,14 +60,18 @@ export class RawMaterialStockController {
   @ApiQuery({ name: 'supplyId', required: false, type: Number })
   async getStockItems(
     @Request() req: ExpressRequest & { user?: AuthenticatedUser },
-    @Query() query: GetItemsQueryDto & { locationId?: number; supplyId?: number },
+    @Query()
+    query: GetItemsQueryDto & { locationId?: number; supplyId?: number },
   ) {
     const merchantId = req.user?.merchant?.id;
     if (!merchantId) throw new BadRequestException('User must have a merchant');
 
-    return await this.itemsService.findAll({
-      ...query,
-    } as any, merchantId);
+    return await this.itemsService.findAll(
+      {
+        ...query,
+      },
+      merchantId,
+    );
   }
 
   @Post('locations')
@@ -136,9 +144,12 @@ export class RawMaterialStockController {
   @Post('movements')
   @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
-  @ApiOperation({ summary: 'Record a manual stock entry, adjustment, or waste log' })
+  @ApiOperation({
+    summary: 'Record a manual stock entry, adjustment, or waste log',
+  })
   async recordMovement(
-    @Body() dto: CreateMovementDto & {
+    @Body()
+    dto: CreateMovementDto & {
       sourceLocationId?: number;
       destinationLocationId?: number;
       createdBy?: string;
@@ -149,7 +160,7 @@ export class RawMaterialStockController {
     const merchantId = req.user?.merchant?.id;
     if (!merchantId) throw new BadRequestException('User must have a merchant');
 
-    // Asignar el usuario creador de forma predeterminada
+    // Assign the creator user by default
     const userName = req.user?.email || 'Inventory Clerk';
     dto.createdBy = dto.createdBy || userName;
 
@@ -159,7 +170,10 @@ export class RawMaterialStockController {
   @Post('movements/deplete-from-order')
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
-  @ApiOperation({ summary: 'Internal/Service endpoint to process recipe-driven stock depletion from sales orders' })
+  @ApiOperation({
+    summary:
+      'Internal/Service endpoint to process recipe-driven stock depletion from sales orders',
+  })
   async depleteFromOrder(
     @Body() body: { orderId: number },
     @Request() req: ExpressRequest & { user?: AuthenticatedUser },
@@ -168,13 +182,18 @@ export class RawMaterialStockController {
     if (!merchantId) throw new BadRequestException('User must have a merchant');
     if (!body.orderId) throw new BadRequestException('Must provide orderId');
 
-    return await this.movementsService.depleteFromOrder(merchantId, body.orderId);
+    return await this.movementsService.depleteFromOrder(
+      merchantId,
+      body.orderId,
+    );
   }
 
   @Get('movements')
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
-  @ApiOperation({ summary: 'Audit history of stock movements with date/type filters' })
+  @ApiOperation({
+    summary: 'Audit history of stock movements with date/type filters',
+  })
   async auditHistory(
     @Query() query: GetMovementsQueryDto,
     @Request() req: ExpressRequest & { user?: AuthenticatedUser },

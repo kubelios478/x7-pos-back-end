@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   UseGuards,
@@ -21,7 +20,6 @@ import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interf
 import {
   ApiTags,
   ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
   ApiUnauthorizedResponse,
   ApiForbiddenResponse,
@@ -53,7 +51,7 @@ import { Scopes } from '../../../auth/decorators/scopes.decorator';
 import { UserRole } from '../../../platform-saas/users/constants/role.enum';
 import { Scope } from '../../../platform-saas/users/constants/scope.enum';
 
-@ApiTags('Cash Drawers')
+@ApiTags('Restaurant operations - Cashdrawer - Cash Drawers')
 @ApiBearerAuth()
 @ApiExtraModels(
   CashDrawerResponseDto,
@@ -123,7 +121,8 @@ export class CashDrawersController {
       'Invalid input data, no active shift, or no linked collaborator profile',
     example: {
       statusCode: 400,
-      message: 'No active shift found. Start a shift before opening a cash drawer.',
+      message:
+        'No active shift found. Start a shift before opening a cash drawer.',
     },
   })
   @ApiUnauthorizedResponse({
@@ -264,7 +263,8 @@ export class CashDrawersController {
     name: 'status',
     required: false,
     enum: CashDrawerStatus,
-    description: 'Filter by cash drawer status (Open, Close, Pause, Discrepancy)',
+    description:
+      'Filter by cash drawer status (Open, Close, Pause, Discrepancy)',
   })
   @ApiQuery({
     name: 'createdDate',
@@ -303,8 +303,11 @@ export class CashDrawersController {
     enum: ['ASC', 'DESC'],
     description: 'Sort order',
   })
-  async findAll(@Query() query: GetCashDrawersQueryDto, @Request() req) {
-    const authenticatedUserMerchantId = req.user?.merchant?.id;
+  async findAll(
+    @Query() query: GetCashDrawersQueryDto,
+    @Request() req: AuthenticatedUser,
+  ) {
+    const authenticatedUserMerchantId = req.merchant?.id;
     return this.cashDrawersService.findAll(query, authenticatedUserMerchantId);
   }
 
@@ -392,8 +395,11 @@ export class CashDrawersController {
     },
   })
   @ApiParam({ name: 'id', type: Number, description: 'Cash drawer ID' })
-  async findOne(@Param('id', ParseIntPipe) id: number, @Request() req) {
-    const authenticatedUserMerchantId = req.user?.merchant?.id;
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedUser,
+  ) {
+    const authenticatedUserMerchantId = req.merchant?.id;
     return this.cashDrawersService.findOne(id, authenticatedUserMerchantId);
   }
 
@@ -589,8 +595,11 @@ export class CashDrawersController {
     },
   })
   @ApiParam({ name: 'id', type: Number, description: 'Cash drawer ID' })
-  async remove(@Param('id', ParseIntPipe) id: number, @Request() req) {
-    const authenticatedUserMerchantId = req.user?.merchant?.id;
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedUser,
+  ) {
+    const authenticatedUserMerchantId = req.merchant?.id;
     return this.cashDrawersService.remove(id, authenticatedUserMerchantId);
   }
 }

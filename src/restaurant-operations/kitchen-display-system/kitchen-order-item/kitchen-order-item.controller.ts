@@ -51,7 +51,7 @@ import { KitchenOrderItemStatus } from './constants/kitchen-order-item-status.en
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Kitchen Order Items')
+@ApiTags('Restaurant operations - Kitchen Display System - Kitchen Order Items')
 @ApiBearerAuth()
 @Controller('kitchen-order-items')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.KITCHEN_ORDER_ITEMS)

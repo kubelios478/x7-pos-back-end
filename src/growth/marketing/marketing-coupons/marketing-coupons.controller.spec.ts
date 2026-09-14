@@ -35,9 +35,9 @@ describe('MarketingCouponsController', () => {
   };
 
   /**
-   * Forma REAL del request: Passport cuelga el usuario en `req.user`.
-   * Pasar el usuario pelado hacía que el spec verificara un contrato que
-   * producción no cumple, y por eso el 403 del módulo pasó desapercibido.
+   * REAL form of the request: Passport hangs the user in `req.user`.
+   * Passing the bare user caused the spec to verify a contract that
+   * production doesn't comply with, and that's why the module's 403 error went unnoticed.
    */
   const mockRequest = { user: mockRequestUser } as unknown as ExpressRequest & {
     user?: AuthenticatedUser;

@@ -21,9 +21,7 @@ import { MerchantStatus } from './constants/merchant-status.enum';
 import { User } from '../users/entities/user.entity';
 import { Table } from 'src/restaurant-operations/dining-system/tables/entities/table.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
-import {
-  MerchantAdminSummaryResponseDto,
-} from './dtos/merchant-admin-summary.dto';
+import { MerchantAdminSummaryResponseDto } from './dtos/merchant-admin-summary.dto';
 import { CollaboratorStatus } from 'src/finance-hr/hr/collaborators/constants/collaborator-status.enum';
 
 @Injectable()

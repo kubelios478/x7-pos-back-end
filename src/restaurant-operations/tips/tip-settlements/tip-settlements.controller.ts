@@ -10,7 +10,6 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
-  Request,
   Query,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -56,7 +55,7 @@ import {
 import { QueryTipSettlementReportDto } from './dto/query-tip-settlement-report.dto';
 import { LiquidatedTipSettlementsDto } from './dto/liquidated-tip-settlement.dto';
 
-@ApiTags('Tip Settlements')
+@ApiTags('Restaurant operations - Tips - Tip Settlements')
 @ApiBearerAuth()
 @Controller('tip-settlements')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.TIP_SETTLEMENTS)
@@ -175,8 +174,11 @@ export class TipSettlementsController {
     );
   }
   @Get('report')
-  getSettlementReport(@Query() query: QueryTipSettlementReportDto, @Req() req) {
-    return this.tipSettlementsService.getSettlementReport(query, req.user);
+  getSettlementReport(
+    @Query() query: QueryTipSettlementReportDto,
+    @Req() req: AuthenticatedUser,
+  ) {
+    return this.tipSettlementsService.getSettlementReport(query, req);
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -301,9 +303,9 @@ export class TipSettlementsController {
   @Patch('liquidated')
   async liquidatedTipSettlements(
     @Body() dto: LiquidatedTipSettlementsDto,
-    @Req() req,
+    @Req() req: AuthenticatedUser,
   ) {
-    return this.tipSettlementsService.liquidatedTipSettlements(dto, req.user);
+    return this.tipSettlementsService.liquidatedTipSettlements(dto, req);
   }
 
   @Post('cash-shifts/:shiftId/payout')
@@ -316,17 +318,27 @@ export class TipSettlementsController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary: 'Process the payout of cash tips collected during the shift to staff',
-    description: 'Validates distribution according to the active TipRule (POOL, ROLE_BASED), creates settlements in tip_settlements, updates tip status to PAID_OUT, and deducts the total from the current_balance of the cash drawer.',
+    summary:
+      'Process the payout of cash tips collected during the shift to staff',
+    description:
+      'Validates distribution according to the active TipRule (POOL, ROLE_BASED), creates settlements in tip_settlements, updates tip status to PAID_OUT, and deducts the total from the current_balance of the cash drawer.',
   })
   @ApiCreatedResponse({ description: 'Tip payout registered successfully' })
-  @ApiBadRequestResponse({ description: 'Amount exceeds collected tips, shift closed, or incorrect distribution' })
+  @ApiBadRequestResponse({
+    description:
+      'Amount exceeds collected tips, shift closed, or incorrect distribution',
+  })
   async payoutTips(
     @Param('shiftId', ParseIntPipe) shiftId: number,
     @Body() dto: TipPayoutDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.tipSettlementsService.payoutTips(shiftId, dto, user.id, user.merchant.id);
+    return this.tipSettlementsService.payoutTips(
+      shiftId,
+      dto,
+      user.id,
+      user.merchant.id,
+    );
   }
 
   @Get('cash-shifts/:shiftId/collected-tips')
@@ -339,15 +351,22 @@ export class TipSettlementsController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary: 'Get the total cash tips collected during the shift that are pending payout',
-    description: 'Retrieves the sum and count of cash tips in COLLECTED status for the given shift.',
+    summary:
+      'Get the total cash tips collected during the shift that are pending payout',
+    description:
+      'Retrieves the sum and count of cash tips in COLLECTED status for the given shift.',
   })
-  @ApiOkResponse({ description: 'Collected tips summary retrieved successfully' })
+  @ApiOkResponse({
+    description: 'Collected tips summary retrieved successfully',
+  })
   @ApiNotFoundResponse({ description: 'Shift not found' })
   async getCollectedTips(
     @Param('shiftId', ParseIntPipe) shiftId: number,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.tipSettlementsService.getCollectedTipsSummary(shiftId, user.merchant.id);
+    return this.tipSettlementsService.getCollectedTipsSummary(
+      shiftId,
+      user.merchant.id,
+    );
   }
 }

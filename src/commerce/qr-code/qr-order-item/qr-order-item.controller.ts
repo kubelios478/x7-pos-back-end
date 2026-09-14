@@ -42,10 +42,10 @@ import {
   QROrderItemResponseDto,
 } from './dto/qr-order-item-response.dto';
 import { PaginatedQROrderItemResponseDto } from './dto/paginated-qr-order-item-response.dto';
-import { QueryQROrderItemDto } from './dto/query-qr-ordero-item.dto';
+import { QueryQROrderItemDto } from './dto/query-qr-order-item.dto';
 import { UpdateQrOrderItemDto } from './dto/update-qr-order-item.dto';
 
-@ApiTags('QR Order Item')
+@ApiTags('Commerce - QR-Code - QR Order Item')
 @Controller('qr-order-item')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_ORDER_ITEMS)
 export class QROrderItemController {

@@ -40,7 +40,7 @@ import { CreateRecipeV1Dto } from './dto/create-recipe-v1.dto';
 import { UpdateRecipeV1Dto } from './dto/update-recipe-v1.dto';
 import { ProductRecipe } from './entities/product-recipe.entity';
 
-@ApiTags('Recipes V1')
+@ApiTags('Inventory - Products - Recipes V1')
 @ApiBearerAuth()
 @Controller('v1/recipes')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.PRODUCT_MANAGEMENT)
@@ -70,7 +70,6 @@ export class RecipesV1Controller {
   }
 
   @Post()
-
   @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
@@ -105,7 +104,11 @@ export class RecipesV1Controller {
   @ApiOperation({
     summary: 'Get recipe details for a specific product',
   })
-  @ApiParam({ name: 'productId', type: Number, description: 'Finished product ID' })
+  @ApiParam({
+    name: 'productId',
+    type: Number,
+    description: 'Finished product ID',
+  })
   @ApiOkResponse({ type: ProductRecipe, isArray: true })
   async findForProduct(
     @CurrentUser() user: AuthenticatedUser,
@@ -159,9 +162,12 @@ export class RecipesV1Controller {
     name: 'lineItemId',
     type: Number,
     required: false,
-    description: 'Ingredient line item ID to delete (if omitted, deletes the entire recipe)',
+    description:
+      'Ingredient line item ID to delete (if omitted, deletes the entire recipe)',
   })
-  @ApiNoContentResponse({ description: 'Recipe or line item deleted successfully' })
+  @ApiNoContentResponse({
+    description: 'Recipe or line item deleted successfully',
+  })
   async remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('recipeId', ParseIntPipe) recipeId: number,

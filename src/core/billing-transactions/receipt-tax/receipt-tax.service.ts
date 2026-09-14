@@ -38,7 +38,7 @@ export class ReceiptTaxService {
     private readonly receiptsService: ReceiptsService,
   ) {}
 
-  // ─── Helper: verifica ownership via receipt → order → merchant ───────────────
+  // ─── Helper: verify ownership via receipt → order → merchant ───────────────
 
   private async verifyMerchantOwnership(
     receiptId: number,

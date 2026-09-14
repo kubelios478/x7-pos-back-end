@@ -42,7 +42,7 @@ import { UpdateFeatureDto } from './dto/update-feature.dto';
 import { PaginatedFeatureResponseDto } from './dto/paginated-feature-response.dto';
 import { QueryFeatureDto } from './dto/query-feature.dto';
 
-@ApiTags('Features')
+@ApiTags('Platform SaaS - Subscriptions - Features')
 @Controller('features')
 export class FeaturesController {
   constructor(private readonly featuresService: FeaturesService) {}

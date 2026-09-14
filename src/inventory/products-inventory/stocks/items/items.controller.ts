@@ -50,7 +50,7 @@ import { OneItemResponse } from './dto/item-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Stock Items')
+@ApiTags('Inventory - Products - Stock - Stock items')
 @Controller('items')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
@@ -384,7 +384,9 @@ export class ItemsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Adjust stock quantity manually (Administrator only)' })
+  @ApiOperation({
+    summary: 'Adjust stock quantity manually (Administrator only)',
+  })
   @ApiParam({ name: 'id', type: Number, description: 'Stock Item ID' })
   @ApiBody({ type: AdjustStockDto })
   @ApiOkResponse({ description: 'Stock adjusted successfully', type: Item })

@@ -38,7 +38,7 @@ import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { PaginatedSubscriptionApplicationResponseDto } from './dto/paginated-subscription-application-response.dto';
 import { QuerySubscriptionApplicationDto } from './dto/query-subscription-application.dto';
 
-@ApiTags('Subscription Applications')
+@ApiTags('Platform SaaS - Subscriptions - Subscription Applications')
 @Controller('subscription-applications')
 export class SubscriptionApplicationController {
   constructor(

@@ -47,7 +47,7 @@ import {
 import { OneSupplierPaymentAllocationResponseDto } from './dto/supplier_payment_allocation-response.dto';
 import { PaginatedSupplierPaymentAllocationsResponseDto } from './dto/paginated-supplier_payment_allocations-response.dto';
 
-@ApiTags('Supplier payment allocations (Account payable)')
+@ApiTags('Finance & HR - Account payable - Supplier payment allocations')
 @ApiBearerAuth()
 @Controller('supplier-payment-allocations')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIER_PAYMENTS_ALLOCATION)
@@ -96,7 +96,8 @@ export class SupplierPaymentAllocationsController {
   /** Merchant users are locked to their own company; portal users get `undefined`. */
   private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
     const isMerchant =
-      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+      user.role === UserRole.MERCHANT_ADMIN ||
+      user.role === UserRole.MERCHANT_USER;
     return isMerchant ? user.merchant?.companyId : undefined;
   }
 

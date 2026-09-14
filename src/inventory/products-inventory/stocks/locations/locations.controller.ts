@@ -49,7 +49,7 @@ import { OneLocationResponse } from './dto/location-response.dto';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Stock Locations')
+@ApiTags('Inventory - Products - Stock - Stock Locations')
 @Controller('locations')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.STOCK_AND_STOCK_MOVEMENTS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

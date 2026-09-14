@@ -46,7 +46,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { MerchantAdminSummaryResponseDto } from './dtos/merchant-admin-summary.dto';
 
-@ApiTags('Merchants')
+@ApiTags('Platform SaaS - Merchants')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('merchants')
@@ -122,7 +122,9 @@ export class MerchantsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'List merchants for the authenticated user company' })
+  @ApiOperation({
+    summary: 'List merchants for the authenticated user company',
+  })
   @ApiOkResponse({
     description: 'Company merchants retrieved successfully',
     type: CompanyMerchantsListResponseDto,
@@ -147,7 +149,9 @@ export class MerchantsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Create a merchant branch for the authenticated user company' })
+  @ApiOperation({
+    summary: 'Create a merchant branch for the authenticated user company',
+  })
   @ApiCreatedResponse({
     description: 'Merchant created successfully',
     type: OneMerchantResponseDto,
@@ -169,7 +173,9 @@ export class MerchantsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get administrative summary metrics for a merchant branch' })
+  @ApiOperation({
+    summary: 'Get administrative summary metrics for a merchant branch',
+  })
   @ApiParam({ name: 'id', type: Number, description: 'Merchant ID' })
   @ApiOkResponse({
     description: 'Merchant admin summary found',

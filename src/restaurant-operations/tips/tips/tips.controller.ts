@@ -8,7 +8,6 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
-  Request,
   Query,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -50,7 +49,7 @@ import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { TipMethod } from './constants/tip-method.enum';
 import { TipStatus } from './constants/tip-status.enum';
 
-@ApiTags('Tips')
+@ApiTags('Restaurant operations - Tips - Tips')
 @ApiBearerAuth()
 @Controller('tips')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.TIPS)
@@ -122,7 +121,10 @@ export class TipsController {
       },
     },
   })
-  async create(@Body() dto: CreateTipDto, @CurrentUser() user: AuthenticatedUser) {
+  async create(
+    @Body() dto: CreateTipDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const authenticatedUserMerchantId = user.merchant?.id;
     return this.tipsService.create(dto, authenticatedUserMerchantId);
   }

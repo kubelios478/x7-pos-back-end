@@ -169,8 +169,7 @@ export class LoyaltyRewardsRedemptionsService {
           },
         );
 
-        const savedRedemption =
-          await queryRunner.manager.save(newRedemption);
+        const savedRedemption = await queryRunner.manager.save(newRedemption);
 
         // Deduct Points
         loyaltyCustomer.currentPoints -= pointsToDeduct;

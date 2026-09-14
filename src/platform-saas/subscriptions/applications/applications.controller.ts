@@ -42,7 +42,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { PaginatedApplicationResponseDto } from './dto/paginated-application-response.dto';
 import { QueryApplicationDto } from './dto/query-application.dto';
 
-@ApiTags('Applications')
+@ApiTags('Platform SaaS - Subscriptions - Applications')
 @Controller('applications')
 export class ApplicationsController {
   constructor(private readonly appService: ApplicationsService) {}

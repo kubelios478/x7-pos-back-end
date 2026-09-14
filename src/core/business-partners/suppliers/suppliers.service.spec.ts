@@ -516,7 +516,7 @@ describe('SuppliersService', () => {
       supplierRepository.findOne.mockResolvedValueOnce(null); // No existing supplier with same name
       supplierRepository.findOne.mockResolvedValueOnce(updatedSupplier); // For the findOne call within the update method
       supplierRepository.save.mockResolvedValueOnce(updatedSupplier);
-      mockQueryBuilder.getOne.mockResolvedValueOnce(updatedSupplier); // findOne inside findone method
+      mockQueryBuilder.getOne.mockResolvedValueOnce(updatedSupplier); // findOne inside findOne method
 
       const result = await service.update(
         supplierId,

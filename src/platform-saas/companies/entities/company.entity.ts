@@ -115,7 +115,8 @@ export class Company {
 
   @ApiProperty({
     example: 4,
-    description: 'Number of merchant branches linked to the company (computed).',
+    description:
+      'Number of merchant branches linked to the company (computed).',
     required: false,
   })
   merchantsCount?: number;

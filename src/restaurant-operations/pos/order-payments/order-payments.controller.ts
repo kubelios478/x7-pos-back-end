@@ -53,7 +53,7 @@ import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Order payments')
+@ApiTags('Restaurant operations - POS - Order payments')
 @ApiBearerAuth()
 @Controller('order-payments')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDER_PAYMENTS)

@@ -48,7 +48,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 
-@ApiTags('Shift Assignments')
+@ApiTags('Restaurant operations - Shifts - Shift Assignments')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('shift-assignments')
@@ -60,11 +60,9 @@ export class ShiftAssignmentsController {
   ) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -77,7 +75,6 @@ export class ShiftAssignmentsController {
     }
     return merchantId;
   }
-
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)

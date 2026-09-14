@@ -49,7 +49,7 @@ import { LoyaltyRewardType } from './constants/loyalty-reward-type.enum';
 
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@ApiTags('Loyalty Rewards')
+@ApiTags('Growth - Loyalty - Rewards')
 @Controller('loyalty-rewards')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LOYALTY_REWARDS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)

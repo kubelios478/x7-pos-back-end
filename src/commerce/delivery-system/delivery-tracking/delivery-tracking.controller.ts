@@ -40,7 +40,7 @@ import { PaginatedDeliveryTrackingResponseDto } from './dto/paginated-delivery-t
 import { QueryDeliveryTrackingDto } from './dto/query-delivery-tracking.dto';
 import { UpdateDeliveryTrackingDto } from './dto/update-delivery-tracking.dto';
 
-@ApiTags('Delivery Tracking')
+@ApiTags('Commerce - Delivery System - Delivery Tracking')
 @Controller('delivery-tracking')
 export class DeliveryTrackingController {
   constructor(

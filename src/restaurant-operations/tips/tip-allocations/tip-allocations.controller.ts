@@ -10,7 +10,7 @@ import {
   UseGuards,
   Request,
   Query,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -50,7 +50,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { TipAllocationRole } from './constants/tip-allocation-role.enum';
 
-@ApiTags('Tip Allocations')
+@ApiTags('Restaurant operations - Tips - Tip Allocations')
 @ApiBearerAuth()
 @Controller('tip-allocations')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.TIPS_ALLOCATIONS)
@@ -59,11 +59,10 @@ export class TipAllocationsController {
   constructor(private readonly tipAllocationsService: TipAllocationsService) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` — typing the request as AuthenticatedUser, which passed the error to the compiler —
+   * always returned undefined, and the service responded with a 403 error on all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -76,7 +75,6 @@ export class TipAllocationsController {
     }
     return merchantId;
   }
-
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

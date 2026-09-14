@@ -35,6 +35,7 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
   ApiQuery,
+  ApiTags,
 } from '@nestjs/swagger';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { Product } from './entities/product.entity';
@@ -45,6 +46,7 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+@ApiTags('Inventory - Products - Products')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('products')

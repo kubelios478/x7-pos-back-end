@@ -52,7 +52,7 @@ import { KitchenEventLogStatus } from './constants/kitchen-event-log-status.enum
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Kitchen Event Logs')
+@ApiTags('Restaurant operations - Kitchen Display System - Event Logs')
 @ApiBearerAuth()
 @Controller('kitchen-event-logs')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.KITCHEN_EVENT_LOG)

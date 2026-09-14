@@ -32,7 +32,7 @@ import { OneReservationNoteResponse } from './dto/reservation-note-response.dto'
 import { AllPaginatedReservationNotes } from './dto/all-paginated-reservation-notes.dto';
 import { GetReservationNotesQueryDto } from './dto/get-reservation-notes-query.dto';
 
-@ApiTags('Reservation Notes')
+@ApiTags('Restaurant operations - Reservations - Notes')
 @ApiBearerAuth()
 @Controller('reservation-note')
 @UseGuards(JwtAuthGuard, RolesGuard)

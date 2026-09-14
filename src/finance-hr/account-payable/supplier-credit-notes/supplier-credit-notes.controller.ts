@@ -48,7 +48,7 @@ import { SupplierCreditNoteStatus } from './entities/supplier-credit-note.entity
 import { OneSupplierCreditNoteResponseDto } from './dto/supplier-credit-note-response.dto';
 import { PaginatedSupplierCreditNotesResponseDto } from './dto/paginated-supplier-credit-notes-response.dto';
 
-@ApiTags('Supplier credit notes (Account payable)')
+@ApiTags('Finance & HR - Account payable - Supplier credit notes')
 @ApiBearerAuth()
 @Controller('supplier-credit-notes')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIER_CREDIT_NOTES)
@@ -85,7 +85,10 @@ export class SupplierCreditNotesController {
     @Body() dto: CreateSupplierCreditNoteDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierCreditNoteResponseDto> {
-    return this.supplierCreditNotesService.create(dto, this.merchantCompanyScope(user));
+    return this.supplierCreditNotesService.create(
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   /**
@@ -94,7 +97,8 @@ export class SupplierCreditNotesController {
    */
   private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
     const isMerchant =
-      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+      user.role === UserRole.MERCHANT_ADMIN ||
+      user.role === UserRole.MERCHANT_USER;
     return isMerchant ? user.merchant?.companyId : undefined;
   }
 
@@ -125,7 +129,10 @@ export class SupplierCreditNotesController {
     @Query() query: GetSupplierCreditNotesQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierCreditNotesResponseDto> {
-    return this.supplierCreditNotesService.findAll(query, this.merchantCompanyScope(user));
+    return this.supplierCreditNotesService.findAll(
+      query,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Get(':id')
@@ -180,7 +187,11 @@ export class SupplierCreditNotesController {
     @Body() dto: UpdateSupplierCreditNoteDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierCreditNoteResponseDto> {
-    return this.supplierCreditNotesService.update(id, dto, this.merchantCompanyScope(user));
+    return this.supplierCreditNotesService.update(
+      id,
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Delete(':id')

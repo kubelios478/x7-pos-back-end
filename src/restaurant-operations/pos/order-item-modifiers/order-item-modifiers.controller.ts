@@ -52,7 +52,7 @@ import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
-@ApiTags('Order item modifiers')
+@ApiTags('Restaurant operations - POS - Order item modifiers')
 @ApiBearerAuth()
 @Controller('order-item-modifiers')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.ORDER_ITEM_MODIFIERS)

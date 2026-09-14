@@ -21,16 +21,15 @@ import { ShiftRole } from './constants/shift-role.enum';
 import { CollaboratorStatus } from './constants/collaborator-status.enum';
 
 /**
- * Lo que estas historias añadieron al módulo: enganche a un turno recurrente, respuesta
- * con los datos que el directorio necesita (email, turno, alta) y resumen operativo.
+ * What these stories added to the module: hook to a recurring shift, response with the data that the directory needs (email, shift, registration) and operational summary.
  */
 describe('CollaboratorsService · HR directory', () => {
   let service: CollaboratorsService;
 
   const MERCHANT_ID = 3;
 
-  const merchant = { id: MERCHANT_ID, name: 'Prueba1' };
-  const user = { id: 9, username: 'jperez', email: 'juan@store.com' };
+  const merchant = { id: MERCHANT_ID, name: 'Test1' };
+  const user = { id: 9, username: 'jhondoe', email: 'jhondoe@store.com' };
 
   const collaborator = {
     id: 4,
@@ -75,12 +74,21 @@ describe('CollaboratorsService · HR directory', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CollaboratorsService,
-        { provide: getRepositoryToken(Collaborator), useValue: collaboratorRepo },
+        {
+          provide: getRepositoryToken(Collaborator),
+          useValue: collaboratorRepo,
+        },
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(Merchant), useValue: merchantRepo },
         { provide: getRepositoryToken(Shift), useValue: shiftRepo },
-        { provide: getRepositoryToken(ShiftAssignment), useValue: shiftAssignmentRepo },
-        { provide: getRepositoryToken(TableAssignment), useValue: tableAssignmentRepo },
+        {
+          provide: getRepositoryToken(ShiftAssignment),
+          useValue: shiftAssignmentRepo,
+        },
+        {
+          provide: getRepositoryToken(TableAssignment),
+          useValue: tableAssignmentRepo,
+        },
         { provide: getRepositoryToken(CashDrawer), useValue: cashDrawerRepo },
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: EntityManager, useValue: {} },
@@ -116,7 +124,7 @@ describe('CollaboratorsService · HR directory', () => {
     orderQb.where.mockReturnThis();
   });
 
-  // ================= Enganche al turno =================
+  // ================= Shift Binding =================
 
   describe('shift binding', () => {
     const createDto = {
@@ -133,7 +141,7 @@ describe('CollaboratorsService · HR directory', () => {
       collaboratorRepo.findOne.mockResolvedValue(null);
     };
 
-    it('deja el turno vacío cuando no se manda ninguno', async () => {
+    it('leaves the shift empty when none is sent', async () => {
       primeCreate();
 
       const res = await service.create(createDto, MERCHANT_ID);
@@ -143,7 +151,7 @@ describe('CollaboratorsService · HR directory', () => {
       expect(shiftRepo.findOne).not.toHaveBeenCalled();
     });
 
-    it('engancha el colaborador a un turno de su propio comercio', async () => {
+    it('hooks the collaborator to a shift of their own merchant', async () => {
       primeCreate();
       shiftRepo.findOne.mockResolvedValue({
         id: 7,
@@ -154,13 +162,16 @@ describe('CollaboratorsService · HR directory', () => {
         status: 'active',
       });
 
-      const res = await service.create({ ...createDto, shift_id: 7 }, MERCHANT_ID);
+      const res = await service.create(
+        { ...createDto, shift_id: 7 },
+        MERCHANT_ID,
+      );
 
       expect(res.data.shift_id).toBe(7);
       expect(res.data.shift).toMatchObject({ id: 7, role: 'waiter' });
     });
 
-    it('rechaza un turno de otro comercio', async () => {
+    it('rejects a shift from another merchant', async () => {
       primeCreate();
       shiftRepo.findOne.mockResolvedValue({ id: 7, merchantId: 99 });
 
@@ -169,7 +180,7 @@ describe('CollaboratorsService · HR directory', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('rechaza un turno inexistente', async () => {
+    it('rejects a non-existent shift', async () => {
       primeCreate();
       shiftRepo.findOne.mockResolvedValue(null);
 
@@ -179,10 +190,10 @@ describe('CollaboratorsService · HR directory', () => {
     });
   });
 
-  // ================= Respuesta del directorio =================
+  // ================= Response Shape =================
 
   describe('response shape', () => {
-    it('expone el email con su nombre real, sin dejar de servir el mapeo antiguo', async () => {
+    it('exposes the email with their real name, without stopping to serve the old mapping', async () => {
       userRepo.findOne.mockResolvedValue(user);
       merchantRepo.findOne.mockResolvedValue(merchant);
       collaboratorRepo.findOne.mockResolvedValue(null);
@@ -198,21 +209,21 @@ describe('CollaboratorsService · HR directory', () => {
         MERCHANT_ID,
       );
 
-      expect(res.data.user.email).toBe('juan@store.com');
-      expect(res.data.user.username).toBe('jperez');
-      // El contrato viejo metía el correo en `lastname`: se conserva para no romper clientes.
-      expect(res.data.user.lastname).toBe('juan@store.com');
+      expect(res.data.user.email).toBe('jhondoe@store.com');
+      expect(res.data.user.username).toBe('jhondoe');
+      // The old contract included the email address in `lastname`: this is retained to avoid disrupting customer relationships..
+      expect(res.data.user.lastname).toBe('jhondoe@store.com');
     });
   });
 
-  // ================= Resumen operativo =================
+  // ================= Summary =================
 
   describe('summary', () => {
     const primeSummary = () => {
       collaboratorRepo.findOne.mockResolvedValue(collaborator);
       shiftAssignmentRepo.count.mockResolvedValue(12);
       tableAssignmentRepo.count.mockResolvedValue(4);
-      // Dos llamadas: cajas abiertas y cajas cerradas.
+      // Two calls: open registers and closed registers.
       cashDrawerRepo.count.mockResolvedValueOnce(7).mockResolvedValueOnce(6);
       orderRepo.count.mockResolvedValue(143);
       shiftAssignmentRepo.find.mockResolvedValue([]);
@@ -222,7 +233,7 @@ describe('CollaboratorsService · HR directory', () => {
       orderQb.getRawOne.mockResolvedValue({ sum: '15420.50' });
     };
 
-    it('cuenta cada relación operativa del colaborador', async () => {
+    it('counts each operational relationship of the collaborator', async () => {
       primeSummary();
 
       const res = await service.summary(4, MERCHANT_ID);
@@ -236,7 +247,7 @@ describe('CollaboratorsService · HR directory', () => {
       });
     });
 
-    it('suma el volumen de ventas en la base, no en memoria', async () => {
+    it('sums the sales volume in the database, not in memory', async () => {
       primeSummary();
 
       const res = await service.summary(4, MERCHANT_ID);
@@ -248,7 +259,7 @@ describe('CollaboratorsService · HR directory', () => {
       );
     });
 
-    it('devuelve cero cuando el colaborador no ha tomado ninguna comanda', async () => {
+    it('returns zero when the collaborator has not taken any order', async () => {
       primeSummary();
       orderQb.getRawOne.mockResolvedValue(undefined);
 
@@ -257,7 +268,7 @@ describe('CollaboratorsService · HR directory', () => {
       expect(res.data.ordersTotal).toBe(0);
     });
 
-    it('resume la mesa con su número y su zona', async () => {
+    it('summarize the table with its number and its area', async () => {
       primeSummary();
       tableAssignmentRepo.find.mockResolvedValue([
         {
@@ -277,7 +288,7 @@ describe('CollaboratorsService · HR directory', () => {
       });
     });
 
-    it('no enseña el resumen de un empleado de otro comercio', async () => {
+    it('does not show the summary of an employee from another merchant', async () => {
       collaboratorRepo.findOne.mockResolvedValue({
         ...collaborator,
         merchant_id: 99,
@@ -288,7 +299,7 @@ describe('CollaboratorsService · HR directory', () => {
       );
     });
 
-    it('falla si el colaborador no existe', async () => {
+    it('fails if the collaborator does not exist', async () => {
       collaboratorRepo.findOne.mockResolvedValue(null);
 
       await expect(service.summary(404, MERCHANT_ID)).rejects.toThrow(
@@ -296,13 +307,13 @@ describe('CollaboratorsService · HR directory', () => {
       );
     });
 
-    it('rechaza un id inválido', async () => {
+    it('rejects an invalid ID', async () => {
       await expect(service.summary(0, MERCHANT_ID)).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('exige comercio autenticado', async () => {
+    it('requires authenticated commerce', async () => {
       await expect(
         service.summary(4, undefined as unknown as number),
       ).rejects.toThrow(ForbiddenException);

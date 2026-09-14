@@ -14,8 +14,7 @@ import {
   type FindOptionsOrder,
   type FindOptionsWhere,
 } from 'typeorm';
-// Se importa desde la raíz del paquete: el `exports` de typeorm no publica la ruta
-// profunda `typeorm/query-builder/QueryPartialEntity`, así que tsc la resolvía pero jest no.
+// It is imported from the root of the package: typeorm's `exports` does not publish the deep path `typeorm/query-builder/QueryPartialEntity`, so tsc resolved it but jest did not.
 import type { QueryDeepPartialEntity } from 'typeorm';
 import { OrderItem } from '../order-item/entities/order-item.entity';
 import { OrderPayment } from '../order-payments/entities/order-payment.entity';
@@ -78,7 +77,6 @@ import { CompletePurchaseDto } from './dto/complete-purchase.dto';
 import { Receipt } from 'src/core/billing-transactions/receipts/entities/receipt.entity';
 import { ReceiptsService } from 'src/core/billing-transactions/receipts/receipts.service';
 import { ReceiptType } from 'src/core/billing-transactions/receipts/constants/receipt-type.enum';
-import { User } from 'src/platform-saas/users/entities/user.entity';
 import { SettlementStatus } from 'src/restaurant-operations/tips/tip-settlements/constants/settlement-status.enum';
 import { RefundOrderDto } from './dto/refund-order.dto';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
@@ -87,6 +85,7 @@ import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/lo
 import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 import { LoyaltyPointsSource } from 'src/growth/loyalty/loyalty-points-transaction/constants/loyalty-points-source.enum';
 import { MoreThan } from 'typeorm';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @Injectable()
 export class OrdersService {
@@ -354,7 +353,7 @@ export class OrdersService {
   async completePurchase(
     orderId: number,
     dto: CompletePurchaseDto,
-    user: any,
+    user: AuthenticatedUser,
   ): Promise<OneOrderResponseDto> {
     const order = await this.orderRepo.findOne({
       where: { id: orderId },
@@ -370,7 +369,7 @@ export class OrdersService {
     }
 
     // Enforce discount limits based on user role
-    const maxDiscount = user.role === 'merchant_admin' ? 0.5 : 0.1;
+    const maxDiscount = user.role === UserRole.MERCHANT_ADMIN ? 0.5 : 0.1;
 
     // Ensure discount does not exceed allowed percentage of subtotal
     if (order.discount_total > order.subtotal * maxDiscount) {
@@ -483,8 +482,12 @@ export class OrdersService {
     };
   }
 
-  // Procces Payment for an order, creating OrderPayment records, updating order status to PAID, and handling tip settlements based on the provided tip type and configuration
-  async processPayment(dto: ProcessPaymentDto, merchantId: number, user: User) {
+  // Process Payment for an order, creating OrderPayment records, updating order status to PAID, and handling tip settlements based on the provided tip type and configuration
+  async processPayment(
+    dto: ProcessPaymentDto,
+    merchantId: number,
+    user: AuthenticatedUser,
+  ) {
     const order = await this.orderRepo.findOne({
       where: { id: dto.orderId },
       relations: ['merchant', 'orderItems', 'orderItems.product'],
@@ -1387,7 +1390,7 @@ export class OrdersService {
   }
 
   /**
-   * Orden POS creada al aceptar un pedido online (mesa/colaborador/suscripción mínimos del comercio).
+   *POS order created upon accepting an online order (merchant minimum table/collaborator/subscription).
    */
   async createOrderForOnlineAcceptance(params: {
     merchantId: number;
@@ -1461,8 +1464,7 @@ export class OrdersService {
   }
 
   /**
-   * Misma lógica que {@link createOrderForOnlineAcceptance} pero dentro de una transacción
-   * (p. ej. aceptación de pedido online con líneas POS y FKs en una sola unidad).
+   * Same logic as {@link createOrderForOnlineAcceptance} but within a transaction (e.g., online order acceptance with POS lines and FKs in a single unit).
    */
   async createOrderForOnlineAcceptanceWithManager(
     manager: EntityManager,
@@ -1730,7 +1732,11 @@ export class OrdersService {
     };
   }
 
-  async refundOrder(dto: RefundOrderDto, merchantId: number, user: User) {
+  async refundOrder(
+    dto: RefundOrderDto,
+    merchantId: number,
+    user: AuthenticatedUser,
+  ) {
     const order = await this.orderRepo.findOne({
       where: { id: dto.orderId },
       relations: ['merchant', 'orderItems'],
@@ -1869,7 +1875,7 @@ export class OrdersService {
 
         if (!loyaltyCustomer) continue;
 
-        // 🔒 Idempotencia REAL: si ya existe reversa, saltar
+        // 🔒 REAL idempotence: if a reverse already exists, skip
         const existsReversal = await queryRunner.manager.findOne(
           LoyaltyPointTransaction,
           {
@@ -1885,7 +1891,7 @@ export class OrdersService {
           continue;
         }
 
-        // actualizar balance
+        // update balance
         loyaltyCustomer.currentPoints = Math.max(
           0,
           loyaltyCustomer.currentPoints - transaction.points,
@@ -1893,7 +1899,7 @@ export class OrdersService {
 
         await queryRunner.manager.save(loyaltyCustomer);
 
-        // crear reversal (si falla por constraint → ya fue procesado)
+        // create reversal (if it fails due to constraint → it has already been processed)
         await queryRunner.manager.save(LoyaltyPointTransaction, {
           loyaltyCustomerId: loyaltyCustomer.id,
           orderId: order.id,
@@ -1903,7 +1909,7 @@ export class OrdersService {
         });
       }
 
-      // 5. Order update (último estado)
+      // 5. Order update (last status)
       order.refund_reason = dto.reason;
       order.refunded_by_user_id = user.id;
 

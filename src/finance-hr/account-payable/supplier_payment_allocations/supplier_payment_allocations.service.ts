@@ -206,7 +206,10 @@ export class SupplierPaymentAllocationsService {
       }
     }
 
-    if (companyId != null && String(ref.document_type).toLowerCase() === 'invoice') {
+    if (
+      companyId != null &&
+      String(ref.document_type).toLowerCase() === 'invoice'
+    ) {
       await this.recomputeInvoicesForDocument(
         companyId,
         ref.supplier_id,
@@ -360,9 +363,12 @@ export class SupplierPaymentAllocationsService {
           'scn',
           'scn.id = spa.credit_note_id AND scn.deleted_at IS NULL',
         )
-        .andWhere('(sp.company_id = :companyId OR scn.company_id = :companyId)', {
-          companyId: scopedCompanyId,
-        });
+        .andWhere(
+          '(sp.company_id = :companyId OR scn.company_id = :companyId)',
+          {
+            companyId: scopedCompanyId,
+          },
+        );
     }
 
     if (query.payment_id != null) {

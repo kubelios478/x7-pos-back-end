@@ -10,7 +10,7 @@ import {
   UseGuards,
   Request,
   Query,
-  ForbiddenException
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
@@ -50,7 +50,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { MarketingAutomationActionType } from './constants/marketing-automation-action-type.enum';
 
-@ApiTags('Marketing Automation Actions')
+@ApiTags('Growth - Marketing - Automation Actions')
 @ApiBearerAuth()
 @Controller('marketing-automation-actions')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.MARKETING_AUTOMATION_ACTION)
@@ -61,11 +61,9 @@ export class MarketingAutomationActionsController {
   ) {}
 
   /**
-   * Comercio del usuario autenticado.
+   * Obtains the merchant ID of the authenticated user.
    *
-   * Passport cuelga el usuario de `req.user`. Leerlo como `req.merchant?.id` —tipando el
-   * request como AuthenticatedUser, lo que hacía pasar el error por delante del compilador—
-   * devolvía siempre undefined y el servicio respondía 403 a todas las llamadas.
+   * Passport hangs the user from `req.user`. Reading it as `req.merchant?.id` by typing the request as AuthenticatedUser, which passed the error in front of the compiler, always returned undefined and the service responded 403 to all calls.
    */
   private merchantIdOf(
     req: ExpressRequest & { user?: AuthenticatedUser },
@@ -78,7 +76,6 @@ export class MarketingAutomationActionsController {
     }
     return merchantId;
   }
-
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

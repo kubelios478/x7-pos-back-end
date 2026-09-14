@@ -47,7 +47,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 
-@ApiTags('Supplier invoice items (Account payable)')
+@ApiTags('Finance & HR - Account payable - Supplier invoice items')
 @ApiBearerAuth()
 @Controller('supplier-invoice-items')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.SUPPLIER_INVOICE_ITEMS)
@@ -84,13 +84,17 @@ export class SupplierInvoiceItemController {
     @Body() dto: CreateSupplierInvoiceItemDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    return this.supplierInvoiceItemService.create(dto, this.merchantCompanyScope(user));
+    return this.supplierInvoiceItemService.create(
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   /** Merchant users are locked to their own company; portal users get `undefined`. */
   private merchantCompanyScope(user: AuthenticatedUser): number | undefined {
     const isMerchant =
-      user.role === UserRole.MERCHANT_ADMIN || user.role === UserRole.MERCHANT_USER;
+      user.role === UserRole.MERCHANT_ADMIN ||
+      user.role === UserRole.MERCHANT_USER;
     return isMerchant ? user.merchant?.companyId : undefined;
   }
 
@@ -124,7 +128,10 @@ export class SupplierInvoiceItemController {
     @Query() query: GetSupplierInvoiceItemsQueryDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedSupplierInvoiceItemsResponseDto> {
-    return this.supplierInvoiceItemService.findAll(query, this.merchantCompanyScope(user));
+    return this.supplierInvoiceItemService.findAll(
+      query,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Get(':id')
@@ -177,7 +184,11 @@ export class SupplierInvoiceItemController {
     @Body() dto: UpdateSupplierInvoiceItemDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    return this.supplierInvoiceItemService.update(id, dto, this.merchantCompanyScope(user));
+    return this.supplierInvoiceItemService.update(
+      id,
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Delete(':id')
@@ -203,6 +214,9 @@ export class SupplierInvoiceItemController {
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    return this.supplierInvoiceItemService.remove(id, this.merchantCompanyScope(user));
+    return this.supplierInvoiceItemService.remove(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 }
