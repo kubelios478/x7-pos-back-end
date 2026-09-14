@@ -393,7 +393,9 @@ describe('MerchantsController', () => {
       const removeSpy = jest.spyOn(merchantsService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(merchantId, mockUser)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(merchantId, mockUser)).rejects.toThrow(
+        errorMessage,
+      );
       expect(removeSpy).toHaveBeenCalledWith(merchantId, mockUser);
     });
 
@@ -404,7 +406,9 @@ describe('MerchantsController', () => {
       const removeSpy = jest.spyOn(merchantsService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(merchantId, mockUser)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(merchantId, mockUser)).rejects.toThrow(
+        errorMessage,
+      );
       expect(removeSpy).toHaveBeenCalledWith(merchantId, mockUser);
     });
   });

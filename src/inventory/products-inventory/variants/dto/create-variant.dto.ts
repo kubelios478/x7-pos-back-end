@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsBoolean } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsOptional,
+  IsBoolean,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -28,7 +34,11 @@ export class CreateVariantDto {
   @Type(() => Number)
   productId: number;
 
-  @ApiProperty({ example: true, description: 'Variant active status', required: false })
+  @ApiProperty({
+    example: true,
+    description: 'Variant active status',
+    required: false,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

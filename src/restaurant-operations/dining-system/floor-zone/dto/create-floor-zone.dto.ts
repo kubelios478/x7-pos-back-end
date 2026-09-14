@@ -33,8 +33,10 @@ export class CreateFloorZoneDto {
 
   // Polígono de la zona serializado; opcional para no romper a los clientes existentes.
   @ApiPropertyOptional({
-    example: '[{"x":0,"y":0},{"x":400,"y":0},{"x":400,"y":300},{"x":0,"y":300}]',
-    description: 'Zone area polygon as JSON, in canvas pixels; null = no drawn area',
+    example:
+      '[{"x":0,"y":0},{"x":400,"y":0},{"x":400,"y":300},{"x":0,"y":300}]',
+    description:
+      'Zone area polygon as JSON, in canvas pixels; null = no drawn area',
   })
   @IsOptional()
   @IsString()

@@ -98,7 +98,13 @@ export class InventoryStockAlertsService {
   ): Promise<InventoryStockAlertResponseDto> {
     const row = await this.alertRepo.findOne({
       where: { id: alertId, merchantId },
-      relations: ['product', 'product.category', 'variant', 'location', 'supply'],
+      relations: [
+        'product',
+        'product.category',
+        'variant',
+        'location',
+        'supply',
+      ],
     });
     if (!row) {
       throw new NotFoundException('Inventory stock alert not found');

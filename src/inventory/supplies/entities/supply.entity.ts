@@ -63,12 +63,28 @@ export class Supply {
   @Column({ type: 'enum', enum: SupplyUnit, default: SupplyUnit.UNIT })
   unit: SupplyUnit;
 
-  @ApiPropertyOptional({ example: 'kg', description: 'Purchase unit (e.g. kg, liters, box)' })
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'purchase_unit' })
+  @ApiPropertyOptional({
+    example: 'kg',
+    description: 'Purchase unit (e.g. kg, liters, box)',
+  })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'purchase_unit',
+  })
   purchase_unit?: string | null;
 
-  @ApiPropertyOptional({ example: 'g', description: 'Consumption unit (e.g. grams, ml, units)' })
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'consumption_unit' })
+  @ApiPropertyOptional({
+    example: 'g',
+    description: 'Consumption unit (e.g. grams, ml, units)',
+  })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'consumption_unit',
+  })
   consumption_unit?: string | null;
 
   @ApiPropertyOptional({

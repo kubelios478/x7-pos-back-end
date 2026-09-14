@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,7 +25,6 @@ import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entit
 import { StockLevelMonitorService } from '../../../stock-alerts/stock-level-monitor.service';
 import { MovementsStatus } from './constants/movements-status';
 import { Location } from '../locations/entities/location.entity';
-
 
 @Injectable()
 export class MovementsService {
@@ -48,12 +51,25 @@ export class MovementsService {
       supplyId?: number | null;
     },
   ): Promise<OneMovementResponse> {
-    const { stockItemId, quantity, type, reference, reason, sourceLocationId, destinationLocationId, createdBy, movementType, unitCost, supplyId } =
-      createMovementDto;
+    const {
+      stockItemId,
+      quantity,
+      type,
+      reference,
+      reason,
+      sourceLocationId,
+      destinationLocationId,
+      createdBy,
+      movementType,
+      unitCost,
+      supplyId,
+    } = createMovementDto;
     const merchantId = merchant_id;
 
     if (quantity <= 0) {
-      throw new BadRequestException('Movement quantity must be greater than 0.');
+      throw new BadRequestException(
+        'Movement quantity must be greater than 0.',
+      );
     }
 
     const merchant = await this.itemRepository.manager.findOne(Merchant, {
@@ -70,10 +86,13 @@ export class MovementsService {
         .leftJoinAndSelect('item.supply', 'supply')
         .leftJoinAndSelect('item.location', 'location')
         .where('item.id = :stockItemId', { stockItemId })
-        .andWhere('(product.merchantId = :merchantId OR supply.company_id = :companyId)', {
-          merchantId,
-          companyId: merchant?.companyId,
-        })
+        .andWhere(
+          '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+          {
+            merchantId,
+            companyId: merchant?.companyId,
+          },
+        )
         .andWhere('item.isActive = :isActive', { isActive: true })
         .getOne();
     } else if (supplyId && (sourceLocationId || destinationLocationId)) {
@@ -105,35 +124,56 @@ export class MovementsService {
     }
 
     if (!item) {
-      throw new NotFoundException('Stock item record not found for the selected raw material and location.');
+      throw new NotFoundException(
+        'Stock item record not found for the selected raw material and location.',
+      );
     }
 
     // 1. Guard de validación para Transferencias
     if (movementType === 'TRANSFER') {
-      if (sourceLocationId && destinationLocationId && Number(sourceLocationId) === Number(destinationLocationId)) {
-        throw new BadRequestException('Source and destination locations must be different.');
+      if (
+        sourceLocationId &&
+        destinationLocationId &&
+        Number(sourceLocationId) === Number(destinationLocationId)
+      ) {
+        throw new BadRequestException(
+          'Source and destination locations must be different.',
+        );
       }
     }
 
     // 2. Insufficient Stock Guard para TRANSFER, WASTE, POS_DEPLETION o salidas
-    const isDecrement = movementType === 'TRANSFER' || movementType === 'WASTE' || movementType === 'POS_DEPLETION' || type === MovementsStatus.OUT;
+    const isDecrement =
+      movementType === 'TRANSFER' ||
+      movementType === 'WASTE' ||
+      movementType === 'POS_DEPLETION' ||
+      type === MovementsStatus.OUT;
     if (isDecrement) {
       const sourceLocationName = item.location?.name || 'Source Location';
       const availableStock = Number(item.currentQty || 0);
       if (availableStock < quantity) {
         throw new BadRequestException(
-          `Insufficient stock in [${sourceLocationName}]. Available: ${availableStock}, Requested: ${quantity}.`
+          `Insufficient stock in [${sourceLocationName}]. Available: ${availableStock}, Requested: ${quantity}.`,
         );
       }
     }
 
     // 3. Mutación de existencias según tipo de movimiento
-    const isEntry = type === MovementsStatus.IN || (type as any) === 'IN' || ['PURCHASE_RECEIPT', 'RETURN'].includes(movementType || '');
-    const isTransfer = movementType === 'TRANSFER' && destinationLocationId && Number(destinationLocationId) !== item.locationId;
+    const isEntry =
+      type === MovementsStatus.IN ||
+      (type as any) === 'IN' ||
+      ['PURCHASE_RECEIPT', 'RETURN'].includes(movementType || '');
+    const isTransfer =
+      movementType === 'TRANSFER' &&
+      destinationLocationId &&
+      Number(destinationLocationId) !== item.locationId;
 
     if (isTransfer) {
       // Restar stock de almacén de origen
-      item.currentQty = Math.max(0, Number(item.currentQty || 0) - Number(quantity));
+      item.currentQty = Math.max(
+        0,
+        Number(item.currentQty || 0) - Number(quantity),
+      );
       await this.itemRepository.save(item);
 
       // Incrementar stock en almacén de destino
@@ -169,7 +209,10 @@ export class MovementsService {
       }
       await this.itemRepository.save(item);
     } else {
-      item.currentQty = Math.max(0, Number(item.currentQty || 0) - Number(quantity));
+      item.currentQty = Math.max(
+        0,
+        Number(item.currentQty || 0) - Number(quantity),
+      );
       await this.itemRepository.save(item);
     }
 
@@ -185,7 +228,8 @@ export class MovementsService {
       sourceLocationId: sourceLocationId ?? item.locationId ?? null,
       destinationLocationId: destinationLocationId ?? null,
       createdBy: createdBy ?? null,
-      movementType: movementType ?? (isEntry ? 'PURCHASE_RECEIPT' : 'ADJUSTMENT'),
+      movementType:
+        movementType ?? (isEntry ? 'PURCHASE_RECEIPT' : 'ADJUSTMENT'),
       unitCost: unitCost ? String(unitCost) : item.weightedAverageUnitCost,
     });
 
@@ -225,10 +269,13 @@ export class MovementsService {
       .leftJoinAndSelect('movement.sourceLocation', 'sourceLocation')
       .leftJoinAndSelect('movement.destinationLocation', 'destinationLocation')
       .leftJoinAndSelect('movement.merchant', 'merchant')
-      .where('(product.merchantId = :merchantId OR supply.company_id = :companyId)', {
-        merchantId,
-        companyId: merchant?.companyId,
-      })
+      .where(
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        {
+          merchantId,
+          companyId: merchant?.companyId,
+        },
+      )
       .andWhere('movement.isActive = :isActive', { isActive: true });
 
     if (query.itemName) {
@@ -294,9 +341,18 @@ export class MovementsService {
             ? ({
                 id: movement.item.id,
                 currentQty: movement.item.currentQty,
-                product: movement.item.product ? { name: movement.item.product.name } : null,
-                supply: movement.item.supply ? { name: movement.item.supply.name } : null,
-                location: movement.item.location ? { id: movement.item.location.id, name: movement.item.location.name } : null,
+                product: movement.item.product
+                  ? { name: movement.item.product.name }
+                  : null,
+                supply: movement.item.supply
+                  ? { name: movement.item.supply.name }
+                  : null,
+                location: movement.item.location
+                  ? {
+                      id: movement.item.location.id,
+                      name: movement.item.location.name,
+                    }
+                  : null,
               } as any)
             : null,
           quantity: movement.quantity,
@@ -304,10 +360,15 @@ export class MovementsService {
           reference: movement.reference,
           reason: movement.reason,
           sourceLocationId: movement.sourceLocationId,
-          sourceLocationName: movement.sourceLocation?.name || movement.item?.location?.name || null,
+          sourceLocationName:
+            movement.sourceLocation?.name ||
+            movement.item?.location?.name ||
+            null,
           destinationLocationId: movement.destinationLocationId,
           destinationLocationName: movement.destinationLocation?.name || null,
-          unitCost: movement.unitCost ? String(movement.unitCost) : (movement.item?.weightedAverageUnitCost || null),
+          unitCost: movement.unitCost
+            ? String(movement.unitCost)
+            : movement.item?.weightedAverageUnitCost || null,
           createdBy: movement.createdBy,
           movementType: movement.movementType,
           merchant: movement.merchant
@@ -399,9 +460,18 @@ export class MovementsService {
         ? ({
             id: movement.item.id,
             currentQty: movement.item.currentQty,
-            product: movement.item.product ? { name: movement.item.product.name } : null,
-            supply: movement.item.supply ? { name: movement.item.supply.name } : null,
-            location: movement.item.location ? { id: movement.item.location.id, name: movement.item.location.name } : null,
+            product: movement.item.product
+              ? { name: movement.item.product.name }
+              : null,
+            supply: movement.item.supply
+              ? { name: movement.item.supply.name }
+              : null,
+            location: movement.item.location
+              ? {
+                  id: movement.item.location.id,
+                  name: movement.item.location.name,
+                }
+              : null,
           } as any)
         : null,
       quantity: movement.quantity,
@@ -409,10 +479,13 @@ export class MovementsService {
       reference: movement.reference,
       reason: movement.reason,
       sourceLocationId: movement.sourceLocationId,
-      sourceLocationName: movement.sourceLocation?.name || movement.item?.location?.name || null,
+      sourceLocationName:
+        movement.sourceLocation?.name || movement.item?.location?.name || null,
       destinationLocationId: movement.destinationLocationId,
       destinationLocationName: movement.destinationLocation?.name || null,
-      unitCost: movement.unitCost ? String(movement.unitCost) : (movement.item?.weightedAverageUnitCost || null),
+      unitCost: movement.unitCost
+        ? String(movement.unitCost)
+        : movement.item?.weightedAverageUnitCost || null,
       createdBy: movement.createdBy,
       movementType: movement.movementType,
       merchant: movement.merchant
@@ -547,7 +620,10 @@ export class MovementsService {
     return this.findOne(removedMovement.id, merchantId, 'Deleted');
   }
 
-  async depleteFromOrder(merchantId: number, orderId: number): Promise<{ success: boolean; movementsCount: number }> {
+  async depleteFromOrder(
+    merchantId: number,
+    orderId: number,
+  ): Promise<{ success: boolean; movementsCount: number }> {
     const order = await this.orderRepository.findOne({
       where: { id: orderId, merchant_id: merchantId },
       relations: ['orderItems'],
@@ -563,18 +639,19 @@ export class MovementsService {
 
     let defaultLocationId = merchant?.defaultSalesStockLocationId;
     if (!defaultLocationId) {
-      const firstLocation = await this.itemRepository.manager.findOne(Location, {
-        where: { merchantId, isActive: true },
-        order: { id: 'ASC' },
-      });
+      const firstLocation = await this.itemRepository.manager.findOne(
+        Location,
+        {
+          where: { merchantId, isActive: true },
+          order: { id: 'ASC' },
+        },
+      );
       defaultLocationId = firstLocation?.id;
     }
-
 
     if (!defaultLocationId) {
       return { success: false, movementsCount: 0 };
     }
-
 
     let movementsCount = 0;
     const evaluatedStockIds = new Set<number>();
@@ -607,14 +684,14 @@ export class MovementsService {
         continue;
       }
 
-
-
       for (const line of recipe.lines) {
         if (!line.rawMaterialId) {
           continue;
         }
 
-        const qtyPerUnit = Number(line.quantityPerSoldUnit || line.quantity || 0);
+        const qtyPerUnit = Number(
+          line.quantityPerSoldUnit || line.quantity || 0,
+        );
         const quantityToDeduct = qtyPerUnit * Number(orderItem.quantity || 1);
         if (quantityToDeduct <= 0) {
           continue;
@@ -643,7 +720,10 @@ export class MovementsService {
         }
 
         // Decrementar el stock
-        stockItem.currentQty = Math.max(0, Number(stockItem.currentQty || 0) - quantityToDeduct);
+        stockItem.currentQty = Math.max(
+          0,
+          Number(stockItem.currentQty || 0) - quantityToDeduct,
+        );
         await this.itemRepository.save(stockItem);
         evaluatedStockIds.add(stockItem.id);
 
@@ -662,14 +742,16 @@ export class MovementsService {
           orderId: order.id,
         });
 
-
         await this.movementRepository.save(movement);
         movementsCount++;
       }
     }
 
     if (evaluatedStockIds.size > 0) {
-      await this.stockLevelMonitor.evaluateStockItems(merchantId, Array.from(evaluatedStockIds));
+      await this.stockLevelMonitor.evaluateStockItems(
+        merchantId,
+        Array.from(evaluatedStockIds),
+      );
     }
 
     return { success: true, movementsCount };

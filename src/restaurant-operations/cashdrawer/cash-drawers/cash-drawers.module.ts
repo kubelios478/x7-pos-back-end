@@ -20,4 +20,3 @@ import { CashDrawerHistoryModule } from '../cash-drawer-history/cash-drawer-hist
   exports: [CashDrawersService],
 })
 export class CashDrawersModule {}
-

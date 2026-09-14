@@ -247,7 +247,10 @@ export class CashShiftsService {
     }
 
     // Enforce CAT 3: MERCHANT_USER can only close their own shift
-    if (user.role === UserRole.MERCHANT_USER && shift.openedBy !== collaborator.id) {
+    if (
+      user.role === UserRole.MERCHANT_USER &&
+      shift.openedBy !== collaborator.id
+    ) {
       throw new ForbiddenException(
         'You are not authorized to close this cash shift. You can only close your own active cash shifts.',
       );
@@ -277,7 +280,11 @@ export class CashShiftsService {
     const closed = await this.cashShiftRepo.save(shift);
     const shiftWithRelations = await this.cashShiftRepo.findOne({
       where: { id: shiftId },
-      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
+      relations: [
+        'cashMovements',
+        'openedByCollaborator',
+        'closedByCollaborator',
+      ],
     });
     const salesSummary = await this.cashShiftRepo.getSalesSummary(shiftId);
 
@@ -419,7 +426,11 @@ export class CashShiftsService {
 
     const shift = await this.cashShiftRepo.findOne({
       where: { merchantId, status: CashShiftStatus.OPEN },
-      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
+      relations: [
+        'cashMovements',
+        'openedByCollaborator',
+        'closedByCollaborator',
+      ],
     });
 
     if (!shift) {
@@ -448,7 +459,11 @@ export class CashShiftsService {
 
     const shifts = await this.cashShiftRepo.find({
       where: { merchantId },
-      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
+      relations: [
+        'cashMovements',
+        'openedByCollaborator',
+        'closedByCollaborator',
+      ],
       order: { openedAt: 'DESC' },
     });
 
@@ -477,7 +492,11 @@ export class CashShiftsService {
 
     const shift = await this.cashShiftRepo.findOne({
       where: { id },
-      relations: ['cashMovements', 'openedByCollaborator', 'closedByCollaborator'],
+      relations: [
+        'cashMovements',
+        'openedByCollaborator',
+        'closedByCollaborator',
+      ],
     });
 
     if (!shift) {

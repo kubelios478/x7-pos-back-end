@@ -22,7 +22,6 @@ import { Movement } from 'src/inventory/products-inventory/stocks/movements/enti
 import { Item } from 'src/inventory/products-inventory/stocks/items/entities/item.entity';
 import { Location } from 'src/inventory/products-inventory/stocks/locations/entities/location.entity';
 
-
 @Injectable()
 export class SuppliesService {
   constructor(
@@ -121,20 +120,24 @@ export class SuppliesService {
             supplyId: savedSupply.id,
             currentQty: 0,
             minimumQty: 5,
-            weightedAverageUnitCost: savedSupply.cost_per_unit ? savedSupply.cost_per_unit.toString() : '0.0000',
+            weightedAverageUnitCost: savedSupply.cost_per_unit
+              ? savedSupply.cost_per_unit.toString()
+              : '0.0000',
             isActive: true,
           });
           await this.itemRepo.save(stockItem);
         }
       }
     } catch (e) {
-      console.warn('Failed to auto-provision stock_item for supply across locations:', savedSupply.id, e);
+      console.warn(
+        'Failed to auto-provision stock_item for supply across locations:',
+        savedSupply.id,
+        e,
+      );
     }
-
 
     return savedSupply;
   }
-
 
   async findAllPaginated(
     merchantId: number,
@@ -259,8 +262,7 @@ export class SuppliesService {
       supply.cost_per_unit = dto.cost_per_unit;
     if (dto.description !== undefined)
       supply.description = dto.description ?? null;
-    if (dto.isActive !== undefined)
-      supply.isActive = dto.isActive;
+    if (dto.isActive !== undefined) supply.isActive = dto.isActive;
 
     if (dto.minimumQty !== undefined) {
       await this.itemRepo.update(
@@ -271,7 +273,6 @@ export class SuppliesService {
 
     return await this.supplyRepo.save(supply);
   }
-
 
   async remove(
     merchantId: number,
@@ -305,7 +306,10 @@ export class SuppliesService {
 
     supply.isActive = false;
     await this.supplyRepo.save(supply);
-    return { statusCode: 200, message: 'Raw material soft-deleted successfully' };
+    return {
+      statusCode: 200,
+      message: 'Raw material soft-deleted successfully',
+    };
   }
 
   async setSuppliers(
@@ -330,7 +334,9 @@ export class SuppliesService {
     }
 
     // Replace existing associations.
-    await this.supplySupplierRepo.delete({ supply: { id: supplyId } as Supply });
+    await this.supplySupplierRepo.delete({
+      supply: { id: supplyId } as Supply,
+    });
 
     const rows = suppliers.map((s) =>
       this.supplySupplierRepo.create({
@@ -358,7 +364,8 @@ export class SuppliesService {
       where: { supplyProductId: id },
     });
 
-    const movementCount = await this.movementRepo.createQueryBuilder('movement')
+    const movementCount = await this.movementRepo
+      .createQueryBuilder('movement')
       .innerJoin('movement.item', 'item')
       .where('item.supply_id = :supplyId', { supplyId: id })
       .getCount();

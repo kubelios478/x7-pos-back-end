@@ -74,9 +74,12 @@ export class KitchenDisplayDeviceService {
       if (createKitchenDisplayDeviceDto.ipAddress.length > 50) {
         throw new BadRequestException('IP address cannot exceed 50 characters');
       }
-      const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+      const ipv4Regex =
+        /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
       if (!ipv4Regex.test(createKitchenDisplayDeviceDto.ipAddress.trim())) {
-        throw new BadRequestException('Please enter a valid IPv4 address (e.g. 192.168.1.100)');
+        throw new BadRequestException(
+          'Please enter a valid IPv4 address (e.g. 192.168.1.100)',
+        );
       }
     }
 
@@ -431,20 +434,31 @@ export class KitchenDisplayDeviceService {
     if (updateKitchenDisplayDeviceDto.ipAddress !== undefined) {
       if (updateKitchenDisplayDeviceDto.ipAddress) {
         if (updateKitchenDisplayDeviceDto.ipAddress.length > 50) {
-          throw new BadRequestException('IP address cannot exceed 50 characters');
+          throw new BadRequestException(
+            'IP address cannot exceed 50 characters',
+          );
         }
-        const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        const ipv4Regex =
+          /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
         if (!ipv4Regex.test(updateKitchenDisplayDeviceDto.ipAddress.trim())) {
-          throw new BadRequestException('Please enter a valid IPv4 address (e.g. 192.168.1.100)');
+          throw new BadRequestException(
+            'Please enter a valid IPv4 address (e.g. 192.168.1.100)',
+          );
         }
       }
       existingKitchenDisplayDevice.ip_address =
-        updateKitchenDisplayDeviceDto.ipAddress ? updateKitchenDisplayDeviceDto.ipAddress.trim() : null;
+        updateKitchenDisplayDeviceDto.ipAddress
+          ? updateKitchenDisplayDeviceDto.ipAddress.trim()
+          : null;
     }
 
     if (updateKitchenDisplayDeviceDto.status !== undefined) {
-      existingKitchenDisplayDevice.status = updateKitchenDisplayDeviceDto.status;
-      if (updateKitchenDisplayDeviceDto.status === KitchenDisplayDeviceStatus.DELETED) {
+      existingKitchenDisplayDevice.status =
+        updateKitchenDisplayDeviceDto.status;
+      if (
+        updateKitchenDisplayDeviceDto.status ===
+        KitchenDisplayDeviceStatus.DELETED
+      ) {
         existingKitchenDisplayDevice.is_online = false;
         existingKitchenDisplayDevice.station_id = null;
       }

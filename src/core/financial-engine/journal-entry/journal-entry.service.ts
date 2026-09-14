@@ -49,17 +49,34 @@ export class JournalEntryService implements OnModuleInit {
           company_id: 1,
           entry_number: 'JE-2026-001',
           entry_date: new Date('2026-08-19'),
-          description: 'Stock Receipt: 50 KG Flour 25kg bag via Purchase Order #PO-2026-089',
+          description:
+            'Stock Receipt: 50 KG Flour 25kg bag via Purchase Order #PO-2026-089',
           status: JournalEntryStatus.POSTED,
           total_debit: 1250.0,
           total_credit: 1250.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 89,
         } as any);
-        const savedEntry1 = (await this.journalEntryRepository.save(entry1 as any)) as unknown as JournalEntry;
+        const savedEntry1 = (await this.journalEntryRepository.save(
+          entry1 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry1.id, account_id: 2, debit: 1250.0, credit: 0.0, description: 'Stock receipt: 50.0 KG Flour 25kg bag via PO #PO-2026-089' },
-          { journal_entry_id: savedEntry1.id, account_id: 6, debit: 0.0, credit: 1250.0, description: 'Supplier Accounts Payable liability for Purchase Order #PO-2026-089' },
+          {
+            journal_entry_id: savedEntry1.id,
+            account_id: 2,
+            debit: 1250.0,
+            credit: 0.0,
+            description:
+              'Stock receipt: 50.0 KG Flour 25kg bag via PO #PO-2026-089',
+          },
+          {
+            journal_entry_id: savedEntry1.id,
+            account_id: 6,
+            debit: 0.0,
+            credit: 1250.0,
+            description:
+              'Supplier Accounts Payable liability for Purchase Order #PO-2026-089',
+          },
         ]);
 
         const entry2 = this.journalEntryRepository.create({
@@ -73,10 +90,26 @@ export class JournalEntryService implements OnModuleInit {
           reference_type: JournalEntryReferenceType.ORDER,
           reference_id: 1088,
         } as any);
-        const savedEntry2 = (await this.journalEntryRepository.save(entry2 as any)) as unknown as JournalEntry;
+        const savedEntry2 = (await this.journalEntryRepository.save(
+          entry2 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry2.id, account_id: 13, debit: 345.5, credit: 0.0, description: 'Stock depletion: 15.5 KG Flour 25kg bag via POS Sales Order #1088' },
-          { journal_entry_id: savedEntry2.id, account_id: 2, debit: 0.0, credit: 345.5, description: 'Raw material inventory reduction via POS Sales Order #1088' },
+          {
+            journal_entry_id: savedEntry2.id,
+            account_id: 13,
+            debit: 345.5,
+            credit: 0.0,
+            description:
+              'Stock depletion: 15.5 KG Flour 25kg bag via POS Sales Order #1088',
+          },
+          {
+            journal_entry_id: savedEntry2.id,
+            account_id: 2,
+            debit: 0.0,
+            credit: 345.5,
+            description:
+              'Raw material inventory reduction via POS Sales Order #1088',
+          },
         ]);
 
         const entry3 = this.journalEntryRepository.create({
@@ -90,10 +123,26 @@ export class JournalEntryService implements OnModuleInit {
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 42,
         } as any);
-        const savedEntry3 = (await this.journalEntryRepository.save(entry3 as any)) as unknown as JournalEntry;
+        const savedEntry3 = (await this.journalEntryRepository.save(
+          entry3 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry3.id, account_id: 14, debit: 88.0, credit: 0.0, description: 'Inventory waste breakdown: 2.0 L Whole Milk (Expired batch)' },
-          { journal_entry_id: savedEntry3.id, account_id: 2, debit: 0.0, credit: 88.0, description: 'Raw material inventory write-off for expired batch #042' },
+          {
+            journal_entry_id: savedEntry3.id,
+            account_id: 14,
+            debit: 88.0,
+            credit: 0.0,
+            description:
+              'Inventory waste breakdown: 2.0 L Whole Milk (Expired batch)',
+          },
+          {
+            journal_entry_id: savedEntry3.id,
+            account_id: 2,
+            debit: 0.0,
+            credit: 88.0,
+            description:
+              'Raw material inventory write-off for expired batch #042',
+          },
         ]);
 
         const entry4 = this.journalEntryRepository.create({
@@ -107,61 +156,124 @@ export class JournalEntryService implements OnModuleInit {
           reference_type: JournalEntryReferenceType.ADJUSTMENT,
           reference_id: 15,
         } as any);
-        const savedEntry4 = (await this.journalEntryRepository.save(entry4 as any)) as unknown as JournalEntry;
+        const savedEntry4 = (await this.journalEntryRepository.save(
+          entry4 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry4.id, account_id: 2, debit: 150.0, credit: 0.0, description: 'Physical count adjustment: System count 10 -> Actual count 15 (+5 units)' },
-          { journal_entry_id: savedEntry4.id, account_id: 15, debit: 0.0, credit: 150.0, description: 'Physical count variance adjustment gain credit' },
+          {
+            journal_entry_id: savedEntry4.id,
+            account_id: 2,
+            debit: 150.0,
+            credit: 0.0,
+            description:
+              'Physical count adjustment: System count 10 -> Actual count 15 (+5 units)',
+          },
+          {
+            journal_entry_id: savedEntry4.id,
+            account_id: 15,
+            debit: 0.0,
+            credit: 150.0,
+            description: 'Physical count variance adjustment gain credit',
+          },
         ]);
 
         const entry5 = this.journalEntryRepository.create({
           company_id: 1,
           entry_number: 'JE-2026-005',
           entry_date: new Date('2026-08-15'),
-          description: 'Raw Material Supplier Stock Receipt: 30.0 L Extra Virgin Olive Oil via PO #PO-2026-095',
+          description:
+            'Raw Material Supplier Stock Receipt: 30.0 L Extra Virgin Olive Oil via PO #PO-2026-095',
           status: JournalEntryStatus.POSTED,
           total_debit: 450.0,
           total_credit: 450.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 95,
         } as any);
-        const savedEntry5 = (await this.journalEntryRepository.save(entry5 as any)) as unknown as JournalEntry;
+        const savedEntry5 = (await this.journalEntryRepository.save(
+          entry5 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry5.id, account_id: 2, debit: 450.0, credit: 0.0, description: 'Stock receipt: 30.0 L Extra Virgin Olive Oil via Purchase Order #PO-2026-095' },
-          { journal_entry_id: savedEntry5.id, account_id: 6, debit: 0.0, credit: 450.0, description: 'Supplier Accounts Payable liability for Purchase Order #PO-2026-095' },
+          {
+            journal_entry_id: savedEntry5.id,
+            account_id: 2,
+            debit: 450.0,
+            credit: 0.0,
+            description:
+              'Stock receipt: 30.0 L Extra Virgin Olive Oil via Purchase Order #PO-2026-095',
+          },
+          {
+            journal_entry_id: savedEntry5.id,
+            account_id: 6,
+            debit: 0.0,
+            credit: 450.0,
+            description:
+              'Supplier Accounts Payable liability for Purchase Order #PO-2026-095',
+          },
         ]);
 
         const entry6 = this.journalEntryRepository.create({
           company_id: 1,
           entry_number: 'JE-2026-006',
           entry_date: new Date('2026-08-14'),
-          description: 'Supplier Duplicate Stock Receipt Reversal & Order Cancellation',
+          description:
+            'Supplier Duplicate Stock Receipt Reversal & Order Cancellation',
           status: JournalEntryStatus.VOIDED,
           total_debit: 620.0,
           total_credit: 620.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 99,
         } as any);
-        const savedEntry6 = (await this.journalEntryRepository.save(entry6 as any)) as unknown as JournalEntry;
+        const savedEntry6 = (await this.journalEntryRepository.save(
+          entry6 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry6.id, account_id: 2, debit: 620.0, credit: 0.0, description: 'Duplicate raw material inventory posting reversal' },
-          { journal_entry_id: savedEntry6.id, account_id: 6, debit: 0.0, credit: 620.0, description: 'Cancelled supplier accounts payable entry' },
+          {
+            journal_entry_id: savedEntry6.id,
+            account_id: 2,
+            debit: 620.0,
+            credit: 0.0,
+            description: 'Duplicate raw material inventory posting reversal',
+          },
+          {
+            journal_entry_id: savedEntry6.id,
+            account_id: 6,
+            debit: 0.0,
+            credit: 620.0,
+            description: 'Cancelled supplier accounts payable entry',
+          },
         ]);
 
         const entry7 = this.journalEntryRepository.create({
           company_id: 1,
           entry_number: 'JE-2026-007',
           entry_date: new Date('2026-08-13'),
-          description: 'Inventory Physical Count Reconciliation - Walk-in Freezer Hub',
+          description:
+            'Inventory Physical Count Reconciliation - Walk-in Freezer Hub',
           status: JournalEntryStatus.DRAFT,
           total_debit: 980.0,
           total_credit: 980.0,
           reference_type: JournalEntryReferenceType.ADJUSTMENT,
           reference_id: 22,
         } as any);
-        const savedEntry7 = (await this.journalEntryRepository.save(entry7 as any)) as unknown as JournalEntry;
+        const savedEntry7 = (await this.journalEntryRepository.save(
+          entry7 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry7.id, account_id: 2, debit: 980.0, credit: 0.0, description: 'Freezer Hub physical count reconciliation: +25 units frozen beef patties' },
-          { journal_entry_id: savedEntry7.id, account_id: 15, debit: 0.0, credit: 980.0, description: 'Inventory physical count gain adjustment credit' },
+          {
+            journal_entry_id: savedEntry7.id,
+            account_id: 2,
+            debit: 980.0,
+            credit: 0.0,
+            description:
+              'Freezer Hub physical count reconciliation: +25 units frozen beef patties',
+          },
+          {
+            journal_entry_id: savedEntry7.id,
+            account_id: 15,
+            debit: 0.0,
+            credit: 980.0,
+            description: 'Inventory physical count gain adjustment credit',
+          },
         ]);
 
         const entry8 = this.journalEntryRepository.create({
@@ -175,10 +287,24 @@ export class JournalEntryService implements OnModuleInit {
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 104,
         } as any);
-        const savedEntry8 = (await this.journalEntryRepository.save(entry8 as any)) as unknown as JournalEntry;
+        const savedEntry8 = (await this.journalEntryRepository.save(
+          entry8 as any,
+        )) as unknown as JournalEntry;
         await this.journalEntryLineRepository.save([
-          { journal_entry_id: savedEntry8.id, account_id: 6, debit: 210.0, credit: 0.0, description: 'Voided damaged stock return debit' },
-          { journal_entry_id: savedEntry8.id, account_id: 15, debit: 0.0, credit: 210.0, description: 'Voided damaged stock return variance credit' },
+          {
+            journal_entry_id: savedEntry8.id,
+            account_id: 6,
+            debit: 210.0,
+            credit: 0.0,
+            description: 'Voided damaged stock return debit',
+          },
+          {
+            journal_entry_id: savedEntry8.id,
+            account_id: 15,
+            debit: 0.0,
+            credit: 210.0,
+            description: 'Voided damaged stock return variance credit',
+          },
         ]);
       }
     } catch (err: any) {
@@ -186,7 +312,7 @@ export class JournalEntryService implements OnModuleInit {
     }
   }
 
-  // ─── Helpers privados ──────────────────────────────────────────────────────
+  // ─── private Helpers  ──────────────────────────────────────────────────────
 
   private async getCompanyId(merchantId: number): Promise<number> {
     const merchant = await this.merchantRepository.findOne({
@@ -292,7 +418,7 @@ export class JournalEntryService implements OnModuleInit {
     return this.buildResponse(entry, action);
   }
 
-  // ─── CRUD público ──────────────────────────────────────────────────────────
+  // ─── Public CRUD  ──────────────────────────────────────────────────────────
 
   async create(
     merchantId: number,
@@ -303,7 +429,7 @@ export class JournalEntryService implements OnModuleInit {
     const company = await this.companyRepository.findOneBy({ id: company_id });
     if (!company) ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
 
-    // Validar entry_number único dentro de la empresa
+    // Validate entry_number unique within the company
     const existing = await this.journalEntryRepository.findOne({
       where: { entry_number: dto.entry_number, company_id, is_active: true },
     });
@@ -312,7 +438,7 @@ export class JournalEntryService implements OnModuleInit {
         `Journal entry with number '${dto.entry_number}' already exists`,
       );
 
-    // Validar que las líneas estén balanceadas (debit === credit)
+    // Validate that the lines are balanced (debit === credit)
     if (!dto.lines || dto.lines.length === 0)
       ErrorHandler.badRequest('Journal entry must have at least one line');
 
@@ -324,7 +450,7 @@ export class JournalEntryService implements OnModuleInit {
         `Journal entry is not balanced: total debit (${totalDebit}) ≠ total credit (${totalCredit})`,
       );
 
-    // Validar que todas las cuentas contables existan y pertenezcan a la empresa
+    // Validate that all ledger accounts exist and belong to the company
     for (const line of dto.lines) {
       const account = await this.ledgerAccountRepository.findOneBy({
         id: line.account_id,
@@ -440,7 +566,7 @@ export class JournalEntryService implements OnModuleInit {
     });
     if (!entry) ErrorHandler.notFound('Journal Entry not found');
 
-    // Solo se pueden editar entradas en DRAFT
+    // Entries can only be edited in DRAFT
     if (entry.status !== JournalEntryStatus.DRAFT)
       ErrorHandler.badRequest('Only DRAFT journal entries can be updated');
 
@@ -454,7 +580,7 @@ export class JournalEntryService implements OnModuleInit {
         );
     }
 
-    // Si se actualizan las líneas, re-validar balance y cuentas
+    // If lines are updated, re-validate balance and accounts
     let totalDebit = Number(entry.total_debit);
     let totalCredit = Number(entry.total_credit);
 
@@ -479,7 +605,7 @@ export class JournalEntryService implements OnModuleInit {
           );
       }
 
-      // Marcar líneas anteriores como inactivas (borrado lógico)
+      // Mark previous lines as inactive (logical deletion)
       await this.journalEntryLineRepository.update(
         { journal_entry_id: id },
         { is_active: false },
@@ -564,7 +690,7 @@ export class JournalEntryService implements OnModuleInit {
       ErrorHandler.badRequest('Cannot post an entry without lines');
     }
 
-    // Re-validar balanceo antes de postear (defensa en profundidad)
+    // Re-validate balancing before posting (defense in depth)
     const totalDebit = entry.lines.reduce((sum, l) => sum + Number(l.debit), 0);
     const totalCredit = entry.lines.reduce(
       (sum, l) => sum + Number(l.credit),

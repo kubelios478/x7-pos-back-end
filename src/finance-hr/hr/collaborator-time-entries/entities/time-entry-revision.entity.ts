@@ -22,11 +22,17 @@ export class TimeEntryRevision {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ example: 42, description: 'Time entry this revision belongs to' })
+  @ApiProperty({
+    example: 42,
+    description: 'Time entry this revision belongs to',
+  })
   @Column({ name: 'time_entry_id' })
   time_entry_id: number;
 
-  @ApiProperty({ example: 7, description: 'Supervisor who made the correction' })
+  @ApiProperty({
+    example: 7,
+    description: 'Supervisor who made the correction',
+  })
   @Column({ name: 'edited_by_user_id' })
   edited_by_user_id: number;
 
@@ -37,15 +43,25 @@ export class TimeEntryRevision {
   @Column({ type: 'varchar', length: 255, name: 'adjustment_reason' })
   adjustment_reason: string;
 
-  @ApiProperty({ nullable: true, description: 'Clock-in before the correction' })
+  @ApiProperty({
+    nullable: true,
+    description: 'Clock-in before the correction',
+  })
   @Column({ type: 'timestamp', name: 'previous_clock_in', nullable: true })
   previous_clock_in: Date | null;
 
-  @ApiProperty({ nullable: true, description: 'Clock-out before the correction' })
+  @ApiProperty({
+    nullable: true,
+    description: 'Clock-out before the correction',
+  })
   @Column({ type: 'timestamp', name: 'previous_clock_out', nullable: true })
   previous_clock_out: Date | null;
 
-  @ApiProperty({ example: 30, nullable: true, description: 'Break minutes before' })
+  @ApiProperty({
+    example: 30,
+    nullable: true,
+    description: 'Break minutes before',
+  })
   @Column({ type: 'int', name: 'previous_break_minutes', nullable: true })
   previous_break_minutes: number | null;
 
@@ -53,11 +69,18 @@ export class TimeEntryRevision {
   @Column({ type: 'timestamp', name: 'new_clock_in', nullable: true })
   new_clock_in: Date | null;
 
-  @ApiProperty({ nullable: true, description: 'Clock-out after the correction' })
+  @ApiProperty({
+    nullable: true,
+    description: 'Clock-out after the correction',
+  })
   @Column({ type: 'timestamp', name: 'new_clock_out', nullable: true })
   new_clock_out: Date | null;
 
-  @ApiProperty({ example: 45, nullable: true, description: 'Break minutes after' })
+  @ApiProperty({
+    example: 45,
+    nullable: true,
+    description: 'Break minutes after',
+  })
   @Column({ type: 'int', name: 'new_break_minutes', nullable: true })
   new_break_minutes: number | null;
 

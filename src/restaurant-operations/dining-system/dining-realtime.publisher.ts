@@ -23,7 +23,9 @@ export class DiningRealtimePublisher {
 
   constructor(private readonly bus: RealtimeEventBusService) {}
 
-  tableStatusChanged(payload: Omit<TableStatusChangedPayload, 'emittedAt'>): void {
+  tableStatusChanged(
+    payload: Omit<TableStatusChangedPayload, 'emittedAt'>,
+  ): void {
     this.emit(DINING_EVENTS.TABLE_STATUS_CHANGED, payload.merchantId, payload);
   }
 
@@ -31,7 +33,9 @@ export class DiningRealtimePublisher {
     this.emit(DINING_EVENTS.TABLE_TRANSFERRED, payload.merchantId, payload);
   }
 
-  assignmentChanged(payload: Omit<AssignmentChangedPayload, 'emittedAt'>): void {
+  assignmentChanged(
+    payload: Omit<AssignmentChangedPayload, 'emittedAt'>,
+  ): void {
     this.emit(DINING_EVENTS.ASSIGNMENT_CHANGED, payload.merchantId, payload);
   }
 

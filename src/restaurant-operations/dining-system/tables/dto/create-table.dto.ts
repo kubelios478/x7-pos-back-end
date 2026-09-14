@@ -68,7 +68,8 @@ export class CreateTableDto {
   // defecto de la forma, que es como se comportaban las mesas antes.
   @ApiPropertyOptional({
     example: 120,
-    description: 'Custom table width in canvas pixels; omit for the shape default',
+    description:
+      'Custom table width in canvas pixels; omit for the shape default',
   })
   @IsOptional()
   @IsNumber()
@@ -78,7 +79,8 @@ export class CreateTableDto {
 
   @ApiPropertyOptional({
     example: 70,
-    description: 'Custom table height in canvas pixels; omit for the shape default',
+    description:
+      'Custom table height in canvas pixels; omit for the shape default',
   })
   @IsOptional()
   @IsNumber()

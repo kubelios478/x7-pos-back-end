@@ -62,17 +62,23 @@ export class CreateMovementDto {
   @IsInt()
   destinationLocationId?: number;
 
-  @ApiPropertyOptional({ example: 'Admin', description: 'User who created the movement' })
+  @ApiPropertyOptional({
+    example: 'Admin',
+    description: 'User who created the movement',
+  })
   @IsOptional()
   @IsString()
   createdBy?: string;
 
-  @ApiPropertyOptional({ example: 'TRANSFER', description: 'Raw material stock movement type' })
+  @ApiPropertyOptional({
+    example: 'TRANSFER',
+    description: 'Raw material stock movement type',
+  })
   @IsOptional()
   @IsString()
   movementType?: string;
 
-  @ApiPropertyOptional({ example: 12.50, description: 'Unit cost of material' })
+  @ApiPropertyOptional({ example: 12.5, description: 'Unit cost of material' })
   @IsOptional()
   unitCost?: number | string;
 
