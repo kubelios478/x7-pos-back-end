@@ -35,7 +35,7 @@ export class CashMovementsService {
     private readonly cashShiftRepo: CashShiftRepository,
     private readonly dataSource: DataSource,
     private readonly mailService: MailService,
-  ) { }
+  ) {}
 
   /**
    * Records an expense (outflow) from the register for an active shift.
@@ -46,7 +46,11 @@ export class CashMovementsService {
     dto: CreateCashMovementDto,
     userId: number,
     merchantId: number,
-  ): Promise<{ statusCode: number; message: string; data: CashMovementResponseDto }> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: CashMovementResponseDto;
+  }> {
     if (!merchantId) {
       throw new ForbiddenException('User must belong to a merchant');
     }
@@ -60,7 +64,9 @@ export class CashMovementsService {
     }
 
     if (shift.merchantId !== merchantId) {
-      throw new ForbiddenException('You can only record expenses for shifts belonging to your merchant');
+      throw new ForbiddenException(
+        'You can only record expenses for shifts belonging to your merchant',
+      );
     }
 
     if (shift.status !== CashShiftStatus.OPEN) {
@@ -81,7 +87,9 @@ export class CashMovementsService {
       });
 
       if (!lockedShift) {
-        throw new BadRequestException('The active cash shift is no longer open.');
+        throw new BadRequestException(
+          'The active cash shift is no longer open.',
+        );
       }
 
       // Calculate live balance of standard transactions (sales, refunds, etc.) at this moment
@@ -106,7 +114,9 @@ export class CashMovementsService {
         .addGroupBy('cs.opening_balance')
         .getRawOne<{ txBalance: string }>();
 
-      let liveBalance = txResult ? Number(txResult.txBalance) : Number(lockedShift.openingBalance);
+      let liveBalance = txResult
+        ? Number(txResult.txBalance)
+        : Number(lockedShift.openingBalance);
 
       // Deduct previously recorded expenses (outflow) in cash_movements for this shift
       const movementsResult = await queryRunner.manager
@@ -130,7 +140,9 @@ export class CashMovementsService {
         })
         .getRawOne<{ tipSettlementSum: string | null }>();
 
-      const tipSettlementSum = Number(tipSettlementsResult?.tipSettlementSum ?? 0);
+      const tipSettlementSum = Number(
+        tipSettlementsResult?.tipSettlementSum ?? 0,
+      );
       liveBalance = liveBalance - movementSum - tipSettlementSum;
 
       // Balance validation: the expense amount must not exceed the available cash in the register
@@ -147,12 +159,17 @@ export class CashMovementsService {
       });
 
       if (!cashDrawer) {
-        throw new NotFoundException(`Cash drawer associated with this shift not found`);
+        throw new NotFoundException(
+          `Cash drawer associated with this shift not found`,
+        );
       }
 
-      const newBalance = Number(cashDrawer.current_balance) - Number(dto.amount);
+      const newBalance =
+        Number(cashDrawer.current_balance) - Number(dto.amount);
       if (newBalance < 0) {
-        throw new BadRequestException('Expense would result in a negative balance for the cash drawer');
+        throw new BadRequestException(
+          'Expense would result in a negative balance for the cash drawer',
+        );
       }
 
       cashDrawer.current_balance = newBalance;
@@ -168,7 +185,10 @@ export class CashMovementsService {
         type: CashMovementType.OUTFLOW,
       });
 
-      const savedMovement = await queryRunner.manager.save(CashMovement, movement);
+      const savedMovement = await queryRunner.manager.save(
+        CashMovement,
+        movement,
+      );
 
       await queryRunner.commitTransaction();
 
@@ -195,7 +215,11 @@ export class CashMovementsService {
     dto: CreateCashMovementDto,
     userId: number,
     merchantId: number,
-  ): Promise<{ statusCode: number; message: string; data: CashMovementResponseDto }> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: CashMovementResponseDto;
+  }> {
     if (!merchantId) {
       throw new ForbiddenException('User must belong to a merchant');
     }
@@ -209,7 +233,9 @@ export class CashMovementsService {
     }
 
     if (shift.merchantId !== merchantId) {
-      throw new ForbiddenException('You can only record inflows for shifts belonging to your merchant');
+      throw new ForbiddenException(
+        'You can only record inflows for shifts belonging to your merchant',
+      );
     }
 
     if (shift.status !== CashShiftStatus.OPEN) {
@@ -230,7 +256,9 @@ export class CashMovementsService {
       });
 
       if (!lockedShift) {
-        throw new BadRequestException('The active cash shift is no longer open.');
+        throw new BadRequestException(
+          'The active cash shift is no longer open.',
+        );
       }
 
       // Lock and update associated cash drawer (current_balance)
@@ -240,11 +268,14 @@ export class CashMovementsService {
       });
 
       if (!cashDrawer) {
-        throw new NotFoundException(`Cash drawer associated with this shift not found`);
+        throw new NotFoundException(
+          `Cash drawer associated with this shift not found`,
+        );
       }
 
       // Cash Balance Impact: add the amount to the current balance of the active shift drawer
-      cashDrawer.current_balance = Number(cashDrawer.current_balance) + Number(dto.amount);
+      cashDrawer.current_balance =
+        Number(cashDrawer.current_balance) + Number(dto.amount);
       await queryRunner.manager.save(CashDrawer, cashDrawer);
 
       // Create cash movement INFLOW record
@@ -257,7 +288,10 @@ export class CashMovementsService {
         type: CashMovementType.INFLOW,
       });
 
-      const savedMovement = await queryRunner.manager.save(CashMovement, movement);
+      const savedMovement = await queryRunner.manager.save(
+        CashMovement,
+        movement,
+      );
 
       await queryRunner.commitTransaction();
 
@@ -296,7 +330,9 @@ export class CashMovementsService {
               `,
             });
           } catch (mailError) {
-            this.logger.error(`Failed to send compliance mail to ${admin.email}: ${(mailError as any).message}`);
+            this.logger.error(
+              `Failed to send compliance mail to ${admin.email}: ${(mailError as any).message}`,
+            );
           }
         }
       }
@@ -334,7 +370,9 @@ export class CashMovementsService {
     }
 
     if (shift.merchantId !== merchantId) {
-      throw new ForbiddenException('You can only view movements for shifts belonging to your merchant');
+      throw new ForbiddenException(
+        'You can only view movements for shifts belonging to your merchant',
+      );
     }
 
     const movements = await this.cashMovementRepo.find({

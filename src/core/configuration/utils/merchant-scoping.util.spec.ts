@@ -4,7 +4,10 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
-import { resolveMerchantContext, assertOwnsCompany } from './merchant-scoping.util';
+import {
+  resolveMerchantContext,
+  assertOwnsCompany,
+} from './merchant-scoping.util';
 
 describe('merchant-scoping.util', () => {
   let merchantRepository: Repository<Merchant>;

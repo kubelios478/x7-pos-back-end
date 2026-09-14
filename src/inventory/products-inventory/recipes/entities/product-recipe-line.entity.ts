@@ -56,7 +56,11 @@ export class ProductRecipeLine {
   @Column({ type: 'int', name: 'supply_product_id', nullable: true })
   supplyProductId?: number | null;
 
-  @ManyToOne(() => Product, { onDelete: 'CASCADE', onUpdate: 'CASCADE', nullable: true })
+  @ManyToOne(() => Product, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'supply_product_id' })
   supplyProduct?: Product | null;
 
@@ -64,7 +68,11 @@ export class ProductRecipeLine {
   @Column({ type: 'int', name: 'supply_variant_id', nullable: true })
   supplyVariantId?: number | null;
 
-  @ManyToOne(() => Variant, { onDelete: 'CASCADE', onUpdate: 'CASCADE', nullable: true })
+  @ManyToOne(() => Variant, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'supply_variant_id' })
   supplyVariant?: Variant | null;
 
@@ -72,16 +80,28 @@ export class ProductRecipeLine {
   @Column({ type: 'int', name: 'raw_material_id', nullable: true })
   rawMaterialId?: number | null;
 
-  @ManyToOne(() => Supply, { onDelete: 'CASCADE', onUpdate: 'CASCADE', nullable: true })
+  @ManyToOne(() => Supply, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'raw_material_id' })
   rawMaterial?: Supply | null;
 
-  @ApiPropertyOptional({ example: 150.0, description: 'Quantity required in consumption units' })
+  @ApiPropertyOptional({
+    example: 150.0,
+    description: 'Quantity required in consumption units',
+  })
   @Column({ type: 'decimal', precision: 14, scale: 4, nullable: true })
   quantity?: string | null;
 
   @ApiPropertyOptional({ example: 'g', description: 'Unit of measure' })
-  @Column({ type: 'varchar', length: 50, name: 'unit_of_measure', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'unit_of_measure',
+    nullable: true,
+  })
   unitOfMeasure?: string | null;
 
   @ApiProperty({

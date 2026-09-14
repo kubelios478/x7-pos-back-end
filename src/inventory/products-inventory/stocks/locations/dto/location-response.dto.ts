@@ -9,13 +9,25 @@ export class LocationResponseDto {
   @ApiProperty({ example: 'New York', description: 'Location name' })
   name: string;
 
-  @ApiProperty({ example: 'MAIN-01', description: 'Location code', required: false })
+  @ApiProperty({
+    example: 'MAIN-01',
+    description: 'Location code',
+    required: false,
+  })
   code?: string;
 
-  @ApiProperty({ example: '123 Main St', description: 'Location address', required: false })
+  @ApiProperty({
+    example: '123 Main St',
+    description: 'Location address',
+    required: false,
+  })
   address?: string;
 
-  @ApiProperty({ example: true, description: 'Is main storage hub', required: false })
+  @ApiProperty({
+    example: true,
+    description: 'Is main storage hub',
+    required: false,
+  })
   isMainStorage?: boolean;
 
   @ApiProperty({

@@ -15,7 +15,12 @@ describe('mapPlanToSubscriptionTier', () => {
       recommended: true,
       isCustomPricing: false,
       displayFeatures: [
-        { id: 1, subscriptionPlanId: 2, label: 'Unlimited Terminals', sortOrder: 1 },
+        {
+          id: 1,
+          subscriptionPlanId: 2,
+          label: 'Unlimited Terminals',
+          sortOrder: 1,
+        },
       ],
     } as SubscriptionPlan);
 

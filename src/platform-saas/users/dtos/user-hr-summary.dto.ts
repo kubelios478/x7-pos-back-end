@@ -7,7 +7,10 @@ export class HrCollaboratorDto {
   @ApiProperty({ example: 1, description: 'Collaborator record id' })
   id: number;
 
-  @ApiProperty({ example: 'John Doe', description: 'Full name on the HR record' })
+  @ApiProperty({
+    example: 'John Doe',
+    description: 'Full name on the HR record',
+  })
   name: string;
 
   @ApiProperty({
@@ -30,7 +33,10 @@ export class HrCollaboratorDto {
   @ApiProperty({ example: 'active', description: 'Collaborator status' })
   status: string;
 
-  @ApiProperty({ example: 5, description: 'Merchant the collaborator belongs to' })
+  @ApiProperty({
+    example: 5,
+    description: 'Merchant the collaborator belongs to',
+  })
   merchantId: number;
 }
 

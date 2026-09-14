@@ -428,7 +428,12 @@ describe('PlanFeaturesService', () => {
               limit_value: 10,
               status: 'active',
               subscriptionPlan: { id: 3, name: 'Gold Plan' },
-              feature: { id: 5, name: 'Max Users', Unit: 'user', description: 'Maximum concurrent users allowed' },
+              feature: {
+                id: 5,
+                name: 'Max Users',
+                Unit: 'user',
+                description: 'Maximum concurrent users allowed',
+              },
             },
           ],
           1,

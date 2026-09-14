@@ -26,7 +26,8 @@ export class FloorZoneResponseDto {
   @ApiProperty({
     example: '[{"x":0,"y":0},{"x":400,"y":0},{"x":400,"y":300}]',
     nullable: true,
-    description: 'Zone area polygon as JSON, in canvas pixels; null = no drawn area',
+    description:
+      'Zone area polygon as JSON, in canvas pixels; null = no drawn area',
   })
   area: string | null;
 

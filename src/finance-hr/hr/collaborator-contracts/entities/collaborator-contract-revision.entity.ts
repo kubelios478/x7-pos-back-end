@@ -22,7 +22,10 @@ export class CollaboratorContractRevision {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ example: 12, description: 'Contract the amendment belongs to' })
+  @ApiProperty({
+    example: 12,
+    description: 'Contract the amendment belongs to',
+  })
   @Column({ name: 'contract_id' })
   contract_id: number;
 
@@ -35,14 +38,23 @@ export class CollaboratorContractRevision {
   field: string;
 
   @ApiProperty({ example: '22.50', nullable: true })
-  @Column({ type: 'varchar', length: 255, name: 'previous_value', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'previous_value',
+    nullable: true,
+  })
   previous_value: string | null;
 
   @ApiProperty({ example: '25.00', nullable: true })
   @Column({ type: 'varchar', length: 255, name: 'new_value', nullable: true })
   new_value: string | null;
 
-  @ApiProperty({ example: 7, nullable: true, description: 'Author of the amendment' })
+  @ApiProperty({
+    example: 7,
+    nullable: true,
+    description: 'Author of the amendment',
+  })
   @Column({ type: 'int', name: 'changed_by_user_id', nullable: true })
   changed_by_user_id: number | null;
 

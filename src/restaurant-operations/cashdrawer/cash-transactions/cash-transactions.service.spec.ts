@@ -812,10 +812,14 @@ describe('CashTransactionsService', () => {
       expect(result.data.loyaltyPointTransactions[0].id).toBe(55);
       expect(typeof result.data.loyaltyPointTransactions[0].id).toBe('number');
       expect(result.data.loyaltyPointTransactions[0].loyaltyCustomerId).toBe(3);
-      expect(typeof result.data.loyaltyPointTransactions[0].loyaltyCustomerId).toBe('number');
+      expect(
+        typeof result.data.loyaltyPointTransactions[0].loyaltyCustomerId,
+      ).toBe('number');
 
       // Verify is_active filter (inactive row should be excluded)
-      expect(result.data.loyaltyPointTransactions.some((lpt) => lpt.points === -150)).toBe(false);
+      expect(
+        result.data.loyaltyPointTransactions.some((lpt) => lpt.points === -150),
+      ).toBe(false);
 
       // Verify decimal coercion on cashShift.openingBalance
       expect(result.data.cashShift?.openingBalance).toBe(1000.0);

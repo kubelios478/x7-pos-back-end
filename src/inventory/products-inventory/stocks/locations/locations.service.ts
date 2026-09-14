@@ -31,7 +31,6 @@ export class LocationsService {
     private readonly variantRepository: Repository<Variant>,
   ) {}
 
-
   private async checkActiveStock(locationId: number) {
     const activeStock = await this.itemRepository.findOne({
       where: {
@@ -43,33 +42,41 @@ export class LocationsService {
     // Validamos si hay algún stock item registrado con cantidad mayor a 0
     if (activeStock) {
       // Buscamos si alguno tiene cantidad de stock > 0
-      const itemsWithStock = await this.itemRepository.createQueryBuilder('item')
+      const itemsWithStock = await this.itemRepository
+        .createQueryBuilder('item')
         .where('item.locationId = :locationId', { locationId })
         .andWhere('item.currentQty > 0')
         .getMany();
 
       if (itemsWithStock.length > 0) {
-        throw new BadRequestException('Cannot deactivate a location with active stock items. Please transfer or zero-out all inventory stock before deactivating this location.');
+        throw new BadRequestException(
+          'Cannot deactivate a location with active stock items. Please transfer or zero-out all inventory stock before deactivating this location.',
+        );
       }
     }
   }
 
-  private async initializeRawMaterialStockForNewLocation(locationId: number, merchantId: number) {
-    const merchant = await this.merchantRepo.findOne({ where: { id: merchantId } });
+  private async initializeRawMaterialStockForNewLocation(
+    locationId: number,
+    merchantId: number,
+  ) {
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: merchantId },
+    });
     const companyId = merchant?.companyId;
     if (!companyId) return;
 
     // Buscar todas las materias primas (supplies) activas de esta empresa
     const supplies = await this.itemRepository.manager.find(Supply, {
-      where: { company_id: companyId, isActive: true }
+      where: { company_id: companyId, isActive: true },
     });
 
     for (const supply of supplies) {
       const existing = await this.itemRepository.findOne({
         where: {
           supplyId: supply.id,
-          locationId: locationId
-        }
+          locationId: locationId,
+        },
       });
 
       if (!existing) {
@@ -79,12 +86,11 @@ export class LocationsService {
           supplyId: supply.id,
           locationId: locationId,
           isActive: true,
-          weightedAverageUnitCost: String(supply.cost_per_unit || 0)
+          weightedAverageUnitCost: String(supply.cost_per_unit || 0),
         });
         await this.itemRepository.save(newStockItem);
       }
     }
-
   }
 
   async create(
@@ -100,11 +106,15 @@ export class LocationsService {
           merchantId: merchant_id,
           isActive: true,
         },
-        ...(address ? [{
-          address,
-          merchantId: merchant_id,
-          isActive: true,
-        }] : []),
+        ...(address
+          ? [
+              {
+                address,
+                merchantId: merchant_id,
+                isActive: true,
+              },
+            ]
+          : []),
       ],
     });
 
@@ -117,11 +127,16 @@ export class LocationsService {
       }
     }
 
-    const count = await this.locationRepository.count({ where: { merchantId: merchant_id } });
+    const count = await this.locationRepository.count({
+      where: { merchantId: merchant_id },
+    });
     const forceMain = isMainStorage || count === 0;
 
     if (forceMain) {
-      await this.locationRepository.update({ merchantId: merchant_id }, { isMainStorage: false });
+      await this.locationRepository.update(
+        { merchantId: merchant_id },
+        { isMainStorage: false },
+      );
     }
 
     try {
@@ -130,12 +145,16 @@ export class LocationsService {
       });
 
       if (existingButIsNotActive) {
-        existingButIsNotActive.isActive = isActive !== undefined ? isActive : true;
+        existingButIsNotActive.isActive =
+          isActive !== undefined ? isActive : true;
         if (code !== undefined) existingButIsNotActive.code = code;
         if (address !== undefined) existingButIsNotActive.address = address;
         existingButIsNotActive.isMainStorage = forceMain;
         await this.locationRepository.save(existingButIsNotActive);
-        await this.initializeRawMaterialStockForNewLocation(existingButIsNotActive.id, merchant_id);
+        await this.initializeRawMaterialStockForNewLocation(
+          existingButIsNotActive.id,
+          merchant_id,
+        );
         return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
       } else {
         const newLocation = this.locationRepository.create({
@@ -147,11 +166,12 @@ export class LocationsService {
           merchantId: merchant_id,
         });
         const savedLocation = await this.locationRepository.save(newLocation);
-        await this.initializeRawMaterialStockForNewLocation(savedLocation.id, merchant_id);
+        await this.initializeRawMaterialStockForNewLocation(
+          savedLocation.id,
+          merchant_id,
+        );
         return this.findOne(savedLocation.id, merchant_id, 'Created');
       }
-
-
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
@@ -198,7 +218,10 @@ export class LocationsService {
     const hasMainStorage = locations.some((l) => l.isMainStorage);
     if (!hasMainStorage && locations.length > 0) {
       locations[0].isMainStorage = true;
-      await this.locationRepository.update({ id: locations[0].id }, { isMainStorage: true });
+      await this.locationRepository.update(
+        { id: locations[0].id },
+        { isMainStorage: true },
+      );
     }
 
     // 7. Map to LocationResponseDto
@@ -329,8 +352,14 @@ export class LocationsService {
 
     if (name || address) {
       const whereConditions: any[] = [];
-      if (name) whereConditions.push({ name, merchantId: merchant_id, isActive: true });
-      if (address) whereConditions.push({ address, merchantId: merchant_id, isActive: true });
+      if (name)
+        whereConditions.push({ name, merchantId: merchant_id, isActive: true });
+      if (address)
+        whereConditions.push({
+          address,
+          merchantId: merchant_id,
+          isActive: true,
+        });
 
       const existingLocation = await this.locationRepository.findOne({
         where: whereConditions,
@@ -352,7 +381,10 @@ export class LocationsService {
 
     let finalIsMainStorage = isMainStorage;
     if (isMainStorage === true) {
-      await this.locationRepository.update({ merchantId: merchant_id }, { isMainStorage: false });
+      await this.locationRepository.update(
+        { merchantId: merchant_id },
+        { isMainStorage: false },
+      );
     } else if (isMainStorage === false) {
       const otherMain = await this.locationRepository.findOne({
         where: { merchantId: merchant_id, isMainStorage: true },
@@ -366,7 +398,8 @@ export class LocationsService {
     if (name !== undefined) updatePayload.name = name;
     if (code !== undefined) updatePayload.code = code;
     if (address !== undefined) updatePayload.address = address;
-    if (finalIsMainStorage !== undefined) updatePayload.isMainStorage = finalIsMainStorage;
+    if (finalIsMainStorage !== undefined)
+      updatePayload.isMainStorage = finalIsMainStorage;
     if (isActive !== undefined) updatePayload.isActive = isActive;
 
     Object.assign(location, updatePayload);

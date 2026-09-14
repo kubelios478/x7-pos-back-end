@@ -171,7 +171,8 @@ export class SaleInventoryDeductionService {
 
           if (row.rawMaterialId) {
             // Raw material line
-            const per = Number(row.quantity) || Number(row.quantityPerSoldUnit) || 0;
+            const per =
+              Number(row.quantity) || Number(row.quantityPerSoldUnit) || 0;
             const units = Math.round(soldQty * per);
             const key = `supply:${row.rawMaterialId}`;
             aggregated.set(key, (aggregated.get(key) ?? 0) + units);
@@ -185,7 +186,10 @@ export class SaleInventoryDeductionService {
               row.supplyVariant?.stockBasisKind,
               row.supplyVariant?.baseUnitsPerStockIncrement,
             );
-            const key = supplyKey(row.supplyProductId as number, row.supplyVariantId as number);
+            const key = supplyKey(
+              row.supplyProductId as number,
+              row.supplyVariantId as number,
+            );
             aggregated.set(key, (aggregated.get(key) ?? 0) + units);
           }
         }
@@ -257,7 +261,9 @@ export class SaleInventoryDeductionService {
           .execute();
 
         if (!dec.affected) {
-          const label = key.startsWith('supply:') ? `raw material supplyId=${key.split(':')[1]}` : `productId=${key.split(':')[1]} variantId=${key.split(':')[2]}`;
+          const label = key.startsWith('supply:')
+            ? `raw material supplyId=${key.split(':')[1]}`
+            : `productId=${key.split(':')[1]} variantId=${key.split(':')[2]}`;
           throw new Error(
             `Insufficient stock for ${label} at locationId=${locationId} need=${needQty} (orderId=${orderId})`,
           );

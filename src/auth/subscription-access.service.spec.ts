@@ -57,7 +57,7 @@ describe('SubscriptionAccessService', () => {
           provide: getRepositoryToken(PlanFeature),
           useValue: planFeatureRepo,
         },
-      
+
         {
           // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
           // de pruebas no compilaba y la suite entera contaba como fallo.

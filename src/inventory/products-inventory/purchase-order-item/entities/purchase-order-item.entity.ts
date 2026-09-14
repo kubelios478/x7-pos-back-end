@@ -35,31 +35,70 @@ export class PurchaseOrderItem {
   quantity: number;
 
   @ApiProperty({ example: 10.5, description: 'Product unit price' })
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'unitPrice', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'unitPrice',
+    default: 0,
+  })
   unitPrice: number;
 
   @ApiProperty({ example: 52.5, description: 'Total item price' })
-  @Column({ type: 'decimal', precision: 10, scale: 2, name: 'totalPrice', default: 0 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    name: 'totalPrice',
+    default: 0,
+  })
   totalPrice: number;
 
   @ApiPropertyOptional({ example: 1, description: 'Raw Material (Supply) ID' })
   @Column({ name: 'raw_material_id', nullable: true })
   rawMaterialId: number | null;
 
-  @ApiPropertyOptional({ example: 'Box', description: 'Purchase unit description' })
-  @Column({ type: 'varchar', length: 50, name: 'purchase_unit', nullable: true })
+  @ApiPropertyOptional({
+    example: 'Box',
+    description: 'Purchase unit description',
+  })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'purchase_unit',
+    nullable: true,
+  })
   purchaseUnit: string | null;
 
   @ApiPropertyOptional({ example: 10.0, description: 'Quantity ordered' })
-  @Column({ type: 'decimal', precision: 14, scale: 4, name: 'quantity_ordered', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 4,
+    name: 'quantity_ordered',
+    nullable: true,
+  })
   quantityOrdered: number | null;
 
   @ApiPropertyOptional({ example: 15.5, description: 'Unit cost' })
-  @Column({ type: 'decimal', precision: 14, scale: 4, name: 'unit_cost', nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 4,
+    name: 'unit_cost',
+    nullable: true,
+  })
   unitCost: number | null;
 
   @ApiPropertyOptional({ example: 2.5, description: 'Tax amount' })
-  @Column({ type: 'decimal', precision: 12, scale: 2, name: 'tax_amount', default: 0, nullable: true })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    name: 'tax_amount',
+    default: 0,
+    nullable: true,
+  })
   taxAmount: number | null;
 
   @ManyToOne(
@@ -97,7 +136,10 @@ export class PurchaseOrderItem {
   @JoinColumn({ name: 'raw_material_id' })
   rawMaterial: Supply | null;
 
-  @ApiProperty({ example: 3, description: 'Quantity of items physically received' })
+  @ApiProperty({
+    example: 3,
+    description: 'Quantity of items physically received',
+  })
   @Column({ type: 'int', name: 'received_quantity', default: 0 })
   receivedQuantity: number;
 

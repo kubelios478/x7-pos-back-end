@@ -5,7 +5,10 @@ import { CreatePurchaseOrderDto } from './create-purchase-order.dto';
 export class UpdatePurchaseOrderDto extends PartialType(
   CreatePurchaseOrderDto,
 ) {
-  @ApiPropertyOptional({ example: true, description: 'Estatus de la orden en el sistema' })
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Estatus de la orden en el sistema',
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

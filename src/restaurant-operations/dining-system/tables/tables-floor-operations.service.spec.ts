@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/unbound-method */
-
 import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource, EntityManager } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -111,8 +108,8 @@ describe('TablesService · floor operations', () => {
   } as unknown as EntityManager;
 
   const dataSource = {
-    transaction: jest.fn(
-      (cb: (m: EntityManager) => Promise<unknown>) => cb(manager),
+    transaction: jest.fn((cb: (m: EntityManager) => Promise<unknown>) =>
+      cb(manager),
     ),
   };
 
@@ -215,7 +212,10 @@ describe('TablesService · floor operations', () => {
     });
 
     it('rechaza un destino que no está disponible, con el mensaje de la historia', async () => {
-      primeTables(source, makeTable({ id: 9, number: 'B3', status: TableStatus.OCCUPIED }));
+      primeTables(
+        source,
+        makeTable({ id: 9, number: 'B3', status: TableStatus.OCCUPIED }),
+      );
 
       await expect(
         service.transfer(
@@ -229,7 +229,10 @@ describe('TablesService · floor operations', () => {
     });
 
     it('rechaza un destino en limpieza', async () => {
-      primeTables(source, makeTable({ id: 9, number: 'B3', status: TableStatus.CLEANING }));
+      primeTables(
+        source,
+        makeTable({ id: 9, number: 'B3', status: TableStatus.CLEANING }),
+      );
 
       await expect(
         service.transfer(
@@ -276,7 +279,9 @@ describe('TablesService · floor operations', () => {
     });
 
     it('falla si el destino no existe', async () => {
-      txTableRepo.findOne.mockResolvedValueOnce(source).mockResolvedValueOnce(null);
+      txTableRepo.findOne
+        .mockResolvedValueOnce(source)
+        .mockResolvedValueOnce(null);
 
       await expect(
         service.transfer(
@@ -288,8 +293,16 @@ describe('TablesService · floor operations', () => {
     });
 
     it('re-vincula la comanda abierta, libera el origen y ocupa el destino', async () => {
-      const src = makeTable({ id: 4, number: 'A1', status: TableStatus.OCCUPIED });
-      const tgt = makeTable({ id: 9, number: 'B3', status: TableStatus.AVAILABLE });
+      const src = makeTable({
+        id: 4,
+        number: 'A1',
+        status: TableStatus.OCCUPIED,
+      });
+      const tgt = makeTable({
+        id: 9,
+        number: 'B3',
+        status: TableStatus.AVAILABLE,
+      });
       primeTables(src, tgt);
       txOrderRepo.findOne.mockResolvedValue({ id: 120, table_id: 4 });
 
@@ -327,7 +340,11 @@ describe('TablesService · floor operations', () => {
         expect.objectContaining({ id: 55, tableId: 9 }),
       );
       expect(realtime.assignmentChanged).toHaveBeenCalledWith(
-        expect.objectContaining({ assignmentId: 55, tableId: 9, action: 'reassigned' }),
+        expect.objectContaining({
+          assignmentId: 55,
+          tableId: 9,
+          action: 'reassigned',
+        }),
       );
     });
 

@@ -16,7 +16,9 @@ describe('UpdateFeatureDto', () => {
   });
 
   it('still rejects an invalid status value when provided', async () => {
-    const dto = plainToInstance(UpdateFeatureDto, { status: 'not-a-real-status' });
+    const dto = plainToInstance(UpdateFeatureDto, {
+      status: 'not-a-real-status',
+    });
     const errors = await validate(dto);
     expect(errors.some((e) => e.property === 'status')).toBe(true);
   });
