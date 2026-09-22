@@ -1214,8 +1214,7 @@ export class KitchenOrderItemService {
         (item) =>
           item.preparation_status ===
             KitchenOrderItemPreparationStatus.IN_PREPARATION ||
-          item.preparation_status === KitchenOrderItemPreparationStatus.READY ||
-          item.fired_at !== null,
+          item.preparation_status === KitchenOrderItemPreparationStatus.READY,
       );
 
       if (

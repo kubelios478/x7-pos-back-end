@@ -350,13 +350,11 @@ export class KitchenOrderService {
             course: assignedCourse,
             preparation_status: isHeld
               ? KitchenOrderItemPreparationStatus.HELD
-              : (kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED
-                  ? KitchenOrderItemPreparationStatus.IN_PREPARATION
-                  : KitchenOrderItemPreparationStatus.PENDING),
+              : KitchenOrderItemPreparationStatus.PENDING,
             hold_until: holdUntilDate,
-            fired_at: !isHeld && kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED ? new Date() : null,
+            fired_at: !isHeld ? new Date() : null,
             status: KitchenOrderItemStatus.ACTIVE,
-            started_at: !isHeld && kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED ? new Date() : null,
+            started_at: null,
             completed_at: null,
             notes:
               it.notes ||

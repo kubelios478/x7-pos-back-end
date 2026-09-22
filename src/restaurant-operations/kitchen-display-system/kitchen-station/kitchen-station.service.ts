@@ -107,6 +107,17 @@ export class KitchenStationService {
       .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
       .execute();
 
+    // Compute next merchant-scoped station number
+    const maxNumberRow = await this.kitchenStationRepository
+      .createQueryBuilder('ks')
+      .select('MAX(ks.station_number)', 'max')
+      .where('ks.merchant_id = :merchantId', {
+        merchantId: authenticatedUserMerchantId,
+      })
+      .getRawOne();
+    const nextStationNumber =
+      (maxNumberRow?.max ? parseInt(maxNumberRow.max, 10) : 0) + 1;
+
     // Create kitchen station
     const kitchenStation = new KitchenStation();
     kitchenStation.merchant_id = authenticatedUserMerchantId;
@@ -114,6 +125,7 @@ export class KitchenStationService {
     kitchenStation.station_type = createKitchenStationDto.stationType;
     kitchenStation.display_mode = createKitchenStationDto.displayMode;
     kitchenStation.display_order = targetOrder;
+    kitchenStation.station_number = nextStationNumber;
     kitchenStation.printer_name = createKitchenStationDto.printerName || null;
     kitchenStation.is_active = true; // Always set to true on creation
     kitchenStation.status = KitchenStationStatus.ACTIVE;
@@ -514,6 +526,8 @@ export class KitchenStationService {
       stationType: kitchenStation.station_type,
       displayMode: kitchenStation.display_mode,
       displayOrder: kitchenStation.display_order,
+      stationNumber: kitchenStation.station_number ?? kitchenStation.display_order ?? kitchenStation.id,
+      station_number: kitchenStation.station_number ?? kitchenStation.display_order ?? kitchenStation.id,
       printerName: kitchenStation.printer_name,
       isActive: kitchenStation.is_active,
       status: kitchenStation.status,

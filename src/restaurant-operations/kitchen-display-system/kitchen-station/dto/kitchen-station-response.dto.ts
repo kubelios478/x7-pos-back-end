@@ -55,6 +55,18 @@ export class KitchenStationResponseDto {
   })
   displayOrder: number;
 
+  @ApiProperty({
+    example: 1,
+    description: 'Sequential station number scoped to the merchant',
+  })
+  stationNumber: number;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Sequential station number scoped to the merchant (snake_case alias)',
+  })
+  station_number?: number;
+
   @ApiPropertyOptional({
     example: 'Kitchen Printer 1',
     description: 'Name of the printer associated with this station',

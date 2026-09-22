@@ -72,6 +72,13 @@ export class KitchenStation {
   display_order: number;
 
   @ApiProperty({
+    example: 1,
+    description: 'Sequential station number scoped to the merchant',
+  })
+  @Column({ type: 'int', name: 'station_number', default: 1 })
+  station_number: number;
+
+  @ApiProperty({
     example: 'Kitchen Printer 1',
     description: 'Name of the printer associated with this station',
     nullable: true,
