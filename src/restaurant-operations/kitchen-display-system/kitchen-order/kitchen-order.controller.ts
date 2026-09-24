@@ -62,6 +62,31 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 export class KitchenOrderController {
   constructor(private readonly kitchenOrderService: KitchenOrderService) {}
 
+  @Post('reset-test-data')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Reset and re-seed KDS test data',
+    description:
+      'Clears and repopulates test kitchen orders and items for testing',
+  })
+  async resetTestData(
+    @Request() req: AuthenticatedRequest,
+    @Body() body?: { mode?: 'seed' | 'clear' },
+  ) {
+    const merchantId = req.user?.merchant?.id || 2;
+    return this.kitchenOrderService.resetTestData(
+      merchantId,
+      body?.mode || 'seed',
+    );
+  }
+
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -132,7 +157,7 @@ export class KitchenOrderController {
   }
 
   @Get()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -256,7 +281,7 @@ export class KitchenOrderController {
   }
 
   @Get(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -301,7 +326,7 @@ export class KitchenOrderController {
   }
 
   @Put(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -444,5 +469,44 @@ export class KitchenOrderController {
     @Request() req: AuthenticatedUser,
   ) {
     return this.kitchenOrderService.cancelKitchenOrder(id, dto, req);
+  }
+
+  @Post(':id/recall')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary:
+      'Recall a bumped/completed kitchen order back to active status (Historia X7P-4209)',
+    description:
+      'Reverts a completed order back to started status, preserving original started_at timestamp, resetting items to in_preparation, and logging an audit event.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Kitchen order ID to recall',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Kitchen order recalled successfully',
+    type: OneKitchenOrderResponseDto,
+  })
+  async recallKitchenOrder(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    const userId = req.user?.id;
+    return this.kitchenOrderService.recallKitchenOrder(
+      id,
+      authenticatedUserMerchantId,
+      userId,
+    );
   }
 }

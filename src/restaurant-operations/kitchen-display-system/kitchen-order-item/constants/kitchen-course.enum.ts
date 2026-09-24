@@ -43,12 +43,9 @@ export function calculatePacingHoldMinutes(
     return { isHeld: false, delayMinutes: 0 };
   }
 
-  // VIP Rush (+3 or higher): Direct fire for Main Courses, minimal hold for desserts
+  // VIP Rush (+3 or higher): Accelerated pacing (1m mains, 3m desserts)
   if (priority >= 3) {
-    if (course === KitchenCourse.MAIN_COURSE) {
-      return { isHeld: false, delayMinutes: 0 };
-    }
-    return { isHeld: true, delayMinutes: 3 };
+    return { isHeld: true, delayMinutes: course === KitchenCourse.DESSERT ? 3 : 1 };
   }
 
   // High (+2): Accelerated pacing (4m mains, 8m desserts)

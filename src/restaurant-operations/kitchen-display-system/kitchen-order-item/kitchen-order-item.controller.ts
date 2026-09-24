@@ -21,6 +21,7 @@ import { Request as ExpressRequest } from 'express';
 import { KitchenOrderItemService } from './kitchen-order-item.service';
 import { CreateKitchenOrderItemDto } from './dto/create-kitchen-order-item.dto';
 import { UpdateKitchenOrderItemDto } from './dto/update-kitchen-order-item.dto';
+import { BatchBumpFifoDto } from './dto/batch-bump-fifo.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -113,7 +114,7 @@ export class KitchenOrderItemController {
   }
 
   @Get()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -230,7 +231,7 @@ export class KitchenOrderItemController {
 
   @Post(':id/increment')
   @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -239,7 +240,8 @@ export class KitchenOrderItemController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary: 'Increment kitchen order item prepared quantity (Tap-to-Increment)',
+    summary:
+      'Increment kitchen order item prepared quantity (Tap-to-Increment)',
     description:
       'Increments prepared_quantity by 1. Transitions preparation_status from pending to in_preparation, and to ready once prepared_quantity equals quantity. Automatically auto-bumps parent KitchenOrder to COMPLETED when all items become ready.',
   })
@@ -280,7 +282,7 @@ export class KitchenOrderItemController {
 
   @Post(':id/preparation/next')
   @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -339,7 +341,7 @@ export class KitchenOrderItemController {
 
   @Post(':id/preparation/previous')
   @HttpCode(HttpStatus.OK)
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -388,7 +390,6 @@ export class KitchenOrderItemController {
     return this.kitchenOrderItemService.revertPreparationStatus(
       id,
       authenticatedUserMerchantId,
-      req.user?.id,
     );
   }
 
@@ -532,6 +533,34 @@ export class KitchenOrderItemController {
     );
   }
 
+  @Post('batch-bump-fifo')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'FIFO Batch Bumping for All-Day cooking station quantities',
+    description:
+      'Distributes a batch cooked quantity across active tickets following strict FIFO (oldest ticket first). Increments prepared_quantity, sets READY upon completion, and cascades parent auto-bump.',
+  })
+  @ApiBody({ type: BatchBumpFifoDto })
+  async batchBumpFifo(
+    @Body() dto: BatchBumpFifoDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenOrderItemService.batchBumpFifo(
+      dto,
+      authenticatedUserMerchantId,
+      req.user?.id,
+    );
+  }
+
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -581,7 +610,7 @@ export class KitchenOrderItemController {
   }
 
   @Put(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
