@@ -4,13 +4,17 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Inject,
+  Optional,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { KitchenEventLog } from './entities/kitchen-event-log.entity';
 import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
 import { KitchenOrderItem } from '../kitchen-order-item/entities/kitchen-order-item.entity';
 import { KitchenStation } from '../kitchen-station/entities/kitchen-station.entity';
+import { KitchenOrderSyncService } from '../kitchen-order/kitchen-order-sync.service';
 import { User } from '../../../platform-saas/users/entities/user.entity';
 import { CreateKitchenEventLogDto } from './dto/create-kitchen-event-log.dto';
 import { UpdateKitchenEventLogDto } from './dto/update-kitchen-event-log.dto';
@@ -24,9 +28,17 @@ import {
   PaginatedKitchenEventLogResponseDto,
 } from './dto/kitchen-event-log-response.dto';
 import { KitchenEventLogStatus } from './constants/kitchen-event-log-status.enum';
+import { KitchenEventLogEventType } from './constants/kitchen-event-log-event-type.enum';
 import { KitchenOrderStatus } from '../kitchen-order/constants/kitchen-order-status.enum';
+import { KitchenOrderBusinessStatus } from '../kitchen-order/constants/kitchen-order-business-status.enum';
 import { KitchenOrderItemStatus } from '../kitchen-order-item/constants/kitchen-order-item-status.enum';
+import { KitchenOrderItemPreparationStatus } from '../kitchen-order-item/constants/kitchen-order-item-preparation-status.enum';
 import { KitchenStationStatus } from '../kitchen-station/constants/kitchen-station-status.enum';
+import {
+  SyncKitchenEventsDto,
+  OfflineActionType,
+  OfflineKitchenActionDto,
+} from './dto/sync-kitchen-events.dto';
 
 @Injectable()
 export class KitchenEventLogService {
@@ -41,6 +53,9 @@ export class KitchenEventLogService {
     private readonly kitchenStationRepository: Repository<KitchenStation>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @Optional()
+    @Inject(forwardRef(() => KitchenOrderSyncService))
+    private readonly kitchenOrderSyncService?: KitchenOrderSyncService,
   ) {}
 
   async create(
@@ -663,5 +678,837 @@ export class KitchenEventLogService {
           }
         : null,
     };
+  }
+
+  /**
+   * Synchronize queued offline actions from KDS screen application (Historia X7P-4210).
+   * Processes actions in chronological order, resolves conflicts idempotently,
+   * updates central PostgreSQL state, and generates immutable audit event logs.
+   */
+  async syncOfflineActions(
+    syncDto: SyncKitchenEventsDto,
+    authenticatedUserMerchantId: number,
+    userId?: number,
+  ) {
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to synchronize kitchen actions',
+      );
+    }
+
+    const actions = syncDto.actions || [];
+    // Sort in chronological order
+    actions.sort((a, b) => {
+      const timeA = a.clientTimestamp
+        ? new Date(a.clientTimestamp).getTime()
+        : 0;
+      const timeB = b.clientTimestamp
+        ? new Date(b.clientTimestamp).getTime()
+        : 0;
+      return timeA - timeB;
+    });
+
+    let processedCount = 0;
+    let resolvedConflicts = 0;
+    const posOrderIdsToSync = new Set<number>();
+    const actionResults: {
+      actionType: string;
+      status: 'applied' | 'conflict_resolved' | 'ignored';
+      detail?: string;
+    }[] = [];
+
+    for (const action of actions) {
+      const eventTime = action.clientTimestamp
+        ? new Date(action.clientTimestamp)
+        : new Date();
+
+      try {
+        switch (action.actionType) {
+          case OfflineActionType.BUMP_ORDER: {
+            if (!action.kitchenOrderId) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: 'Missing kitchenOrderId',
+              });
+              break;
+            }
+
+            const order = await this.kitchenOrderRepository.findOne({
+              where: {
+                id: action.kitchenOrderId,
+                merchant_id: authenticatedUserMerchantId,
+              },
+              relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
+            });
+
+            if (!order) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: `Order #${action.kitchenOrderId} not found`,
+              });
+              break;
+            }
+
+            // Conflict Resolution: If order is already completed, mark as conflict resolved
+            const alreadyCompleted =
+              order.business_status === KitchenOrderBusinessStatus.COMPLETED;
+
+            if (!alreadyCompleted) {
+              order.business_status = KitchenOrderBusinessStatus.COMPLETED;
+              order.completed_at = eventTime;
+              if (!order.started_at) {
+                order.started_at = order.created_at || eventTime;
+              }
+              await this.kitchenOrderRepository.save(order);
+              processedCount++;
+            } else {
+              resolvedConflicts++;
+            }
+
+            // 1. Ensure order has INICIO (STARTED) event logged in audit trail
+            const hasOrderInicio = await this.kitchenEventLogRepository.findOne({
+              where: {
+                kitchen_order_id: order.id,
+                kitchen_order_item_id: IsNull(),
+                event_type: KitchenEventLogEventType.INICIO,
+                status: KitchenEventLogStatus.ACTIVE,
+              },
+            });
+
+            if (!hasOrderInicio) {
+              const orderStartTime =
+                order.started_at ||
+                order.created_at ||
+                new Date(eventTime.getTime() - 1000);
+
+              await this.kitchenEventLogRepository.save(
+                this.kitchenEventLogRepository.create({
+                  kitchen_order_id: order.id,
+                  station_id: order.station_id || null,
+                  event_type: KitchenEventLogEventType.INICIO,
+                  event_time: orderStartTime,
+                  status: KitchenEventLogStatus.ACTIVE,
+                  user_id: userId || null,
+                  message: `Offline re-sync: Order #${order.id} started in kitchen`,
+                }),
+              );
+            }
+
+            // Cascade items to ready
+            if (order.kitchenOrderItems && order.kitchenOrderItems.length > 0) {
+              for (const it of order.kitchenOrderItems) {
+                if (
+                  it.preparation_status !==
+                  KitchenOrderItemPreparationStatus.READY
+                ) {
+                  it.preparation_status =
+                    KitchenOrderItemPreparationStatus.READY;
+                  it.completed_at = it.completed_at || eventTime;
+                  it.prepared_quantity = it.quantity;
+                  await this.kitchenOrderItemRepository.save(it);
+
+                  const hasListo = await this.kitchenEventLogRepository.findOne(
+                    {
+                      where: {
+                        kitchen_order_item_id: it.id,
+                        event_type: KitchenEventLogEventType.LISTO,
+                        status: KitchenEventLogStatus.ACTIVE,
+                      },
+                    },
+                  );
+                  if (!hasListo) {
+                    await this.kitchenEventLogRepository.save(
+                      this.kitchenEventLogRepository.create({
+                        kitchen_order_id: order.id,
+                        kitchen_order_item_id: it.id,
+                        station_id: order.station_id || null,
+                        event_type: KitchenEventLogEventType.LISTO,
+                        event_time: eventTime,
+                        status: KitchenEventLogStatus.ACTIVE,
+                        user_id: userId || null,
+                        message: `Offline re-sync: Item #${it.id} (${it.product?.name || 'Item'}) reached quantity and is READY`,
+                      }),
+                    );
+                  }
+                }
+              }
+            }
+
+            // Record SERVIDO event if not already present for this order
+            const existingServedLog =
+              await this.kitchenEventLogRepository.findOne({
+                where: {
+                  kitchen_order_id: order.id,
+                  event_type: KitchenEventLogEventType.SERVIDO,
+                  status: KitchenEventLogStatus.ACTIVE,
+                },
+              });
+
+            if (!existingServedLog) {
+              await this.kitchenEventLogRepository.save(
+                this.kitchenEventLogRepository.create({
+                  kitchen_order_id: order.id,
+                  station_id: order.station_id || null,
+                  event_type: KitchenEventLogEventType.SERVIDO,
+                  event_time: eventTime,
+                  status: KitchenEventLogStatus.ACTIVE,
+                  user_id: userId || null,
+                  message: `Offline re-sync: Order #${order.id} bumped and completed in KDS`,
+                }),
+              );
+            }
+
+            if (order.order_id) {
+              posOrderIdsToSync.add(order.order_id);
+            }
+
+            actionResults.push({
+              actionType: action.actionType,
+              status: alreadyCompleted ? 'conflict_resolved' : 'applied',
+              detail: `Order #${order.id} bumped to COMPLETED`,
+            });
+            break;
+          }
+
+          case OfflineActionType.RECALL_ORDER: {
+            if (!action.kitchenOrderId) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: 'Missing kitchenOrderId',
+              });
+              break;
+            }
+
+            const order = await this.kitchenOrderRepository.findOne({
+              where: {
+                id: action.kitchenOrderId,
+                merchant_id: authenticatedUserMerchantId,
+              },
+            });
+
+            if (!order) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: `Order #${action.kitchenOrderId} not found`,
+              });
+              break;
+            }
+
+            const alreadyStarted =
+              order.business_status === KitchenOrderBusinessStatus.STARTED;
+
+            order.business_status = KitchenOrderBusinessStatus.STARTED;
+            order.completed_at = null;
+            await this.kitchenOrderRepository.save(order);
+
+            if (order.order_id) {
+              posOrderIdsToSync.add(order.order_id);
+            }
+
+            // Eliminar evento SERVIDO al reabrir la comanda en offline
+            await this.kitchenEventLogRepository.delete({
+              kitchen_order_id: order.id,
+              kitchen_order_item_id: IsNull(),
+              event_type: KitchenEventLogEventType.SERVIDO,
+            });
+
+            await this.kitchenEventLogRepository.save(
+              this.kitchenEventLogRepository.create({
+                kitchen_order_id: order.id,
+                station_id: order.station_id || null,
+                event_type: KitchenEventLogEventType.RECALL,
+                event_time: eventTime,
+                status: KitchenEventLogStatus.ACTIVE,
+                user_id: userId || null,
+                message: `Offline re-sync: Order #${order.id} recalled to active preparation`,
+              }),
+            );
+
+            if (alreadyStarted) {
+              resolvedConflicts++;
+            } else {
+              processedCount++;
+            }
+
+            actionResults.push({
+              actionType: action.actionType,
+              status: alreadyStarted ? 'conflict_resolved' : 'applied',
+              detail: `Order #${order.id} recalled to active state`,
+            });
+            break;
+          }
+
+          case OfflineActionType.UPDATE_ITEM_STATUS: {
+            if (!action.kitchenOrderItemId) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: 'Missing kitchenOrderItemId',
+              });
+              break;
+            }
+
+            const item = await this.kitchenOrderItemRepository.findOne({
+              where: { id: action.kitchenOrderItemId },
+              relations: ['kitchenOrder', 'product'],
+            });
+
+            if (
+              !item ||
+              item.kitchenOrder?.merchant_id !== authenticatedUserMerchantId
+            ) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: `Item #${action.kitchenOrderItemId} not found or unauthorized`,
+              });
+              break;
+            }
+
+            const targetStatus = (
+              action.status || 'ready'
+            ).toLowerCase() as KitchenOrderItemPreparationStatus;
+
+            const isSameStatus = item.preparation_status === targetStatus;
+            item.preparation_status = targetStatus;
+
+            if (targetStatus === KitchenOrderItemPreparationStatus.READY) {
+              item.completed_at = item.completed_at || eventTime;
+              item.prepared_quantity = item.quantity;
+            } else if (
+              targetStatus === KitchenOrderItemPreparationStatus.IN_PREPARATION
+            ) {
+              item.started_at = item.started_at || eventTime;
+              item.completed_at = null;
+              if (item.prepared_quantity >= item.quantity) {
+                item.prepared_quantity = Math.max(0, item.quantity - 1);
+              }
+            } else if (
+              targetStatus === KitchenOrderItemPreparationStatus.PENDING ||
+              targetStatus === KitchenOrderItemPreparationStatus.HELD
+            ) {
+              item.prepared_quantity = 0;
+              item.started_at = null;
+              item.completed_at = null;
+            }
+
+            await this.kitchenOrderItemRepository.save(item);
+
+            if (targetStatus === KitchenOrderItemPreparationStatus.READY) {
+              // Ensure order has INICIO event
+              if (item.kitchen_order_id) {
+                const hasOrderInicio =
+                  await this.kitchenEventLogRepository.findOne({
+                    where: {
+                      kitchen_order_id: item.kitchen_order_id,
+                      kitchen_order_item_id: IsNull(),
+                      event_type: KitchenEventLogEventType.INICIO,
+                      status: KitchenEventLogStatus.ACTIVE,
+                    },
+                  });
+                if (!hasOrderInicio) {
+                  const parentOrder =
+                    item.kitchenOrder ||
+                    (await this.kitchenOrderRepository.findOne({
+                      where: { id: item.kitchen_order_id },
+                    }));
+                  const orderStartTime =
+                    parentOrder?.started_at ||
+                    parentOrder?.created_at ||
+                    new Date(eventTime.getTime() - 1000);
+
+                  await this.kitchenEventLogRepository.save(
+                    this.kitchenEventLogRepository.create({
+                      kitchen_order_id: item.kitchen_order_id,
+                      station_id:
+                        parentOrder?.station_id ||
+                        item.kitchenOrder?.station_id ||
+                        null,
+                      event_type: KitchenEventLogEventType.INICIO,
+                      event_time: orderStartTime,
+                      status: KitchenEventLogStatus.ACTIVE,
+                      user_id: userId || null,
+                      message: `Offline re-sync: Order #${item.kitchen_order_id} started in kitchen`,
+                    }),
+                  );
+                }
+              }
+
+              const hasListo = await this.kitchenEventLogRepository.findOne({
+                where: {
+                  kitchen_order_item_id: item.id,
+                  event_type: KitchenEventLogEventType.LISTO,
+                  status: KitchenEventLogStatus.ACTIVE,
+                },
+              });
+              if (!hasListo) {
+                await this.kitchenEventLogRepository.save(
+                  this.kitchenEventLogRepository.create({
+                    kitchen_order_id: item.kitchen_order_id,
+                    kitchen_order_item_id: item.id,
+                    station_id: item.kitchenOrder?.station_id || null,
+                    event_type: KitchenEventLogEventType.LISTO,
+                    event_time: eventTime,
+                    status: KitchenEventLogStatus.ACTIVE,
+                    user_id: userId || null,
+                    message: `Offline re-sync: Item #${item.id} (${item.product?.name || 'Item'}) reached quantity and is READY`,
+                  }),
+                );
+              }
+            } else {
+              // Si no es READY (Undo a IN_PREPARATION, PENDING o HELD):
+              await this.kitchenEventLogRepository.delete({
+                kitchen_order_item_id: item.id,
+                event_type: KitchenEventLogEventType.LISTO,
+              });
+            }
+
+            if (item.kitchen_order_id) {
+              await this.checkAndCascadeParentOrderAutoBumpOffline(
+                item.kitchen_order_id,
+                eventTime,
+                userId,
+                posOrderIdsToSync,
+              );
+            }
+
+            if (isSameStatus) {
+              resolvedConflicts++;
+            } else {
+              processedCount++;
+            }
+
+            actionResults.push({
+              actionType: action.actionType,
+              status: isSameStatus ? 'conflict_resolved' : 'applied',
+              detail: `Item #${item.id} status updated to ${targetStatus}`,
+            });
+            break;
+          }
+
+          case OfflineActionType.INCREMENT_ITEM_QTY: {
+            if (!action.kitchenOrderItemId) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: 'Missing kitchenOrderItemId',
+              });
+              break;
+            }
+
+            const item = await this.kitchenOrderItemRepository.findOne({
+              where: { id: action.kitchenOrderItemId },
+              relations: ['kitchenOrder', 'product'],
+            });
+
+            if (
+              !item ||
+              item.kitchenOrder?.merchant_id !== authenticatedUserMerchantId
+            ) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: `Item #${action.kitchenOrderItemId} not found`,
+              });
+              break;
+            }
+
+            const toAdd = action.quantity || 1;
+            const newPrepared = Math.min(
+              item.quantity,
+              item.prepared_quantity + toAdd,
+            );
+            const reachedMax = newPrepared >= item.quantity;
+
+            item.prepared_quantity = newPrepared;
+            if (reachedMax) {
+              item.preparation_status = KitchenOrderItemPreparationStatus.READY;
+              item.completed_at = item.completed_at || eventTime;
+            } else {
+              item.preparation_status =
+                KitchenOrderItemPreparationStatus.IN_PREPARATION;
+            }
+            await this.kitchenOrderItemRepository.save(item);
+
+            if (reachedMax) {
+              await this.kitchenEventLogRepository.save(
+                this.kitchenEventLogRepository.create({
+                  kitchen_order_id: item.kitchen_order_id,
+                  kitchen_order_item_id: item.id,
+                  station_id: item.kitchenOrder?.station_id || null,
+                  event_type: KitchenEventLogEventType.LISTO,
+                  event_time: eventTime,
+                  status: KitchenEventLogStatus.ACTIVE,
+                  user_id: userId || null,
+                  message: `Offline re-sync: Item #${item.id} reached quantity (${newPrepared}/${item.quantity}) and is READY`,
+                }),
+              );
+
+              if (item.kitchen_order_id) {
+                await this.checkAndCascadeParentOrderAutoBumpOffline(
+                  item.kitchen_order_id,
+                  eventTime,
+                  userId,
+                  posOrderIdsToSync,
+                );
+              }
+            }
+
+            processedCount++;
+            actionResults.push({
+              actionType: action.actionType,
+              status: 'applied',
+              detail: `Item #${item.id} incremented to ${newPrepared}/${item.quantity}`,
+            });
+            break;
+          }
+
+          case OfflineActionType.FIRE_ITEM: {
+            if (!action.kitchenOrderItemId) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: 'Missing kitchenOrderItemId',
+              });
+              break;
+            }
+
+            const item = await this.kitchenOrderItemRepository.findOne({
+              where: { id: action.kitchenOrderItemId },
+              relations: ['kitchenOrder', 'product'],
+            });
+
+            if (
+              !item ||
+              item.kitchenOrder?.merchant_id !== authenticatedUserMerchantId
+            ) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: `Item #${action.kitchenOrderItemId} not found`,
+              });
+              break;
+            }
+
+            item.preparation_status =
+              KitchenOrderItemPreparationStatus.IN_PREPARATION;
+            item.fired_at = eventTime;
+            item.started_at = item.started_at || eventTime;
+            item.hold_until = null;
+            await this.kitchenOrderItemRepository.save(item);
+
+            if (
+              item.kitchenOrder &&
+              item.kitchenOrder.business_status ===
+                KitchenOrderBusinessStatus.PENDING
+            ) {
+              item.kitchenOrder.business_status =
+                KitchenOrderBusinessStatus.STARTED;
+              item.kitchenOrder.started_at = eventTime;
+              await this.kitchenOrderRepository.save(item.kitchenOrder);
+            }
+
+            // Ensure order has INICIO event
+            if (item.kitchen_order_id) {
+              const hasOrderInicio =
+                await this.kitchenEventLogRepository.findOne({
+                  where: {
+                    kitchen_order_id: item.kitchen_order_id,
+                    kitchen_order_item_id: IsNull(),
+                    event_type: KitchenEventLogEventType.INICIO,
+                    status: KitchenEventLogStatus.ACTIVE,
+                  },
+                });
+              if (!hasOrderInicio) {
+                await this.kitchenEventLogRepository.save(
+                  this.kitchenEventLogRepository.create({
+                    kitchen_order_id: item.kitchen_order_id,
+                    station_id: item.kitchenOrder?.station_id || null,
+                    event_type: KitchenEventLogEventType.INICIO,
+                    event_time: eventTime,
+                    status: KitchenEventLogStatus.ACTIVE,
+                    user_id: userId || null,
+                    message: `Offline re-sync: Order #${item.kitchen_order_id} started in kitchen (item #${item.id} fired)`,
+                  }),
+                );
+              }
+            }
+
+            processedCount++;
+            actionResults.push({
+              actionType: action.actionType,
+              status: 'applied',
+              detail: `Item #${item.id} fired to IN_PREPARATION`,
+            });
+            break;
+          }
+
+          case OfflineActionType.BATCH_BUMP_FIFO: {
+            if (!action.productName) {
+              actionResults.push({
+                actionType: action.actionType,
+                status: 'ignored',
+                detail: 'Missing productName for BATCH_BUMP_FIFO',
+              });
+              break;
+            }
+
+            const bumpQty = action.quantity || 1;
+            const qb = this.kitchenOrderItemRepository
+              .createQueryBuilder('koi')
+              .innerJoinAndSelect('koi.kitchenOrder', 'ko')
+              .leftJoinAndSelect('koi.product', 'p')
+              .leftJoinAndSelect('koi.variant', 'v')
+              .where('koi.status = :status', { status: KitchenOrderItemStatus.ACTIVE })
+              .andWhere('koi.preparation_status IN (:...prepStatuses)', {
+                prepStatuses: [
+                  KitchenOrderItemPreparationStatus.PENDING,
+                  KitchenOrderItemPreparationStatus.IN_PREPARATION,
+                ],
+              })
+              .andWhere('koi.prepared_quantity < koi.quantity')
+              .andWhere('ko.business_status NOT IN (:...terminalStatuses)', {
+                terminalStatuses: [
+                  KitchenOrderBusinessStatus.COMPLETED,
+                  KitchenOrderBusinessStatus.CANCELLED,
+                ],
+              })
+              .andWhere('ko.merchant_id = :merchantId', {
+                merchantId: authenticatedUserMerchantId,
+              });
+
+            if (action.stationId) {
+              qb.andWhere('ko.station_id = :stationId', { stationId: action.stationId });
+            }
+
+            qb.andWhere('LOWER(TRIM(p.name)) = LOWER(TRIM(:productName))', {
+              productName: action.productName.trim(),
+            });
+
+            if (action.variantName && action.variantName.trim()) {
+              qb.andWhere('LOWER(TRIM(v.name)) = LOWER(TRIM(:variantName))', {
+                variantName: action.variantName.trim(),
+              });
+            }
+
+            qb.orderBy('ko.priority', 'DESC')
+              .addOrderBy('ko.created_at', 'ASC')
+              .addOrderBy('ko.id', 'ASC')
+              .addOrderBy('koi.id', 'ASC');
+
+            const candidates = await qb.getMany();
+            let rem = bumpQty;
+            let actuallyBumped = 0;
+
+            for (const item of candidates) {
+              if (rem <= 0) break;
+              const needed = item.quantity - item.prepared_quantity;
+              const toAdd = Math.min(rem, needed);
+              item.prepared_quantity += toAdd;
+              rem -= toAdd;
+              actuallyBumped += toAdd;
+
+              if (item.prepared_quantity >= item.quantity) {
+                item.preparation_status = KitchenOrderItemPreparationStatus.READY;
+                item.completed_at = item.completed_at || eventTime;
+              } else {
+                item.preparation_status =
+                  KitchenOrderItemPreparationStatus.IN_PREPARATION;
+              }
+              await this.kitchenOrderItemRepository.save(item);
+            }
+
+            processedCount++;
+            actionResults.push({
+              actionType: action.actionType,
+              status: actuallyBumped > 0 ? 'applied' : 'conflict_resolved',
+              detail: `Batch bumped ${actuallyBumped} unit(s) of ${action.productName}`,
+            });
+            break;
+          }
+
+          default: {
+            actionResults.push({
+              actionType: action.actionType,
+              status: 'ignored',
+              detail: `Unsupported action type: ${action.actionType}`,
+            });
+          }
+        }
+      } catch (err) {
+        actionResults.push({
+          actionType: action.actionType,
+          status: 'ignored',
+          detail: `Error applying action: ${(err as Error).message}`,
+        });
+      }
+    }
+
+    if (this.kitchenOrderSyncService && posOrderIdsToSync.size > 0) {
+      for (const posOrderId of posOrderIdsToSync) {
+        try {
+          await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrders(
+            posOrderId,
+          );
+        } catch (err) {
+          console.warn(
+            `Failed to sync POS order #${posOrderId} after offline flush:`,
+            err,
+          );
+        }
+      }
+    }
+
+    return {
+      statusCode: 200,
+      message: `Offline synchronization completed: ${processedCount} applied, ${resolvedConflicts} conflicts resolved.`,
+      syncedCount: processedCount,
+      resolvedConflicts,
+      actions: actionResults,
+    };
+  }
+
+  /**
+   * Cascades item preparation states to the parent kitchen order during offline sync.
+   * Auto-bumps order to COMPLETED (SERVIDO) if all items are ready.
+   * Reopens to STARTED and deletes SERVIDO if any item was undone.
+   * Resets to PENDING and deletes INICIO if all items are back to pending/held.
+   */
+  private async checkAndCascadeParentOrderAutoBumpOffline(
+    kitchenOrderId: number,
+    eventTime: Date,
+    userId?: number,
+    posOrderIdsToSync?: Set<number>,
+  ): Promise<void> {
+    const parentOrder = await this.kitchenOrderRepository.findOne({
+      where: { id: kitchenOrderId },
+      relations: ['kitchenOrderItems'],
+    });
+
+    if (!parentOrder || !parentOrder.kitchenOrderItems) return;
+
+    if (parentOrder.order_id && posOrderIdsToSync) {
+      posOrderIdsToSync.add(parentOrder.order_id);
+    }
+
+    const activeItems = parentOrder.kitchenOrderItems.filter(
+      (item) => item.status === KitchenOrderItemStatus.ACTIVE,
+    );
+    if (activeItems.length === 0) return;
+
+    const allItemsReady = activeItems.every(
+      (item) =>
+        item.preparation_status === KitchenOrderItemPreparationStatus.READY,
+    );
+
+    if (allItemsReady) {
+      if (
+        parentOrder.business_status !== KitchenOrderBusinessStatus.COMPLETED
+      ) {
+        parentOrder.business_status = KitchenOrderBusinessStatus.COMPLETED;
+        parentOrder.completed_at = eventTime;
+        if (!parentOrder.started_at) {
+          parentOrder.started_at = parentOrder.created_at || eventTime;
+        }
+        await this.kitchenOrderRepository.save(parentOrder);
+
+        const hasServido = await this.kitchenEventLogRepository.findOne({
+          where: {
+            kitchen_order_id: parentOrder.id,
+            kitchen_order_item_id: IsNull(),
+            event_type: KitchenEventLogEventType.SERVIDO,
+            status: KitchenEventLogStatus.ACTIVE,
+          },
+        });
+        if (!hasServido) {
+          await this.kitchenEventLogRepository.save(
+            this.kitchenEventLogRepository.create({
+              kitchen_order_id: parentOrder.id,
+              station_id: parentOrder.station_id || null,
+              event_type: KitchenEventLogEventType.SERVIDO,
+              event_time: eventTime,
+              status: KitchenEventLogStatus.ACTIVE,
+              user_id: userId || null,
+              message: `Offline re-sync: Order #${parentOrder.id} auto-completed (all items ready)`,
+            }),
+          );
+        }
+      }
+    } else {
+      // Si la comanda estaba en COMPLETED pero ya no todos los ítems están READY (Undo en offline):
+      if (
+        parentOrder.business_status === KitchenOrderBusinessStatus.COMPLETED
+      ) {
+        parentOrder.business_status = KitchenOrderBusinessStatus.STARTED;
+        parentOrder.completed_at = null;
+        await this.kitchenOrderRepository.save(parentOrder);
+
+        await this.kitchenEventLogRepository.delete({
+          kitchen_order_id: parentOrder.id,
+          kitchen_order_item_id: IsNull(),
+          event_type: KitchenEventLogEventType.SERVIDO,
+        });
+      }
+
+      const anyActiveOrStarted = activeItems.some(
+        (item) =>
+          item.preparation_status ===
+            KitchenOrderItemPreparationStatus.IN_PREPARATION ||
+          item.preparation_status === KitchenOrderItemPreparationStatus.READY,
+      );
+
+      if (anyActiveOrStarted) {
+        if (
+          parentOrder.business_status === KitchenOrderBusinessStatus.PENDING ||
+          !parentOrder.started_at
+        ) {
+          parentOrder.business_status = KitchenOrderBusinessStatus.STARTED;
+          parentOrder.started_at = eventTime;
+          await this.kitchenOrderRepository.save(parentOrder);
+        }
+
+        const hasOrderInicio = await this.kitchenEventLogRepository.findOne({
+          where: {
+            kitchen_order_id: parentOrder.id,
+            kitchen_order_item_id: IsNull(),
+            event_type: KitchenEventLogEventType.INICIO,
+            status: KitchenEventLogStatus.ACTIVE,
+          },
+        });
+        if (!hasOrderInicio) {
+          await this.kitchenEventLogRepository.save(
+            this.kitchenEventLogRepository.create({
+              kitchen_order_id: parentOrder.id,
+              station_id: parentOrder.station_id || null,
+              event_type: KitchenEventLogEventType.INICIO,
+              event_time: eventTime,
+              status: KitchenEventLogStatus.ACTIVE,
+              user_id: userId || null,
+              message: `Offline re-sync: Order #${parentOrder.id} started in kitchen`,
+            }),
+          );
+        }
+      } else {
+        // Todos los items volvieron a PENDING o HELD:
+        if (
+          parentOrder.business_status !== KitchenOrderBusinessStatus.PENDING ||
+          parentOrder.started_at
+        ) {
+          parentOrder.business_status = KitchenOrderBusinessStatus.PENDING;
+          parentOrder.started_at = null;
+          await this.kitchenOrderRepository.save(parentOrder);
+        }
+
+        await this.kitchenEventLogRepository.delete({
+          kitchen_order_id: parentOrder.id,
+          kitchen_order_item_id: IsNull(),
+          event_type: KitchenEventLogEventType.INICIO,
+        });
+      }
+    }
   }
 }

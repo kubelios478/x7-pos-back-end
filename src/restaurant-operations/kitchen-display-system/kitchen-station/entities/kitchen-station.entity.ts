@@ -92,6 +92,71 @@ export class KitchenStation {
   printer_name: string | null;
 
   @ApiProperty({
+    example: 10,
+    description: 'ID of the secondary backup station for offline or overload rerouting',
+    nullable: true,
+  })
+  @Column({
+    type: 'int',
+    name: 'backup_station_id',
+    nullable: true,
+  })
+  backup_station_id: number | null;
+
+  @ManyToOne(() => KitchenStation, { nullable: true })
+  @JoinColumn({ name: 'backup_station_id' })
+  backup_station: KitchenStation | null;
+
+  @ApiProperty({
+    example: 15,
+    description: 'Maximum active ticket capacity threshold before triggering load balancing overflow',
+    default: 15,
+  })
+  @Column({
+    type: 'int',
+    name: 'max_active_tickets_capacity',
+    default: 15,
+  })
+  max_active_tickets_capacity: number;
+
+  @ApiProperty({
+    example: true,
+    description: 'Automatically reroute orders when all station devices are offline > 60 seconds',
+    default: true,
+  })
+  @Column({
+    type: 'boolean',
+    name: 'auto_reroute_on_offline',
+    default: true,
+  })
+  auto_reroute_on_offline: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'Automatically balance load and reroute overflow orders when capacity limit is breached',
+    default: true,
+  })
+  @Column({
+    type: 'boolean',
+    name: 'auto_reroute_on_capacity',
+    default: true,
+  })
+  auto_reroute_on_capacity: boolean;
+
+  @ApiProperty({
+    example: 'BACKUP_STATION',
+    description: 'Fallback action: BACKUP_STATION, THERMAL_PRINTER, or BOTH',
+    default: 'BACKUP_STATION',
+  })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'fallback_action',
+    default: 'BACKUP_STATION',
+  })
+  fallback_action: string;
+
+  @ApiProperty({
     example: true,
     description: 'Whether the kitchen station is active',
   })

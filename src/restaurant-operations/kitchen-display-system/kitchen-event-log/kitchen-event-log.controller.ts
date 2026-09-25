@@ -21,6 +21,7 @@ import { Request as ExpressRequest } from 'express';
 import { KitchenEventLogService } from './kitchen-event-log.service';
 import { CreateKitchenEventLogDto } from './dto/create-kitchen-event-log.dto';
 import { UpdateKitchenEventLogDto } from './dto/update-kitchen-event-log.dto';
+import { SyncKitchenEventsDto } from './dto/sync-kitchen-events.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -54,13 +55,61 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 @ApiTags('Restaurant operations - Kitchen Display System - Event Logs')
 @ApiBearerAuth()
-@Controller('kitchen-event-logs')
+@Controller(['kitchen-event-logs', 'v1/kitchen-event-logs'])
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.KITCHEN_EVENT_LOG)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class KitchenEventLogController {
   constructor(
     private readonly kitchenEventLogService: KitchenEventLogService,
   ) {}
+
+  @Get('ping')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Heartbeat ping for KDS offline detection',
+    description:
+      'Low-overhead ping endpoint used by KDS clients to detect network dropouts within 3 seconds.',
+  })
+  async ping() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Post('sync')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Synchronize offline queued kitchen actions',
+    description:
+      'Flushes queued offline bump actions, status changes, and item increments to the central PostgreSQL database with conflict resolution (Historia X7P-4210).',
+  })
+  async sync(
+    @Body() syncDto: SyncKitchenEventsDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    const userId = req.user?.id;
+    return this.kitchenEventLogService.syncOfflineActions(
+      syncDto,
+      authenticatedUserMerchantId,
+      userId,
+    );
+  }
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

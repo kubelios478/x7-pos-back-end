@@ -7,16 +7,16 @@ TRUNCATE TABLE kitchen_event_log, kitchen_order_item, kitchen_order RESTART IDEN
 -- Estación 9: Desserts & Bakery Hub (station_number: 4 -> KST-4)
 -- Estación 10: Expo & Final Quality Check (station_number: 5 -> KST-5)
 
-INSERT INTO kitchen_order (merchant_id, station_id, priority, business_status, status, notes, created_at, updated_at)
+INSERT INTO kitchen_order (merchant_id, station_id, priority, business_status, status, notes, started_at, created_at, updated_at)
 VALUES
-  (2, 6, 0, 'pending', 'active', 'Table 1 • Station #KST-1 (AUTO)', now() - interval '8 minutes', now()),
-  (2, 6, 1, 'pending', 'active', 'Table 2 • Station #KST-1 (AUTO)', now() - interval '7 minutes', now()),
-  (2, 8, 0, 'pending', 'active', 'Table 3 • Station #KST-3 (MANUAL)', now() - interval '6 minutes', now()),
-  (2, 8, 2, 'pending', 'active', 'Table 4 • Station #KST-3 (MANUAL)', now() - interval '5 minutes', now()),
-  (2, 9, 0, 'pending', 'active', 'Table 5 • Station #KST-4 (SUMMARY)', now() - interval '4 minutes', now()),
-  (2, 9, 3, 'pending', 'active', 'Table 6 • Station #KST-4 (SUMMARY)', now() - interval '3 minutes', now()),
-  (2, 10, 0, 'pending', 'active', 'Table 7 • Station #KST-5 (GRID)', now() - interval '2 minutes', now()),
-  (2, 10, 1, 'pending', 'active', 'Table 8 • Station #KST-5 (GRID)', now() - interval '1 minute', now());
+  (2, 6, 0, 'pending', 'active', 'Table 1 • Station #KST-1 (AUTO)', null, now() - interval '8 minutes', now()),
+  (2, 6, 1, 'pending', 'active', 'Table 2 • Station #KST-1 (AUTO)', null, now() - interval '7 minutes', now()),
+  (2, 8, 0, 'pending', 'active', 'Table 3 • Station #KST-3 (MANUAL)', null, now() - interval '6 minutes', now()),
+  (2, 8, 2, 'pending', 'active', 'Table 4 • Station #KST-3 (MANUAL)', null, now() - interval '5 minutes', now()),
+  (2, 9, 0, 'pending', 'active', 'Table 5 • Station #KST-4 (SUMMARY)', null, now() - interval '4 minutes', now()),
+  (2, 9, 3, 'pending', 'active', 'Table 6 • Station #KST-4 (SUMMARY)', null, now() - interval '3 minutes', now()),
+  (2, 10, 0, 'pending', 'active', 'Table 7 • Station #KST-5 (GRID)', null, now() - interval '2 minutes', now()),
+  (2, 10, 1, 'pending', 'active', 'Table 8 • Station #KST-5 (GRID)', null, now() - interval '1 minute', now());
 
 -- Para cada una de las 8 órdenes del Merchant 2, insertar los 4 ítems requeridos:
 -- - Main: 2 Smash Burger Doble (product_id: 16, variant_id: 8)
@@ -66,3 +66,4 @@ BEGIN
     );
   END LOOP;
 END $$;
+

@@ -73,6 +73,72 @@ export class KitchenStationResponseDto {
   })
   printerName?: string | null;
 
+  @ApiPropertyOptional({
+    example: 'Kitchen Printer 1',
+    description: 'Snake_case alias for printerName',
+  })
+  printer_name?: string | null;
+
+  @ApiPropertyOptional({
+    example: 10,
+    description: 'ID of the secondary backup station for offline or overload rerouting',
+  })
+  backupStationId?: number | null;
+
+  @ApiPropertyOptional({
+    example: 10,
+    description: 'Snake_case alias for backupStationId',
+  })
+  backup_station_id?: number | null;
+
+  @ApiPropertyOptional({
+    example: 15,
+    description: 'Maximum active ticket capacity threshold before triggering load balancing overflow',
+  })
+  maxActiveTicketsCapacity?: number;
+
+  @ApiPropertyOptional({
+    example: 15,
+    description: 'Snake_case alias for maxActiveTicketsCapacity',
+  })
+  max_active_tickets_capacity?: number;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether to auto-reroute when station devices are offline > 60s',
+  })
+  autoRerouteOnOffline?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Snake_case alias for autoRerouteOnOffline',
+  })
+  auto_reroute_on_offline?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether to auto-balance load when capacity limit is breached',
+  })
+  autoRerouteOnCapacity?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Snake_case alias for autoRerouteOnCapacity',
+  })
+  auto_reroute_on_capacity?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'BACKUP_STATION',
+    description: 'Fallback action: BACKUP_STATION, THERMAL_PRINTER, or BOTH',
+  })
+  fallbackAction?: string;
+
+  @ApiPropertyOptional({
+    example: 'BACKUP_STATION',
+    description: 'Snake_case alias for fallbackAction',
+  })
+  fallback_action?: string;
+
   @ApiProperty({
     example: true,
     description: 'Whether the kitchen station is active',
