@@ -64,6 +64,7 @@ export class KitchenOrderItemService {
   async create(
     createKitchenOrderItemDto: CreateKitchenOrderItemDto,
     authenticatedUserMerchantId: number,
+    userId?: number,
   ): Promise<OneKitchenOrderItemResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
@@ -469,6 +470,7 @@ export class KitchenOrderItemService {
     id: number,
     updateKitchenOrderItemDto: UpdateKitchenOrderItemDto,
     authenticatedUserMerchantId: number,
+    userId?: number,
   ): Promise<OneKitchenOrderItemResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException(
@@ -614,7 +616,7 @@ export class KitchenOrderItemService {
     if (updateKitchenOrderItemDto.preparationStatus !== undefined) {
       const newStatus = updateKitchenOrderItemDto.preparationStatus;
       if (newStatus === KitchenOrderItemPreparationStatus.READY) {
-        await this.logItemReadyEvent(updatedKitchenOrderItem);
+        await this.logItemReadyEvent(updatedKitchenOrderItem, userId);
       } else if (oldPrepStatus === KitchenOrderItemPreparationStatus.READY) {
         await this.removeItemReadyEvent(updatedKitchenOrderItem.id);
       }
@@ -629,6 +631,7 @@ export class KitchenOrderItemService {
 
     await this.checkAndCascadeParentOrderAutoBump(
       updatedKitchenOrderItem.kitchen_order_id,
+      userId,
     );
 
     const completeKitchenOrderItem =
@@ -906,6 +909,7 @@ export class KitchenOrderItemService {
   async revertPreparationStatus(
     id: number,
     authenticatedUserMerchantId: number,
+    userId?: number,
   ): Promise<OneKitchenOrderItemResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException(
@@ -976,6 +980,7 @@ export class KitchenOrderItemService {
 
     await this.checkAndCascadeParentOrderAutoBump(
       updatedKitchenOrderItem.kitchen_order_id,
+      userId,
     );
 
     const completeKitchenOrderItem =

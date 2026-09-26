@@ -78,7 +78,7 @@ export class KitchenOrderController {
   })
   async resetTestData(
     @Request() req: AuthenticatedRequest,
-    @Body() body?: { mode?: 'seed' | 'clear' },
+    @Body() body?: { mode?: 'seed' | 'clear' | 'simple' | 'multi' },
   ) {
     const merchantId = req.user?.merchant?.id || 2;
     return this.kitchenOrderService.resetTestData(
@@ -153,6 +153,7 @@ export class KitchenOrderController {
     return this.kitchenOrderService.create(
       createKitchenOrderDto,
       authenticatedUserMerchantId,
+      req.user?.id,
     );
   }
 
@@ -466,9 +467,9 @@ export class KitchenOrderController {
   async cancelKitchenOrder(
     @Param('id') id: number,
     @Body() dto: CancelKitchenOrderDto,
-    @Request() req: AuthenticatedUser,
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.kitchenOrderService.cancelKitchenOrder(id, dto, req);
+    return this.kitchenOrderService.cancelKitchenOrder(id, dto, req.user);
   }
 
   @Post(':id/recall')

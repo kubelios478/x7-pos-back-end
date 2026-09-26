@@ -110,6 +110,7 @@ export class KitchenOrderItemController {
     return this.kitchenOrderItemService.create(
       createKitchenOrderItemDto,
       authenticatedUserMerchantId,
+      req.user?.id,
     );
   }
 
@@ -390,6 +391,7 @@ export class KitchenOrderItemController {
     return this.kitchenOrderItemService.revertPreparationStatus(
       id,
       authenticatedUserMerchantId,
+      req.user?.id,
     );
   }
 
@@ -669,6 +671,7 @@ export class KitchenOrderItemController {
       id,
       updateKitchenOrderItemDto,
       authenticatedUserMerchantId,
+      req.user?.id,
     );
   }
 

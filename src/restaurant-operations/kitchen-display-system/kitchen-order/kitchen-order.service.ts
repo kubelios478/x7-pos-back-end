@@ -170,6 +170,7 @@ export class KitchenOrderService {
   async create(
     createKitchenOrderDto: CreateKitchenOrderDto,
     authenticatedUserMerchantId: number,
+    userId?: number,
   ): Promise<OneKitchenOrderResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
@@ -375,7 +376,7 @@ export class KitchenOrderService {
     kitchenOrder.priority = createKitchenOrderDto.priority ?? 0;
     kitchenOrder.business_status =
       createKitchenOrderDto.businessStatus ||
-      KitchenOrderBusinessStatus.STARTED;
+      KitchenOrderBusinessStatus.PENDING;
     kitchenOrder.started_at =
       createKitchenOrderDto.startedAt ||
       (kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED
@@ -577,7 +578,7 @@ export class KitchenOrderService {
             event_type: 'reroute' as any,
             event_time: new Date(),
             status: KitchenEventLogStatus.ACTIVE,
-            user_id: null,
+            user_id: userId || null,
             message: `Ticket #${savedKitchenOrder.id} automatically rerouted from Station #${originalStationNumber} (${rerouteReason})`,
           }),
         );
@@ -1479,6 +1480,7 @@ export class KitchenOrderService {
   }
 
   async cancelKitchenOrder(id: number, dto: CancelKitchenOrderDto, user: any) {
+    const actorUserId = user?.id || user?.user?.id || null;
     const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
       where: { id },
       relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
@@ -1595,7 +1597,7 @@ export class KitchenOrderService {
             event_type: KitchenEventLogEventType.INICIO,
             event_time: existingKitchenOrder.created_at || new Date(),
             status: KitchenEventLogStatus.ACTIVE,
-            user_id: user?.id || null,
+            user_id: actorUserId,
             message: `Order #${existingKitchenOrder.id} received in kitchen`,
           }),
         );
@@ -1608,7 +1610,7 @@ export class KitchenOrderService {
           event_type: KitchenEventLogEventType.CANCELADO,
           event_time: new Date(),
           status: KitchenEventLogStatus.ACTIVE,
-          user_id: user?.id || null,
+          user_id: actorUserId,
           message: dto.reason
             ? `Order cancelled. Reason: ${dto.reason}`
             : `Kitchen order #${existingKitchenOrder.id} cancelled`,
@@ -1724,7 +1726,10 @@ export class KitchenOrderService {
     };
   }
 
-  async resetTestData(_merchantId: number, mode: 'seed' | 'clear' = 'seed') {
+  async resetTestData(
+    merchantId: number,
+    mode: 'seed' | 'clear' | 'simple' | 'multi' = 'seed',
+  ) {
     if (mode === 'clear') {
       await this.dataSource.query(
         `TRUNCATE TABLE kitchen_event_log, kitchen_order_item, kitchen_order RESTART IDENTITY CASCADE;`,
@@ -1735,11 +1740,18 @@ export class KitchenOrderService {
       };
     }
 
+    const filename =
+      mode === 'simple'
+        ? 'seed-simple-orders.sql'
+        : mode === 'multi'
+        ? 'seed-multi-orders.sql'
+        : 'seed-test-orders.sql';
+
     const possiblePaths = [
-      path.resolve(process.cwd(), 'scripts/seed-test-orders.sql'),
-      path.resolve(__dirname, '../../../../../../scripts/seed-test-orders.sql'),
-      path.resolve(__dirname, '../../../../../scripts/seed-test-orders.sql'),
-      '/home/rafac183/x7pos/x7-pos-back-end/scripts/seed-test-orders.sql',
+      path.resolve(process.cwd(), `scripts/${filename}`),
+      path.resolve(__dirname, `../../../../../../scripts/${filename}`),
+      path.resolve(__dirname, `../../../../../scripts/${filename}`),
+      `/home/rafac183/x7pos/x7-pos-back-end/scripts/${filename}`,
     ];
 
     for (const p of possiblePaths) {
@@ -1749,11 +1761,15 @@ export class KitchenOrderService {
         return {
           success: true,
           message:
-            '8 test orders reseeded successfully with full multi-course pacing',
+            mode === 'simple'
+              ? '2 simple test orders reseeded successfully (Smash Burger + Iced Latte)'
+              : mode === 'multi'
+              ? '1 multi-course order reseeded successfully (Appetizer, Beverage, Main, Dessert)'
+              : '8 test orders reseeded successfully with full multi-course pacing',
         };
       }
     }
 
-    throw new BadRequestException('Seed script seed-test-orders.sql not found');
+    throw new BadRequestException(`Seed script ${filename} not found`);
   }
 }
