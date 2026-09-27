@@ -6,20 +6,24 @@ import {
   IsString,
   Min,
   IsArray,
+  ValidateIf,
 } from 'class-validator';
 
 export class UpdateRerouteConfigDto {
   @ApiPropertyOptional({
     example: 10,
-    description: 'ID of the secondary backup station for offline or overload rerouting',
+    description:
+      'ID of the secondary backup station for offline or overload rerouting',
   })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsNumber()
   backupStationId?: number | null;
 
   @ApiPropertyOptional({
     example: 15,
-    description: 'Maximum active ticket capacity threshold before triggering load balancing overflow',
+    description:
+      'Maximum active ticket capacity threshold before triggering load balancing overflow',
   })
   @IsOptional()
   @IsNumber()
@@ -28,7 +32,8 @@ export class UpdateRerouteConfigDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Automatically reroute orders when all station devices are offline > 60s',
+    description:
+      'Automatically reroute orders when all station devices are offline > 60s',
   })
   @IsOptional()
   @IsBoolean()
@@ -36,7 +41,8 @@ export class UpdateRerouteConfigDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Automatically balance load and reroute overflow orders when capacity limit is breached',
+    description:
+      'Automatically balance load and reroute overflow orders when capacity limit is breached',
   })
   @IsOptional()
   @IsBoolean()
@@ -55,6 +61,7 @@ export class UpdateRerouteConfigDto {
     description: 'Name of the thermal printer associated with this station',
   })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsString()
   printerName?: string | null;
 }
@@ -62,7 +69,8 @@ export class UpdateRerouteConfigDto {
 export class RerouteOrdersDto {
   @ApiPropertyOptional({
     example: 10,
-    description: 'Destination station ID (defaults to station backup_station_id if omitted)',
+    description:
+      'Destination station ID (defaults to station backup_station_id if omitted)',
   })
   @IsOptional()
   @IsNumber()
@@ -70,7 +78,8 @@ export class RerouteOrdersDto {
 
   @ApiPropertyOptional({
     example: [1, 2],
-    description: 'Specific kitchen order IDs to reroute (if omitted, reroutes all active orders of station)',
+    description:
+      'Specific kitchen order IDs to reroute (if omitted, reroutes all active orders of station)',
   })
   @IsOptional()
   @IsArray()
@@ -140,6 +149,9 @@ export class StationReroutingStatusDto {
   @ApiProperty({ example: false })
   isFallbackActive: boolean;
 
-  @ApiProperty({ example: 'NONE', enum: ['DEVICES_OFFLINE', 'CAPACITY_OVERFLOW', 'NONE'] })
+  @ApiProperty({
+    example: 'NONE',
+    enum: ['DEVICES_OFFLINE', 'CAPACITY_OVERFLOW', 'NONE'],
+  })
   fallbackReason: 'DEVICES_OFFLINE' | 'CAPACITY_OVERFLOW' | 'NONE';
 }

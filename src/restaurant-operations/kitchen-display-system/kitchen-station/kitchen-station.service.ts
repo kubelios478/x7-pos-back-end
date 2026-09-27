@@ -39,8 +39,6 @@ import {
   StationReroutingStatusDto,
 } from './dto/reroute-station.dto';
 import { KitchenStationStatus } from './constants/kitchen-station-status.enum';
-import { KitchenStationType } from './constants/kitchen-station-type.enum';
-import { KitchenDisplayMode } from './constants/kitchen-display-mode.enum';
 
 @Injectable()
 export class KitchenStationService {
@@ -143,7 +141,8 @@ export class KitchenStationService {
     kitchenStation.display_order = targetOrder;
     kitchenStation.station_number = nextStationNumber;
     kitchenStation.printer_name = createKitchenStationDto.printerName || null;
-    kitchenStation.backup_station_id = createKitchenStationDto.backupStationId || null;
+    kitchenStation.backup_station_id =
+      createKitchenStationDto.backupStationId || null;
     kitchenStation.max_active_tickets_capacity =
       createKitchenStationDto.maxActiveTicketsCapacity ?? 15;
     kitchenStation.auto_reroute_on_offline =
@@ -431,13 +430,17 @@ export class KitchenStationService {
     if (updateKitchenStationDto.printerName !== undefined)
       updateData.printer_name = updateKitchenStationDto.printerName || null;
     if (updateKitchenStationDto.backupStationId !== undefined)
-      updateData.backup_station_id = updateKitchenStationDto.backupStationId || null;
+      updateData.backup_station_id =
+        updateKitchenStationDto.backupStationId || null;
     if (updateKitchenStationDto.maxActiveTicketsCapacity !== undefined)
-      updateData.max_active_tickets_capacity = updateKitchenStationDto.maxActiveTicketsCapacity;
+      updateData.max_active_tickets_capacity =
+        updateKitchenStationDto.maxActiveTicketsCapacity;
     if (updateKitchenStationDto.autoRerouteOnOffline !== undefined)
-      updateData.auto_reroute_on_offline = updateKitchenStationDto.autoRerouteOnOffline;
+      updateData.auto_reroute_on_offline =
+        updateKitchenStationDto.autoRerouteOnOffline;
     if (updateKitchenStationDto.autoRerouteOnCapacity !== undefined)
-      updateData.auto_reroute_on_capacity = updateKitchenStationDto.autoRerouteOnCapacity;
+      updateData.auto_reroute_on_capacity =
+        updateKitchenStationDto.autoRerouteOnCapacity;
     if (updateKitchenStationDto.fallbackAction !== undefined)
       updateData.fallback_action = updateKitchenStationDto.fallbackAction;
     if (updateKitchenStationDto.isActive !== undefined)
@@ -611,7 +614,8 @@ export class KitchenStationService {
       const capacityThreshold = station.max_active_tickets_capacity || 15;
       const isCapacityOverflow = activeTicketsCount >= capacityThreshold;
 
-      let fallbackReason: 'DEVICES_OFFLINE' | 'CAPACITY_OVERFLOW' | 'NONE' = 'NONE';
+      let fallbackReason: 'DEVICES_OFFLINE' | 'CAPACITY_OVERFLOW' | 'NONE' =
+        'NONE';
       let isFallbackActive = false;
 
       if (isDevicesOffline && station.auto_reroute_on_offline) {
@@ -690,13 +694,19 @@ export class KitchenStationService {
             'Specified backup station does not exist or is inactive',
           );
         }
+        station.backup_station = backupStation;
+        station.backup_station_id = backupStation.id;
+      } else {
+        station.backup_station = null;
+        station.backup_station_id = null;
       }
-      station.backup_station_id = dto.backupStationId;
     }
 
     if (dto.maxActiveTicketsCapacity !== undefined) {
       if (dto.maxActiveTicketsCapacity < 1) {
-        throw new BadRequestException('Capacity threshold must be at least 1 ticket');
+        throw new BadRequestException(
+          'Capacity threshold must be at least 1 ticket',
+        );
       }
       station.max_active_tickets_capacity = dto.maxActiveTicketsCapacity;
     }
@@ -717,7 +727,15 @@ export class KitchenStationService {
       station.printer_name = dto.printerName || null;
     }
 
-    await this.kitchenStationRepository.save(station);
+    // Direct database update to guarantee columns update cleanly
+    await this.kitchenStationRepository.update(stationId, {
+      backup_station_id: station.backup_station_id,
+      max_active_tickets_capacity: station.max_active_tickets_capacity,
+      auto_reroute_on_offline: station.auto_reroute_on_offline,
+      auto_reroute_on_capacity: station.auto_reroute_on_capacity,
+      fallback_action: station.fallback_action,
+      printer_name: station.printer_name,
+    });
 
     const updated = await this.kitchenStationRepository.findOne({
       where: { id: stationId },
@@ -818,11 +836,6 @@ export class KitchenStationService {
     for (const order of ordersToReroute) {
       if (targetStation) {
         order.station_id = targetStation.id;
-        const currentNotes = order.notes || '';
-        const rerouteTag = `[Rerouted from #${station.station_number ?? station.id} -> #${targetStation.station_number ?? targetStation.id}: ${reason}]`;
-        order.notes = currentNotes
-          ? `${currentNotes} | ${rerouteTag}`
-          : rerouteTag;
         await this.kitchenOrderRepository.save(order);
       }
 
@@ -837,7 +850,7 @@ export class KitchenStationService {
         eventLog.message = `Ticket #${order.id} rerouted from Station #${station.station_number ?? station.id} (${station.name}) to Station #${targetStation?.station_number ?? targetStation?.id ?? 'Thermal Printer'} (${reason})`;
         eventLog.status = KitchenEventLogStatus.ACTIVE;
         await this.kitchenEventLogRepository.save(eventLog);
-      } catch (err) {
+      } catch {
         // Non-blocking log persistence
       }
     }
@@ -886,14 +899,76 @@ export class KitchenStationService {
       autoRerouteOnOffline: kitchenStation.auto_reroute_on_offline ?? true,
       auto_reroute_on_offline: kitchenStation.auto_reroute_on_offline ?? true,
       autoRerouteOnCapacity: kitchenStation.auto_reroute_on_capacity ?? true,
-      auto_reroute_on_capacity:
-        kitchenStation.auto_reroute_on_capacity ?? true,
+      auto_reroute_on_capacity: kitchenStation.auto_reroute_on_capacity ?? true,
       fallbackAction: kitchenStation.fallback_action || 'BACKUP_STATION',
       fallback_action: kitchenStation.fallback_action || 'BACKUP_STATION',
       isActive: kitchenStation.is_active,
       status: kitchenStation.status,
       createdAt: kitchenStation.created_at,
       updatedAt: kitchenStation.updated_at,
+    };
+  }
+
+  async sendStationHeartbeat(
+    stationIdParam: string,
+    authenticatedUserMerchantId: number,
+  ): Promise<{ success: boolean; updatedDevices: number; message: string }> {
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to send station heartbeat',
+      );
+    }
+
+    const now = new Date();
+
+    if (stationIdParam === 'ALL') {
+      const activeDevices = await this.kitchenDisplayDeviceRepository.find({
+        where: {
+          merchant_id: authenticatedUserMerchantId,
+          status: 'active' as any,
+        },
+      });
+
+      for (const dev of activeDevices) {
+        dev.last_sync = now;
+        dev.is_online = true;
+      }
+      if (activeDevices.length > 0) {
+        await this.kitchenDisplayDeviceRepository.save(activeDevices);
+      }
+
+      return {
+        success: true,
+        updatedDevices: activeDevices.length,
+        message: `Heartbeat updated for all active devices (${activeDevices.length})`,
+      };
+    }
+
+    const stationId = parseInt(stationIdParam, 10);
+    if (isNaN(stationId)) {
+      throw new BadRequestException('Invalid station ID for heartbeat');
+    }
+
+    const stationDevices = await this.kitchenDisplayDeviceRepository.find({
+      where: {
+        station_id: stationId,
+        merchant_id: authenticatedUserMerchantId,
+        status: 'active' as any,
+      },
+    });
+
+    for (const dev of stationDevices) {
+      dev.last_sync = now;
+      dev.is_online = true;
+    }
+    if (stationDevices.length > 0) {
+      await this.kitchenDisplayDeviceRepository.save(stationDevices);
+    }
+
+    return {
+      success: true,
+      updatedDevices: stationDevices.length,
+      message: `Heartbeat updated for station #${stationId} devices (${stationDevices.length})`,
     };
   }
 }

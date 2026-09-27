@@ -502,4 +502,35 @@ export class KitchenStationController {
       userId,
     );
   }
+
+  @Post(':id/heartbeat')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Send station terminal keepalive heartbeat',
+    description:
+      'Updates last_sync and is_online for display devices assigned to this station',
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Kitchen station ID or "ALL"',
+  })
+  async sendHeartbeat(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenStationService.sendStationHeartbeat(
+      id,
+      authenticatedUserMerchantId,
+    );
+  }
 }
+

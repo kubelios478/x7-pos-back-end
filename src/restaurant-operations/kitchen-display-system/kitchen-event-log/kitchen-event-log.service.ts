@@ -785,14 +785,38 @@ export class KitchenEventLogService {
               );
             }
 
-            // Cascada de ítems a READY
+            // Cascada de ítems a READY y registro de evento LISTO por ítem
             if (order.kitchenOrderItems && order.kitchenOrderItems.length > 0) {
               for (const it of order.kitchenOrderItems) {
+                if (it.status !== KitchenOrderItemStatus.ACTIVE) continue;
                 it.preparation_status =
                   KitchenOrderItemPreparationStatus.READY;
                 it.completed_at = it.completed_at || eventTime;
                 it.prepared_quantity = it.quantity;
                 await this.kitchenOrderItemRepository.save(it);
+
+                // Crear evento LISTO por ítem si no existe (aparece después del RECALLED)
+                const hasListo = await this.kitchenEventLogRepository.findOne({
+                  where: {
+                    kitchen_order_item_id: it.id,
+                    event_type: KitchenEventLogEventType.LISTO,
+                    status: KitchenEventLogStatus.ACTIVE,
+                  },
+                });
+                if (!hasListo) {
+                  await this.kitchenEventLogRepository.save(
+                    this.kitchenEventLogRepository.create({
+                      kitchen_order_id: order.id,
+                      kitchen_order_item_id: it.id,
+                      station_id: order.station_id || null,
+                      event_type: KitchenEventLogEventType.LISTO,
+                      event_time: eventTime,
+                      status: KitchenEventLogStatus.ACTIVE,
+                      user_id: userId || null,
+                      message: `Item #${it.id} (${it.product?.name || 'Item'}) reached quantity and is READY`,
+                    }),
+                  );
+                }
               }
             }
 
@@ -855,12 +879,14 @@ export class KitchenEventLogService {
             // 1. Revertir business_status: COMPLETED -> STARTED
             order.business_status = KitchenOrderBusinessStatus.STARTED;
             order.completed_at = null;
+
+            // 2. Timestamp Continuity: preservar started_at original para SOS
             if (!order.started_at) {
               order.started_at = order.created_at || eventTime;
             }
             await this.kitchenOrderRepository.save(order);
 
-            // 2. Reestablecer items a IN_PREPARATION
+            // 3. Reestablecer items a IN_PREPARATION
             if (order.kitchenOrderItems && order.kitchenOrderItems.length > 0) {
               for (const it of order.kitchenOrderItems) {
                 it.preparation_status =
@@ -875,7 +901,19 @@ export class KitchenEventLogService {
               posOrderIdsToSync.add(order.order_id);
             }
 
-            // 3. Registrar evento auditado RECALL en kitchen_event_log (preservando historial)
+            // 4. Borrar eventos SERVIDO y LISTO anteriores (incluyendo ítems) y registrar RECALL
+            // El recall invalida el READY anterior — el cocinero debe volver a preparar.
+            // Los LISTO de ítems se recrearán cuando el BUMP_ORDER final se procese.
+            await this.kitchenEventLogRepository.delete({
+              kitchen_order_id: order.id,
+              kitchen_order_item_id: IsNull(),
+              event_type: KitchenEventLogEventType.SERVIDO,
+            });
+            await this.kitchenEventLogRepository.delete({
+              kitchen_order_id: order.id,
+              event_type: KitchenEventLogEventType.LISTO,
+            });
+
             await this.kitchenEventLogRepository.save(
               this.kitchenEventLogRepository.create({
                 kitchen_order_id: order.id,

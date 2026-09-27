@@ -262,7 +262,6 @@ export class KitchenOrderService {
 
     let targetStationId: number | null =
       createKitchenOrderDto.stationId || null;
-    let rerouteNoteTag = '';
     let isRerouted = false;
     let originalStationNumber: number | null = null;
     let rerouteReason = '';
@@ -336,25 +335,21 @@ export class KitchenOrderService {
 
       if (shouldReroute) {
         if (station.backup_station_id) {
-          const backupStation =
-            station.backup_station ||
-            (await this.kitchenStationRepository.findOne({
-              where: {
-                id: station.backup_station_id,
-                status: KitchenStationStatus.ACTIVE,
-              },
-            }));
+          const backupStation = await this.kitchenStationRepository.findOne({
+            where: {
+              id: station.backup_station_id,
+              status: KitchenStationStatus.ACTIVE,
+            },
+          });
           if (backupStation) {
             targetStationId = backupStation.id;
             isRerouted = true;
-            rerouteNoteTag = `[Auto-Rerouted from #${originalStationNumber} to #${backupStation.station_number ?? backupStation.id}: ${rerouteReason}]`;
           }
         } else if (
           station.fallback_action === 'THERMAL_PRINTER' ||
           station.printer_name
         ) {
           isRerouted = true;
-          rerouteNoteTag = `[Thermal Printer Fallback on ${station.printer_name || 'Thermal Printer'}: ${rerouteReason}]`;
         }
       }
     }
@@ -393,11 +388,6 @@ export class KitchenOrderService {
       notesText = notesText
         ? `[Ticket #${createKitchenOrderDto.orderId}] ${notesText}`
         : `[Ticket #${createKitchenOrderDto.orderId}]`;
-    }
-    if (rerouteNoteTag) {
-      notesText = notesText
-        ? `${notesText} | ${rerouteNoteTag}`
-        : rerouteNoteTag;
     }
     kitchenOrder.notes = notesText || null;
 
@@ -576,7 +566,7 @@ export class KitchenOrderService {
             kitchen_order_id: savedKitchenOrder.id,
             station_id: savedKitchenOrder.station_id || null,
             event_type: 'reroute' as any,
-            event_time: new Date(),
+            event_time: savedKitchenOrder.created_at || new Date(),
             status: KitchenEventLogStatus.ACTIVE,
             user_id: userId || null,
             message: `Ticket #${savedKitchenOrder.id} automatically rerouted from Station #${originalStationNumber} (${rerouteReason})`,
@@ -1728,7 +1718,7 @@ export class KitchenOrderService {
 
   async resetTestData(
     merchantId: number,
-    mode: 'seed' | 'clear' | 'simple' | 'multi' = 'seed',
+    mode: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' = 'seed',
   ) {
     if (mode === 'clear') {
       await this.dataSource.query(
@@ -1744,8 +1734,10 @@ export class KitchenOrderService {
       mode === 'simple'
         ? 'seed-simple-orders.sql'
         : mode === 'multi'
-        ? 'seed-multi-orders.sql'
-        : 'seed-test-orders.sql';
+          ? 'seed-multi-orders.sql'
+          : mode === 'multi2'
+            ? 'seed-multi2-orders.sql'
+            : 'seed-test-orders.sql';
 
     const possiblePaths = [
       path.resolve(process.cwd(), `scripts/${filename}`),
@@ -1764,8 +1756,10 @@ export class KitchenOrderService {
             mode === 'simple'
               ? '2 simple test orders reseeded successfully (Smash Burger + Iced Latte)'
               : mode === 'multi'
-              ? '1 multi-course order reseeded successfully (Appetizer, Beverage, Main, Dessert)'
-              : '8 test orders reseeded successfully with full multi-course pacing',
+                ? '1 multi-course order reseeded successfully (Appetizer, Beverage, Main, Dessert)'
+                : mode === 'multi2'
+                  ? '2 multi-course orders reseeded successfully (Appetizer, Beverage, Main, Dessert)'
+                  : '8 test orders reseeded successfully with full multi-course pacing',
         };
       }
     }
