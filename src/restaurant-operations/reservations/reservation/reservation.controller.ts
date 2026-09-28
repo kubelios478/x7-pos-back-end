@@ -49,7 +49,13 @@ export class ReservationController {
     @Body() createReservationDto: CreateReservationDto,
   ): Promise<OneReservationResponse> {
     const merchantId = user.merchant.id;
-    return this.reservationService.create(merchantId, createReservationDto);
+    // El id del miembro del personal que toma la reserva sale del token, no del cuerpo:
+    // así `created_by` audita de verdad quién la creó.
+    return this.reservationService.create(
+      merchantId,
+      createReservationDto,
+      user.id,
+    );
   }
 
   @Get()
@@ -91,7 +97,12 @@ export class ReservationController {
     @Body() updateReservationDto: UpdateReservationDto,
   ): Promise<OneReservationResponse> {
     const merchantId = user.merchant.id;
-    return this.reservationService.update(id, merchantId, updateReservationDto);
+    return this.reservationService.update(
+      id,
+      merchantId,
+      updateReservationDto,
+      user.id,
+    );
   }
 
   @Patch(':id/cancel')

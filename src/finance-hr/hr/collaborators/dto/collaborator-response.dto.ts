@@ -76,7 +76,8 @@ export class CollaboratorResponseDto {
   @ApiProperty({
     example: 3,
     nullable: true,
-    description: 'Recurring shift the collaborator is attached to; null when unassigned',
+    description:
+      'Recurring shift the collaborator is attached to; null when unassigned',
   })
   shift_id: number | null;
 

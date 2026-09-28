@@ -48,7 +48,7 @@ describe('SupplierInvoiceInventoryService', () => {
           provide: RecipeTheoreticalCostService,
           useValue: mockRecipeCost,
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: StockLevelMonitorService,

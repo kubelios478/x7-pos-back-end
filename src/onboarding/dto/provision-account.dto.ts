@@ -49,7 +49,9 @@ export class ProvisionAccountDto {
 
   @ApiProperty({ example: true })
   @IsBoolean()
-  @Equals(true, { message: 'Terms of Service and Privacy Policy must be accepted' })
+  @Equals(true, {
+    message: 'Terms of Service and Privacy Policy must be accepted',
+  })
   termsAccepted: boolean;
 }
 

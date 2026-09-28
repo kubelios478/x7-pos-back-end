@@ -68,7 +68,7 @@ describe('UsersService', () => {
           provide: getRepositoryToken(Merchant),
           useValue: mockMerchantRepository,
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: MailService,

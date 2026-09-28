@@ -444,7 +444,10 @@ export class CollaboratorsService {
     // null explícito = desenganchar del turno. `undefined` (campo ausente) lo deja como está,
     // que es lo que espera cualquier cliente que mande sólo los campos que tocó.
     if (dto.shift_id !== undefined) {
-      const shift = await this.resolveShift(dto.shift_id, collaborator.merchant_id);
+      const shift = await this.resolveShift(
+        dto.shift_id,
+        collaborator.merchant_id,
+      );
       updateData.shift_id = shift?.id ?? null;
     }
 
@@ -600,34 +603,39 @@ export class CollaboratorsService {
       this.orderRepo.count({ where: { collaborator_id: id } }),
     ]);
 
-    const [recentShifts, recentTables, recentOpened, recentClosed, recentOrders] =
-      await Promise.all([
-        this.shiftAssignmentRepo.find({
-          where: { collaboratorId: id },
-          order: { id: 'DESC' },
-          take: 5,
-        }),
-        this.tableAssignmentRepo.find({
-          where: { collaboratorId: id },
-          order: { id: 'DESC' },
-          take: 5,
-        }),
-        this.cashDrawerRepo.find({
-          where: { opened_by: id },
-          order: { id: 'DESC' },
-          take: 5,
-        }),
-        this.cashDrawerRepo.find({
-          where: { closed_by: id },
-          order: { id: 'DESC' },
-          take: 5,
-        }),
-        this.orderRepo.find({
-          where: { collaborator_id: id },
-          order: { id: 'DESC' },
-          take: 5,
-        }),
-      ]);
+    const [
+      recentShifts,
+      recentTables,
+      recentOpened,
+      recentClosed,
+      recentOrders,
+    ] = await Promise.all([
+      this.shiftAssignmentRepo.find({
+        where: { collaboratorId: id },
+        order: { id: 'DESC' },
+        take: 5,
+      }),
+      this.tableAssignmentRepo.find({
+        where: { collaboratorId: id },
+        order: { id: 'DESC' },
+        take: 5,
+      }),
+      this.cashDrawerRepo.find({
+        where: { opened_by: id },
+        order: { id: 'DESC' },
+        take: 5,
+      }),
+      this.cashDrawerRepo.find({
+        where: { closed_by: id },
+        order: { id: 'DESC' },
+        take: 5,
+      }),
+      this.orderRepo.find({
+        where: { collaborator_id: id },
+        order: { id: 'DESC' },
+        take: 5,
+      }),
+    ]);
 
     // El volumen se suma en la base: traerse todas las comandas para sumarlas aquí sería
     // pasear el histórico entero por la red para obtener un número.

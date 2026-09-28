@@ -122,12 +122,18 @@ export class TimeEntry {
     description:
       'Why the entry was logged or corrected by hand. Mandatory on every manual write; null on punches the clock itself recorded.',
   })
-  @Column({ type: 'varchar', length: 255, name: 'adjustment_reason', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'adjustment_reason',
+    nullable: true,
+  })
   adjustment_reason: string | null;
 
   @ApiProperty({
     example: true,
-    description: 'True once a supervisor has corrected the punch. Never goes back to false.',
+    description:
+      'True once a supervisor has corrected the punch. Never goes back to false.',
   })
   @Column({ type: 'boolean', name: 'is_edited', default: false })
   is_edited: boolean;
@@ -140,7 +146,10 @@ export class TimeEntry {
   @Column({ type: 'int', name: 'edited_by_user_id', nullable: true })
   edited_by_user_id: number | null;
 
-  @ApiProperty({ nullable: true, description: 'When the last correction happened' })
+  @ApiProperty({
+    nullable: true,
+    description: 'When the last correction happened',
+  })
   @Column({ type: 'timestamp', name: 'edited_at', nullable: true })
   edited_at: Date | null;
 

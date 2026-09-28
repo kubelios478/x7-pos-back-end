@@ -183,7 +183,7 @@ describe('OrderItemService', () => {
           useValue: mockVariantRepository,
         },
         { provide: OrdersService, useValue: mockOrdersService },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: StockAvailabilityService,

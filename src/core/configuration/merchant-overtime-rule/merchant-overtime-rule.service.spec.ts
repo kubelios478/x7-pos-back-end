@@ -491,7 +491,6 @@ describe('MerchantOvertimeRuleService', () => {
 
   describe('Find One Merchant Overtime Rule', () => {
     it('should throw error for invalid ID (null)', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       await expect(
         service.findOne(null as any, mockMerchantAdminUser),
       ).rejects.toThrow();

@@ -55,7 +55,9 @@ export class ProductResponseDto {
   isActive: boolean;
 
   @ApiProperty({
-    example: [{ id: 1, name: 'Normal', price: 10.99, sku: 'VAR-01', isActive: true }],
+    example: [
+      { id: 1, name: 'Normal', price: 10.99, sku: 'VAR-01', isActive: true },
+    ],
     description: 'Product variants',
     required: false,
     nullable: true,
@@ -63,7 +65,7 @@ export class ProductResponseDto {
   variants?: any[] | null;
 
   @ApiProperty({
-    example: [{ id: 1, name: 'Extra Cheese', priceDelta: 1.50, isActive: true }],
+    example: [{ id: 1, name: 'Extra Cheese', priceDelta: 1.5, isActive: true }],
     description: 'Product modifiers',
     required: false,
     nullable: true,
@@ -78,7 +80,11 @@ export class ProductLittleResponseDto {
   @ApiProperty({ example: 'Phone', description: 'Product name' })
   name: string;
 
-  @ApiProperty({ example: 'PROD-001', description: 'Product SKU', required: false })
+  @ApiProperty({
+    example: 'PROD-001',
+    description: 'Product SKU',
+    required: false,
+  })
   sku?: string;
 }
 

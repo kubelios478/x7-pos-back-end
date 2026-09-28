@@ -203,7 +203,9 @@ export class CompaniesService {
           configurationLabel: this.getConfigurationLabel(configurationType),
           status: configuration.status,
           merchantId: configuration.merchant_id,
-          merchantName: configuration.merchant?.name ?? `Branch ${configuration.merchant_id}`,
+          merchantName:
+            configuration.merchant?.name ??
+            `Branch ${configuration.merchant_id}`,
           updatedAt: this.formatConfigurationDate(configuration.updatedAt),
         };
       },
@@ -349,14 +351,17 @@ export class CompaniesService {
       ErrorHandler.notFound(ErrorMessage.COMPANY_NOT_FOUND);
     }
 
-    const [activeMerchantBranches, globalCorporateCustomers, authorizedMasterSuppliers] =
-      await Promise.all([
-        this.merchantRepo.count({
-          where: { companyId, status: MerchantStatus.ACTIVE },
-        }),
-        this.customerRepo.count({ where: { companyId } }),
-        this.supplierRepo.count({ where: { company_id: companyId } }),
-      ]);
+    const [
+      activeMerchantBranches,
+      globalCorporateCustomers,
+      authorizedMasterSuppliers,
+    ] = await Promise.all([
+      this.merchantRepo.count({
+        where: { companyId, status: MerchantStatus.ACTIVE },
+      }),
+      this.customerRepo.count({ where: { companyId } }),
+      this.supplierRepo.count({ where: { company_id: companyId } }),
+    ]);
 
     return {
       id: company.id,

@@ -92,7 +92,7 @@ describe('LocationsService', () => {
         LocationsService,
         { provide: getRepositoryToken(Location), useValue: mockLocationRepo },
         { provide: getRepositoryToken(Merchant), useValue: mockMerchantRepo },
-      
+
         {
           // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
           // de pruebas no compilaba y la suite entera contaba como fallo.
@@ -110,7 +110,7 @@ describe('LocationsService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: getRepositoryToken(Variant),

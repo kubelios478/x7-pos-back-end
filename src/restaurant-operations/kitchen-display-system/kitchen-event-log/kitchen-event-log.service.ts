@@ -200,11 +200,13 @@ export class KitchenEventLogService {
       .createQueryBuilder('kitchenEventLog')
       .leftJoinAndSelect('kitchenEventLog.kitchenOrder', 'kitchenOrder')
       .leftJoinAndSelect('kitchenEventLog.kitchenOrderItem', 'kitchenOrderItem')
+      .leftJoinAndSelect('kitchenOrderItem.product', 'product')
+      .leftJoinAndSelect('kitchenOrderItem.variant', 'variant')
       .leftJoinAndSelect('kitchenEventLog.station', 'station')
       .leftJoinAndSelect('kitchenEventLog.user', 'user')
       .leftJoin('kitchenOrder.merchant', 'merchant')
       .where(
-        '(kitchenOrder.merchant_id = :merchantId OR kitchenEventLog.kitchen_order_id IS NULL)',
+        '(kitchenOrder.merchant_id = :merchantId OR (kitchenEventLog.kitchen_order_id IS NULL AND (station.merchant_id = :merchantId OR station.id IS NULL)))',
         { merchantId: authenticatedUserMerchantId },
       )
       .andWhere('kitchenEventLog.status != :deletedStatus', {
@@ -237,7 +239,17 @@ export class KitchenEventLogService {
       });
     }
 
-    if (query.eventType) {
+    if (query.eventTypes) {
+      const types = query.eventTypes
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
+      if (types.length > 0) {
+        queryBuilder.andWhere('kitchenEventLog.event_type IN (:...types)', {
+          types,
+        });
+      }
+    } else if (query.eventType) {
       queryBuilder.andWhere('kitchenEventLog.event_type = :eventType', {
         eventType: query.eventType,
       });
@@ -247,6 +259,31 @@ export class KitchenEventLogService {
       queryBuilder.andWhere('kitchenEventLog.status = :status', {
         status: query.status,
       });
+    }
+
+    if (query.startTime) {
+      const sTime = new Date(query.startTime);
+      if (!isNaN(sTime.getTime())) {
+        queryBuilder.andWhere('kitchenEventLog.event_time >= :sTime', {
+          sTime,
+        });
+      }
+    }
+
+    if (query.endTime) {
+      const eTime = new Date(query.endTime);
+      if (!isNaN(eTime.getTime())) {
+        queryBuilder.andWhere('kitchenEventLog.event_time <= :eTime', {
+          eTime,
+        });
+      }
+    }
+
+    if (query.searchId) {
+      queryBuilder.andWhere(
+        '(kitchenEventLog.id = :searchId OR kitchenEventLog.kitchen_order_id = :searchId OR kitchenEventLog.kitchen_order_item_id = :searchId)',
+        { searchId: query.searchId },
+      );
     }
 
     if (query.eventDate) {
@@ -335,6 +372,8 @@ export class KitchenEventLogService {
       .createQueryBuilder('kitchenEventLog')
       .leftJoinAndSelect('kitchenEventLog.kitchenOrder', 'kitchenOrder')
       .leftJoinAndSelect('kitchenEventLog.kitchenOrderItem', 'kitchenOrderItem')
+      .leftJoinAndSelect('kitchenOrderItem.product', 'product')
+      .leftJoinAndSelect('kitchenOrderItem.variant', 'variant')
       .leftJoinAndSelect('kitchenEventLog.station', 'station')
       .leftJoinAndSelect('kitchenEventLog.user', 'user')
       .leftJoin('kitchenOrder.merchant', 'merchant')
@@ -594,11 +633,20 @@ export class KitchenEventLogService {
       kitchenOrder: kitchenEventLog.kitchenOrder
         ? {
             id: kitchenEventLog.kitchenOrder.id,
+            businessStatus: kitchenEventLog.kitchenOrder.business_status,
+            priority: kitchenEventLog.kitchenOrder.priority,
+            notes: kitchenEventLog.kitchenOrder.notes || null,
+            orderId: kitchenEventLog.kitchenOrder.order_id || null,
           }
         : null,
       kitchenOrderItem: kitchenEventLog.kitchenOrderItem
         ? {
             id: kitchenEventLog.kitchenOrderItem.id,
+            quantity: kitchenEventLog.kitchenOrderItem.quantity,
+            preparedQuantity: kitchenEventLog.kitchenOrderItem.prepared_quantity,
+            preparationStatus: kitchenEventLog.kitchenOrderItem.preparation_status,
+            productName: kitchenEventLog.kitchenOrderItem.product?.name || null,
+            variantName: kitchenEventLog.kitchenOrderItem.variant?.name || null,
           }
         : null,
       station: kitchenEventLog.station
@@ -611,6 +659,7 @@ export class KitchenEventLogService {
         ? {
             id: kitchenEventLog.user.id,
             email: kitchenEventLog.user.email,
+            username: kitchenEventLog.user.username || null,
           }
         : null,
     };

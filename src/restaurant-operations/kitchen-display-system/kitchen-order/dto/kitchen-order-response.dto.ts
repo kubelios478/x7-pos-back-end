@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SuccessResponse } from '../../../../common/dtos/success-response.dto';
 import { KitchenOrderStatus } from '../constants/kitchen-order-status.enum';
 import { KitchenOrderBusinessStatus } from '../constants/kitchen-order-business-status.enum';
+import { KitchenCancellationReason } from '../constants/kitchen-order-cancellation-reason.dto';
 import { KitchenOrderItemResponseDto } from '../../kitchen-order-item/dto/kitchen-order-item-response.dto';
 
 export class BasicMerchantInfoDto {
@@ -94,6 +95,28 @@ export class KitchenOrderNestedInOrderDto {
     nullable: true,
   })
   completedAt: Date | null;
+
+  @ApiPropertyOptional({
+    example: '2024-01-15T09:15:00Z',
+    description: 'Timestamp when the order was cancelled',
+    nullable: true,
+  })
+  cancelledAt?: Date | null;
+
+  @ApiPropertyOptional({
+    example: KitchenCancellationReason.OUT_OF_STOCK,
+    enum: KitchenCancellationReason,
+    description: 'Reason for cancellation',
+    nullable: true,
+  })
+  cancellationReason?: KitchenCancellationReason | null;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'User ID who cancelled the order',
+    nullable: true,
+  })
+  cancelledByUserId?: number | null;
 
   @ApiProperty({
     example: 'Extra sauce on the side',
@@ -299,6 +322,28 @@ export class KitchenOrderResponseDto {
     nullable: true,
   })
   completedAt: Date | null;
+
+  @ApiProperty({
+    example: '2024-01-15T09:15:00Z',
+    description: 'Timestamp when the order was cancelled',
+    nullable: true,
+  })
+  cancelledAt: Date | null;
+
+  @ApiProperty({
+    example: KitchenCancellationReason.OUT_OF_STOCK,
+    enum: KitchenCancellationReason,
+    description: 'Reason for cancellation',
+    nullable: true,
+  })
+  cancellationReason: KitchenCancellationReason | null;
+
+  @ApiProperty({
+    example: 1,
+    description: 'User ID who cancelled the order',
+    nullable: true,
+  })
+  cancelledByUserId: number | null;
 
   @ApiProperty({
     example: 'Extra sauce on the side',

@@ -379,10 +379,12 @@ export class TipsService {
   }
 
   private async updateOrderTipTotal(orderId: number): Promise<void> {
-    const order = await this.orderRepository.findOne({ where: { id: orderId } });
+    const order = await this.orderRepository.findOne({
+      where: { id: orderId },
+    });
     if (order) {
       const allTips = await this.tipRepository.find({
-        where: { order_id: orderId, record_status: TipRecordStatus.ACTIVE }
+        where: { order_id: orderId, record_status: TipRecordStatus.ACTIVE },
       });
       const sum = allTips.reduce((acc, t) => acc + Number(t.amount), 0);
       order.tip_total = sum;

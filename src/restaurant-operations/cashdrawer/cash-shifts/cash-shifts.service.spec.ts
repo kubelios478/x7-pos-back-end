@@ -202,7 +202,11 @@ describe('CashShiftsService', () => {
         where: { user_id: 1, merchant_id: 10 },
       });
       expect(cashShiftRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ openedBy: 5, cashDrawerId: 1, openingBalance: 100 }),
+        expect.objectContaining({
+          openedBy: 5,
+          cashDrawerId: 1,
+          openingBalance: 100,
+        }),
       );
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Cash shift opened successfully');
@@ -238,13 +242,19 @@ describe('CashShiftsService', () => {
       jest
         .spyOn(collaboratorRepo, 'findOne')
         .mockResolvedValue(mockCollaborator as any);
-      jest
-        .spyOn(cashDrawerRepo, 'findOne')
-        .mockResolvedValue({ id: 1, merchant_id: 10, status: CashDrawerStatus.OPEN } as any);
+      jest.spyOn(cashDrawerRepo, 'findOne').mockResolvedValue({
+        id: 1,
+        merchant_id: 10,
+        status: CashDrawerStatus.OPEN,
+      } as any);
       jest
         .spyOn(cashShiftRepo, 'findOne')
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: 99, status: CashShiftStatus.OPEN, openedByCollaborator: mockCollaborator } as any);
+        .mockResolvedValueOnce({
+          id: 99,
+          status: CashShiftStatus.OPEN,
+          openedByCollaborator: mockCollaborator,
+        } as any);
 
       const result = await service.openShift(createDto, activeUser);
       expect(result.statusCode).toBe(201);
@@ -322,7 +332,10 @@ describe('CashShiftsService', () => {
         where: { user_id: 1, merchant_id: 10 },
       });
       expect(cashShiftRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ closedBy: 5, status: CashShiftStatus.CLOSED }),
+        expect.objectContaining({
+          closedBy: 5,
+          status: CashShiftStatus.CLOSED,
+        }),
       );
       expect(result.statusCode).toBe(200);
       expect(result.data.systemAmount).toBe(120);

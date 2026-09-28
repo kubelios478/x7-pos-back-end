@@ -15,7 +15,9 @@ export class SupplySupplier {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Supply, (supply) => supply.suppliers, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Supply, (supply) => supply.suppliers, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'supply_id' })
   supply: Supply;
 

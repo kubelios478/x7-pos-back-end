@@ -1,10 +1,5 @@
 //src/subscriptions/subscription-plan/entity/subscription-plan.entity.ts
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SubscriptionPlanDisplayFeature } from './subscription-plan-display-feature.entity';
 

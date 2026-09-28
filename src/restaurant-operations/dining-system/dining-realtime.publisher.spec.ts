@@ -4,8 +4,10 @@ import type { RealtimeEventBusService } from 'src/realtime/realtime-event-bus.se
 
 describe('DiningRealtimePublisher', () => {
   const makeBus = () =>
-    ({ emitToRoom: jest.fn(), emitToAll: jest.fn() }) as unknown as
-      RealtimeEventBusService & { emitToRoom: jest.Mock };
+    ({
+      emitToRoom: jest.fn(),
+      emitToAll: jest.fn(),
+    }) as unknown as RealtimeEventBusService & { emitToRoom: jest.Mock };
 
   it('emite a la sala del comercio, no a la de la compañía', () => {
     const bus = makeBus();

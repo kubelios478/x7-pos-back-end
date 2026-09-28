@@ -13,7 +13,10 @@ import { CashMovementType } from '../constants/cash-movement-type.enum';
 
 @Entity('cash_movements')
 export class CashMovement {
-  @ApiProperty({ example: 1, description: 'Unique identifier of the Cash Movement' })
+  @ApiProperty({
+    example: 1,
+    description: 'Unique identifier of the Cash Movement',
+  })
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -25,15 +28,24 @@ export class CashMovement {
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   amount: number;
 
-  @ApiProperty({ example: 'Meat Supplier', description: 'Reason for the expense' })
+  @ApiProperty({
+    example: 'Meat Supplier',
+    description: 'Reason for the expense',
+  })
   @Column({ type: 'text' })
   reason: string;
 
-  @ApiPropertyOptional({ example: 'https://receipt-photos/photo.jpg', description: 'Photo of the receipt' })
+  @ApiPropertyOptional({
+    example: 'https://receipt-photos/photo.jpg',
+    description: 'Photo of the receipt',
+  })
   @Column({ type: 'varchar', name: 'receipt_photo', nullable: true })
   receiptPhoto: string | null;
 
-  @ApiProperty({ example: 3, description: 'User ID of the user who recorded the expense' })
+  @ApiProperty({
+    example: 3,
+    description: 'User ID of the user who recorded the expense',
+  })
   @Column({ type: 'int', name: 'user_id' })
   userId: number;
 

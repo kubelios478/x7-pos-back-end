@@ -133,12 +133,23 @@ export class Movement {
   @JoinColumn({ name: 'destination_location_id' })
   destinationLocation: Location | null;
 
-  @ApiPropertyOptional({ example: 'Admin', description: 'User who created the movement' })
+  @ApiPropertyOptional({
+    example: 'Admin',
+    description: 'User who created the movement',
+  })
   @Column({ type: 'varchar', length: 255, name: 'created_by', nullable: true })
   createdBy: string | null;
 
-  @ApiPropertyOptional({ example: 'TRANSFER', description: 'Raw material stock movement type' })
-  @Column({ type: 'varchar', length: 50, name: 'movement_type', nullable: true })
+  @ApiPropertyOptional({
+    example: 'TRANSFER',
+    description: 'Raw material stock movement type',
+  })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'movement_type',
+    nullable: true,
+  })
   movementType: string | null;
 
   @ApiPropertyOptional({

@@ -33,6 +33,15 @@ export class GetKitchenDisplayDeviceQueryDto {
   stationId?: number;
 
   @ApiPropertyOptional({
+    example: true,
+    description: 'Filter devices that are unassigned to any kitchen station',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  unassigned?: boolean;
+
+  @ApiPropertyOptional({
     example: 'Kitchen Display 1',
     description: 'Filter by device name (partial match)',
   })

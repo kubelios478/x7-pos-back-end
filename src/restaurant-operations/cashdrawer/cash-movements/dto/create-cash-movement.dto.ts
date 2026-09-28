@@ -18,7 +18,8 @@ export class CreateCashMovementDto {
   amount: number;
 
   @ApiProperty({
-    description: 'Reason or description for the expense (e.g. Cleaning, Supplier)',
+    description:
+      'Reason or description for the expense (e.g. Cleaning, Supplier)',
     example: 'Branch office cleaning payment',
   })
   @IsString()

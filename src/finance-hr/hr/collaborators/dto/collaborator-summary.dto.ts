@@ -65,7 +65,8 @@ export class CollaboratorSummaryDto {
 
   @ApiProperty({
     isArray: true,
-    description: 'Most recent cash drawer sessions in this collaborator custody (up to 5)',
+    description:
+      'Most recent cash drawer sessions in this collaborator custody (up to 5)',
   })
   // La entidad CashDrawer no guarda marcas propias de apertura y cierre: sólo created_at /
   // updated_at. Se exponen tal cual en vez de disfrazarlas de openedAt/closedAt, que sería

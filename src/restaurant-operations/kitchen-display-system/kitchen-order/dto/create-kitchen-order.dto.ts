@@ -7,8 +7,46 @@ import {
   Min,
   MaxLength,
   IsBoolean,
+  IsArray,
+  ValidateNested,
+  IsInt,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { KitchenOrderBusinessStatus } from '../constants/kitchen-order-business-status.enum';
+
+export class CreateKitchenOrderItemInlineDto {
+  @ApiPropertyOptional({ example: 1, nullable: true })
+  @IsOptional()
+  @IsNumber({}, { message: 'Product ID must be a number' })
+  productId?: number | null;
+
+  @ApiPropertyOptional({ example: 'Pizza Margherita', nullable: true })
+  @IsOptional()
+  @IsString({ message: 'Product name must be a string' })
+  productName?: string | null;
+
+  @ApiPropertyOptional({ example: 1, nullable: true })
+  @IsOptional()
+  @IsNumber({}, { message: 'Variant ID must be a number' })
+  variantId?: number | null;
+
+  @ApiPropertyOptional({ example: 'Familiar 16"', nullable: true })
+  @IsOptional()
+  @IsString({ message: 'Variant name must be a string' })
+  variantName?: string | null;
+
+  @ApiPropertyOptional({ example: 1, default: 1 })
+  @IsOptional()
+  @IsInt({ message: 'Quantity must be an integer' })
+  @Min(1, { message: 'Quantity must be greater than or equal to 1' })
+  quantity?: number;
+
+  @ApiPropertyOptional({ example: 'Extra sauce', nullable: true })
+  @IsOptional()
+  @IsString({ message: 'Notes must be a string' })
+  @MaxLength(5000, { message: 'Notes must not exceed 5000 characters' })
+  notes?: string | null;
+}
 
 export class CreateKitchenOrderDto {
   @ApiPropertyOptional({
@@ -104,4 +142,15 @@ export class CreateKitchenOrderDto {
   @IsOptional()
   @IsBoolean()
   skipAutoKitchenItems?: boolean;
+
+  @ApiPropertyOptional({
+    type: () => [CreateKitchenOrderItemInlineDto],
+    description: 'Inline items to include in the kitchen order directly',
+    required: false,
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateKitchenOrderItemInlineDto)
+  kitchenOrderItems?: CreateKitchenOrderItemInlineDto[];
 }

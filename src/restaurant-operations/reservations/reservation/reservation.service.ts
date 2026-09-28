@@ -35,9 +35,17 @@ export class ReservationService {
     private readonly tableRepository: Repository<Table>,
   ) {}
 
+  /**
+   * Alta de reserva.
+   *
+   * `createdByUserId` viene del JWT, NO del cuerpo: el DTO no expone `created_by` a propósito
+   * — aceptarlo del cliente permitiría firmar la reserva con el id de otro compañero, y el
+   * campo existe justamente para auditar quién la tomó.
+   */
   async create(
     merchantId: number,
     createReservationDto: CreateReservationDto,
+    createdByUserId?: number,
   ): Promise<OneReservationResponse> {
     const { table_ids, ...reservationData } = createReservationDto;
 
@@ -68,6 +76,15 @@ export class ReservationService {
         merchant_id: merchantId,
         reservation_date: new Date(createReservationDto.reservation_date),
         status: createReservationDto.status || ReservationStatus.PENDING,
+        created_by: createdByUserId,
+        // Una reserva que nace ya sentada (walk-in que se acomoda en el momento) sella su
+        // hora de llegada aquí; si no, la sella la transición a SEATED.
+        seated_at:
+          createReservationDto.status === ReservationStatus.SEATED
+            ? new Date(createReservationDto.seated_at ?? Date.now())
+            : createReservationDto.seated_at
+              ? new Date(createReservationDto.seated_at)
+              : undefined,
       });
 
       const savedReservation =
@@ -95,7 +112,7 @@ export class ReservationService {
         this.statusHistoryRepository.create({
           reservation_id: savedReservation.id,
           status: savedReservation.status,
-          changed_by: createReservationDto['created_by'],
+          changed_by: createdByUserId,
         }),
       );
 
@@ -113,6 +130,8 @@ export class ReservationService {
       page = 1,
       limit = 10,
       date,
+      date_from,
+      date_to,
       customer_id,
       status,
       guest_name,
@@ -128,10 +147,17 @@ export class ReservationService {
       .where('reservation.merchant_id = :merchantId', { merchantId })
       .andWhere('reservation.is_active = :isActive', { isActive: true });
 
-    if (date) {
-      queryBuilder.andWhere('DATE(reservation.reservation_date) = :date', {
-        date,
-      });
+    // Rango semiabierto [inicio, fin) en vez de `DATE(reservation_date) = :date`: envolver la
+    // columna en una función la vuelve NO sargable, así que Postgres descartaba el índice
+    // compuesto @Index(['merchant_id','reservation_date']) y resolvía el calendario con un
+    // seq scan sobre toda la tabla de reservas. Comparando la columna desnuda contra dos
+    // instantes, el índice se usa tal cual.
+    const range = this.resolveDateRange(date, date_from, date_to);
+    if (range) {
+      queryBuilder.andWhere(
+        'reservation.reservation_date >= :rangeStart AND reservation.reservation_date < :rangeEnd',
+        { rangeStart: range.start, rangeEnd: range.end },
+      );
     }
 
     if (customer_id) {
@@ -211,6 +237,7 @@ export class ReservationService {
     id: number,
     merchantId: number,
     updateReservationDto: UpdateReservationDto,
+    changedByUserId?: number,
   ): Promise<OneReservationResponse> {
     const reservation = await this.reservationRepository.findOneBy({
       id,
@@ -255,12 +282,33 @@ export class ReservationService {
     }
 
     const oldStatus = reservation.status;
+
+    // Guarda del ciclo de vida: un salto que no esté en el grafo (de CANCELLED a COMPLETED,
+    // por ejemplo) deja el histórico en un estado imposible, así que se rechaza aquí y no
+    // sólo en la UI — el endpoint es público para cualquier cliente del POS.
+    if (
+      updateReservationDto.status &&
+      updateReservationDto.status !== oldStatus
+    ) {
+      this.assertLegalTransition(oldStatus, updateReservationDto.status);
+    }
+
     Object.assign(reservation, updateReservationDto);
 
     if (updateReservationDto.reservation_date) {
       reservation.reservation_date = new Date(
         updateReservationDto.reservation_date,
       );
+    }
+
+    // Sello automático de llegada: entrar en SEATED fija seated_at = NOW(). No se reescribe si
+    // la reserva ya lo traía — la primera marca es la hora real a la que el grupo se sentó.
+    if (
+      updateReservationDto.status === ReservationStatus.SEATED &&
+      oldStatus !== ReservationStatus.SEATED &&
+      !reservation.seated_at
+    ) {
+      reservation.seated_at = new Date();
     }
 
     try {
@@ -274,6 +322,7 @@ export class ReservationService {
           this.statusHistoryRepository.create({
             reservation_id: id,
             status: updateReservationDto.status,
+            changed_by: changedByUserId,
           }),
         );
       }
@@ -360,6 +409,88 @@ export class ReservationService {
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
+  }
+
+  /**
+   * Grafo de transiciones legales del ciclo de vida de una reserva.
+   *
+   * Lo que no aparece aquí es un salto ilegal. COMPLETED, CANCELLED y NO_SHOW son terminales:
+   * una reserva anulada no puede "terminar de cenar", y una ausencia no se convierte en un
+   * servicio. SEATED sólo avanza a COMPLETED, porque anular una mesa que ya está comiendo no
+   * es una operación de sala (para eso está cerrar la comanda).
+   */
+  private static readonly ALLOWED_TRANSITIONS: Record<
+    ReservationStatus,
+    ReservationStatus[]
+  > = {
+    [ReservationStatus.PENDING]: [
+      ReservationStatus.CONFIRMED,
+      ReservationStatus.SEATED,
+      ReservationStatus.CANCELLED,
+      ReservationStatus.NO_SHOW,
+      ReservationStatus.WAIT_LIST,
+    ],
+    [ReservationStatus.CONFIRMED]: [
+      ReservationStatus.SEATED,
+      ReservationStatus.CANCELLED,
+      ReservationStatus.NO_SHOW,
+    ],
+    [ReservationStatus.SEATED]: [ReservationStatus.COMPLETED],
+    [ReservationStatus.COMPLETED]: [],
+    [ReservationStatus.CANCELLED]: [],
+    [ReservationStatus.NO_SHOW]: [],
+    [ReservationStatus.WAIT_LIST]: [
+      ReservationStatus.PENDING,
+      ReservationStatus.CONFIRMED,
+      ReservationStatus.CANCELLED,
+      ReservationStatus.NO_SHOW,
+    ],
+  };
+
+  private assertLegalTransition(
+    from: ReservationStatus,
+    to: ReservationStatus,
+  ): void {
+    const allowed = ReservationService.ALLOWED_TRANSITIONS[from] ?? [];
+    if (!allowed.includes(to)) {
+      ErrorHandler.badRequest(
+        `Illegal reservation lifecycle transition: '${from}' cannot become '${to}'.` +
+          (allowed.length
+            ? ` Allowed from '${from}': ${allowed.join(', ')}.`
+            : ` '${from}' is a terminal state.`),
+      );
+    }
+  }
+
+  /**
+   * Traduce los filtros de fecha a un rango semiabierto [inicio, fin).
+   *
+   * `date` es un día de calendario LOCAL del servidor (el reloj del local), no un día UTC:
+   * partir el servicio por el meridiano de Greenwich movería las cenas tardías al día
+   * siguiente. `date_from`/`date_to` mandan sobre `date` cuando vienen, que es como pide el
+   * rango la vista de semana/mes.
+   */
+  private resolveDateRange(
+    date?: string,
+    dateFrom?: string,
+    dateTo?: string,
+  ): { start: Date; end: Date } | null {
+    if (dateFrom || dateTo) {
+      const start = dateFrom ? new Date(dateFrom) : new Date(0);
+      // Sin cierre explícito el rango queda abierto hacia adelante (reservas futuras).
+      const end = dateTo ? new Date(dateTo) : new Date(8640000000000000);
+      return { start, end };
+    }
+
+    if (!date) return null;
+
+    const [year, month, day] = date.split('-').map(Number);
+    if (!year || !month || !day) return null;
+
+    return {
+      start: new Date(year, month - 1, day, 0, 0, 0, 0),
+      end: new Date(year, month - 1, day + 1, 0, 0, 0, 0),
+    };
   }
 
   private async checkTableAvailability(

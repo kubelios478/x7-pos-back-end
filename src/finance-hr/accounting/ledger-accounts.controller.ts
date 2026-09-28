@@ -102,7 +102,7 @@ export interface LedgerAccountDto {
   parent_account_id: number | null;
 }
 
-let MOCK_LEDGER_ACCOUNTS: LedgerAccountDto[] = [
+const MOCK_LEDGER_ACCOUNTS: LedgerAccountDto[] = [
   {
     id: 1,
     code: '1000',

@@ -27,9 +27,7 @@ export class MerchantProfileDto {
   @ApiPropertyOptional({ example: '+1 (555) 000-0000' })
   @ValidateIf(
     (dto: MerchantProfileDto) =>
-      dto.phone !== undefined &&
-      dto.phone !== null &&
-      dto.phone.trim() !== '',
+      dto.phone !== undefined && dto.phone !== null && dto.phone.trim() !== '',
   )
   @IsString()
   @Matches(/^\+?[\d\s().-]{7,20}$/, {

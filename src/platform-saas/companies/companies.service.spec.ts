@@ -343,9 +343,9 @@ describe('CompaniesService', () => {
         id: 10,
         companyId: 1,
       } as Merchant);
-      jest.spyOn(companyRepository, 'findOne').mockResolvedValue(
-        mockCompany as Company,
-      );
+      jest
+        .spyOn(companyRepository, 'findOne')
+        .mockResolvedValue(mockCompany as Company);
       jest.spyOn(merchantRepository, 'count').mockResolvedValue(3);
       jest.spyOn(customerRepository, 'count').mockResolvedValue(12);
       jest.spyOn(supplierRepository, 'count').mockResolvedValue(4);
@@ -382,9 +382,9 @@ describe('CompaniesService', () => {
         .spyOn(companyRepository, 'findOne')
         .mockResolvedValueOnce(mockCompany as Company)
         .mockResolvedValueOnce(updatedCompany as Company);
-      jest.spyOn(companyRepository, 'save').mockResolvedValue(
-        updatedCompany as Company,
-      );
+      jest
+        .spyOn(companyRepository, 'save')
+        .mockResolvedValue(updatedCompany as Company);
       jest.spyOn(merchantRepository, 'count').mockResolvedValue(1);
       jest.spyOn(customerRepository, 'count').mockResolvedValue(0);
       jest.spyOn(supplierRepository, 'count').mockResolvedValue(0);
@@ -440,9 +440,7 @@ describe('CompaniesService', () => {
         companyId: 1,
       } as Merchant);
 
-      await expect(
-        service.findOne(99, mockMerchantAdmin),
-      ).rejects.toThrow();
+      await expect(service.findOne(99, mockMerchantAdmin)).rejects.toThrow();
     });
   });
 

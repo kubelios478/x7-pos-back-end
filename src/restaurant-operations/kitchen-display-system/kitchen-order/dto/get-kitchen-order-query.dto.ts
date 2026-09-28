@@ -9,6 +9,7 @@ import {
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { KitchenOrderBusinessStatus } from '../constants/kitchen-order-business-status.enum';
+import { KitchenCancellationReason } from '../constants/kitchen-order-cancellation-reason.dto';
 
 export enum KitchenOrderSortBy {
   ID = 'id',
@@ -77,6 +78,31 @@ export class GetKitchenOrderQueryDto {
   @IsOptional()
   @IsString()
   createdDate?: string;
+
+  @ApiPropertyOptional({
+    example: '2024-01-01',
+    description: 'Filter orders created on or after this date (YYYY-MM-DD)',
+  })
+  @IsOptional()
+  @IsString()
+  startDate?: string;
+
+  @ApiPropertyOptional({
+    example: '2024-01-31',
+    description: 'Filter orders created on or before this date (YYYY-MM-DD)',
+  })
+  @IsOptional()
+  @IsString()
+  endDate?: string;
+
+  @ApiPropertyOptional({
+    example: KitchenCancellationReason.OUT_OF_STOCK,
+    enum: KitchenCancellationReason,
+    description: 'Filter by cancellation reason',
+  })
+  @IsOptional()
+  @IsEnum(KitchenCancellationReason)
+  cancellationReason?: KitchenCancellationReason;
 
   @ApiPropertyOptional({
     example: 1,

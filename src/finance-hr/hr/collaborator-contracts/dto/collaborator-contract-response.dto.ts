@@ -28,7 +28,8 @@ export class CollaboratorContractResponseDto {
 
   @ApiProperty({
     example: 22.5,
-    description: 'Agreed wage for one pay period, already resolved from the payroll fields',
+    description:
+      'Agreed wage for one pay period, already resolved from the payroll fields',
   })
   wage_rate: number;
 

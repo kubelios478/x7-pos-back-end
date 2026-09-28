@@ -20,7 +20,11 @@ describe('TableGroupReleaseListener', () => {
     } as unknown as TablesService & { releaseJoinedGroup: jest.Mock };
 
     return {
-      listener: new TableGroupReleaseListener(orderRepo, tableRepo, tablesService),
+      listener: new TableGroupReleaseListener(
+        orderRepo,
+        tableRepo,
+        tablesService,
+      ),
       tablesService,
     };
   };
@@ -50,7 +54,10 @@ describe('TableGroupReleaseListener', () => {
   });
 
   it('una comanda sin mesa (mostrador, delivery) no toca ninguna sala', async () => {
-    const { listener, tablesService } = build({ id: 120, table_id: null }, null);
+    const { listener, tablesService } = build(
+      { id: 120, table_id: null },
+      null,
+    );
 
     listener.handleOrderFullyPaid({ orderId: 120 });
     await flush();

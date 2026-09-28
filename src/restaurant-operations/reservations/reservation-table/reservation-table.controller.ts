@@ -31,6 +31,7 @@ import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interf
 import { OneReservationTableResponse } from './dto/reservation-table-response.dto';
 import { AllPaginatedReservationTables } from './dto/all-paginated-reservation-tables.dto';
 import { GetReservationTablesQueryDto } from './dto/get-reservation-tables-query.dto';
+import { BulkAssignReservationTablesDto } from './dto/bulk-assign-reservation-tables.dto';
 
 @ApiTags('Restaurant operations - Reservations - Tables')
 @ApiBearerAuth()
@@ -54,6 +55,24 @@ export class ReservationTableController {
       createReservationTableDto,
       user.merchant.id,
     );
+  }
+
+  @Post('bulk')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
+  @ApiOperation({
+    summary: 'Assign several tables to one reservation in a single transaction',
+  })
+  @ApiResponse({ status: 201, type: AllPaginatedReservationTables })
+  @ApiResponse({
+    status: 409,
+    description: 'One of the tables is already booked during the time window',
+  })
+  createBulk(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: BulkAssignReservationTablesDto,
+  ): Promise<AllPaginatedReservationTables> {
+    return this.reservationTableService.createBulk(dto, user.merchant.id);
   }
 
   @Get()
@@ -118,7 +137,7 @@ export class ReservationTableController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({ summary: 'Remove a table assignment by ID' })
   @ApiResponse({ status: 200, type: OneReservationTableResponse })
@@ -130,7 +149,7 @@ export class ReservationTableController {
   }
 
   @Delete(':reservationId/:tableId')
-  @Roles(UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({ summary: 'Remove a table assignment from a reservation' })
   @ApiResponse({ status: 200, type: OneReservationTableResponse })

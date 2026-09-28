@@ -12,7 +12,14 @@ import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collabora
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Merchant, Company, Location, User, Table, Collaborator]),
+    TypeOrmModule.forFeature([
+      Merchant,
+      Company,
+      Location,
+      User,
+      Table,
+      Collaborator,
+    ]),
   ],
   controllers: [MerchantsController],
   providers: [MerchantsService],

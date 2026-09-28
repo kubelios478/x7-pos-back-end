@@ -443,9 +443,16 @@ describe('PlanApplicationsService', () => {
     });
 
     it('includes application.category in the mapped response', async () => {
-      const result = await service.findAll({ subscriptionPlanId: 3, page: 1, limit: 10 });
+      const result = await service.findAll({
+        subscriptionPlanId: 3,
+        page: 1,
+        limit: 10,
+      });
       expect(result.data[0]).toHaveProperty('application');
-      expect((result.data[0] as any).application).toHaveProperty('category', 'POS Core');
+      expect((result.data[0] as any).application).toHaveProperty(
+        'category',
+        'POS Core',
+      );
     });
   });
 });

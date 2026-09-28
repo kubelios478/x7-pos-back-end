@@ -18,4 +18,4 @@ import { MailModule } from '../../../mail/mail.module';
   providers: [CashMovementsService],
   exports: [CashMovementsService],
 })
-export class CashMovementsModule { }
+export class CashMovementsModule {}

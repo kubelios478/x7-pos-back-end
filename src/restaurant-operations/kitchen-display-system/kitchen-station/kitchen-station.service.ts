@@ -62,7 +62,9 @@ export class KitchenStationService {
     }
 
     // Business rule validation: name must not be empty
-    const trimmedName = createKitchenStationDto.name ? createKitchenStationDto.name.trim() : '';
+    const trimmedName = createKitchenStationDto.name
+      ? createKitchenStationDto.name.trim()
+      : '';
     if (!trimmedName) {
       throw new BadRequestException('Name cannot be empty');
     }
@@ -74,7 +76,9 @@ export class KitchenStationService {
     // Unique Name Constraint per Merchant
     const duplicate = await this.kitchenStationRepository
       .createQueryBuilder('ks')
-      .where('ks.merchant_id = :merchantId', { merchantId: authenticatedUserMerchantId })
+      .where('ks.merchant_id = :merchantId', {
+        merchantId: authenticatedUserMerchantId,
+      })
       .andWhere('LOWER(ks.name) = LOWER(:name)', { name: trimmedName })
       .andWhere('ks.status = :status', { status: KitchenStationStatus.ACTIVE })
       .getOne();
@@ -96,7 +100,9 @@ export class KitchenStationService {
       .createQueryBuilder()
       .update(KitchenStation)
       .set({ display_order: () => 'display_order + 1' })
-      .where('merchant_id = :merchantId', { merchantId: authenticatedUserMerchantId })
+      .where('merchant_id = :merchantId', {
+        merchantId: authenticatedUserMerchantId,
+      })
       .andWhere('display_order >= :targetOrder', { targetOrder })
       .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
       .execute();
@@ -219,7 +225,7 @@ export class KitchenStationService {
     }
 
     // Execute query
-    let [kitchenStations, total] =
+    const [kitchenStations, total] =
       await this.kitchenStationRepository.findAndCount({
         where: whereConditions,
         relations: ['merchant'],
@@ -227,8 +233,6 @@ export class KitchenStationService {
         skip,
         take: limit,
       });
-
-
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / limit);
@@ -339,9 +343,13 @@ export class KitchenStationService {
       // Check unique name per merchant
       const duplicate = await this.kitchenStationRepository
         .createQueryBuilder('ks')
-        .where('ks.merchant_id = :merchantId', { merchantId: authenticatedUserMerchantId })
+        .where('ks.merchant_id = :merchantId', {
+          merchantId: authenticatedUserMerchantId,
+        })
         .andWhere('LOWER(ks.name) = LOWER(:name)', { name: trimmedName })
-        .andWhere('ks.status = :status', { status: KitchenStationStatus.ACTIVE })
+        .andWhere('ks.status = :status', {
+          status: KitchenStationStatus.ACTIVE,
+        })
         .andWhere('ks.id != :id', { id })
         .getOne();
 
@@ -363,7 +371,9 @@ export class KitchenStationService {
           .createQueryBuilder()
           .update(KitchenStation)
           .set({ display_order: () => 'display_order + 1' })
-          .where('merchant_id = :merchantId', { merchantId: authenticatedUserMerchantId })
+          .where('merchant_id = :merchantId', {
+            merchantId: authenticatedUserMerchantId,
+          })
           .andWhere('display_order >= :targetOrder', { targetOrder })
           .andWhere('id != :id', { id })
           .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })

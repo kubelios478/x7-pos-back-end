@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsDateString,
   IsOptional,
   IsString,
   IsNumber,
@@ -35,11 +36,32 @@ export class GetReservationsQueryDto {
 
   @ApiPropertyOptional({
     example: '2026-04-16',
-    description: 'Filter reservations by date (YYYY-MM-DD)',
+    description:
+      'Filter reservations by a single local calendar day (YYYY-MM-DD). Resolved as the ' +
+      'half-open range [date, date+1) so the query stays sargable on the ' +
+      '[merchant_id, reservation_date] composite index.',
   })
   @IsOptional()
   @IsString()
   date?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-04-16T00:00:00Z',
+    description:
+      'Start of an explicit booking window (inclusive). Used by the week/month calendar ' +
+      'views, which cannot be expressed with the single-day `date` filter.',
+  })
+  @IsOptional()
+  @IsDateString()
+  date_from?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-04-23T00:00:00Z',
+    description: 'End of an explicit booking window (exclusive).',
+  })
+  @IsOptional()
+  @IsDateString()
+  date_to?: string;
 
   @ApiPropertyOptional({
     example: 1,

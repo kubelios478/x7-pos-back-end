@@ -131,6 +131,27 @@ describe('ReservationService', () => {
       expect(mockGenericRepository.save).toHaveBeenCalled(); // History log
     });
 
+    it('should stamp created_by with the authenticated staff id', async () => {
+      mockQueryBuilder.getOne.mockResolvedValue(null);
+      mockGenericRepository.findBy.mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      const reservation = { id: 10, status: ReservationStatus.PENDING };
+      mockReservationRepository.create.mockReturnValue(reservation);
+      mockReservationRepository.save.mockResolvedValue(reservation);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: reservation } as any);
+
+      await service.create(merchantId, createDto, 7);
+
+      // Auditoría del alta: el id sale del token, no del cuerpo.
+      expect(mockReservationRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ created_by: 7 }),
+      );
+      expect(mockGenericRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ changed_by: 7 }),
+      );
+    });
+
     it('should fail when tables are already booked', async () => {
       mockQueryBuilder.getOne.mockResolvedValue({ id: 99 }); // Conflicting reservation
 
@@ -174,13 +195,41 @@ describe('ReservationService', () => {
 
       await service.findAll(query, 1);
 
+      // El día se compara como rango semiabierto contra la columna DESNUDA. Envolverla en
+      // DATE() la volvía no sargable y tiraba el índice [merchant_id, reservation_date].
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        expect.stringContaining('DATE(reservation.reservation_date) = :date'),
-        { date: query.date },
+        expect.stringContaining('reservation.reservation_date >= :rangeStart'),
+        {
+          rangeStart: new Date(2026, 3, 16, 0, 0, 0, 0),
+          rangeEnd: new Date(2026, 3, 17, 0, 0, 0, 0),
+        },
+      );
+      expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
+        expect.stringContaining('DATE(reservation.reservation_date)'),
+        expect.anything(),
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         expect.stringContaining('reservation.status = :status'),
         { status: query.status },
+      );
+    });
+
+    it('should filter by an explicit date range for week/month views', async () => {
+      const query = {
+        date_from: '2026-04-13T00:00:00.000Z',
+        date_to: '2026-04-20T00:00:00.000Z',
+      };
+      mockQueryBuilder.getMany.mockResolvedValue([]);
+      mockQueryBuilder.getCount.mockResolvedValue(0);
+
+      await service.findAll(query, 1);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        expect.stringContaining('reservation.reservation_date < :rangeEnd'),
+        {
+          rangeStart: new Date('2026-04-13T00:00:00.000Z'),
+          rangeEnd: new Date('2026-04-20T00:00:00.000Z'),
+        },
       );
     });
 
@@ -303,6 +352,81 @@ describe('ReservationService', () => {
       await service.update(1, 1, { status: ReservationStatus.CONFIRMED });
 
       expect(mockGenericRepository.save).toHaveBeenCalled(); // History log for status change
+    });
+
+    it('should stamp seated_at when the party is seated', async () => {
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.CONFIRMED,
+        seated_at: null,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: existing } as any);
+
+      await service.update(1, 1, { status: ReservationStatus.SEATED });
+
+      expect(mockReservationRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: ReservationStatus.SEATED,
+          seated_at: expect.any(Date),
+        }),
+      );
+    });
+
+    it('should not overwrite an existing seated_at', async () => {
+      const firstArrival = new Date('2026-04-16T19:05:00Z');
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.CONFIRMED,
+        seated_at: firstArrival,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: existing } as any);
+
+      await service.update(1, 1, { status: ReservationStatus.SEATED });
+
+      expect(mockReservationRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ seated_at: firstArrival }),
+      );
+    });
+
+    it('should reject an illegal lifecycle jump (cancelled -> completed)', async () => {
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.CANCELLED,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+
+      await expect(
+        service.update(1, 1, { status: ReservationStatus.COMPLETED }),
+      ).rejects.toThrow(/cannot become 'completed'/);
+
+      expect(mockReservationRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should record who changed the status', async () => {
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.PENDING,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: existing } as any);
+
+      await service.update(1, 1, { status: ReservationStatus.CONFIRMED }, 42);
+
+      expect(mockGenericRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ changed_by: 42 }),
+      );
     });
 
     it('should update party_size without checking availability', async () => {

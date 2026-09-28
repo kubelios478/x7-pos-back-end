@@ -7,7 +7,10 @@ export class TransferTableDto {
   @IsPositive()
   sourceTableId: number;
 
-  @ApiProperty({ example: 9, description: 'Available table the party moves to' })
+  @ApiProperty({
+    example: 9,
+    description: 'Available table the party moves to',
+  })
   @IsInt()
   @IsPositive()
   targetTableId: number;

@@ -18,6 +18,16 @@ export class GetReservationGuestsQueryDto {
   @Max(100)
   limit?: number = 10;
 
+  @ApiPropertyOptional({
+    example: 'carlos',
+    description:
+      'Global lookup across name, email and phone — the three identifiers a guest is ' +
+      'traced by at the host stand.',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ example: 1, description: 'Filter by reservation ID' })
   @IsOptional()
   @Type(() => Number)

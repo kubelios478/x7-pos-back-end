@@ -459,8 +459,8 @@ export class TablesService {
         location: table.location,
         rotation: table.rotation,
         shape: table.shape,
-      width: table.width ?? null,
-      height: table.height ?? null,
+        width: table.width ?? null,
+        height: table.height ?? null,
         pos_x: table.pos_x,
         pos_y: table.pos_y,
         merchant: {
@@ -859,7 +859,8 @@ export class TablesService {
     });
 
     for (const child of children) {
-      if (child.status === parent.status || child.status === 'deleted') continue;
+      if (child.status === parent.status || child.status === 'deleted')
+        continue;
       child.status = parent.status;
       await repo.save(child);
       this.realtime.tableStatusChanged({
@@ -1095,7 +1096,11 @@ export class TablesService {
   async statusDelta(
     query: StatusDeltaQueryDto,
     authenticatedUserMerchantId: number,
-  ): Promise<{ statusCode: number; message: string; data: TableResponseDto[] }> {
+  ): Promise<{
+    statusCode: number;
+    message: string;
+    data: TableResponseDto[];
+  }> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'User must be associated with a merchant to read table status',

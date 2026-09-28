@@ -165,7 +165,7 @@ describe('KitchenOrderService', () => {
           provide: KitchenOrderSyncService,
           useValue: mockKitchenOrderSyncService,
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: ProductsInventoryService,

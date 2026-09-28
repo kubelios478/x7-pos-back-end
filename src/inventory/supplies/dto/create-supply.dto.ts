@@ -39,13 +39,19 @@ export class CreateSupplyDto {
   @IsEnum(SupplyUnit)
   unit?: SupplyUnit;
 
-  @ApiPropertyOptional({ example: 'kg', description: 'Purchase unit (e.g. kg, liters, box)' })
+  @ApiPropertyOptional({
+    example: 'kg',
+    description: 'Purchase unit (e.g. kg, liters, box)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)
   purchase_unit?: string;
 
-  @ApiPropertyOptional({ example: 'g', description: 'Consumption unit (e.g. grams, ml, units)' })
+  @ApiPropertyOptional({
+    example: 'g',
+    description: 'Consumption unit (e.g. grams, ml, units)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(50)
@@ -79,7 +85,11 @@ export class CreateSupplyDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: true, default: true, description: 'Active status' })
+  @ApiPropertyOptional({
+    example: true,
+    default: true,
+    description: 'Active status',
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

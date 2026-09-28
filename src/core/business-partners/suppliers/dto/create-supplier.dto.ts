@@ -60,7 +60,11 @@ export class CreateSupplierDto {
   @IsOptional()
   address?: string;
 
-  @ApiProperty({ example: true, description: 'Whether the supplier is active', required: false })
+  @ApiProperty({
+    example: true,
+    description: 'Whether the supplier is active',
+    required: false,
+  })
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;

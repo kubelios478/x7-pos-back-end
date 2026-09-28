@@ -116,7 +116,7 @@ describe('CashDrawersService', () => {
           provide: getRepositoryToken(Collaborator),
           useValue: mockCollaboratorRepository,
         },
-      
+
         {
           // Estaba importado pero nunca registrado: Nest no podía instanciar el servicio.
           provide: CashDrawerHistoryService,

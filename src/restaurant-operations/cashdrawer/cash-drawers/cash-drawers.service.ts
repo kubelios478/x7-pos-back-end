@@ -400,7 +400,10 @@ export class CashDrawersService {
       );
     } catch (err) {
       // Log warning if history snapshot creation encounters an issue, but complete the drawer update
-      console.warn(`[CashDrawersService] Failed to persist history record for CD #${id}:`, err);
+      console.warn(
+        `[CashDrawersService] Failed to persist history record for CD #${id}:`,
+        err,
+      );
     }
 
     const updatedCashDrawer = await this.cashDrawerRepository.findOne({
@@ -523,8 +526,14 @@ export class CashDrawersService {
             endTime: cashDrawer.shift.endTime || new Date(),
             status: cashDrawer.shift.status,
             merchant: {
-              id: cashDrawer.shift.merchant?.id ?? cashDrawer.merchant?.id ?? cashDrawer.merchant_id,
-              name: cashDrawer.shift.merchant?.name ?? cashDrawer.merchant?.name ?? 'Merchant',
+              id:
+                cashDrawer.shift.merchant?.id ??
+                cashDrawer.merchant?.id ??
+                cashDrawer.merchant_id,
+              name:
+                cashDrawer.shift.merchant?.name ??
+                cashDrawer.merchant?.name ??
+                'Merchant',
             },
           }
         : ({

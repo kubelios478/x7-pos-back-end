@@ -1,5 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEnum, IsBoolean, IsInt, IsNotEmpty, MaxLength, IsOptional, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsBoolean,
+  IsInt,
+  IsNotEmpty,
+  MaxLength,
+  IsOptional,
+  Min,
+  Max,
+} from 'class-validator';
 import { PayrollFrequency } from '../../constants/payroll-frequency.enum';
 
 export class CreateMerchantPayrollRuleDto {
@@ -15,7 +25,8 @@ export class CreateMerchantPayrollRuleDto {
   @ApiProperty({
     example: 'biweekly',
     enum: PayrollFrequency,
-    description: 'Frequency of the Payroll (e.g., weekly, biweekly, monthly, custom)',
+    description:
+      'Frequency of the Payroll (e.g., weekly, biweekly, monthly, custom)',
   })
   @IsEnum(PayrollFrequency)
   @IsNotEmpty()

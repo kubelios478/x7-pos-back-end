@@ -70,7 +70,8 @@ export class UpdateTableDto {
   @ApiPropertyOptional({
     example: 120,
     nullable: true,
-    description: 'Custom table width in canvas pixels; null resets to the shape default',
+    description:
+      'Custom table width in canvas pixels; null resets to the shape default',
   })
   @IsOptional()
   @IsNumber()
@@ -81,7 +82,8 @@ export class UpdateTableDto {
   @ApiPropertyOptional({
     example: 70,
     nullable: true,
-    description: 'Custom table height in canvas pixels; null resets to the shape default',
+    description:
+      'Custom table height in canvas pixels; null resets to the shape default',
   })
   @IsOptional()
   @IsNumber()

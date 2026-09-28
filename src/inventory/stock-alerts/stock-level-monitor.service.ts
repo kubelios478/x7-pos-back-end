@@ -118,7 +118,8 @@ export class StockLevelMonitorService {
         variantId: item.variantId ?? null,
         supplyId: item.supplyId ?? null,
         locationId: item.locationId,
-        categoryId: item.product?.categoryId ?? item.supply?.category_id ?? null,
+        categoryId:
+          item.product?.categoryId ?? item.supply?.category_id ?? null,
         alertType: newState,
         currentQty,
         minimumQty,

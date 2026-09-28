@@ -45,7 +45,8 @@ export class CreateFloorPlanDto {
   @ApiProperty({
     required: false,
     nullable: true,
-    example: '[{"x":0,"y":0},{"x":800,"y":0},{"x":800,"y":600},{"x":0,"y":600}]',
+    example:
+      '[{"x":0,"y":0},{"x":800,"y":0},{"x":800,"y":600},{"x":0,"y":600}]',
     description:
       'Room outline polygon serialized as JSON, in canvas pixels. Omit or send null for a plain rectangle.',
   })

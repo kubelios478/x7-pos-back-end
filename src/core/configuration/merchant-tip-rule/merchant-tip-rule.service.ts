@@ -72,7 +72,9 @@ export class MerchantTipRuleService {
     }
 
     const pctTotal =
-      Number(staffPercentage) + Number(kitchenPercentage) + Number(managerPercentage);
+      Number(staffPercentage) +
+      Number(kitchenPercentage) +
+      Number(managerPercentage);
 
     if (Math.abs(pctTotal - 1) > 0.01) {
       ErrorHandler.invalidInput('Tip distribution percentages must total 1');

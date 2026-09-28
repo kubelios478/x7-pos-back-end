@@ -304,9 +304,13 @@ export class CashTransactionsService {
       const end = new Date(query.endDate + 'T23:59:59.999Z');
       where.created_at = Between(start, end) as any;
     } else if (query.startDate) {
-      where.created_at = MoreThanOrEqual(new Date(query.startDate + 'T00:00:00.000Z')) as any;
+      where.created_at = MoreThanOrEqual(
+        new Date(query.startDate + 'T00:00:00.000Z'),
+      ) as any;
     } else if (query.endDate) {
-      where.created_at = LessThanOrEqual(new Date(query.endDate + 'T23:59:59.999Z')) as any;
+      where.created_at = LessThanOrEqual(
+        new Date(query.endDate + 'T23:59:59.999Z'),
+      ) as any;
     }
 
     const sortDir = query.sortOrder || 'DESC';

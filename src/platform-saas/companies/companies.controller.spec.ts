@@ -201,7 +201,9 @@ describe('CompaniesController', () => {
       const findOneSpy = jest.spyOn(companiesService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(companyId, mockUser)).rejects.toThrow(errorMessage);
+      await expect(controller.findOne(companyId, mockUser)).rejects.toThrow(
+        errorMessage,
+      );
       expect(findOneSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
 
@@ -211,7 +213,9 @@ describe('CompaniesController', () => {
       const findOneSpy = jest.spyOn(companiesService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(companyId, mockUser)).rejects.toThrow(errorMessage);
+      await expect(controller.findOne(companyId, mockUser)).rejects.toThrow(
+        errorMessage,
+      );
       expect(findOneSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
   });
@@ -228,9 +232,17 @@ describe('CompaniesController', () => {
       const updateSpy = jest.spyOn(companiesService, 'update');
       updateSpy.mockResolvedValue(updatedCompanyResponse);
 
-      const result = await controller.update(companyId, mockUpdateCompanyDto, mockUser);
+      const result = await controller.update(
+        companyId,
+        mockUpdateCompanyDto,
+        mockUser,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
+      expect(updateSpy).toHaveBeenCalledWith(
+        companyId,
+        mockUpdateCompanyDto,
+        mockUser,
+      );
       expect(result).toEqual(updatedCompanyResponse);
     });
 
@@ -244,7 +256,11 @@ describe('CompaniesController', () => {
       await expect(
         controller.update(companyId, mockUpdateCompanyDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
+      expect(updateSpy).toHaveBeenCalledWith(
+        companyId,
+        mockUpdateCompanyDto,
+        mockUser,
+      );
     });
 
     it('should handle validation errors during update', async () => {
@@ -257,7 +273,11 @@ describe('CompaniesController', () => {
       await expect(
         controller.update(companyId, mockUpdateCompanyDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
+      expect(updateSpy).toHaveBeenCalledWith(
+        companyId,
+        mockUpdateCompanyDto,
+        mockUser,
+      );
     });
 
     it('should handle invalid ID during update', async () => {
@@ -270,7 +290,11 @@ describe('CompaniesController', () => {
       await expect(
         controller.update(companyId, mockUpdateCompanyDto, mockUser),
       ).rejects.toThrow(errorMessage);
-      expect(updateSpy).toHaveBeenCalledWith(companyId, mockUpdateCompanyDto, mockUser);
+      expect(updateSpy).toHaveBeenCalledWith(
+        companyId,
+        mockUpdateCompanyDto,
+        mockUser,
+      );
     });
   });
 
@@ -299,7 +323,9 @@ describe('CompaniesController', () => {
       const removeSpy = jest.spyOn(companiesService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(companyId, mockUser)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(companyId, mockUser)).rejects.toThrow(
+        errorMessage,
+      );
       expect(removeSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
 
@@ -310,7 +336,9 @@ describe('CompaniesController', () => {
       const removeSpy = jest.spyOn(companiesService, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(companyId, mockUser)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(companyId, mockUser)).rejects.toThrow(
+        errorMessage,
+      );
       expect(removeSpy).toHaveBeenCalledWith(companyId, mockUser);
     });
   });
@@ -371,7 +399,11 @@ describe('CompaniesController', () => {
       const createResult = await controller.create(mockCreateCompanyDto);
       const findAllResult = await controller.findAll();
       const findOneResult = await controller.findOne(1, mockUser);
-      const updateResult = await controller.update(1, mockUpdateCompanyDto, mockUser);
+      const updateResult = await controller.update(
+        1,
+        mockUpdateCompanyDto,
+        mockUser,
+      );
       const removeResult = await controller.remove(1, mockUser);
 
       // Verify all calls were made and returned expected results

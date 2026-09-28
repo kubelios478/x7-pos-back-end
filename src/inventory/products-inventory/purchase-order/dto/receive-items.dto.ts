@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsNumber, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ReceiveItemLineDto {
@@ -8,7 +14,10 @@ export class ReceiveItemLineDto {
   @IsNumber()
   id: number;
 
-  @ApiProperty({ example: 10.5, description: 'Quantity received physically in this transaction' })
+  @ApiProperty({
+    example: 10.5,
+    description: 'Quantity received physically in this transaction',
+  })
   @IsNotEmpty()
   @IsNumber()
   @Min(0)

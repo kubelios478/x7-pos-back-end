@@ -10,7 +10,12 @@ import { MerchantTipRule } from 'src/core/configuration/merchant-tip-rule/entity
 import { TipSettlement } from 'src/restaurant-operations/tips/tip-settlements/entities/tip-settlement.entity';
 import { ShiftsService } from 'src/restaurant-operations/shift/shifts/shifts.service';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
-import { Repository, UpdateResult, type DeepPartial, DataSource} from 'typeorm';
+import {
+  Repository,
+  UpdateResult,
+  type DeepPartial,
+  DataSource,
+} from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   BadRequestException,
@@ -263,7 +268,7 @@ describe('OrdersService', () => {
           provide: EventEmitter2,
           useValue: mockEventEmitter,
         },
-      
+
         {
           // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
           // de pruebas no compilaba y la suite entera contaba como fallo.
@@ -281,7 +286,7 @@ describe('OrdersService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: ShiftsService,
@@ -293,7 +298,7 @@ describe('OrdersService', () => {
             remove: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: getRepositoryToken(TipSettlement),
@@ -310,7 +315,7 @@ describe('OrdersService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
           // El servicio ejecuta transacciones; el spec nunca registró el DataSource.
           provide: DataSource,
@@ -320,7 +325,7 @@ describe('OrdersService', () => {
             getRepository: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: getRepositoryToken(MerchantTipRule),
@@ -337,7 +342,7 @@ describe('OrdersService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: getRepositoryToken(MerchantTaxRule),
@@ -354,7 +359,7 @@ describe('OrdersService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: getRepositoryToken(Receipt),
@@ -371,7 +376,7 @@ describe('OrdersService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: ReceiptsService,
@@ -383,7 +388,7 @@ describe('OrdersService', () => {
             remove: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: getRepositoryToken(LoyaltyCustomer),
@@ -400,7 +405,7 @@ describe('OrdersService', () => {
             createQueryBuilder: jest.fn(),
           },
         },
-      
+
         {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: getRepositoryToken(LoyaltyPointTransaction),

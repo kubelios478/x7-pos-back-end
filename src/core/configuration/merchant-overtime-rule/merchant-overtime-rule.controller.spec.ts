@@ -184,7 +184,10 @@ describe('MerchantOvertimeRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.create(mockCreateMerchantOvertimeRuleDto, mockAuthenticatedUser),
+        controller.create(
+          mockCreateMerchantOvertimeRuleDto,
+          mockAuthenticatedUser,
+        ),
       ).rejects.toThrow(errorMessage);
 
       expect(createSpy).toHaveBeenCalledWith(
@@ -327,7 +330,11 @@ describe('MerchantOvertimeRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, mockUpdateMerchantOvertimeRuleDto, mockAuthenticatedUser),
+        controller.update(
+          1,
+          mockUpdateMerchantOvertimeRuleDto,
+          mockAuthenticatedUser,
+        ),
       ).rejects.toThrow(errorMessage);
 
       expect(updateSpy).toHaveBeenCalledWith(

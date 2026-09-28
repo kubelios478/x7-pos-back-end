@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreateReservationNoteDto {
@@ -9,7 +10,10 @@ export class CreateReservationNoteDto {
 
   @ApiProperty({ example: 'Customer prefers a quiet table.' })
   @IsString()
-  @IsNotEmpty()
+  // El recorte va ANTES de @IsNotEmpty: sin él, `@IsNotEmpty` da por buena una nota de puros
+  // espacios ("   "), que entra en la base como una tarjeta en blanco en el pase de cocina.
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsNotEmpty({ message: 'note must not be empty or whitespace-only' })
   note: string;
 
   @ApiProperty({ example: 1, required: false })

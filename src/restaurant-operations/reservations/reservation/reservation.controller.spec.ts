@@ -96,7 +96,9 @@ describe('ReservationController', () => {
       const result = await controller.create(user, dto);
 
       expect(result).toEqual(expectedResult);
-      expect(service.create).toHaveBeenCalledWith(user.merchant.id, dto);
+      // El id del personal autenticado viaja como tercer argumento: es lo que sella
+      // `created_by` sin fiarse del cuerpo de la petición.
+      expect(service.create).toHaveBeenCalledWith(user.merchant.id, dto, user.id);
     });
   });
 
@@ -155,7 +157,12 @@ describe('ReservationController', () => {
       const result = await controller.update(user, 1, dto);
 
       expect(result).toEqual(expectedResult);
-      expect(service.update).toHaveBeenCalledWith(1, user.merchant.id, dto);
+      expect(service.update).toHaveBeenCalledWith(
+        1,
+        user.merchant.id,
+        dto,
+        user.id,
+      );
     });
   });
 
@@ -211,10 +218,15 @@ describe('ReservationController', () => {
       await controller.cancel(user, 1);
       await controller.remove(user, 1);
 
-      expect(service.create).toHaveBeenCalledWith(user.merchant.id, dto);
+      expect(service.create).toHaveBeenCalledWith(user.merchant.id, dto, user.id);
       expect(service.findAll).toHaveBeenCalledWith(query, user.merchant.id);
       expect(service.findOne).toHaveBeenCalledWith(1, user.merchant.id);
-      expect(service.update).toHaveBeenCalledWith(1, user.merchant.id, dto);
+      expect(service.update).toHaveBeenCalledWith(
+        1,
+        user.merchant.id,
+        dto,
+        user.id,
+      );
       expect(service.cancel).toHaveBeenCalledWith(1, user.merchant.id);
       expect(service.remove).toHaveBeenCalledWith(1, user.merchant.id);
     });

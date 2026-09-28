@@ -145,6 +145,12 @@ export class KitchenOrderItemController {
     description: 'Filter by kitchen order ID',
   })
   @ApiQuery({
+    name: 'stationId',
+    required: false,
+    type: Number,
+    description: 'Filter by kitchen station ID',
+  })
+  @ApiQuery({
     name: 'orderItemId',
     required: false,
     type: Number,
@@ -221,6 +227,56 @@ export class KitchenOrderItemController {
     );
   }
 
+  @Post(':id/increment')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Increment kitchen order item prepared quantity (Tap-to-Increment)',
+    description:
+      'Increments prepared_quantity by 1. Transitions preparation_status from pending to in_preparation, and to ready once prepared_quantity equals quantity. Automatically auto-bumps parent KitchenOrder to COMPLETED when all items become ready.',
+  })
+  @ApiOkResponse({
+    description: 'Kitchen order item quantity incremented successfully',
+    type: OneKitchenOrderItemResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - You must be associated with a merchant to update kitchen order items',
+    type: ErrorResponse,
+  })
+  @ApiNotFoundResponse({
+    description: 'Kitchen order item not found',
+    type: ErrorResponse,
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Kitchen order item ID',
+    example: 1,
+  })
+  async incrementPreparedQuantity(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenOrderItemService.incrementPreparedQuantity(
+      id,
+      authenticatedUserMerchantId,
+      req.user?.id,
+    );
+  }
+
   @Post(':id/preparation/next')
   @HttpCode(HttpStatus.OK)
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -239,6 +295,10 @@ export class KitchenOrderItemController {
   @ApiOkResponse({
     description: 'Preparation status advanced successfully',
     type: OneKitchenOrderItemResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or validation errors',
+    type: ErrorResponse,
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized - Invalid or missing authentication token',
@@ -272,6 +332,7 @@ export class KitchenOrderItemController {
     return this.kitchenOrderItemService.advancePreparationStatus(
       id,
       authenticatedUserMerchantId,
+      req.user?.id,
     );
   }
 
@@ -326,6 +387,7 @@ export class KitchenOrderItemController {
     return this.kitchenOrderItemService.revertPreparationStatus(
       id,
       authenticatedUserMerchantId,
+      req.user?.id,
     );
   }
 

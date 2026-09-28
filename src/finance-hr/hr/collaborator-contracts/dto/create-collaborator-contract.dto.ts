@@ -102,7 +102,6 @@ export class CreateCollaboratorContractDto {
   @IsBoolean()
   active?: boolean;
 
-
   @ApiPropertyOptional({
     example: EmploymentType.FULL_TIME,
     enum: EmploymentType,
@@ -132,7 +131,10 @@ export class CreateCollaboratorContractDto {
   @Min(0)
   wage_rate?: number;
 
-  @ApiPropertyOptional({ example: 40, description: 'Contracted hours per week' })
+  @ApiPropertyOptional({
+    example: 40,
+    description: 'Contracted hours per week',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -141,7 +143,8 @@ export class CreateCollaboratorContractDto {
 
   @ApiPropertyOptional({
     example: '/uploads/contracts/12-signed.pdf',
-    description: 'Path of the signed document, normally set by the upload endpoint',
+    description:
+      'Path of the signed document, normally set by the upload endpoint',
   })
   @IsOptional()
   @IsString()

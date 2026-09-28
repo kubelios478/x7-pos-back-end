@@ -98,7 +98,12 @@ export class CollaboratorContract {
     description: 'Public path of the signed legal document',
     nullable: true,
   })
-  @Column({ type: 'varchar', length: 512, name: 'document_url', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 512,
+    name: 'document_url',
+    nullable: true,
+  })
   document_url: string | null;
 
   @ApiProperty({
@@ -106,7 +111,12 @@ export class CollaboratorContract {
     description: 'Original file name, kept for display and download',
     nullable: true,
   })
-  @Column({ type: 'varchar', length: 255, name: 'document_name', nullable: true })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'document_name',
+    nullable: true,
+  })
   document_name: string | null;
 
   @ApiProperty({
