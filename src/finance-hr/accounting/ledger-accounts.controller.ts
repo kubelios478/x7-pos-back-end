@@ -14,6 +14,16 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiQuery,
+  ApiParam,
+  ApiBody,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiNotFoundResponse,
+  ApiExtraModels,
+  ApiProperty,
+  ApiPropertyOptional,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -21,6 +31,67 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
+import { ErrorResponse } from 'src/common/dtos/error-response.dto';
+
+export class CreateFinanceHrLedgerAccountDto {
+  @ApiProperty({
+    example: '1100',
+    description: 'Unique ledger account code (e.g. 1100, 2100)',
+  })
+  code: string;
+
+  @ApiProperty({
+    example: 'Raw Material Inventory',
+    description: 'Name of the ledger account',
+  })
+  name: string;
+
+  @ApiProperty({
+    example: 'ASSET',
+    description: 'Account type (ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE)',
+  })
+  type: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Parent account ID for hierarchy',
+    nullable: true,
+  })
+  parent_account_id?: number | null;
+}
+
+export class UpdateFinanceHrLedgerAccountDto {
+  @ApiPropertyOptional({
+    example: '1105',
+    description: 'Updated ledger account code',
+  })
+  code?: string;
+
+  @ApiPropertyOptional({
+    example: 'Updated Raw Material Inventory',
+    description: 'Updated ledger account name',
+  })
+  name?: string;
+
+  @ApiPropertyOptional({
+    example: 'ASSET',
+    description: 'Updated account type',
+  })
+  type?: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the account is active',
+  })
+  is_active?: boolean;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Updated parent account ID',
+    nullable: true,
+  })
+  parent_account_id?: number | null;
+}
 
 export interface LedgerAccountDto {
   id: number;
@@ -155,6 +226,7 @@ let MOCK_LEDGER_ACCOUNTS: LedgerAccountDto[] = [
 ];
 
 @ApiTags('Finance & HR - Accounting - Ledger Accounts Setup')
+@ApiExtraModels(ErrorResponse, CreateFinanceHrLedgerAccountDto, UpdateFinanceHrLedgerAccountDto)
 @ApiBearerAuth()
 @Controller('ledger-accounts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -162,9 +234,74 @@ export class LedgerAccountsController {
   @Get()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
-  @ApiOperation({ summary: 'Get ledger accounts directory' })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({ name: 'type', required: false, type: String })
+  @ApiOperation({
+    summary: 'Get ledger accounts directory',
+    description:
+      'Retrieves a directory list of ledger accounts with optional search and type filtering.',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    example: 'Inventory',
+    description: 'Search by account code or name',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    type: String,
+    example: 'ASSET',
+    description:
+      'Filter by account type (ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE)',
+  })
+  @ApiOkResponse({
+    description: 'Directory list of ledger accounts retrieved successfully',
+    schema: {
+      example: {
+        data: [
+          {
+            id: 1,
+            code: '1000',
+            name: 'Assets',
+            type: 'ASSET',
+            is_active: true,
+            parent_account_id: null,
+          },
+          {
+            id: 2,
+            code: '1100',
+            name: 'Raw Material Inventory',
+            type: 'ASSET',
+            is_active: true,
+            parent_account_id: 1,
+          },
+        ],
+        total: 2,
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid query parameters',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Invalid type filter value',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
   async getAccounts(
     @Query('search') search?: string,
     @Query('type') type?: string,
@@ -193,7 +330,63 @@ export class LedgerAccountsController {
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB)
-  @ApiOperation({ summary: 'Create new ledger account' })
+  @ApiOperation({
+    summary: 'Create new ledger account',
+    description:
+      'Creates a new ledger account entry in the chart of accounts directory.',
+  })
+  @ApiBody({
+    type: CreateFinanceHrLedgerAccountDto,
+    description: 'Ledger account creation payload',
+    examples: {
+      createAccount: {
+        summary: 'Create raw material inventory account',
+        value: {
+          code: '1100',
+          name: 'Raw Material Inventory',
+          type: 'ASSET',
+          parent_account_id: 1,
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Ledger account created successfully',
+    schema: {
+      example: {
+        data: {
+          id: 1727091234567,
+          code: '1100',
+          name: 'Raw Material Inventory',
+          type: 'ASSET',
+          is_active: true,
+          parent_account_id: 1,
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or code already exists',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: "Ledger account code '1100' already exists",
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
   async createAccount(@Body() dto: Partial<LedgerAccountDto>) {
     const newAccount: LedgerAccountDto = {
       id: Date.now(),
@@ -211,7 +404,81 @@ export class LedgerAccountsController {
   @Patch(':id')
   @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(Scope.MERCHANT_WEB)
-  @ApiOperation({ summary: 'Update ledger account' })
+  @ApiOperation({
+    summary: 'Update ledger account',
+    description:
+      'Updates existing ledger account fields such as code, name, type, active status, or parent account ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    example: '2',
+    description: 'Ledger Account ID to update',
+  })
+  @ApiBody({
+    type: UpdateFinanceHrLedgerAccountDto,
+    description: 'Ledger account update payload',
+    examples: {
+      updateAccount: {
+        summary: 'Update account name and code',
+        value: {
+          code: '1105',
+          name: 'Updated Raw Material Inventory',
+          type: 'ASSET',
+          is_active: true,
+          parent_account_id: 1,
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Ledger account updated successfully',
+    schema: {
+      example: {
+        data: {
+          id: 2,
+          code: '1105',
+          name: 'Updated Raw Material Inventory',
+          type: 'ASSET',
+          is_active: true,
+          parent_account_id: 1,
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid ID or body parameters',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'A ledger account cannot be its own parent',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Ledger account not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Ledger account #99 not found',
+        error: 'Not Found',
+      },
+    },
+  })
   async updateAccount(
     @Param('id') id: string,
     @Body() dto: Partial<LedgerAccountDto>,
@@ -233,3 +500,4 @@ export class LedgerAccountsController {
     return { data: account };
   }
 }
+

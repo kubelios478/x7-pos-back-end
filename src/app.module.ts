@@ -30,6 +30,8 @@ import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const isDev = config.get('NODE_ENV') === 'development';
+        const useSSL = config.get('DB_SSL') === 'true';
+
         return {
           type: 'postgres',
           host: config.get('DB_HOST'),
@@ -45,13 +47,9 @@ import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-
           autoLoadEntities: true,
 
           synchronize: false,
-          ssl: {
-            rejectUnauthorized: false,
-          },
+          ssl: useSSL ? { rejectUnauthorized: false } : false,
           extra: {
-            ssl: {
-              rejectUnauthorized: false,
-            },
+            ...(useSSL ? { ssl: { rejectUnauthorized: false } } : {}),
             max: 5,
             idleTimeoutMillis: 10000,
             connectionTimeoutMillis: 10000,
