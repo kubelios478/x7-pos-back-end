@@ -25,6 +25,7 @@ import { GetTablesQueryDto } from './dto/get-tables-query.dto';
 import { TransferTableDto } from './dto/transfer-table.dto';
 import { StatusDeltaQueryDto } from './dto/status-delta-query.dto';
 import { PaginatedTablesResponseDto } from './dto/paginated-tables-response.dto';
+import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import {
   ApiTags,
   ApiOperation,
@@ -39,6 +40,7 @@ import {
   ApiBody,
   ApiForbiddenResponse,
   ApiQuery,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -49,6 +51,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 
 @ApiTags('Restaurant operations - Dining System - Tables')
+@ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
 @Controller('tables')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.TABLES)
@@ -238,18 +241,216 @@ export class TablesController {
   @ApiOperation({
     summary: 'Tables touched since a given instant',
     description:
-      'Reconciliation endpoint for terminals coming back from a network drop: returns only the tables updated after `since`, deleted ones included so the client can drop them from its floor map. Omitting `since` returns the whole floor.',
+      "Reconciliation endpoint for terminals coming back from a network drop: returns, ordered by `updated_at` ascending, only the tables of the caller's merchant whose `updated_at` is later than `since`. Deleted tables are included (status `deleted`) so the client can drop them from its floor map; merged tables carry `parent_table`. Omitting `since` returns the whole floor. Status vocabulary: available | occupied | reserved | cleaning | out_of_service | deleted. `floorZone` / `floorPlan` are the full related entities (null when the table has none).",
   })
   @ApiQuery({
     name: 'since',
     required: false,
     type: String,
-    description: 'ISO-8601 instant; defaults to the whole floor when omitted',
-    example: '2026-08-19T12:00:00.000Z',
+    format: 'date-time',
+    description:
+      'ISO-8601 instant (exclusive lower bound on updated_at). Optional: when omitted the whole floor is returned. A value that is not ISO-8601 is rejected with 400.',
+    example: '2026-09-27T14:00:00.000Z',
   })
-  @ApiOkResponse({ description: 'Delta retrieved successfully' })
-  @ApiBadRequestResponse({ description: 'Invalid `since` timestamp' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiOkResponse({
+    description:
+      'Delta retrieved successfully (empty `data` when nothing changed since `since`)',
+    example: {
+      statusCode: 200,
+      message: 'Table status delta retrieved successfully',
+      data: [
+        {
+          id: 3,
+          merchant_id: 1,
+          number: 'A3',
+          capacity: 4,
+          status: 'occupied',
+          location: 'Near window',
+          rotation: 0,
+          shape: 'Square',
+          width: null,
+          height: null,
+          pos_x: 320,
+          pos_y: 140,
+          merchant: { id: 1, name: 'Restaurant ABC' },
+          floorZone: {
+            id: 1,
+            name: 'Main Dining Area',
+            color: 'Blue',
+            area: null,
+            created_at: '2026-08-01T10:00:00.000Z',
+            updated_at: '2026-08-01T10:00:00.000Z',
+            status: 'active',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+              email: 'contact@restaurantabc.com',
+              phone: '+13055550100',
+              rut: '76123456-7',
+              address: '123 Main St',
+              city: 'Miami',
+              state: 'Florida',
+              country: 'USA',
+              status: 'active',
+              companyId: 1,
+            },
+          },
+          floorPlan: {
+            id: 1,
+            name: 'First Floor',
+            width: 1200,
+            height: 800,
+            outline: null,
+            status: 'active',
+            created_at: '2026-08-01T10:00:00.000Z',
+            updated_at: '2026-08-01T10:00:00.000Z',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+              email: 'contact@restaurantabc.com',
+              phone: '+13055550100',
+              rut: '76123456-7',
+              address: '123 Main St',
+              city: 'Miami',
+              state: 'Florida',
+              country: 'USA',
+              status: 'active',
+              companyId: 1,
+            },
+          },
+          parent_table: null,
+        },
+        {
+          id: 4,
+          merchant_id: 1,
+          number: 'A4',
+          capacity: 2,
+          status: 'occupied',
+          location: 'Near window',
+          rotation: 0,
+          shape: 'Square',
+          width: null,
+          height: null,
+          pos_x: 440,
+          pos_y: 140,
+          merchant: { id: 1, name: 'Restaurant ABC' },
+          floorZone: {
+            id: 1,
+            name: 'Main Dining Area',
+            color: 'Blue',
+            area: null,
+            created_at: '2026-08-01T10:00:00.000Z',
+            updated_at: '2026-08-01T10:00:00.000Z',
+            status: 'active',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+              email: 'contact@restaurantabc.com',
+              phone: '+13055550100',
+              rut: '76123456-7',
+              address: '123 Main St',
+              city: 'Miami',
+              state: 'Florida',
+              country: 'USA',
+              status: 'active',
+              companyId: 1,
+            },
+          },
+          floorPlan: {
+            id: 1,
+            name: 'First Floor',
+            width: 1200,
+            height: 800,
+            outline: null,
+            status: 'active',
+            created_at: '2026-08-01T10:00:00.000Z',
+            updated_at: '2026-08-01T10:00:00.000Z',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+              email: 'contact@restaurantabc.com',
+              phone: '+13055550100',
+              rut: '76123456-7',
+              address: '123 Main St',
+              city: 'Miami',
+              state: 'Florida',
+              country: 'USA',
+              status: 'active',
+              companyId: 1,
+            },
+          },
+          parent_table: { id: 3, number: 'A3' },
+        },
+        {
+          id: 7,
+          merchant_id: 1,
+          number: 'T2',
+          capacity: 6,
+          status: 'deleted',
+          location: 'Terrace',
+          rotation: 90,
+          shape: 'Rectangle',
+          width: 180,
+          height: 90,
+          pos_x: 700,
+          pos_y: 520,
+          merchant: { id: 1, name: 'Restaurant ABC' },
+          floorZone: null,
+          floorPlan: {
+            id: 1,
+            name: 'First Floor',
+            width: 1200,
+            height: 800,
+            outline: null,
+            status: 'active',
+            created_at: '2026-08-01T10:00:00.000Z',
+            updated_at: '2026-08-01T10:00:00.000Z',
+            merchant: {
+              id: 1,
+              name: 'Restaurant ABC',
+              email: 'contact@restaurantabc.com',
+              phone: '+13055550100',
+              rut: '76123456-7',
+              address: '123 Main St',
+              city: 'Miami',
+              state: 'Florida',
+              country: 'USA',
+              status: 'active',
+              companyId: 1,
+            },
+          },
+          parent_table: null,
+        },
+      ],
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'The `since` query param is not a valid ISO-8601 timestamp',
+    type: ErrorResponse,
+    example: {
+      statusCode: 400,
+      message: 'since must be a valid ISO 8601 date string',
+      timestamp: '2026-09-27T14:05:12.345Z',
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing, invalid or expired JWT',
+    type: ErrorResponse,
+    example: {
+      statusCode: 401,
+      message: 'Unauthorized',
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Only merchant_admin may call this endpoint (also: scope/plan not allowed, or user without merchant)',
+    type: ErrorResponse,
+    example: {
+      statusCode: 403,
+      message: 'Role not enough (merchant_user)',
+      error: 'Forbidden',
+    },
+  })
   async statusDelta(
     @Query() query: StatusDeltaQueryDto,
     @Request() req: ExpressRequest & { user?: AuthenticatedUser },

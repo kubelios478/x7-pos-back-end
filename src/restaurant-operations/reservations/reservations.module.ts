@@ -4,6 +4,7 @@ import { ReservationGuestModule } from './reservation-guest/reservation-guest.mo
 import { ReservationTableModule } from './reservation-table/reservation-table.module';
 import { ReservationNoteModule } from './reservation-note/reservation-note.module';
 import { ReservationStatusHistoryModule } from './reservation-status-history/reservation-status-history.module';
+import { ReservationCapacityModule } from './reservation-capacity/reservation-capacity.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ReservationStatusHistoryModule } from './reservation-status-history/res
     ReservationTableModule,
     ReservationNoteModule,
     ReservationStatusHistoryModule,
+    ReservationCapacityModule,
   ],
   exports: [
     ReservationModule,
@@ -19,6 +21,7 @@ import { ReservationStatusHistoryModule } from './reservation-status-history/res
     ReservationTableModule,
     ReservationNoteModule,
     ReservationStatusHistoryModule,
+    ReservationCapacityModule,
   ],
 })
 export class ReservationsModule {}

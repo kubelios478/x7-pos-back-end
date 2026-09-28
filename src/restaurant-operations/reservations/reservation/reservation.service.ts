@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { DataSource, EntityManager, Repository, In } from 'typeorm';
 import { CreateReservationDto } from './dto/create-reservation.dto';
 import { UpdateReservationDto } from './dto/update-reservation.dto';
 import { Reservation } from './entities/reservation.entity';
@@ -17,6 +17,22 @@ import {
 import { AllPaginatedReservations } from './dto/all-paginated-reservations.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ReservationStatus } from './constants/reservation.constants';
+import { resolveLocalDateRange } from '../utils/local-date-range.util';
+import { ReservationCapacityService } from '../reservation-capacity/reservation-capacity.service';
+import { ManagerOverrideDto } from '../reservation-capacity/dto/manager-override.dto';
+
+/**
+ * Estados en los que una reserva pasa por la guarda de aforo al darse de alta. SEATED no: un
+ * walk-in que ya está sentado es un hecho físico, y bloquearlo sólo obligaría a mentir en el
+ * sistema. La lista de espera es, por definición, lo que no cabe.
+ */
+const CAPACITY_GUARDED_ON_CREATE: ReservationStatus[] = [
+  ReservationStatus.PENDING,
+  ReservationStatus.CONFIRMED,
+];
+
+/** Duración por defecto de la columna `duration_minutes` (la de la entidad). */
+const DEFAULT_DURATION_MINUTES = 90;
 
 @Injectable()
 export class ReservationService {
@@ -25,15 +41,67 @@ export class ReservationService {
     private readonly reservationRepository: Repository<Reservation>,
     @InjectRepository(ReservationTable)
     private readonly reservationTableRepository: Repository<ReservationTable>,
-    @InjectRepository(ReservationStatusHistory)
-    private readonly statusHistoryRepository: Repository<ReservationStatusHistory>,
     @InjectRepository(ReservationGuest)
     private readonly guestRepository: Repository<ReservationGuest>,
     @InjectRepository(ReservationNote)
     private readonly noteRepository: Repository<ReservationNote>,
     @InjectRepository(Table)
     private readonly tableRepository: Repository<Table>,
+    private readonly dataSource: DataSource,
+    private readonly capacityService: ReservationCapacityService,
   ) {}
+
+  /**
+   * Pasa la guarda de aforo y ritmo DENTRO de la transacción y, si la franja se forzó con
+   * override, deja en la reserva quién lo autorizó y cuándo.
+   */
+  private async applyCapacityGuard(
+    manager: EntityManager,
+    merchantId: number,
+    reservation: Reservation,
+    override?: ManagerOverrideDto,
+    excludeReservationId?: number,
+  ): Promise<void> {
+    const decision = await this.capacityService.assertBookable(
+      manager,
+      merchantId,
+      {
+        start: new Date(reservation.reservation_date),
+        durationMinutes: reservation.duration_minutes || DEFAULT_DURATION_MINUTES,
+        partySize: reservation.party_size,
+        excludeReservationId,
+      },
+      override,
+    );
+    if (decision.overrideBy != null) {
+      reservation.capacity_override_by = decision.overrideBy;
+      reservation.capacity_override_at = new Date();
+    }
+  }
+
+  /**
+   * Apunta una transición en el histórico de estados DENTRO de la transacción que cambia el
+   * estado. Por separado, un fallo del INSERT dejaba la reserva en su nuevo estado sin rastro
+   * en el histórico, y el histórico es precisamente la prueba de auditoría de quién hizo qué.
+   *
+   * `changedBy` es el usuario del JWT; `null` queda reservado a los procesos automáticos
+   * (el marcado de no-show por vencimiento), que es como la UI distingue "Automated System".
+   */
+  private logStatusChange(
+    manager: EntityManager,
+    reservationId: number,
+    status: ReservationStatus,
+    changedBy?: number,
+  ): Promise<ReservationStatusHistory> {
+    const history = manager.getRepository(ReservationStatusHistory);
+    return history.save(
+      history.create({
+        reservation_id: reservationId,
+        status,
+        changed_by: changedBy ?? null,
+      }),
+    );
+  }
 
   /**
    * Alta de reserva.
@@ -47,7 +115,8 @@ export class ReservationService {
     createReservationDto: CreateReservationDto,
     createdByUserId?: number,
   ): Promise<OneReservationResponse> {
-    const { table_ids, ...reservationData } = createReservationDto;
+    const { table_ids, manager_override, ...reservationData } =
+      createReservationDto;
 
     // Check table availability and existence
     if (table_ids && table_ids.length > 0) {
@@ -87,33 +156,49 @@ export class ReservationService {
               : undefined,
       });
 
-      const savedReservation =
-        await this.reservationRepository.save(newReservation);
+      // Reserva, mesas y primera entrada del histórico van juntas: una reserva sin su
+      // estado inicial registrado rompería el cálculo de tiempos del histórico.
+      const savedReservation = await this.dataSource.transaction(
+        async (manager) => {
+          if (CAPACITY_GUARDED_ON_CREATE.includes(newReservation.status)) {
+            newReservation.duration_minutes ??= DEFAULT_DURATION_MINUTES;
+            await this.applyCapacityGuard(
+              manager,
+              merchantId,
+              newReservation,
+              manager_override,
+            );
+          }
 
-      // Save associated tables if provided
-      if (table_ids && table_ids.length > 0) {
-        const tables = await this.tableRepository.findBy({
-          id: In(table_ids),
-          merchant_id: merchantId,
-        });
+          const saved = await manager
+            .getRepository(Reservation)
+            .save(newReservation);
 
-        const reservationTables = tables.map((table) =>
-          this.reservationTableRepository.create({
-            reservation_id: savedReservation.id,
-            table_id: table.id,
-          }),
-        );
+          if (table_ids && table_ids.length > 0) {
+            const tables = await manager.getRepository(Table).findBy({
+              id: In(table_ids),
+              merchant_id: merchantId,
+            });
 
-        await this.reservationTableRepository.save(reservationTables);
-      }
+            const links = manager.getRepository(ReservationTable);
+            await links.save(
+              tables.map((table) =>
+                links.create({
+                  reservation_id: saved.id,
+                  table_id: table.id,
+                }),
+              ),
+            );
+          }
 
-      // Initial status history
-      await this.statusHistoryRepository.save(
-        this.statusHistoryRepository.create({
-          reservation_id: savedReservation.id,
-          status: savedReservation.status,
-          changed_by: createdByUserId,
-        }),
+          await this.logStatusChange(
+            manager,
+            saved.id,
+            saved.status,
+            createdByUserId,
+          );
+          return saved;
+        },
       );
 
       return this.findOne(savedReservation.id, merchantId, 'Created');
@@ -152,7 +237,7 @@ export class ReservationService {
     // compuesto @Index(['merchant_id','reservation_date']) y resolvía el calendario con un
     // seq scan sobre toda la tabla de reservas. Comparando la columna desnuda contra dos
     // instantes, el índice se usa tal cual.
-    const range = this.resolveDateRange(date, date_from, date_to);
+    const range = resolveLocalDateRange(date, date_from, date_to);
     if (range) {
       queryBuilder.andWhere(
         'reservation.reservation_date >= :rangeStart AND reservation.reservation_date < :rangeEnd',
@@ -293,7 +378,27 @@ export class ReservationService {
       this.assertLegalTransition(oldStatus, updateReservationDto.status);
     }
 
-    Object.assign(reservation, updateReservationDto);
+    const { manager_override, ...changes } = updateReservationDto;
+
+    // La guarda de aforo se repite al CONFIRMAR (la PENDING aún no ocupaba sillas) y al mover
+    // la franja o el tamaño de una reserva viva. Se compara contra el valor previo para no
+    // exigir override por reenviar el mismo formulario sin cambios.
+    const previousStart = new Date(reservation.reservation_date).getTime();
+    const windowChanged =
+      (changes.reservation_date != null &&
+        new Date(changes.reservation_date).getTime() !== previousStart) ||
+      (changes.duration_minutes != null &&
+        changes.duration_minutes !== reservation.duration_minutes) ||
+      (changes.party_size != null && changes.party_size !== reservation.party_size);
+    const nextStatus = changes.status ?? oldStatus;
+    const enteringConfirmed =
+      nextStatus === ReservationStatus.CONFIRMED &&
+      oldStatus !== ReservationStatus.CONFIRMED;
+    const needsCapacityGuard =
+      enteringConfirmed ||
+      (windowChanged && CAPACITY_GUARDED_ON_CREATE.includes(nextStatus));
+
+    Object.assign(reservation, changes);
 
     if (updateReservationDto.reservation_date) {
       reservation.reservation_date = new Date(
@@ -312,20 +417,31 @@ export class ReservationService {
     }
 
     try {
-      await this.reservationRepository.save(reservation);
+      await this.dataSource.transaction(async (manager) => {
+        if (needsCapacityGuard) {
+          await this.applyCapacityGuard(
+            manager,
+            merchantId,
+            reservation,
+            manager_override,
+            id,
+          );
+        }
 
-      if (
-        updateReservationDto.status &&
-        updateReservationDto.status !== oldStatus
-      ) {
-        await this.statusHistoryRepository.save(
-          this.statusHistoryRepository.create({
-            reservation_id: id,
-            status: updateReservationDto.status,
-            changed_by: changedByUserId,
-          }),
-        );
-      }
+        await manager.getRepository(Reservation).save(reservation);
+
+        if (
+          updateReservationDto.status &&
+          updateReservationDto.status !== oldStatus
+        ) {
+          await this.logStatusChange(
+            manager,
+            id,
+            updateReservationDto.status,
+            changedByUserId,
+          );
+        }
+      });
 
       return this.findOne(id, merchantId, 'Updated');
     } catch (error) {
@@ -379,9 +495,16 @@ export class ReservationService {
     }
   }
 
+  /**
+   * Anulación. Pasa por la MISMA guarda de ciclo de vida que el PATCH: sin ella, una reserva
+   * ya COMPLETED o NO_SHOW se podía "anular" y el histórico acababa con un CANCELLED detrás
+   * de un estado terminal. Y firma con el usuario del JWT — antes no firmaba, así que cada
+   * anulación hecha por un camarero se leía en la auditoría como "Automated System".
+   */
   async cancel(
     id: number,
     merchantId: number,
+    changedByUserId?: number,
   ): Promise<OneReservationResponse> {
     const reservation = await this.reservationRepository.findOneBy({
       id,
@@ -393,17 +516,19 @@ export class ReservationService {
       ErrorHandler.notFound('Reservation not found');
     }
 
+    this.assertLegalTransition(reservation.status, ReservationStatus.CANCELLED);
+
     try {
       reservation.status = ReservationStatus.CANCELLED;
-      await this.reservationRepository.save(reservation);
-
-      // Log status change
-      await this.statusHistoryRepository.save(
-        this.statusHistoryRepository.create({
-          reservation_id: id,
-          status: ReservationStatus.CANCELLED,
-        }),
-      );
+      await this.dataSource.transaction(async (manager) => {
+        await manager.getRepository(Reservation).save(reservation);
+        await this.logStatusChange(
+          manager,
+          id,
+          ReservationStatus.CANCELLED,
+          changedByUserId,
+        );
+      });
 
       return this.findOne(id, merchantId, 'Cancelled');
     } catch (error) {
@@ -462,37 +587,6 @@ export class ReservationService {
     }
   }
 
-  /**
-   * Traduce los filtros de fecha a un rango semiabierto [inicio, fin).
-   *
-   * `date` es un día de calendario LOCAL del servidor (el reloj del local), no un día UTC:
-   * partir el servicio por el meridiano de Greenwich movería las cenas tardías al día
-   * siguiente. `date_from`/`date_to` mandan sobre `date` cuando vienen, que es como pide el
-   * rango la vista de semana/mes.
-   */
-  private resolveDateRange(
-    date?: string,
-    dateFrom?: string,
-    dateTo?: string,
-  ): { start: Date; end: Date } | null {
-    if (dateFrom || dateTo) {
-      const start = dateFrom ? new Date(dateFrom) : new Date(0);
-      // Sin cierre explícito el rango queda abierto hacia adelante (reservas futuras).
-      const end = dateTo ? new Date(dateTo) : new Date(8640000000000000);
-      return { start, end };
-    }
-
-    if (!date) return null;
-
-    const [year, month, day] = date.split('-').map(Number);
-    if (!year || !month || !day) return null;
-
-    return {
-      start: new Date(year, month - 1, day, 0, 0, 0, 0),
-      end: new Date(year, month - 1, day + 1, 0, 0, 0, 0),
-    };
-  }
-
   private async checkTableAvailability(
     merchantId: number,
     tableIds: number[],
@@ -549,6 +643,8 @@ export class ReservationService {
       source: reservation.source,
       special_requests: reservation.special_requests,
       created_by: reservation.created_by,
+      capacity_override_by: reservation.capacity_override_by ?? null,
+      capacity_override_at: reservation.capacity_override_at ?? null,
       created_at: reservation.created_at,
     };
 

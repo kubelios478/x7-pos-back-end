@@ -1,3 +1,4 @@
+import { MethodNotAllowedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReservationStatusHistoryController } from './reservation-status-history.controller';
 import { ReservationStatusHistoryService } from './reservation-status-history.service';
@@ -62,5 +63,12 @@ describe('ReservationStatusHistoryController', () => {
   it('should call findOne service', async () => {
     await controller.findOne(mockUser as any, 1);
     expect(mockService.findOne).toHaveBeenCalledWith(1, mockUser.merchant.id);
+  });
+
+  it('should reject every write verb with 405 — the history is immutable', () => {
+    expect(() => controller.rejectCreate()).toThrow(MethodNotAllowedException);
+    expect(() => controller.rejectReplace()).toThrow(MethodNotAllowedException);
+    expect(() => controller.rejectUpdate()).toThrow(MethodNotAllowedException);
+    expect(() => controller.rejectDelete()).toThrow(MethodNotAllowedException);
   });
 });

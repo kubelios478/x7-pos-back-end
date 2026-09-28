@@ -7,9 +7,11 @@ import { ReservationStatusHistory } from 'src/restaurant-operations/reservations
 import { Table } from 'src/restaurant-operations/dining-system/tables/entities/table.entity';
 import { ReservationNote } from 'src/restaurant-operations/reservations/reservation-note/entities/reservation-note.entity';
 import { ReservationGuest } from 'src/restaurant-operations/reservations/reservation-guest/entities/reservation-guest.entity';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { ReservationStatus } from './constants/reservation.constants';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
+import { ConflictException } from '@nestjs/common';
+import { ReservationCapacityService } from '../reservation-capacity/reservation-capacity.service';
 
 describe('ReservationService', () => {
   let service: ReservationService;
@@ -57,10 +59,33 @@ describe('ReservationService', () => {
     update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
+  // La transacción corre el callback con un manager cuyos repositorios son los mismos mocks:
+  // así las aserciones sobre save/create siguen valiendo dentro y fuera de la transacción.
+  const repositoriesByEntity = new Map<unknown, unknown>([
+    [Reservation, mockReservationRepository],
+    [ReservationTable, mockResTableRepository],
+    [ReservationStatusHistory, mockGenericRepository],
+    [Table, mockGenericRepository],
+  ]);
+  const mockManager = {
+    getRepository: jest.fn((entity) => repositoriesByEntity.get(entity)),
+  };
+  const mockDataSource = {
+    transaction: jest.fn((work) => work(mockManager)),
+  };
+
+  // La guarda de aforo tiene su propio spec; aquí sólo importa CUÁNDO se invoca y qué se
+  // hace con su veredicto.
+  const mockCapacityService = {
+    assertBookable: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReservationService,
+        { provide: DataSource, useValue: mockDataSource },
+        { provide: ReservationCapacityService, useValue: mockCapacityService },
         {
           provide: getRepositoryToken(Reservation),
           useValue: mockReservationRepository,
@@ -97,6 +122,7 @@ describe('ReservationService', () => {
     );
 
     jest.clearAllMocks();
+    mockCapacityService.assertBookable.mockResolvedValue({ overrideBy: null });
   });
 
   describe('create', () => {
@@ -184,6 +210,122 @@ describe('ReservationService', () => {
 
       expect(result.data.id).toBe(11);
       expect(mockResTableRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('capacity guard', () => {
+    const merchantId = 3;
+    const dto = { reservation_date: '2026-04-16T19:00:00Z', party_size: 6 };
+
+    beforeEach(() => {
+      mockReservationRepository.create.mockImplementation((r) => ({ id: 50, ...r }));
+      mockReservationRepository.save.mockImplementation((r) => Promise.resolve(r));
+      jest.spyOn(service, 'findOne').mockResolvedValue({ data: {} } as any);
+    });
+
+    it('checks capacity inside the create transaction with the booking window', async () => {
+      await service.create(merchantId, dto, 7);
+
+      expect(mockCapacityService.assertBookable).toHaveBeenCalledWith(
+        mockManager,
+        merchantId,
+        {
+          start: new Date('2026-04-16T19:00:00Z'),
+          durationMinutes: 90,
+          partySize: 6,
+          excludeReservationId: undefined,
+        },
+        undefined,
+      );
+    });
+
+    it('does not guard a walk-in created already seated, nor the wait list', async () => {
+      await service.create(merchantId, { ...dto, status: ReservationStatus.SEATED });
+      await service.create(merchantId, { ...dto, status: ReservationStatus.WAIT_LIST });
+      expect(mockCapacityService.assertBookable).not.toHaveBeenCalled();
+    });
+
+    it('propagates the 409 unchanged (not as a 500) and saves nothing', async () => {
+      mockCapacityService.assertBookable.mockRejectedValue(
+        new ConflictException({ code: 'CAPACITY_OVERRIDE_REQUIRED', message: 'Over capacity' }),
+      );
+
+      await expect(service.create(merchantId, dto)).rejects.toBeInstanceOf(ConflictException);
+      expect(mockReservationRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('records who authorized an override, without storing the credentials', async () => {
+      mockCapacityService.assertBookable.mockResolvedValue({ overrideBy: 2 });
+      const override = { email: 'boss@x.com', password: 'secret' };
+
+      await service.create(merchantId, { ...dto, manager_override: override });
+
+      expect(mockCapacityService.assertBookable).toHaveBeenCalledWith(
+        mockManager,
+        merchantId,
+        expect.any(Object),
+        override,
+      );
+      const saved = mockReservationRepository.save.mock.calls[0][0];
+      expect(saved.capacity_override_by).toBe(2);
+      expect(saved.capacity_override_at).toBeInstanceOf(Date);
+      expect(saved).not.toHaveProperty('manager_override');
+    });
+
+    it('re-checks when a pending booking is confirmed, excluding itself', async () => {
+      mockReservationRepository.findOneBy.mockResolvedValue({
+        id: 9,
+        merchant_id: merchantId,
+        status: ReservationStatus.PENDING,
+        reservation_date: new Date('2026-04-16T19:00:00Z'),
+        duration_minutes: 120,
+        party_size: 4,
+      });
+
+      await service.update(9, merchantId, { status: ReservationStatus.CONFIRMED }, 7);
+
+      expect(mockCapacityService.assertBookable).toHaveBeenCalledWith(
+        mockManager,
+        merchantId,
+        expect.objectContaining({ durationMinutes: 120, partySize: 4, excludeReservationId: 9 }),
+        undefined,
+      );
+    });
+
+    it('re-checks when a confirmed booking grows, but not on a no-op resend', async () => {
+      const existing = () => ({
+        id: 9,
+        merchant_id: merchantId,
+        status: ReservationStatus.CONFIRMED,
+        reservation_date: new Date('2026-04-16T19:00:00Z'),
+        duration_minutes: 90,
+        party_size: 4,
+      });
+      mockReservationRepository.findOneBy.mockResolvedValue(existing());
+      await service.update(9, merchantId, { party_size: 4, special_requests: 'x' });
+      expect(mockCapacityService.assertBookable).not.toHaveBeenCalled();
+
+      mockReservationRepository.findOneBy.mockResolvedValue(existing());
+      await service.update(9, merchantId, { party_size: 8 });
+      expect(mockCapacityService.assertBookable).toHaveBeenCalledWith(
+        mockManager,
+        merchantId,
+        expect.objectContaining({ partySize: 8, excludeReservationId: 9 }),
+        undefined,
+      );
+    });
+
+    it('does not guard seating or completing a party', async () => {
+      mockReservationRepository.findOneBy.mockResolvedValue({
+        id: 9,
+        merchant_id: merchantId,
+        status: ReservationStatus.CONFIRMED,
+        reservation_date: new Date('2026-04-16T19:00:00Z'),
+        duration_minutes: 90,
+        party_size: 4,
+      });
+      await service.update(9, merchantId, { status: ReservationStatus.SEATED });
+      expect(mockCapacityService.assertBookable).not.toHaveBeenCalled();
     });
   });
 
@@ -429,6 +571,42 @@ describe('ReservationService', () => {
       );
     });
 
+    it('should write the status and its history entry in one transaction', async () => {
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.PENDING,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+      mockGenericRepository.save.mockRejectedValueOnce(
+        new Error('history insert failed'),
+      );
+
+      // Si el INSERT del histórico falla, la transacción entera falla: el cambio de estado
+      // no puede quedar aplicado sin su rastro de auditoría.
+      await expect(
+        service.update(1, 1, { status: ReservationStatus.CONFIRMED }, 42),
+      ).rejects.toThrow();
+      expect(mockDataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(mockReservationRepository.save).toHaveBeenCalled();
+    });
+
+    it('should not log history when the status is unchanged', async () => {
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.PENDING,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: existing } as any);
+
+      await service.update(1, 1, { party_size: 3 });
+
+      expect(mockGenericRepository.save).not.toHaveBeenCalled();
+    });
+
     it('should update party_size without checking availability', async () => {
       const existing = { id: 1, merchant_id: 1, reservation_date: new Date() };
       mockReservationRepository.findOneBy.mockResolvedValue(existing);
@@ -442,6 +620,61 @@ describe('ReservationService', () => {
       expect(mockReservationRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ party_size: 10 }),
       );
+    });
+  });
+
+  describe('cancel', () => {
+    it('should cancel and sign the history entry with the staff member', async () => {
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.CONFIRMED,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+      jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({ data: existing } as any);
+
+      await service.cancel(1, 1, 42);
+
+      expect(mockReservationRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: ReservationStatus.CANCELLED }),
+      );
+      // Antes se guardaba sin firma y la anulación se leía como "Automated System".
+      expect(mockGenericRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reservation_id: 1,
+          status: ReservationStatus.CANCELLED,
+          changed_by: 42,
+        }),
+      );
+      expect(mockDataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reject cancelling a reservation in a terminal state', async () => {
+      const existing = {
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.COMPLETED,
+      };
+      mockReservationRepository.findOneBy.mockResolvedValue(existing);
+
+      await expect(service.cancel(1, 1, 42)).rejects.toThrow(
+        /'completed' is a terminal state/,
+      );
+      expect(mockReservationRepository.save).not.toHaveBeenCalled();
+      expect(mockGenericRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject cancelling twice', async () => {
+      mockReservationRepository.findOneBy.mockResolvedValue({
+        id: 1,
+        merchant_id: 1,
+        status: ReservationStatus.CANCELLED,
+      });
+
+      await expect(service.cancel(1, 1, 42)).rejects.toThrow();
+      expect(mockGenericRepository.save).not.toHaveBeenCalled();
     });
   });
 
