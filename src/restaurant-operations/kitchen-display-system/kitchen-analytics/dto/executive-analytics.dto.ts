@@ -58,6 +58,34 @@ export interface StationSosBreakdownItem {
   slaComplianceRate: number;
 }
 
+export type StationEfficiencyRating = 'optimal' | 'warning' | 'critical';
+
+export interface StationEfficiencyItem {
+  stationId: number;
+  stationName: string;
+  stationType: string;
+  totalItemsPrepared: number;
+  avgPrepTimeSeconds: number;
+  avgPrepTimeFormatted: string;
+  peakQueueCapacity: number;
+  efficiencyRating: StationEfficiencyRating;
+}
+
+export interface ItemBottleneckItem {
+  productId: number;
+  productName: string;
+  variantId: number | null;
+  variantName: string | null;
+  totalQuantityPrepared: number;
+  avgPrepTimeSeconds: number;
+  avgPrepTimeFormatted: string;
+  standardCookingTimeSeconds: number;
+  standardCookingTimeFormatted: string;
+  varianceSeconds: number;
+  varianceFormatted: string;
+  isBottleneck: boolean;
+}
+
 export interface ExecutiveAnalyticsData {
   totalOrdersProcessed: number;
   completedOrders: number;
@@ -75,4 +103,6 @@ export interface ExecutiveAnalyticsData {
   hourlyHeatmap: HourlyHeatmapItem[];
   slaDistribution: SlaDistribution;
   stationBreakdown: StationSosBreakdownItem[];
+  stationEfficiencyMatrix: StationEfficiencyItem[];
+  bottlenecks: ItemBottleneckItem[];
 }

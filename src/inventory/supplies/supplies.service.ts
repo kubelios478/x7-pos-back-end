@@ -119,7 +119,10 @@ export class SuppliesService {
             locationId: location.id,
             supplyId: savedSupply.id,
             currentQty: 0,
-            minimumQty: 5,
+            minimumQty:
+              dto.minimumQty !== undefined && dto.minimumQty !== null
+                ? Number(dto.minimumQty)
+                : 0,
             weightedAverageUnitCost: savedSupply.cost_per_unit
               ? savedSupply.cost_per_unit.toString()
               : '0.0000',

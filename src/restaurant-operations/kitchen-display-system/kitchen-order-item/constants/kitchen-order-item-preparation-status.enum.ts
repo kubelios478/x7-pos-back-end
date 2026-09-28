@@ -1,5 +1,6 @@
 /** Estados de preparación en cocina (KDS). El paso `served` vive solo en POS (`OrderItem`). */
 export enum KitchenOrderItemPreparationStatus {
+  HELD = 'held',
   PENDING = 'pending',
   IN_PREPARATION = 'in_preparation',
   READY = 'ready',
@@ -7,6 +8,7 @@ export enum KitchenOrderItemPreparationStatus {
 
 /** Orden lineal para transiciones `next` / `previous`. */
 export const KITCHEN_ORDER_ITEM_PREPARATION_STATUS_ORDER = [
+  KitchenOrderItemPreparationStatus.HELD,
   KitchenOrderItemPreparationStatus.PENDING,
   KitchenOrderItemPreparationStatus.IN_PREPARATION,
   KitchenOrderItemPreparationStatus.READY,

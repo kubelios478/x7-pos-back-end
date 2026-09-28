@@ -72,15 +72,24 @@ async function bootstrap() {
         enableImplicitConversion: true,
       },
       exceptionFactory: (errors) => {
-        const messages = errors.map((error) => {
-          const constraints = error.constraints;
-          if (constraints) {
-            return Object.values(constraints).join(', ');
+        const extractErrors = (errs: any[]): string[] => {
+          const res: string[] = [];
+          for (const err of errs) {
+            if (err.constraints) {
+              res.push(...(Object.values(err.constraints) as string[]));
+            }
+            if (err.children && err.children.length > 0) {
+              res.push(...extractErrors(err.children));
+            }
+            if (!err.constraints && (!err.children || err.children.length === 0)) {
+              res.push(`${err.property} has invalid value`);
+            }
           }
-          return `${error.property} has invalid value`;
-        });
+          return res;
+        };
+        const messages = extractErrors(errors);
         return new BadRequestException({
-          message: messages.length > 1 ? messages : messages[0],
+          message: messages.length > 1 ? messages : (messages[0] || 'Validation error'),
           errors: messages,
         });
       },

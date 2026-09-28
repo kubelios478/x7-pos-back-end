@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { SuccessResponse } from '../../../../common/dtos/success-response.dto';
 import { KitchenOrderItemStatus } from '../constants/kitchen-order-item-status.enum';
 import { KitchenOrderItemPreparationStatus } from '../constants/kitchen-order-item-preparation-status.enum';
+import { KitchenCourse } from '../constants/kitchen-course.enum';
 
 export class BasicKitchenOrderInfoDto {
   @ApiProperty({ example: 1, description: 'Kitchen Order ID' })
@@ -111,6 +112,27 @@ export class KitchenOrderItemResponseDto {
     nullable: true,
   })
   notes: string | null;
+
+  @ApiProperty({
+    example: KitchenCourse.MAIN_COURSE,
+    enum: KitchenCourse,
+    description: 'Course stage attribute (appetizer, main_course, dessert, beverage)',
+  })
+  course: KitchenCourse;
+
+  @ApiProperty({
+    example: '2024-01-15T08:40:00Z',
+    description: 'Target timestamp when held items should auto-fire',
+    nullable: true,
+  })
+  holdUntil: Date | null;
+
+  @ApiProperty({
+    example: '2024-01-15T08:35:00Z',
+    description: 'Timestamp when a held item was fired to the line',
+    nullable: true,
+  })
+  firedAt: Date | null;
 
   @ApiProperty({
     example: '2024-01-15T08:00:00Z',

@@ -40,7 +40,9 @@ function deriveKitchenOrderBusinessStatus(
   }
   if (
     active.every(
-      (i) => i.preparation_status === KitchenOrderItemPreparationStatus.PENDING,
+      (i) =>
+        i.preparation_status === KitchenOrderItemPreparationStatus.PENDING ||
+        i.preparation_status === KitchenOrderItemPreparationStatus.HELD,
     )
   ) {
     return KitchenOrderBusinessStatus.PENDING;

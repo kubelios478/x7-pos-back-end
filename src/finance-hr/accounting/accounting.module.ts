@@ -3,7 +3,7 @@ import { LedgerAccountsController } from './ledger-accounts.controller';
 import { JournalEntriesController } from './journal-entries.controller';
 
 @Module({
-  controllers: [LedgerAccountsController, JournalEntriesController],
+  controllers: [],
   exports: [],
 })
 export class AccountingModule {}

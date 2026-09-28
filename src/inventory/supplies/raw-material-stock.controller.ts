@@ -121,7 +121,8 @@ export class RawMaterialStockController {
     return await this.itemsService.findAll(
       {
         ...query,
-      },
+        onlySupplies: true,
+      } as any,
       merchantId,
     );
   }

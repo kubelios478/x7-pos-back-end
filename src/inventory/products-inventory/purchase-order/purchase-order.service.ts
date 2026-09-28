@@ -548,11 +548,17 @@ export class PurchaseOrderService {
       const targetReceivedStatuses = [
         PurchaseOrderStatus.RECEIVED,
         PurchaseOrderStatus.COMPLETED,
-        PurchaseOrderStatus.PARTIALLY_RECEIVED,
       ];
-      const isNowReceived = targetReceivedStatuses.includes(
-        purchaseOrder.status,
-      );
+      if (
+        targetReceivedStatuses.includes(purchaseOrder.status) &&
+        oldStatus !== purchaseOrder.status
+      ) {
+        await this.increaseStockForOrder(
+          purchaseOrder.id,
+          merchant_id,
+          purchaseOrder.status,
+        );
+      }
 
       // 1. If items are received and the status is DRAFT or SENT, we synchronize the order lines (modify/add/delete)
       if (updateProductDto.items && Array.isArray(updateProductDto.items)) {
@@ -752,6 +758,8 @@ export class PurchaseOrderService {
           await this.purchaseOrderItemRepository.save(item);
 
           const targetLocationId = item.locationId || defaultLocation.id;
+          const purchaseCost =
+            Number(item.unitCost || item.unitPrice) || 0;
 
           const whereClause: any = {
             locationId: targetLocationId,
@@ -767,12 +775,22 @@ export class PurchaseOrderService {
             }
           }
 
-          const stockItem = await this.itemRepository.findOne({
+          let stockItem = await this.itemRepository.findOne({
             where: whereClause,
           });
 
           if (stockItem) {
-            stockItem.currentQty = Number(stockItem.currentQty) + diff;
+            const oldQty = Number(stockItem.currentQty) || 0;
+            const oldWacc = Number(stockItem.weightedAverageUnitCost) || 0;
+            const newTotalQty = oldQty + diff;
+            let newWacc = oldWacc;
+            if (newTotalQty > 0 && purchaseCost > 0) {
+              newWacc =
+                (oldQty * oldWacc + diff * purchaseCost) / newTotalQty;
+            }
+
+            stockItem.currentQty = newTotalQty;
+            stockItem.weightedAverageUnitCost = newWacc.toFixed(4);
             stockItem.isActive = true;
             await this.itemRepository.save(stockItem);
 
@@ -789,6 +807,7 @@ export class PurchaseOrderService {
               locationId: targetLocationId,
               currentQty: diff,
               isActive: true,
+              weightedAverageUnitCost: purchaseCost.toFixed(4),
             };
             if (item.rawMaterialId) {
               createData.supplyId = item.rawMaterialId;
@@ -809,6 +828,16 @@ export class PurchaseOrderService {
               reason: `Fulfillment of Purchase Order #${purchaseOrderId}`,
               movementType: 'PURCHASE_RECEIPT',
             });
+          }
+
+          if (item.rawMaterialId) {
+            const supply = await this.supplyRepository.findOneBy({
+              id: item.rawMaterialId,
+            });
+            if (supply && purchaseCost > 0) {
+              supply.cost_per_unit = purchaseCost;
+              await this.supplyRepository.save(supply);
+            }
           }
         }
       }
@@ -868,6 +897,7 @@ export class PurchaseOrderService {
     const validStatuses = [
       PurchaseOrderStatus.SENT,
       PurchaseOrderStatus.PARTIALLY_RECEIVED,
+      PurchaseOrderStatus.RECEIVED,
     ];
     if (!validStatuses.includes(purchaseOrder.status)) {
       throw new BadRequestException(
@@ -905,18 +935,29 @@ export class PurchaseOrderService {
       const oldReceived = Number(itemLine.receivedQuantity) || 0;
       const ordered =
         Number(itemLine.quantityOrdered || itemLine.quantity) || 0;
-      const maxCanReceive = Math.max(0, ordered - oldReceived);
 
-      let additionalReceived = Number(receiveLine.receivedQuantity) || 0;
-      if (additionalReceived > maxCanReceive) {
-        additionalReceived = maxCanReceive;
-      }
-
-      if (additionalReceived <= 0) {
+      let delta = Number(receiveLine.receivedQuantity) || 0;
+      if (delta === 0) {
         continue;
       }
 
-      const targetReceived = oldReceived + additionalReceived;
+      if (delta > 0) {
+        const maxCanReceive = Math.max(0, ordered - oldReceived);
+        if (delta > maxCanReceive) {
+          delta = maxCanReceive;
+        }
+      } else {
+        // Reduction / correction: cannot reduce more than was already received
+        if (Math.abs(delta) > oldReceived) {
+          delta = -oldReceived;
+        }
+      }
+
+      if (delta === 0) {
+        continue;
+      }
+
+      const targetReceived = oldReceived + delta;
 
       // Save the new total received in the purchase order item.
       itemLine.receivedQuantity = targetReceived;
@@ -964,46 +1005,71 @@ export class PurchaseOrderService {
       const oldWacc = Number(stockItem.weightedAverageUnitCost) || 0;
       const purchaseCost = Number(itemLine.unitCost || itemLine.unitPrice) || 0;
 
-      // Calculate new WACC
-      let newWacc = oldWacc;
-      const newTotalQty = oldQty + additionalReceived;
-      if (newTotalQty > 0) {
-        newWacc =
-          (oldQty * oldWacc + additionalReceived * purchaseCost) / newTotalQty;
-      }
-
-      // Update the physical stock
-      stockItem.currentQty = newTotalQty;
-      stockItem.weightedAverageUnitCost = newWacc.toFixed(4);
-      await this.itemRepository.save(stockItem);
-      evaluatedStockIds.add(stockItem.id);
-
-      // If it's a raw material, update the cost_per_unit in Supplies
-      if (itemLine.rawMaterialId) {
-        const supply = await this.supplyRepository.findOneBy({
-          id: itemLine.rawMaterialId,
-        });
-        if (supply) {
-          supply.cost_per_unit = purchaseCost;
-          await this.supplyRepository.save(supply);
+      if (delta > 0) {
+        // Calculate new WACC
+        let newWacc = oldWacc;
+        const newTotalQty = oldQty + delta;
+        if (newTotalQty > 0) {
+          newWacc =
+            (oldQty * oldWacc + delta * purchaseCost) / newTotalQty;
         }
-      }
 
-      // Create the audit movement
-      const movement = this.movementRepository.create({
-        stockItemId: stockItem.id,
-        quantity: additionalReceived,
-        type: MovementsStatus.IN,
-        reference: `PO-${id}`,
-        reason: `Receipt of items against PO #${id}`,
-        merchantId,
-        isActive: true,
-        sourceLocationId: null,
-        destinationLocationId: targetLocationId,
-        createdBy: creatorEmail || 'Receiving Clerk',
-        movementType: 'PURCHASE_RECEIPT',
-      });
-      await this.movementRepository.save(movement);
+        // Update the physical stock
+        stockItem.currentQty = newTotalQty;
+        stockItem.weightedAverageUnitCost = newWacc.toFixed(4);
+        await this.itemRepository.save(stockItem);
+        evaluatedStockIds.add(stockItem.id);
+
+        // If it's a raw material, update the cost_per_unit in Supplies
+        if (itemLine.rawMaterialId) {
+          const supply = await this.supplyRepository.findOneBy({
+            id: itemLine.rawMaterialId,
+          });
+          if (supply && purchaseCost > 0) {
+            supply.cost_per_unit = purchaseCost;
+            await this.supplyRepository.save(supply);
+          }
+        }
+
+        // Create the audit movement IN
+        const movement = this.movementRepository.create({
+          stockItemId: stockItem.id,
+          quantity: delta,
+          type: MovementsStatus.IN,
+          reference: `PO-${id}`,
+          reason: `Receipt of items against PO #${id}`,
+          merchantId,
+          isActive: true,
+          sourceLocationId: null,
+          destinationLocationId: targetLocationId,
+          createdBy: creatorEmail || 'Receiving Clerk',
+          movementType: 'PURCHASE_RECEIPT',
+        });
+        await this.movementRepository.save(movement);
+      } else {
+        // delta < 0: Reduction / correction
+        const reduction = Math.abs(delta);
+        const newTotalQty = Math.max(0, oldQty - reduction);
+        stockItem.currentQty = newTotalQty;
+        await this.itemRepository.save(stockItem);
+        evaluatedStockIds.add(stockItem.id);
+
+        // Create audit movement OUT for correction
+        const movement = this.movementRepository.create({
+          stockItemId: stockItem.id,
+          quantity: reduction,
+          type: MovementsStatus.OUT,
+          reference: `PO-${id}`,
+          reason: `Correction of received quantity against PO #${id}`,
+          merchantId,
+          isActive: true,
+          sourceLocationId: targetLocationId,
+          destinationLocationId: null,
+          createdBy: creatorEmail || 'Receiving Clerk',
+          movementType: 'PURCHASE_RECEIPT_CORRECTION',
+        });
+        await this.movementRepository.save(movement);
+      }
     }
 
     // Determine new status of the order
@@ -1028,6 +1094,8 @@ export class PurchaseOrderService {
       purchaseOrder.status = PurchaseOrderStatus.RECEIVED;
     } else if (anyReceived) {
       purchaseOrder.status = PurchaseOrderStatus.PARTIALLY_RECEIVED;
+    } else {
+      purchaseOrder.status = PurchaseOrderStatus.SENT;
     }
 
     await this.purchaseOrderRepository.save(purchaseOrder);
