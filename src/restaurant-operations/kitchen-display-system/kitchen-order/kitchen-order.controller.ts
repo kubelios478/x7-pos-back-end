@@ -78,7 +78,9 @@ export class KitchenOrderController {
   })
   async resetTestData(
     @Request() req: AuthenticatedRequest,
-    @Body() body?: { mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' },
+    @Body() body?: {
+      mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy';
+    },
   ) {
     const merchantId = req.user?.merchant?.id || 2;
     return this.kitchenOrderService.resetTestData(

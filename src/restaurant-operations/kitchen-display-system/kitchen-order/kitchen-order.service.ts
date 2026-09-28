@@ -1718,7 +1718,7 @@ export class KitchenOrderService {
 
   async resetTestData(
     merchantId: number,
-    mode: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' = 'seed',
+    mode: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy' = 'seed',
   ) {
     if (mode === 'clear') {
       await this.dataSource.query(
@@ -1737,7 +1737,9 @@ export class KitchenOrderService {
           ? 'seed-multi-orders.sql'
           : mode === 'multi2'
             ? 'seed-multi2-orders.sql'
-            : 'seed-test-orders.sql';
+            : mode === 'allergy'
+              ? 'seed-allergy-orders.sql'
+              : 'seed-test-orders.sql';
 
     const possiblePaths = [
       path.resolve(process.cwd(), `scripts/${filename}`),
@@ -1759,7 +1761,9 @@ export class KitchenOrderService {
                 ? '1 multi-course order reseeded successfully (Appetizer, Beverage, Main, Dessert)'
                 : mode === 'multi2'
                   ? '2 multi-course orders reseeded successfully (Appetizer, Beverage, Main, Dessert)'
-                  : '8 test orders reseeded successfully with full multi-course pacing',
+                  : mode === 'allergy'
+                    ? '3 allergy and modifier test orders reseeded successfully (Severe Allergy, Celiac/Vegan, Color Badges)'
+                    : '8 test orders reseeded successfully with full multi-course pacing',
         };
       }
     }
