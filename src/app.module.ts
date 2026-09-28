@@ -44,7 +44,7 @@ import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-
           // Automatic loading of all entities declared in each submodule (forFeature)
           autoLoadEntities: true,
 
-          synchronize: false,
+          synchronize: true,
           ssl: {
             rejectUnauthorized: false,
           },
