@@ -49,7 +49,7 @@ import {
 @ApiTags('Core - Financial engine - Journal Entry')
 @ApiExtraModels(ErrorResponse)
 @ApiBearerAuth()
-@Controller('journal-entry')
+@Controller(['journal-entry', 'journal-entries'])
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.JOURNAL_ENTRIES)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class JournalEntryController {

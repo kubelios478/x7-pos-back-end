@@ -38,6 +38,7 @@ import {
 } from '@nestjs/swagger';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { OneKitchenOrderItemResponseDto } from './dto/kitchen-order-item-response.dto';
+import { KitchenCourse } from './constants/kitchen-course.enum';
 import { GetKitchenOrderItemQueryDto } from './dto/get-kitchen-order-item-query.dto';
 import { PaginatedKitchenOrderItemResponseDto } from './dto/kitchen-order-item-response.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -386,6 +387,146 @@ export class KitchenOrderItemController {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     return this.kitchenOrderItemService.revertPreparationStatus(
       id,
+      authenticatedUserMerchantId,
+      req.user?.id,
+    );
+  }
+
+  @Post(':id/fire')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Fire a held kitchen order item to the active queue',
+    description:
+      'Transitions preparation_status from HELD to PENDING, records fired_at timestamp, and sends item to line cooks.',
+  })
+  @ApiOkResponse({
+    description: 'Kitchen order item fired successfully',
+    type: OneKitchenOrderItemResponseDto,
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Kitchen order item ID',
+    example: 1,
+  })
+  async fireItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenOrderItemService.fireItem(
+      id,
+      authenticatedUserMerchantId,
+      req.user?.id,
+    );
+  }
+
+  @Post(':id/hold')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Put an active kitchen order item on hold with pacing delay',
+    description:
+      'Transitions preparation_status to HELD and sets an automated hold_until timer.',
+  })
+  @ApiOkResponse({
+    description: 'Kitchen order item held successfully',
+    type: OneKitchenOrderItemResponseDto,
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Kitchen order item ID',
+    example: 1,
+  })
+  async holdItem(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('holdMinutes') holdMinutes: number,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenOrderItemService.holdItem(
+      id,
+      holdMinutes ? Number(holdMinutes) : 10,
+      authenticatedUserMerchantId,
+      req.user?.id,
+    );
+  }
+
+  @Post('order/:kitchenOrderId/fire-course')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Fire an entire course (e.g. MAIN_COURSE, DESSERT) for an order',
+    description:
+      'Releases all held items belonging to the specified course to line cook displays.',
+  })
+  @ApiParam({
+    name: 'kitchenOrderId',
+    type: Number,
+    description: 'Kitchen order ID',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'course',
+    enum: KitchenCourse,
+    description: 'Course to fire (appetizer, main_course, dessert, beverage)',
+    required: true,
+  })
+  async fireCourse(
+    @Param('kitchenOrderId', ParseIntPipe) kitchenOrderId: number,
+    @Query('course') course: KitchenCourse,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenOrderItemService.fireCourse(
+      kitchenOrderId,
+      course || KitchenCourse.MAIN_COURSE,
+      authenticatedUserMerchantId,
+      req.user?.id,
+    );
+  }
+
+  @Post('auto-pacing/tick')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Run automated pacing evaluation and auto-fire expired items',
+    description:
+      'Checks for any held items whose pacing timers have expired and transitions them to PENDING.',
+  })
+  async processAutoPacing(@Request() req: AuthenticatedRequest) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenOrderItemService.processAutoPacing(
       authenticatedUserMerchantId,
       req.user?.id,
     );

@@ -142,13 +142,13 @@ export class GetKitchenEventLogQueryDto {
     example: 10,
     description: 'Number of items per page (minimum 1, maximum 100)',
     minimum: 1,
-    maximum: 100,
+    maximum: 1000,
   })
   @IsOptional()
   @Transform(({ value }) => parseInt(value))
   @IsNumber()
   @Min(1)
-  @Max(100)
+  @Max(1000)
   limit?: number = 10;
 
   @ApiPropertyOptional({

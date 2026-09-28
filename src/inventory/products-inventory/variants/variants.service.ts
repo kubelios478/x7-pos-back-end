@@ -31,39 +31,6 @@ export class VariantsService {
     private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
 
-  private async initializeStockForVariant(
-    variant: Variant,
-    merchantId: number,
-  ) {
-    const locations = await this.locationRepository.findBy({
-      merchantId,
-      isActive: true,
-    });
-
-    for (const location of locations) {
-      // Check if it already exists to avoid duplication
-      const existingItem = await this.itemRepository.findOne({
-        where: {
-          productId: variant.productId,
-          variantId: variant.id,
-          locationId: location.id,
-        },
-      });
-
-      if (!existingItem) {
-        const newItem = this.itemRepository.create({
-          currentQty: 0,
-          minimumQty: 5,
-          productId: variant.productId,
-          variantId: variant.id,
-          locationId: location.id,
-          isActive: true,
-          weightedAverageUnitCost: '0.0000',
-        });
-        await this.itemRepository.save(newItem);
-      }
-    }
-  }
 
   async create(
     merchant_id: number,
@@ -109,7 +76,6 @@ export class VariantsService {
       const savedVariant = await this.variantRepository.save(
         existingButIsNotActive,
       );
-      await this.initializeStockForVariant(savedVariant, merchant_id);
       return this.findOne(savedVariant.id, merchant_id, 'Created');
     } else {
       const newVariant = this.variantRepository.create({
@@ -118,7 +84,6 @@ export class VariantsService {
       });
 
       const savedVariant = await this.variantRepository.save(newVariant);
-      await this.initializeStockForVariant(savedVariant, merchant_id);
 
       return this.findOne(savedVariant.id, merchant_id, 'Created');
     }

@@ -13,6 +13,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { KitchenOrderBusinessStatus } from '../constants/kitchen-order-business-status.enum';
+import { KitchenCourse } from '../../kitchen-order-item/constants/kitchen-course.enum';
 
 export class CreateKitchenOrderItemInlineDto {
   @ApiPropertyOptional({ example: 1, nullable: true })
@@ -40,6 +41,15 @@ export class CreateKitchenOrderItemInlineDto {
   @IsInt({ message: 'Quantity must be an integer' })
   @Min(1, { message: 'Quantity must be greater than or equal to 1' })
   quantity?: number;
+
+  @ApiPropertyOptional({
+    example: KitchenCourse.MAIN_COURSE,
+    enum: KitchenCourse,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsEnum(KitchenCourse, { message: 'Course must be a valid kitchen course' })
+  course?: KitchenCourse | null;
 
   @ApiPropertyOptional({ example: 'Extra sauce', nullable: true })
   @IsOptional()

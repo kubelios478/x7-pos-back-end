@@ -9,6 +9,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { KitchenOrderItemPreparationStatus } from '../constants/kitchen-order-item-preparation-status.enum';
+import { KitchenCourse } from '../constants/kitchen-course.enum';
 
 export class CreateKitchenOrderItemDto {
   @ApiProperty({
@@ -104,4 +105,23 @@ export class CreateKitchenOrderItemDto {
   @IsOptional()
   @MaxLength(5000, { message: 'Notes must not exceed 5000 characters' })
   notes?: string | null;
+
+  @ApiPropertyOptional({
+    example: KitchenCourse.MAIN_COURSE,
+    enum: KitchenCourse,
+    description: 'Course stage attribute (appetizer, main_course, dessert, beverage)',
+    required: false,
+  })
+  @IsOptional()
+  @IsEnum(KitchenCourse)
+  course?: KitchenCourse;
+
+  @ApiPropertyOptional({
+    example: '2024-01-15T08:40:00Z',
+    description: 'Target timestamp when held items should auto-fire',
+    nullable: true,
+    required: false,
+  })
+  @IsOptional()
+  holdUntil?: Date | null;
 }

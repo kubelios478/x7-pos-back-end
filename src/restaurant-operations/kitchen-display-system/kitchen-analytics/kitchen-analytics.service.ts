@@ -2,6 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { KitchenOrderStatus } from '../kitchen-order/constants/kitchen-order-status.enum';
 import { KitchenCancellationReason } from '../kitchen-order/constants/kitchen-order-cancellation-reason.dto';
+import {
+  StationEfficiencyItem,
+  StationEfficiencyRating,
+  ItemBottleneckItem,
+} from './dto/executive-analytics.dto';
 
 @Injectable()
 export class KitchenAnalyticsService {
@@ -24,7 +29,12 @@ export class KitchenAnalyticsService {
           .addSelect('ko.completed_at', 'completed_at')
           .addSelect('ko.started_at', 'started_at')
           .addSelect(
-            'EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at))',
+            'CASE ' +
+              'WHEN ko.completed_at IS NOT NULL AND ko.started_at IS NOT NULL AND ko.started_at < ko.completed_at ' +
+                'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at)) ' +
+              'WHEN ko.completed_at IS NOT NULL AND ko.created_at IS NOT NULL ' +
+                'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.created_at)) ' +
+              'ELSE NULL END',
             'prep_time_seconds',
           )
           .from('kitchen_order', 'ko')
@@ -34,8 +44,7 @@ export class KitchenAnalyticsService {
             'koi.kitchen_order_id = ko.id',
           )
           .where('ko.business_status = :status', { status: 'completed' })
-          .andWhere('ko.completed_at IS NOT NULL')
-          .andWhere('ko.started_at IS NOT NULL');
+          .andWhere('ko.completed_at IS NOT NULL');
       }, 'sub')
 
       .innerJoin('product', 'p', 'p.id = sub.product_id')
@@ -156,8 +165,11 @@ export class KitchenAnalyticsService {
       .addSelect('ko.completed_at', 'completed_at')
       .addSelect('ko.cancelled_at', 'cancelled_at')
       .addSelect(
-        'CASE WHEN ko.completed_at IS NOT NULL AND ko.started_at IS NOT NULL ' +
-          'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at)) ' +
+        'CASE ' +
+          'WHEN ko.completed_at IS NOT NULL AND ko.started_at IS NOT NULL AND ko.started_at < ko.completed_at ' +
+            'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at)) ' +
+          'WHEN ko.completed_at IS NOT NULL AND ko.created_at IS NOT NULL ' +
+            'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.created_at)) ' +
           'ELSE NULL END',
         'prepSeconds',
       )
@@ -341,6 +353,167 @@ export class KitchenAnalyticsService {
       };
     });
 
+    // Station Efficiency Comparison Matrix (Historia X7P-4205)
+    let stationQuery = `
+      SELECT id, name, station_type as "stationType" 
+      FROM kitchen_station 
+      WHERE merchant_id = $1 AND status = 'active'
+    `;
+    const stParams: any[] = [merchantId];
+    if (stationId) {
+      stationQuery += ` AND id = $2`;
+      stParams.push(stationId);
+    }
+    stationQuery += ` ORDER BY display_order ASC, id ASC`;
+    const stationEntities = await this.dataSource.query(stationQuery, stParams);
+
+    // Conteo y tiempo promedio de ítems preparados por estación
+    let itemsPerStationSql = `
+      SELECT 
+        ko.station_id as "stationId",
+        COUNT(koi.id) as "totalItemsPrepared",
+        COALESCE(AVG(
+          EXTRACT(EPOCH FROM (COALESCE(koi.completed_at, ko.completed_at) - COALESCE(koi.started_at, ko.started_at)))
+        ), 0) as "avgPrepSeconds"
+      FROM kitchen_order ko
+      INNER JOIN kitchen_order_item koi ON koi.kitchen_order_id = ko.id
+      WHERE ko.merchant_id = $1
+        AND koi.status = 'active'
+        AND (ko.business_status = 'completed' OR koi.preparation_status = 'ready' OR koi.prepared_quantity > 0)
+    `;
+    const ipsParams: any[] = [merchantId];
+    let ipsIdx = 2;
+    if (startDate) {
+      itemsPerStationSql += ` AND ko.created_at >= $${ipsIdx++}`;
+      ipsParams.push(startDate);
+    }
+    if (endDate) {
+      itemsPerStationSql += ` AND ko.created_at <= $${ipsIdx++}`;
+      ipsParams.push(endDate);
+    }
+    if (stationId) {
+      itemsPerStationSql += ` AND ko.station_id = $${ipsIdx++}`;
+      ipsParams.push(stationId);
+    }
+    itemsPerStationSql += ` GROUP BY ko.station_id`;
+    const stationItemStats = await this.dataSource.query(itemsPerStationSql, ipsParams);
+    const stationItemMap = new Map<number, { totalItems: number; avgPrep: number }>();
+    stationItemStats.forEach((r: any) => {
+      stationItemMap.set(Number(r.stationId), {
+        totalItems: Number(r.totalItemsPrepared) || 0,
+        avgPrep: Math.round(Number(r.avgPrepSeconds) || 0),
+      });
+    });
+
+    // Peak Queue Capacity: conteo de órdenes activas (started/pending) en cola
+    let queueSql = `
+      SELECT 
+        ko.station_id as "stationId",
+        COUNT(ko.id) as "activeQueue"
+      FROM kitchen_order ko
+      WHERE ko.merchant_id = $1
+        AND ko.business_status IN ('pending', 'started')
+    `;
+    const qParams: any[] = [merchantId];
+    if (stationId) {
+      queueSql += ` AND ko.station_id = $2`;
+      qParams.push(stationId);
+    }
+    queueSql += ` GROUP BY ko.station_id`;
+    const queueStats = await this.dataSource.query(queueSql, qParams);
+    const queueMap = new Map<number, number>();
+    queueStats.forEach((q: any) => {
+      queueMap.set(Number(q.stationId), Number(q.activeQueue) || 0);
+    });
+
+    const stationEfficiencyMatrix: StationEfficiencyItem[] = stationEntities.map((se: any) => {
+      const sId = Number(se.id);
+      const itemStats = stationItemMap.get(sId) || { totalItems: 0, avgPrep: 0 };
+      const peakQueue = queueMap.get(sId) || 0;
+      const avgSec = itemStats.avgPrep;
+
+      // Rating visual de eficiencia:
+      // Green = Optimal (< 10 mins)
+      // Amber = High Queue / Warning (10-15 mins o cola alta)
+      // Red = Critical Delay (> 15 mins o saturación crítica)
+      let rating: StationEfficiencyRating = 'optimal';
+      if (avgSec > 900 || peakQueue > 20) {
+        rating = 'critical';
+      } else if (avgSec > 600 || peakQueue > 8) {
+        rating = 'warning';
+      }
+
+      return {
+        stationId: sId,
+        stationName: se.name,
+        stationType: se.stationType || 'PREP',
+        totalItemsPrepared: itemStats.totalItems,
+        avgPrepTimeSeconds: avgSec,
+        avgPrepTimeFormatted: formatSeconds(avgSec),
+        peakQueueCapacity: peakQueue,
+        efficiencyRating: rating,
+      };
+    });
+
+    // Slowest Prep Items & Bottleneck Ranking (Historia X7P-4205)
+    let bottleneckSql = `
+      SELECT 
+        p.id as "productId",
+        p.name as "productName",
+        v.id as "variantId",
+        v.name as "variantName",
+        SUM(COALESCE(koi.prepared_quantity, koi.quantity, 1)) as "totalQuantityPrepared",
+        AVG(EXTRACT(EPOCH FROM (COALESCE(koi.completed_at, ko.completed_at) - COALESCE(koi.started_at, ko.started_at)))) as "avgPrepSeconds"
+      FROM kitchen_order_item koi
+      INNER JOIN kitchen_order ko ON ko.id = koi.kitchen_order_id
+      INNER JOIN product p ON p.id = koi.product_id
+      LEFT JOIN variant v ON v.id = koi.variant_id
+      WHERE ko.merchant_id = $1
+        AND koi.status = 'active'
+        AND (ko.business_status = 'completed' OR koi.preparation_status = 'ready' OR koi.completed_at IS NOT NULL)
+        AND (koi.started_at IS NOT NULL OR ko.started_at IS NOT NULL)
+    `;
+    const bSqlParams: any[] = [merchantId];
+    let bSqlIdx = 2;
+    if (startDate) {
+      bottleneckSql += ` AND ko.created_at >= $${bSqlIdx++}`;
+      bSqlParams.push(startDate);
+    }
+    if (endDate) {
+      bottleneckSql += ` AND ko.created_at <= $${bSqlIdx++}`;
+      bSqlParams.push(endDate);
+    }
+    if (stationId) {
+      bottleneckSql += ` AND ko.station_id = $${bSqlIdx++}`;
+      bSqlParams.push(stationId);
+    }
+    bottleneckSql += `
+      GROUP BY p.id, p.name, v.id, v.name
+      ORDER BY "avgPrepSeconds" DESC
+      LIMIT 15
+    `;
+    const bottleneckRows = await this.dataSource.query(bottleneckSql, bSqlParams);
+
+    const standardRecipeSeconds = 600; // SLA objetivo estándar: 10 minutos (600s)
+    const bottlenecks: ItemBottleneckItem[] = bottleneckRows.map((r: any) => {
+      const avgSec = Math.round(Number(r.avgPrepSeconds) || 0);
+      const variance = avgSec - standardRecipeSeconds;
+      return {
+        productId: Number(r.productId),
+        productName: r.productName,
+        variantId: r.variantId ? Number(r.variantId) : null,
+        variantName: r.variantName || null,
+        totalQuantityPrepared: Number(r.totalQuantityPrepared) || 0,
+        avgPrepTimeSeconds: avgSec,
+        avgPrepTimeFormatted: formatSeconds(avgSec),
+        standardCookingTimeSeconds: standardRecipeSeconds,
+        standardCookingTimeFormatted: formatSeconds(standardRecipeSeconds),
+        varianceSeconds: variance,
+        varianceFormatted: `${variance >= 0 ? '+' : ''}${formatSeconds(Math.abs(variance))}`,
+        isBottleneck: avgSec > standardRecipeSeconds,
+      };
+    });
+
     return {
       totalOrdersProcessed: completedCount,
       completedOrders: completedCount,
@@ -358,6 +531,28 @@ export class KitchenAnalyticsService {
       hourlyHeatmap,
       slaDistribution,
       stationBreakdown,
+      stationEfficiencyMatrix,
+      bottlenecks,
     };
+  }
+
+  async getStationEfficiencyMatrix(
+    merchantId: number,
+    startDate?: string,
+    endDate?: string,
+    stationId?: number,
+  ): Promise<StationEfficiencyItem[]> {
+    const executive = await this.getExecutiveAnalytics(merchantId, startDate, endDate, stationId);
+    return executive.stationEfficiencyMatrix;
+  }
+
+  async getItemBottlenecks(
+    merchantId: number,
+    startDate?: string,
+    endDate?: string,
+    stationId?: number,
+  ): Promise<ItemBottleneckItem[]> {
+    const executive = await this.getExecutiveAnalytics(merchantId, startDate, endDate, stationId);
+    return executive.bottlenecks;
   }
 }

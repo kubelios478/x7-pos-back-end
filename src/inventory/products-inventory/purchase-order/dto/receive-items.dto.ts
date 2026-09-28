@@ -16,11 +16,10 @@ export class ReceiveItemLineDto {
 
   @ApiProperty({
     example: 10.5,
-    description: 'Quantity received physically in this transaction',
+    description: 'Quantity delta received physically in this transaction (positive to add, negative to reduce)',
   })
   @IsNotEmpty()
   @IsNumber()
-  @Min(0)
   receivedQuantity: number;
 }
 

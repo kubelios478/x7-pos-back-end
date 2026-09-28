@@ -222,6 +222,10 @@ export class ItemsService {
       });
     }
 
+    if ((query as { onlySupplies?: boolean }).onlySupplies) {
+      queryBuilder.andWhere('item.supplyId IS NOT NULL');
+    }
+
     const total = await queryBuilder.getCount();
 
     const allItems = await queryBuilder

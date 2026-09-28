@@ -113,6 +113,68 @@ export class KitchenAnalyticsController {
     };
   }
 
+  @Get('station-efficiency')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Station Efficiency Comparison Matrix (Historia X7P-4205)',
+  })
+  async getStationEfficiency(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetExecutiveAnalyticsQueryDto,
+  ) {
+    const merchantId = user.merchant.id;
+    const data = await this.service.getStationEfficiencyMatrix(
+      merchantId,
+      query.startDate,
+      query.endDate,
+      query.stationId,
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Station efficiency comparison matrix retrieved successfully',
+      data,
+    };
+  }
+
+  @Get('bottlenecks')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Slowest item prep duration & bottleneck ranking (Historia X7P-4205)',
+  })
+  async getBottlenecks(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetExecutiveAnalyticsQueryDto,
+  ) {
+    const merchantId = user.merchant.id;
+    const data = await this.service.getItemBottlenecks(
+      merchantId,
+      query.startDate,
+      query.endDate,
+      query.stationId,
+    );
+
+    return {
+      statusCode: 200,
+      message: 'Kitchen item bottlenecks retrieved successfully',
+      data,
+    };
+  }
+
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(

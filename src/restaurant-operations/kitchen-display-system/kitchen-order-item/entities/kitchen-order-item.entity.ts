@@ -15,6 +15,7 @@ import { Product } from '../../../../inventory/products-inventory/products/entit
 import { Variant } from '../../../../inventory/products-inventory/variants/entities/variant.entity';
 import { KitchenOrderItemStatus } from '../constants/kitchen-order-item-status.enum';
 import { KitchenOrderItemPreparationStatus } from '../constants/kitchen-order-item-preparation-status.enum';
+import { KitchenCourse } from '../constants/kitchen-course.enum';
 
 @Entity('kitchen_order_item')
 @Index(['kitchen_order_id'])
@@ -22,6 +23,8 @@ import { KitchenOrderItemPreparationStatus } from '../constants/kitchen-order-it
 @Index(['product_id'])
 @Index(['variant_id'])
 @Index(['status'])
+@Index(['preparation_status'])
+@Index(['course'])
 export class KitchenOrderItem {
   @ApiProperty({
     example: 1,
@@ -130,6 +133,36 @@ export class KitchenOrderItem {
     default: KitchenOrderItemPreparationStatus.PENDING,
   })
   preparation_status: KitchenOrderItemPreparationStatus;
+
+  @ApiProperty({
+    example: KitchenCourse.MAIN_COURSE,
+    enum: KitchenCourse,
+    description: 'Course category for sequencing and pacing (appetizer, main_course, dessert, beverage)',
+    default: KitchenCourse.MAIN_COURSE,
+  })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    name: 'course',
+    default: KitchenCourse.MAIN_COURSE,
+  })
+  course: KitchenCourse;
+
+  @ApiProperty({
+    example: '2024-01-15T08:40:00Z',
+    description: 'Automated pacing target timestamp when held items should auto-fire',
+    nullable: true,
+  })
+  @Column({ type: 'timestamp', name: 'hold_until', nullable: true })
+  hold_until: Date | null;
+
+  @ApiProperty({
+    example: '2024-01-15T08:35:00Z',
+    description: 'Timestamp when a held item was fired to the line',
+    nullable: true,
+  })
+  @Column({ type: 'timestamp', name: 'fired_at', nullable: true })
+  fired_at: Date | null;
 
   @ApiProperty({
     example: KitchenOrderItemStatus.ACTIVE,
