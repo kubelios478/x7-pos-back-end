@@ -7,8 +7,11 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ReservationStatus } from '../constants/reservation.constants';
+import { ManagerOverrideDto } from '../../reservation-capacity/dto/manager-override.dto';
 
 export class CreateReservationDto {
   @ApiPropertyOptional({ example: 1 })
@@ -60,4 +63,16 @@ export class CreateReservationDto {
   @IsDateString()
   @IsOptional()
   seated_at?: string;
+
+  @ApiPropertyOptional({
+    type: ManagerOverrideDto,
+    description:
+      'Credentials of a merchant admin authorizing the booking of a slot that is over ' +
+      'capacity or over the arrival pacing limit. Only needed after a 409 ' +
+      'CAPACITY_OVERRIDE_REQUIRED; never stored.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ManagerOverrideDto)
+  manager_override?: ManagerOverrideDto;
 }

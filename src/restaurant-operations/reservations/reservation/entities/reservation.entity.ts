@@ -84,6 +84,17 @@ export class Reservation {
   @Column({ nullable: true })
   created_by: number;
 
+  @ApiPropertyOptional({
+    example: 2,
+    description: 'Merchant admin who authorized booking over capacity / pacing (manager override)',
+  })
+  @Column({ type: 'int', nullable: true })
+  capacity_override_by: number | null;
+
+  @ApiPropertyOptional({ example: '2026-04-16T18:40:00Z' })
+  @Column({ type: 'timestamp', nullable: true })
+  capacity_override_at: Date | null;
+
   @Column({ type: 'boolean', default: true })
   is_active: boolean;
 

@@ -116,7 +116,7 @@ export class ReservationController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     const merchantId = user.merchant.id;
-    return this.reservationService.cancel(id, merchantId);
+    return this.reservationService.cancel(id, merchantId, user.id);
   }
 
   @Delete(':id')

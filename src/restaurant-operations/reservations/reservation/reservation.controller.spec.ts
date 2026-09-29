@@ -182,7 +182,7 @@ describe('ReservationController', () => {
       const result = await controller.cancel(user, 1);
 
       expect(result).toEqual(expectedResult);
-      expect(service.cancel).toHaveBeenCalledWith(1, user.merchant.id);
+      expect(service.cancel).toHaveBeenCalledWith(1, user.merchant.id, user.id);
     });
   });
 
@@ -227,7 +227,7 @@ describe('ReservationController', () => {
         dto,
         user.id,
       );
-      expect(service.cancel).toHaveBeenCalledWith(1, user.merchant.id);
+      expect(service.cancel).toHaveBeenCalledWith(1, user.merchant.id, user.id);
       expect(service.remove).toHaveBeenCalledWith(1, user.merchant.id);
     });
   });

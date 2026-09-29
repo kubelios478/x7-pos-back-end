@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   NotFoundException,
   UnauthorizedException,
   UnprocessableEntityException,
@@ -327,6 +328,10 @@ export class ErrorHandler {
 
   // Database error handler
   static handleDatabaseError(error: any): never {
+    // Una HttpException (404, 409, 403…) lanzada dentro del try NO es un error de base de
+    // datos: se relanza tal cual. Antes caía en el `default` y el cliente recibía un 500.
+    if (error instanceof HttpException) throw error;
+
     // PostgreSQL error codes
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     switch (error?.code) {

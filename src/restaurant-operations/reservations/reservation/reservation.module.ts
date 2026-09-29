@@ -10,6 +10,7 @@ import { ReservationTable } from '../reservation-table/entities/reservation-tabl
 import { ReservationStatusHistory } from '../reservation-status-history/entities/reservation-status-history.entity';
 import { ReservationGuest } from '../reservation-guest/entities/reservation-guest.entity';
 import { ReservationNote } from '../reservation-note/entities/reservation-note.entity';
+import { ReservationCapacityModule } from '../reservation-capacity/reservation-capacity.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ReservationNote } from '../reservation-note/entities/reservation-note.e
       ReservationGuest,
       ReservationNote,
     ]),
+    ReservationCapacityModule,
   ],
   controllers: [ReservationController],
   providers: [ReservationService],

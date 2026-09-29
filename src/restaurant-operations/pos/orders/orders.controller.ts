@@ -573,6 +573,186 @@ export class OrdersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @ApiOperation({
+    summary: 'Complete (close) a pending order',
+    description:
+      "Moves an order from 'pending' to 'completed': recalculates subtotal from its items, applies the selected merchant tax rules (or every active one when `merchantTaxRuleIds` is omitted), recomputes total and balance due, and persists the order taxes. The discount is capped by role (50% of subtotal for merchant_admin, 10% otherwise). Once completed, the order can be paid via POST /orders/payment.",
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Order ID', example: 42 })
+  @ApiBody({
+    type: CompletePurchaseDto,
+    examples: {
+      selectedTaxes: {
+        summary: 'Apply specific tax rules',
+        value: { merchantTaxRuleIds: [1, 2] },
+      },
+      allActiveTaxes: {
+        summary: 'Apply every active tax rule of the merchant',
+        value: {},
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Order completed successfully',
+    type: OneOrderResponseDto,
+    example: {
+      statusCode: 200,
+      message: 'Order completed successfully',
+      data: {
+        id: 42,
+        merchantId: 1,
+        tableId: 5,
+        collaboratorId: 3,
+        subscriptionId: 1,
+        businessStatus: 'completed',
+        type: 'dine_in',
+        customerId: 7,
+        status: 'active',
+        orderNumber: '000042',
+        source: 'pos',
+        guestCount: 2,
+        subtotal: 40,
+        taxTotal: 5.5,
+        discountTotal: 0,
+        tipTotal: 0,
+        total: 45.5,
+        paidTotal: 0,
+        balanceDue: 45.5,
+        isPaid: false,
+        deliveryAddress: null,
+        deliveryZoneId: null,
+        deliveryFee: 0,
+        deliveryStatus: 'unassigned',
+        kitchenStatus: 'ready',
+        readyAt: '2026-09-27T13:40:00.000Z',
+        preparingAt: '2026-09-27T13:25:00.000Z',
+        createdAt: '2026-09-27T13:10:00.000Z',
+        closedAt: null,
+        updatedAt: '2026-09-27T14:05:12.000Z',
+        inventoryConsumedAt: null,
+        loyaltyPointsAwardedAt: null,
+        orderItems: [
+          {
+            id: 101,
+            orderId: 42,
+            order: { id: 42, businessStatus: 'completed', type: 'dine_in' },
+            productId: 10,
+            product: {
+              id: 10,
+              name: 'Classic Burger',
+              sku: 'BURG-001',
+              basePrice: 25,
+            },
+            variantId: null,
+            variant: null,
+            quantity: 1,
+            price: 25,
+            discount: 0,
+            totalPrice: 25,
+            notes: 'No onions',
+            status: 'active',
+            kitchenStatus: 'ready',
+            createdAt: '2026-09-27T13:12:00.000Z',
+            updatedAt: '2026-09-27T13:40:00.000Z',
+          },
+          {
+            id: 102,
+            orderId: 42,
+            order: { id: 42, businessStatus: 'completed', type: 'dine_in' },
+            productId: 11,
+            product: {
+              id: 11,
+              name: 'Lemonade',
+              sku: 'DRK-004',
+              basePrice: 5,
+            },
+            variantId: 3,
+            variant: { id: 3, name: 'Large', price: 5, sku: 'DRK-004-L' },
+            quantity: 3,
+            price: 5,
+            discount: 0,
+            totalPrice: 15,
+            notes: null,
+            status: 'active',
+            kitchenStatus: 'ready',
+            createdAt: '2026-09-27T13:12:30.000Z',
+            updatedAt: '2026-09-27T13:40:00.000Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description:
+      "Invalid id, invalid body, or the order is not in 'pending' status",
+    type: ErrorResponse,
+    examples: {
+      notPending: {
+        summary: 'Order is not pending',
+        value: {
+          statusCode: 400,
+          message: 'Order must be in pending state',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      invalidId: {
+        summary: 'Non-numeric id',
+        value: {
+          statusCode: 400,
+          message: 'Validation failed (numeric string is expected)',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      invalidBody: {
+        summary: 'Invalid merchantTaxRuleIds',
+        value: {
+          statusCode: 400,
+          message: 'each value in merchantTaxRuleIds must be an integer number',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing, invalid or expired JWT',
+    type: ErrorResponse,
+    example: {
+      statusCode: 401,
+      message: 'Unauthorized',
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Discount exceeds the limit allowed for the role, or role/scope/plan not allowed',
+    type: ErrorResponse,
+    examples: {
+      discountLimit: {
+        summary: 'Discount above the allowed limit',
+        value: {
+          statusCode: 403,
+          message: 'Discount exceeds allowed limit',
+          error: 'Forbidden',
+        },
+      },
+      scope: {
+        summary: 'Scope not allowed',
+        value: {
+          statusCode: 403,
+          message: 'Scope not enough (admin_portal)',
+          error: 'Forbidden',
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+    type: ErrorResponse,
+    example: {
+      statusCode: 404,
+      message: 'Order not found',
+      error: 'Not Found',
+    },
+  })
   async completePurchase(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CompletePurchaseDto,
@@ -590,6 +770,153 @@ export class OrdersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @ApiOperation({
+    summary: 'Pay a completed order',
+    description:
+      "Registers one or more payments (split payment) for an order in 'completed' status. The sum of the payment amounts must match the order total (±0.01); tips go in `tipAmount` and are not part of that sum. In one transaction it creates the order payments on the merchant's active shift, marks the order as 'paid', issues a locked INVOICE receipt and creates the tip settlements according to the merchant tip rule (individual, pool or role-based).",
+  })
+  @ApiBody({
+    type: ProcessPaymentDto,
+    examples: {
+      splitPayment: {
+        summary: 'Split payment: card with tip + cash',
+        value: {
+          orderId: 42,
+          payments: [
+            { amount: 30, method: 'card', tipAmount: 3 },
+            { amount: 15.5, method: 'cash' },
+          ],
+          source: 'pos',
+          merchantTipRuleId: 1,
+          currency: 'USD',
+        },
+      },
+      singlePayment: {
+        summary: 'Single cash payment, default tip rule',
+        value: {
+          orderId: 42,
+          payments: [{ amount: 45.5, method: 'cash' }],
+          source: 'pos',
+          currency: 'USD',
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description:
+      'Payment processed. Note: `total` is serialized as a decimal string (raw DB value) while `paid` and `tip` are numbers.',
+    example: {
+      success: true,
+      message: 'Payment processed successfully',
+      data: {
+        orderId: 42,
+        invoiceNumber: 'INV-000128',
+        orderNumber: '000042',
+        status: 'paid',
+        total: '45.50',
+        paid: 45.5,
+        tip: 3,
+        paymentMethods: [
+          { method: 'card', amount: 30, tipAmount: 3 },
+          { method: 'cash', amount: 15.5, tipAmount: 0 },
+        ],
+        merchantId: 1,
+        shiftId: 9,
+        paidAt: '2026-09-27T14:05:12.345Z',
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Body validation failed or a business rule was violated (order not completed, totals mismatch, no active shift, receipt already issued, no active tip rule...)',
+    type: ErrorResponse,
+    examples: {
+      validation: {
+        summary: 'Several validation rules failed',
+        value: {
+          statusCode: 400,
+          message: 'Validation failed',
+          errors: [
+            'orderId must be a number conforming to the specified constraints',
+            'currency must be longer than or equal to 3 characters',
+          ],
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      notCompleted: {
+        summary: 'Order is not completed',
+        value: {
+          statusCode: 400,
+          message: 'Only completed orders can be paid',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      totalMismatch: {
+        summary: 'Payments do not add up to the order total',
+        value: {
+          statusCode: 400,
+          message: 'Payment total does not match order total',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      noShift: {
+        summary: 'No open shift for the merchant',
+        value: {
+          statusCode: 400,
+          message: 'No active shift found',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      alreadyPaid: {
+        summary: 'Receipt already issued',
+        value: {
+          statusCode: 400,
+          message: 'Receipt already exists for this order',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing, invalid or expired JWT',
+    type: ErrorResponse,
+    example: {
+      statusCode: 401,
+      message: 'Unauthorized',
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'The order belongs to another merchant, or role/scope/plan not allowed',
+    type: ErrorResponse,
+    examples: {
+      otherMerchant: {
+        summary: 'Order from another merchant',
+        value: {
+          statusCode: 403,
+          message: 'Access denied',
+          error: 'Forbidden',
+        },
+      },
+      role: {
+        summary: 'Role not allowed',
+        value: {
+          statusCode: 403,
+          message: 'Role not enough (portal_admin)',
+          error: 'Forbidden',
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+    type: ErrorResponse,
+    example: {
+      statusCode: 404,
+      message: 'Order not found',
+      error: 'Not Found',
+    },
+  })
   async processPayment(
     @Body() dto: ProcessPaymentDto,
     @Req() req: AuthenticatedUser,
@@ -606,6 +933,126 @@ export class OrdersController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @ApiOperation({
+    summary: 'Refund a paid order (full or by items)',
+    description:
+      "Refunds an order in 'paid' status. With `fullRefund: true` the whole total is refunded; otherwise `itemIds` is required and the refunded amount is (items subtotal / order subtotal) × order total. Creates negative order payments (source 'REFUND') on the active shift, lowers the shift balance, cancels the tip settlements (fails if any is already liquidated), reverses loyalty points and stores `reason` on the order. The order ends 'cancelled' (full refund or all items) or 'partially_refunded'. Admin only.",
+  })
+  @ApiBody({
+    type: RefundOrderDto,
+    examples: {
+      partialRefund: {
+        summary: 'Partial refund by items',
+        value: {
+          orderId: 42,
+          itemIds: [102],
+          reason: 'Customer returned a cold drink',
+        },
+      },
+      fullRefund: {
+        summary: 'Full refund',
+        value: {
+          orderId: 42,
+          fullRefund: true,
+          reason: 'Order charged twice by mistake',
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description:
+      'Refund processed. When any original payment was not cash the message warns that the card refund must be handled manually.',
+    example: {
+      success: true,
+      message: 'Refund processed. Card refund must be handled manually.',
+      data: {
+        orderId: 42,
+        refundedAmount: 17.06,
+        status: 'partially_refunded',
+        refundedBy: 4,
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Body validation failed or a business rule was violated (order not paid, missing itemIds, no active shift, tips already liquidated...)',
+    type: ErrorResponse,
+    examples: {
+      validation: {
+        summary: 'Missing reason',
+        value: {
+          statusCode: 400,
+          message: 'reason must be a string',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      notPaid: {
+        summary: 'Order is not paid',
+        value: {
+          statusCode: 400,
+          message: 'Only paid orders can be refunded',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      missingItems: {
+        summary: 'Partial refund without itemIds',
+        value: {
+          statusCode: 400,
+          message: 'Item IDs are required',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+      liquidatedTips: {
+        summary: 'Tips already liquidated',
+        value: {
+          statusCode: 400,
+          message:
+            'Cannot refund tips that are already liquidated. Manual adjustment required.',
+          timestamp: '2026-09-27T14:05:12.345Z',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing, invalid or expired JWT',
+    type: ErrorResponse,
+    example: {
+      statusCode: 401,
+      message: 'Unauthorized',
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'The order belongs to another merchant, the user is not merchant_admin, or scope/plan not allowed',
+    type: ErrorResponse,
+    examples: {
+      otherMerchant: {
+        summary: 'Order from another merchant',
+        value: {
+          statusCode: 403,
+          message: 'Access denied',
+          error: 'Forbidden',
+        },
+      },
+      notAdmin: {
+        summary: 'Role not allowed',
+        value: {
+          statusCode: 403,
+          message: 'Role not enough (merchant_user)',
+          error: 'Forbidden',
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Order not found',
+    type: ErrorResponse,
+    example: {
+      statusCode: 404,
+      message: 'Order not found',
+      error: 'Not Found',
+    },
+  })
   async refundOrder(
     @Body() dto: RefundOrderDto,
     @Req() req: AuthenticatedUser,

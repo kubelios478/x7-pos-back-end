@@ -40,6 +40,16 @@ export class ReservationResponseDto {
   @ApiPropertyOptional({ example: 1 })
   created_by: number | null;
 
+  @ApiPropertyOptional({
+    example: null,
+    nullable: true,
+    description: 'Merchant admin who authorized an over-capacity booking',
+  })
+  capacity_override_by?: number | null;
+
+  @ApiPropertyOptional({ example: null, nullable: true })
+  capacity_override_at?: Date | null;
+
   @ApiProperty({ example: '2026-04-16T14:00:00Z' })
   created_at: Date;
 
