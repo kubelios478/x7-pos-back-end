@@ -19,6 +19,7 @@ import { CreateLedgerAccountDto } from './dto/create-ledger-account.dto';
 import { UpdateLedgerAccountDto } from './dto/update-ledger-account.dto';
 import { GetLedgerAccountsQueryDto } from './dto/get-ledger-accounts-query.dto';
 import { AllPaginatedLedgerAccounts } from './dto/all-paginated-ledger-accounts.dto';
+import { OneLedgerAccountResponse } from './dto/ledger-account-response.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -36,6 +37,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExtraModels,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -47,13 +49,15 @@ import {
 } from '@nestjs/swagger';
 
 @ApiTags('Core - Financial engine - Ledger accounts')
-@ApiExtraModels(ErrorResponse)
+@ApiExtraModels(ErrorResponse, OneLedgerAccountResponse)
 @ApiBearerAuth()
 @Controller('ledger-accounts')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LEDGER_ACCOUNTS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class LedgerAccountsController {
-  constructor(private readonly ledgerAccountsService: LedgerAccountsService) {}
+  constructor(
+    private readonly ledgerAccountsService: LedgerAccountsService,
+  ) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -69,12 +73,76 @@ export class LedgerAccountsController {
     description:
       "Creates a new ledger account for the authenticated user's company.",
   })
-  @ApiCreatedResponse({ description: 'Ledger account created successfully' })
-  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiCreatedResponse({
+    description: 'Ledger account created successfully',
+    type: OneLedgerAccountResponse,
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Ledger Account Created successfully',
+        data: {
+          id: 1,
+          code: '1000',
+          name: 'Cash & Bank Accounts',
+          type: 'ASSET',
+          balance: 0.0,
+          status: 'ACTIVE',
+          is_active: true,
+          parent_account_id: null,
+          created_at: '2026-08-16T10:00:00.000Z',
+          updated_at: '2026-08-16T10:00:00.000Z',
+          company: {
+            id: 1,
+            name: 'Acme Corp',
+          },
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'code must be a string',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden - Insufficient permissions',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
   @ApiConflictResponse({
     description: 'Ledger account with this code already exists',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 409,
+        message: "Ledger account with code '1000' already exists",
+        error: 'Conflict',
+      },
+    },
   })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -118,8 +186,59 @@ export class LedgerAccountsController {
   @ApiOkResponse({
     description: 'Paginated list of ledger accounts retrieved successfully',
     type: AllPaginatedLedgerAccounts,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Ledger accounts retrieved successfully',
+        data: [
+          {
+            id: 1,
+            code: '1000',
+            name: 'Cash & Bank Accounts',
+            type: 'ASSET',
+            balance: 1250.0,
+            status: 'ACTIVE',
+            is_active: true,
+            parent_account_id: null,
+            created_at: '2026-08-16T10:00:00.000Z',
+            updated_at: '2026-08-16T10:00:00.000Z',
+            company: {
+              id: 1,
+              name: 'Acme Corp',
+            },
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    },
   })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
   @ApiResponse({
     status: 500,
     description: 'Internal server error',
@@ -142,16 +261,92 @@ export class LedgerAccountsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get a ledger account by ID' })
-  @ApiParam({ name: 'id', type: Number, description: 'Ledger Account ID' })
-  @ApiOkResponse({ description: 'Ledger account retrieved successfully' })
-  @ApiNotFoundResponse({ description: 'Ledger account not found' })
-  @ApiBadRequestResponse({ description: 'Invalid ID' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiOperation({
+    summary: 'Get a ledger account by ID',
+    description:
+      'Retrieves details of a single ledger account by its ID, detailing id, code, name, type, balance, status, parent account, and company metadata.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Ledger Account ID',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Ledger account retrieved successfully',
+    type: OneLedgerAccountResponse,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Ledger Account retrieved successfully',
+        data: {
+          id: 1,
+          code: '1000',
+          name: 'Cash & Bank Accounts',
+          type: 'ASSET',
+          balance: 1250.0,
+          status: 'ACTIVE',
+          is_active: true,
+          parent_account_id: null,
+          created_at: '2026-08-16T10:00:00.000Z',
+          updated_at: '2026-08-16T10:00:00.000Z',
+          company: {
+            id: 1,
+            name: 'Acme Corp',
+          },
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid ID',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Ledger Account ID is incorrect',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - Insufficient permissions or scope restricted',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Ledger account not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Ledger Account not found',
+        error: 'Not Found',
+      },
+    },
+  })
   findOne(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
-  ) {
+  ): Promise<OneLedgerAccountResponse> {
     const merchantId = user.merchant.id;
     return this.ledgerAccountsService.findOne(id, merchantId);
   }
@@ -165,19 +360,104 @@ export class LedgerAccountsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Update a ledger account by ID' })
-  @ApiParam({ name: 'id', type: Number, description: 'Ledger Account ID' })
-  @ApiOkResponse({ description: 'Ledger account updated successfully' })
-  @ApiNotFoundResponse({ description: 'Ledger account not found' })
-  @ApiBadRequestResponse({ description: 'Invalid input data or ID' })
-  @ApiConflictResponse({ description: 'Code already in use' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiOperation({
+    summary: 'Update a ledger account by ID',
+    description:
+      'Updates an existing ledger account fields such as code, name, type, or parent account ID.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Ledger Account ID',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Ledger account updated successfully',
+    type: OneLedgerAccountResponse,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Ledger Account Updated successfully',
+        data: {
+          id: 1,
+          code: '1001',
+          name: 'Cash on Hand & Petty Cash',
+          type: 'ASSET',
+          balance: 1250.0,
+          status: 'ACTIVE',
+          is_active: true,
+          parent_account_id: null,
+          created_at: '2026-08-16T10:00:00.000Z',
+          updated_at: '2026-08-16T11:15:00.000Z',
+          company: {
+            id: 1,
+            name: 'Acme Corp',
+          },
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or ID',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'A ledger account cannot be its own parent',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Ledger account not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Ledger Account not found',
+        error: 'Not Found',
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description: 'Code already in use',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 409,
+        message: "Ledger account with code '1001' already exists",
+        error: 'Conflict',
+      },
+    },
+  })
   @ApiBody({ type: UpdateLedgerAccountDto })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
     @Body() updateLedgerAccountDto: UpdateLedgerAccountDto,
-  ) {
+  ): Promise<OneLedgerAccountResponse> {
     const merchantId = user.merchant.id;
     return this.ledgerAccountsService.update(
       id,
@@ -195,17 +475,94 @@ export class LedgerAccountsController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Soft-delete a ledger account by ID' })
-  @ApiParam({ name: 'id', type: Number, description: 'Ledger Account ID' })
-  @ApiOkResponse({ description: 'Ledger account deleted successfully' })
-  @ApiNotFoundResponse({ description: 'Ledger account not found' })
-  @ApiBadRequestResponse({ description: 'Invalid ID' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
+  @ApiOperation({
+    summary: 'Soft-delete a ledger account by ID',
+    description:
+      'Soft-deletes an existing ledger account by marking is_active to false.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Ledger Account ID',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Ledger account deleted successfully',
+    type: OneLedgerAccountResponse,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Ledger Account Deleted successfully',
+        data: {
+          id: 1,
+          code: '1000',
+          name: 'Cash & Bank Accounts',
+          type: 'ASSET',
+          balance: 0.0,
+          status: 'INACTIVE',
+          is_active: false,
+          parent_account_id: null,
+          created_at: '2026-08-16T10:00:00.000Z',
+          updated_at: '2026-08-16T12:00:00.000Z',
+          company: {
+            id: 1,
+            name: 'Acme Corp',
+          },
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid ID',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Ledger Account ID is incorrect',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - Insufficient permissions (requires MERCHANT_ADMIN role)',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Ledger account not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Ledger Account not found',
+        error: 'Not Found',
+      },
+    },
+  })
   remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
-  ) {
+  ): Promise<OneLedgerAccountResponse> {
     const merchantId = user.merchant.id;
     return this.ledgerAccountsService.remove(id, merchantId);
   }
 }
+
