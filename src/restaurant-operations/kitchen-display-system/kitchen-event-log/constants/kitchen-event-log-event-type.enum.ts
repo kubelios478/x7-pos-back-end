@@ -3,4 +3,5 @@ export enum KitchenEventLogEventType {
   LISTO = 'listo',
   SERVIDO = 'servido',
   CANCELADO = 'cancelado',
+  RECALL = 'recall',
 }

@@ -5,13 +5,18 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, IsNull } from 'typeorm';
+import { DataSource, Repository, IsNull, In } from 'typeorm';
 import { KitchenOrder } from './entities/kitchen-order.entity';
 import { KitchenOrderItem } from '../kitchen-order-item/entities/kitchen-order-item.entity';
 import { KitchenOrderItemStatus } from '../kitchen-order-item/constants/kitchen-order-item-status.enum';
 import { KitchenOrderItemPreparationStatus } from '../kitchen-order-item/constants/kitchen-order-item-preparation-status.enum';
-import { KitchenCourse, calculatePacingHoldMinutes } from '../kitchen-order-item/constants/kitchen-course.enum';
+import {
+  KitchenCourse,
+  calculatePacingHoldMinutes,
+} from '../kitchen-order-item/constants/kitchen-course.enum';
 import { OrderItem } from '../../pos/order-item/entities/order-item.entity';
 import { OrderItemStatus } from '../../pos/order-item/constants/order-item-status.enum';
 import { KitchenOrderSyncService } from './kitchen-order-sync.service';
@@ -19,46 +24,88 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { Order } from '../../../restaurant-operations/pos/orders/entities/order.entity';
 import { OnlineOrder } from '../../../commerce/online-ordering-system/online-order/entities/online-order.entity';
 import { KitchenStation } from '../kitchen-station/entities/kitchen-station.entity';
+import { KitchenDisplayDevice } from '../kitchen-display-device/entities/kitchen-display-device.entity';
+import { KitchenDisplayDeviceStatus } from '../kitchen-display-device/constants/kitchen-display-device-status.enum';
 import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
 import { Variant } from '../../../inventory/products-inventory/variants/entities/variant.entity';
 import { CreateKitchenOrderDto } from './dto/create-kitchen-order.dto';
 
-function inferKitchenCourse(productName?: string | null, explicitCourse?: string): KitchenCourse {
+function inferKitchenCourse(
+  productName?: string | null,
+  explicitCourse?: string,
+): KitchenCourse {
   if (explicitCourse) {
     const norm = explicitCourse.toLowerCase().trim();
     if (norm === 'beverage' || norm === 'drink') return KitchenCourse.BEVERAGE;
-    if (norm === 'appetizer' || norm === 'starter') return KitchenCourse.APPETIZER;
+    if (norm === 'appetizer' || norm === 'starter')
+      return KitchenCourse.APPETIZER;
     if (norm === 'dessert') return KitchenCourse.DESSERT;
-    if (norm === 'main_course' || norm === 'main') return KitchenCourse.MAIN_COURSE;
+    if (norm === 'main_course' || norm === 'main')
+      return KitchenCourse.MAIN_COURSE;
   }
 
   const p = (productName || '').toLowerCase();
   // Beverages
   if (
-    p.includes('cappuccino') || p.includes('latte') || p.includes('cafe') || p.includes('coffee') ||
-    p.includes('espresso') || p.includes('tea') || p.includes('té') || p.includes('beer') ||
-    p.includes('cerveza') || p.includes('vino') || p.includes('wine') || p.includes('soda') ||
-    p.includes('juice') || p.includes('jugo') || p.includes('water') || p.includes('agua') ||
-    p.includes('cocktail') || p.includes('drink') || p.includes('beverage') || p.includes('limonada')
+    p.includes('cappuccino') ||
+    p.includes('latte') ||
+    p.includes('cafe') ||
+    p.includes('coffee') ||
+    p.includes('espresso') ||
+    p.includes('tea') ||
+    p.includes('té') ||
+    p.includes('beer') ||
+    p.includes('cerveza') ||
+    p.includes('vino') ||
+    p.includes('wine') ||
+    p.includes('soda') ||
+    p.includes('juice') ||
+    p.includes('jugo') ||
+    p.includes('water') ||
+    p.includes('agua') ||
+    p.includes('cocktail') ||
+    p.includes('drink') ||
+    p.includes('beverage') ||
+    p.includes('limonada')
   ) {
     return KitchenCourse.BEVERAGE;
   }
 
   // Desserts
   if (
-    p.includes('cake') || p.includes('torta') || p.includes('pastel') || p.includes('helado') ||
-    p.includes('ice cream') || p.includes('dessert') || p.includes('postre') || p.includes('pie') ||
-    p.includes('brownie') || p.includes('cheesecake') || p.includes('croissant') || p.includes('volcan')
+    p.includes('cake') ||
+    p.includes('torta') ||
+    p.includes('pastel') ||
+    p.includes('helado') ||
+    p.includes('ice cream') ||
+    p.includes('dessert') ||
+    p.includes('postre') ||
+    p.includes('pie') ||
+    p.includes('brownie') ||
+    p.includes('cheesecake') ||
+    p.includes('croissant') ||
+    p.includes('volcan')
   ) {
     return KitchenCourse.DESSERT;
   }
 
   // Appetizers
   if (
-    p.includes('salad') || p.includes('ensalada') || p.includes('bruschetta') || p.includes('nacho') ||
-    p.includes('soup') || p.includes('sopa') || p.includes('wings') || p.includes('alitas') ||
-    p.includes('calamari') || p.includes('fries') || p.includes('papas') || p.includes('carpaccio') ||
-    p.includes('taco') || p.includes('sushi') || p.includes('roll')
+    p.includes('salad') ||
+    p.includes('ensalada') ||
+    p.includes('bruschetta') ||
+    p.includes('nacho') ||
+    p.includes('soup') ||
+    p.includes('sopa') ||
+    p.includes('wings') ||
+    p.includes('alitas') ||
+    p.includes('calamari') ||
+    p.includes('fries') ||
+    p.includes('papas') ||
+    p.includes('carpaccio') ||
+    p.includes('taco') ||
+    p.includes('sushi') ||
+    p.includes('roll')
   ) {
     return KitchenCourse.APPETIZER;
   }
@@ -123,6 +170,7 @@ export class KitchenOrderService {
   async create(
     createKitchenOrderDto: CreateKitchenOrderDto,
     authenticatedUserMerchantId: number,
+    userId?: number,
   ): Promise<OneKitchenOrderResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
@@ -212,6 +260,12 @@ export class KitchenOrderService {
       }
     }
 
+    let targetStationId: number | null =
+      createKitchenOrderDto.stationId || null;
+    let isRerouted = false;
+    let originalStationNumber: number | null = null;
+    let rerouteReason = '';
+
     if (createKitchenOrderDto.stationId) {
       const station = await this.kitchenStationRepository.findOne({
         where: {
@@ -219,12 +273,84 @@ export class KitchenOrderService {
           merchant_id: authenticatedUserMerchantId,
           status: KitchenStationStatus.ACTIVE,
         },
+        relations: ['backup_station'],
       });
 
       if (!station) {
         throw new NotFoundException(
           'Kitchen station not found or you do not have access to it',
         );
+      }
+
+      originalStationNumber =
+        station.station_number ?? station.display_order ?? station.id;
+
+      let shouldReroute = false;
+
+      // 1. Hardware Failure & Fallback Auto-Rerouting
+      // If all KitchenDisplayDevice assigned to a station are offline for > 60 seconds
+      if (station.auto_reroute_on_offline) {
+        const deviceRepo = this.dataSource.getRepository(KitchenDisplayDevice);
+        const stationDevices = await deviceRepo.find({
+          where: {
+            station_id: station.id,
+            status: KitchenDisplayDeviceStatus.ACTIVE,
+          },
+        });
+
+        const now = new Date();
+        const onlineDevices = stationDevices.filter((d) => {
+          if (!d.is_online) return false;
+          const lastActivity = d.last_sync || d.updated_at;
+          if (!lastActivity) return false;
+          return now.getTime() - new Date(lastActivity).getTime() <= 60000;
+        });
+
+        if (stationDevices.length === 0 || onlineDevices.length === 0) {
+          shouldReroute = true;
+          rerouteReason = `All station devices offline >60s`;
+        }
+      }
+
+      // 2. Queue Capacity Threshold Redirection
+      // If active pending/started orders exceed threshold
+      if (!shouldReroute && station.auto_reroute_on_capacity) {
+        const activeTicketsCount = await this.kitchenOrderRepository.count({
+          where: {
+            station_id: station.id,
+            merchant_id: authenticatedUserMerchantId,
+            business_status: In([
+              KitchenOrderBusinessStatus.PENDING,
+              KitchenOrderBusinessStatus.STARTED,
+            ]),
+          },
+        });
+
+        const capacityLimit = station.max_active_tickets_capacity || 15;
+        if (activeTicketsCount >= capacityLimit) {
+          shouldReroute = true;
+          rerouteReason = `Active ticket queue capacity (${activeTicketsCount}/${capacityLimit}) exceeded`;
+        }
+      }
+
+      if (shouldReroute) {
+        if (station.backup_station_id) {
+          const backupStation = await this.kitchenStationRepository.findOne({
+            where: {
+              id: station.backup_station_id,
+              status: KitchenStationStatus.ACTIVE,
+            },
+          });
+          if (backupStation) {
+            targetStationId = backupStation.id;
+            isRerouted = true;
+          }
+        } else if (
+          station.fallback_action === 'THERMAL_PRINTER' ||
+          station.printer_name
+        ) {
+          isRerouted = true;
+        }
       }
     }
 
@@ -241,11 +367,11 @@ export class KitchenOrderService {
     kitchenOrder.merchant_id = authenticatedUserMerchantId;
     kitchenOrder.order_id = validOrderId;
     kitchenOrder.online_order_id = createKitchenOrderDto.onlineOrderId || null;
-    kitchenOrder.station_id = createKitchenOrderDto.stationId || null;
+    kitchenOrder.station_id = targetStationId;
     kitchenOrder.priority = createKitchenOrderDto.priority ?? 0;
     kitchenOrder.business_status =
       createKitchenOrderDto.businessStatus ||
-      KitchenOrderBusinessStatus.STARTED;
+      KitchenOrderBusinessStatus.PENDING;
     kitchenOrder.started_at =
       createKitchenOrderDto.startedAt ||
       (kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED
@@ -331,14 +457,19 @@ export class KitchenOrderService {
             }
           }
 
-          const assignedCourse = inferKitchenCourse(matchedProduct.name || it.productName || '', it.course || undefined);
+          const assignedCourse = inferKitchenCourse(
+            matchedProduct.name || it.productName || '',
+            it.course || undefined,
+          );
           const orderPriority = kitchenOrder.priority ?? 0;
 
           const { isHeld, delayMinutes } = calculatePacingHoldMinutes(
             assignedCourse,
             orderPriority,
           );
-          const holdUntilDate = isHeld ? new Date(Date.now() + delayMinutes * 60 * 1000) : null;
+          const holdUntilDate = isHeld
+            ? new Date(Date.now() + delayMinutes * 60 * 1000)
+            : null;
 
           const koi = queryRunner.manager.create(KitchenOrderItem, {
             kitchen_order_id: savedKitchenOrder.id,
@@ -350,13 +481,11 @@ export class KitchenOrderService {
             course: assignedCourse,
             preparation_status: isHeld
               ? KitchenOrderItemPreparationStatus.HELD
-              : (kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED
-                  ? KitchenOrderItemPreparationStatus.IN_PREPARATION
-                  : KitchenOrderItemPreparationStatus.PENDING),
+              : KitchenOrderItemPreparationStatus.PENDING,
             hold_until: holdUntilDate,
-            fired_at: !isHeld && kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED ? new Date() : null,
+            fired_at: !isHeld ? new Date() : null,
             status: KitchenOrderItemStatus.ACTIVE,
-            started_at: !isHeld && kitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED ? new Date() : null,
+            started_at: null,
             completed_at: null,
             notes:
               it.notes ||
@@ -366,16 +495,23 @@ export class KitchenOrderService {
                 ? it.variantName
                 : null),
           });
-          const savedKoi = await queryRunner.manager.save(KitchenOrderItem, koi);
+          const savedKoi = await queryRunner.manager.save(
+            KitchenOrderItem,
+            koi,
+          );
           createdKoiList.push(savedKoi);
         }
 
         // Si todos los items resultaron en HELD, la orden no puede nacer en STARTED
-        const allItemsHeld = createdKoiList.length > 0 && createdKoiList.every(
-          (k) => k.preparation_status === KitchenOrderItemPreparationStatus.HELD,
-        );
+        const allItemsHeld =
+          createdKoiList.length > 0 &&
+          createdKoiList.every(
+            (k) =>
+              k.preparation_status === KitchenOrderItemPreparationStatus.HELD,
+          );
         if (allItemsHeld) {
-          savedKitchenOrder.business_status = KitchenOrderBusinessStatus.PENDING;
+          savedKitchenOrder.business_status =
+            KitchenOrderBusinessStatus.PENDING;
           savedKitchenOrder.started_at = null;
           await queryRunner.manager.save(KitchenOrder, savedKitchenOrder);
         }
@@ -421,26 +557,24 @@ export class KitchenOrderService {
       );
     }
 
-    // Auditoría inicial: si la comanda nace en STARTED (ej: aperitivos o bebidas que inician automáticamente)
+    // Opción 2: El evento INICIO no se crea al ingresar la orden; se registrará cuando el cocinero/barista presione el botón "Start".
     try {
-      if (savedKitchenOrder.business_status === KitchenOrderBusinessStatus.STARTED) {
+      if (isRerouted) {
         const eventLogRepo = this.dataSource.getRepository(KitchenEventLog);
-        const orderStartTime = savedKitchenOrder.started_at || savedKitchenOrder.created_at || new Date();
-
         await eventLogRepo.save(
           eventLogRepo.create({
             kitchen_order_id: savedKitchenOrder.id,
             station_id: savedKitchenOrder.station_id || null,
-            event_type: KitchenEventLogEventType.INICIO,
-            event_time: orderStartTime,
+            event_type: 'reroute' as any,
+            event_time: savedKitchenOrder.created_at || new Date(),
             status: KitchenEventLogStatus.ACTIVE,
-            user_id: null,
-            message: `Order #${savedKitchenOrder.id} received and started in kitchen`,
+            user_id: userId || null,
+            message: `Ticket #${savedKitchenOrder.id} automatically rerouted from Station #${originalStationNumber} (${rerouteReason})`,
           }),
         );
       }
     } catch (err) {
-      console.error('Failed to log initial auto-start event:', err);
+      console.error('Failed to log auto-reroute event:', err);
     }
 
     const completeKitchenOrder = await this.kitchenOrderRepository.findOne({
@@ -511,7 +645,7 @@ export class KitchenOrderService {
               AND koi.preparation_status = 'in_preparation'
           );
       `);
-    } catch (e) {
+    } catch {
       // safe fallback
     }
 
@@ -804,6 +938,7 @@ export class KitchenOrderService {
       existingKitchenOrder.priority = updateKitchenOrderDto.priority;
     }
 
+    let isRecall = false;
     if (updateKitchenOrderDto.businessStatus !== undefined) {
       existingKitchenOrder.business_status =
         updateKitchenOrderDto.businessStatus;
@@ -813,9 +948,7 @@ export class KitchenOrderService {
         KitchenOrderBusinessStatus.STARTED
       ) {
         const startNow = new Date();
-        if (!existingKitchenOrder.started_at) {
-          existingKitchenOrder.started_at = startNow;
-        }
+        existingKitchenOrder.started_at = startNow;
         await this.dataSource.query(
           `UPDATE kitchen_order_item
            SET preparation_status = 'in_preparation',
@@ -829,7 +962,7 @@ export class KitchenOrderService {
 
         try {
           const eventLogRepo = this.dataSource.getRepository(KitchenEventLog);
-          const hasOrderInicio = await eventLogRepo.findOne({
+          const existingOrderInicio = await eventLogRepo.findOne({
             where: {
               kitchen_order_id: existingKitchenOrder.id,
               kitchen_order_item_id: IsNull(),
@@ -837,22 +970,36 @@ export class KitchenOrderService {
               status: KitchenEventLogStatus.ACTIVE,
             },
           });
-          if (!hasOrderInicio) {
+          if (!existingOrderInicio) {
             await eventLogRepo.save(
               eventLogRepo.create({
                 kitchen_order_id: existingKitchenOrder.id,
                 station_id: existingKitchenOrder.station_id || null,
                 event_type: KitchenEventLogEventType.INICIO,
-                event_time: existingKitchenOrder.started_at || startNow,
+                event_time: startNow,
                 status: KitchenEventLogStatus.ACTIVE,
                 user_id: userId || null,
                 message: `Order #${existingKitchenOrder.id} started preparation in kitchen`,
               }),
             );
+          } else if (
+            previousBusinessStatus === KitchenOrderBusinessStatus.PENDING
+          ) {
+            // Reanudación: Actualizar el tiempo de inicio al momento exacto en que vuelve a preparación
+            existingOrderInicio.event_time = startNow;
+            existingOrderInicio.message = `Order #${existingKitchenOrder.id} resumed preparation in kitchen`;
+            await eventLogRepo.save(existingOrderInicio);
           }
         } catch (err) {
           console.error('Failed to log INICIO on order start:', err);
         }
+      }
+
+      if (
+        updateKitchenOrderDto.businessStatus ===
+        KitchenOrderBusinessStatus.PENDING
+      ) {
+        existingKitchenOrder.started_at = null;
       }
 
       if (
@@ -864,7 +1011,8 @@ export class KitchenOrderService {
           existingKitchenOrder.completed_at = now;
         }
         if (!existingKitchenOrder.started_at) {
-          existingKitchenOrder.started_at = existingKitchenOrder.created_at || now;
+          existingKitchenOrder.started_at =
+            existingKitchenOrder.created_at || now;
         }
 
         // Cascada automática: Al dar BUMP a la comanda:
@@ -912,7 +1060,11 @@ export class KitchenOrderService {
           item.prepared_quantity = item.quantity;
           item.completed_at = now;
           if (!item.started_at) {
-            item.started_at = item.created_at || existingKitchenOrder.started_at || existingKitchenOrder.created_at || now;
+            item.started_at =
+              item.created_at ||
+              existingKitchenOrder.started_at ||
+              existingKitchenOrder.created_at ||
+              now;
           }
           await itemRepo.save(item);
 
@@ -947,13 +1099,20 @@ export class KitchenOrderService {
         }
       }
 
-      // Recall de la orden: Si estaba COMPLETADA y regresa a STARTED
+      // Recall de la orden: Si estaba COMPLETADA y regresa a STARTED (Historia X7P-4209)
       if (
         previousBusinessStatus === KitchenOrderBusinessStatus.COMPLETED &&
         updateKitchenOrderDto.businessStatus ===
           KitchenOrderBusinessStatus.STARTED
       ) {
+        isRecall = true;
         existingKitchenOrder.completed_at = null;
+
+        // Preservar timestamp de inicio original para SOS
+        if (!existingKitchenOrder.started_at) {
+          existingKitchenOrder.started_at =
+            existingKitchenOrder.created_at || new Date();
+        }
 
         // Todos sus ítems regresan a PREPARING con 0 preparados
         const itemRepo = this.dataSource.getRepository(KitchenOrderItem);
@@ -972,22 +1131,99 @@ export class KitchenOrderService {
           await itemRepo.save(item);
         }
 
-        // Auditoría en Event Log
+        // Auditoría en Event Log (Historia X7P-4209: "Order #KO-X recalled to station Y")
         try {
+          let stationName = 'General Kitchen';
+          if (existingKitchenOrder.station_id) {
+            const st = await this.kitchenStationRepository.findOne({
+              where: { id: existingKitchenOrder.station_id },
+            });
+            if (st?.name) stationName = st.name;
+          }
+
           const eventLogRepo = this.dataSource.getRepository(KitchenEventLog);
+          await eventLogRepo.delete({
+            kitchen_order_id: existingKitchenOrder.id,
+            kitchen_order_item_id: IsNull(),
+            event_type: KitchenEventLogEventType.SERVIDO,
+          });
+          await eventLogRepo.delete({
+            kitchen_order_id: existingKitchenOrder.id,
+            event_type: KitchenEventLogEventType.LISTO,
+          });
+
           await eventLogRepo.save(
             eventLogRepo.create({
               kitchen_order_id: existingKitchenOrder.id,
               station_id: existingKitchenOrder.station_id || null,
-              event_type: KitchenEventLogEventType.INICIO,
+              event_type: KitchenEventLogEventType.RECALL,
               event_time: new Date(),
               status: KitchenEventLogStatus.ACTIVE,
               user_id: userId || null,
-              message: `Order #${existingKitchenOrder.id} recalled back to active preparation line`,
+              message: `Order #KO-${existingKitchenOrder.id} recalled to station ${stationName}`,
             }),
           );
         } catch (err) {
           console.error('Failed to log RECALL event:', err);
+        }
+      }
+
+      if (
+        updateKitchenOrderDto.businessStatus ===
+        KitchenOrderBusinessStatus.PENDING
+      ) {
+        existingKitchenOrder.started_at = null;
+        existingKitchenOrder.completed_at = null;
+
+        // Reset all active items back to initial states
+        const itemRepo = this.dataSource.getRepository(KitchenOrderItem);
+        const orderItems = await itemRepo.find({
+          where: {
+            kitchen_order_id: existingKitchenOrder.id,
+            status: KitchenOrderItemStatus.ACTIVE,
+          },
+        });
+
+        for (const item of orderItems) {
+          const isStaged =
+            item.course === KitchenCourse.MAIN_COURSE ||
+            item.course === KitchenCourse.DESSERT;
+          item.preparation_status = isStaged
+            ? KitchenOrderItemPreparationStatus.HELD
+            : KitchenOrderItemPreparationStatus.PENDING;
+          item.prepared_quantity = 0;
+          item.started_at = null;
+          item.completed_at = null;
+          item.fired_at = null;
+          if (isStaged) {
+            item.hold_until = new Date(Date.now() + 10 * 60000);
+          } else {
+            item.hold_until = null;
+          }
+          await itemRepo.save(item);
+        }
+
+        try {
+          const eventLogRepo = this.dataSource.getRepository(KitchenEventLog);
+          await eventLogRepo.delete({
+            kitchen_order_id: existingKitchenOrder.id,
+            kitchen_order_item_id: IsNull(),
+            event_type: KitchenEventLogEventType.INICIO,
+          });
+          await eventLogRepo.delete({
+            kitchen_order_id: existingKitchenOrder.id,
+            kitchen_order_item_id: IsNull(),
+            event_type: KitchenEventLogEventType.SERVIDO,
+          });
+          await eventLogRepo.delete({
+            kitchen_order_id: existingKitchenOrder.id,
+            event_type: KitchenEventLogEventType.LISTO,
+          });
+        } catch (err) {
+          console.error(
+            'Failed to clean events on order return to pending:',
+            err,
+          );
         }
       }
     }
@@ -1009,6 +1245,7 @@ export class KitchenOrderService {
       await this.kitchenOrderRepository.save(existingKitchenOrder);
 
     if (
+      !isRecall &&
       updateKitchenOrderDto.businessStatus !== undefined &&
       updateKitchenOrderDto.businessStatus !== previousBusinessStatus
     ) {
@@ -1017,28 +1254,33 @@ export class KitchenOrderService {
         let eventType: KitchenEventLogEventType | null = null;
         if (
           updateKitchenOrderDto.businessStatus ===
-          KitchenOrderBusinessStatus.STARTED
-        ) {
-          eventType = KitchenEventLogEventType.INICIO;
-        } else if (
-          updateKitchenOrderDto.businessStatus ===
           KitchenOrderBusinessStatus.COMPLETED
         ) {
           eventType = KitchenEventLogEventType.SERVIDO;
         }
 
         if (eventType) {
-          await eventLogRepo.save(
-            eventLogRepo.create({
+          const existingEvent = await eventLogRepo.findOne({
+            where: {
               kitchen_order_id: updatedKitchenOrder.id,
-              station_id: updatedKitchenOrder.station_id || null,
+              kitchen_order_item_id: IsNull(),
               event_type: eventType,
-              event_time: new Date(),
               status: KitchenEventLogStatus.ACTIVE,
-              user_id: userId || null,
-              message: `Order #${updatedKitchenOrder.id} status transitioned to ${updateKitchenOrderDto.businessStatus}`,
-            }),
-          );
+            },
+          });
+          if (!existingEvent) {
+            await eventLogRepo.save(
+              eventLogRepo.create({
+                kitchen_order_id: updatedKitchenOrder.id,
+                station_id: updatedKitchenOrder.station_id || null,
+                event_type: eventType,
+                event_time: new Date(),
+                status: KitchenEventLogStatus.ACTIVE,
+                user_id: userId || null,
+                message: `Order #${updatedKitchenOrder.id} status transitioned to ${updateKitchenOrderDto.businessStatus}`,
+              }),
+            );
+          }
         }
       } catch (err) {
         console.error('Failed to log kitchen order event:', err);
@@ -1059,6 +1301,112 @@ export class KitchenOrderService {
       statusCode: 200,
       message: 'Kitchen order updated successfully',
       data: this.formatKitchenOrderResponse(completeKitchenOrder),
+    };
+  }
+
+  /**
+   * Recall a bumped/completed kitchen order back to active status (Historia X7P-4209).
+   * Restores business_status to STARTED, resets completed_at to null,
+   * preserves original started_at timestamp, resets items to IN_PREPARATION,
+   * and records an audit KitchenEventLog entry: "Order #KO-X recalled to station Y".
+   */
+  async recallKitchenOrder(
+    id: number,
+    authenticatedUserMerchantId: number,
+    userId?: number,
+  ): Promise<OneKitchenOrderResponseDto> {
+    if (!id || id <= 0) {
+      throw new BadRequestException(
+        'Kitchen order ID must be a valid positive number',
+      );
+    }
+
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to access kitchen orders',
+      );
+    }
+
+    const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
+      where: {
+        id,
+        merchant_id: authenticatedUserMerchantId,
+        status: KitchenOrderStatus.ACTIVE,
+      },
+      relations: ['station'],
+    });
+
+    if (!existingKitchenOrder) {
+      throw new NotFoundException('Kitchen order not found');
+    }
+
+    // 1. Revert business_status: COMPLETED -> STARTED
+    existingKitchenOrder.business_status = KitchenOrderBusinessStatus.STARTED;
+    existingKitchenOrder.completed_at = null;
+
+    // 2. Timestamp Continuity: preserve original started_at so SOS remains accurate
+    if (!existingKitchenOrder.started_at) {
+      existingKitchenOrder.started_at =
+        existingKitchenOrder.created_at || new Date();
+    }
+
+    // 3. Reset order items: completed_at = null, preparation_status = IN_PREPARATION
+    const itemRepo = this.dataSource.getRepository(KitchenOrderItem);
+    const orderItems = await itemRepo.find({
+      where: {
+        kitchen_order_id: existingKitchenOrder.id,
+        status: KitchenOrderItemStatus.ACTIVE,
+      },
+    });
+
+    for (const item of orderItems) {
+      item.preparation_status =
+        KitchenOrderItemPreparationStatus.IN_PREPARATION;
+      item.prepared_quantity = 0;
+      item.completed_at = null;
+      await itemRepo.save(item);
+    }
+
+    await this.kitchenOrderRepository.save(existingKitchenOrder);
+
+    // 4. Audit Event Logging: INICIO with message "Order #KO-X recalled to station Y"
+    const stationName =
+      existingKitchenOrder.station?.name ||
+      (existingKitchenOrder.station_id
+        ? `Station #${existingKitchenOrder.station_id}`
+        : 'General Kitchen');
+
+    try {
+      const eventLogRepo = this.dataSource.getRepository(KitchenEventLog);
+      await eventLogRepo.delete({
+        kitchen_order_id: existingKitchenOrder.id,
+        kitchen_order_item_id: IsNull(),
+        event_type: KitchenEventLogEventType.SERVIDO,
+      });
+      await eventLogRepo.delete({
+        kitchen_order_id: existingKitchenOrder.id,
+        event_type: KitchenEventLogEventType.LISTO,
+      });
+
+      await eventLogRepo.save(
+        eventLogRepo.create({
+          kitchen_order_id: existingKitchenOrder.id,
+          station_id: existingKitchenOrder.station_id || null,
+          event_type: KitchenEventLogEventType.RECALL,
+          event_time: new Date(),
+          status: KitchenEventLogStatus.ACTIVE,
+          user_id: userId || null,
+          message: `Order #KO-${existingKitchenOrder.id} recalled to station ${stationName}`,
+        }),
+      );
+    } catch (err) {
+      console.error('Failed to log RECALL event:', err);
+    }
+
+    const response = await this.findOne(id, authenticatedUserMerchantId);
+    return {
+      ...response,
+      message: `Order #KO-${existingKitchenOrder.id} recalled to station ${stationName}`,
     };
   }
 
@@ -1122,6 +1470,7 @@ export class KitchenOrderService {
   }
 
   async cancelKitchenOrder(id: number, dto: CancelKitchenOrderDto, user: any) {
+    const actorUserId = user?.id || user?.user?.id || null;
     const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
       where: { id },
       relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
@@ -1133,13 +1482,19 @@ export class KitchenOrderService {
 
     if (
       existingKitchenOrder.status === KitchenOrderStatus.CANCELLED ||
-      existingKitchenOrder.business_status === KitchenOrderBusinessStatus.CANCELLED
+      existingKitchenOrder.business_status ===
+        KitchenOrderBusinessStatus.CANCELLED
     ) {
       throw new BadRequestException('Kitchen order already cancelled');
     }
 
-    if (existingKitchenOrder.business_status === KitchenOrderBusinessStatus.COMPLETED) {
-      throw new BadRequestException('Cannot cancel an already completed kitchen order');
+    if (
+      existingKitchenOrder.business_status ===
+      KitchenOrderBusinessStatus.COMPLETED
+    ) {
+      throw new BadRequestException(
+        'Cannot cancel an already completed kitchen order',
+      );
     }
 
     for (const item of existingKitchenOrder.kitchenOrderItems || []) {
@@ -1187,7 +1542,10 @@ export class KitchenOrderService {
           );
         }
       } catch (stockErr) {
-        console.warn('Inventory adjustment skipped or failed during order cancel:', stockErr);
+        console.warn(
+          'Inventory adjustment skipped or failed during order cancel:',
+          stockErr,
+        );
       }
     }
 
@@ -1229,7 +1587,7 @@ export class KitchenOrderService {
             event_type: KitchenEventLogEventType.INICIO,
             event_time: existingKitchenOrder.created_at || new Date(),
             status: KitchenEventLogStatus.ACTIVE,
-            user_id: user?.id || null,
+            user_id: actorUserId,
             message: `Order #${existingKitchenOrder.id} received in kitchen`,
           }),
         );
@@ -1242,7 +1600,7 @@ export class KitchenOrderService {
           event_type: KitchenEventLogEventType.CANCELADO,
           event_time: new Date(),
           status: KitchenEventLogStatus.ACTIVE,
-          user_id: user?.id || null,
+          user_id: actorUserId,
           message: dto.reason
             ? `Order cancelled. Reason: ${dto.reason}`
             : `Kitchen order #${existingKitchenOrder.id} cancelled`,
@@ -1356,5 +1714,60 @@ export class KitchenOrderService {
           }
         : null,
     };
+  }
+
+  async resetTestData(
+    merchantId: number,
+    mode: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy' = 'seed',
+  ) {
+    if (mode === 'clear') {
+      await this.dataSource.query(
+        `TRUNCATE TABLE kitchen_event_log, kitchen_order_item, kitchen_order RESTART IDENTITY CASCADE;`,
+      );
+      return {
+        success: true,
+        message: 'All kitchen orders cleared successfully',
+      };
+    }
+
+    const filename =
+      mode === 'simple'
+        ? 'seed-simple-orders.sql'
+        : mode === 'multi'
+          ? 'seed-multi-orders.sql'
+          : mode === 'multi2'
+            ? 'seed-multi2-orders.sql'
+            : mode === 'allergy'
+              ? 'seed-allergy-orders.sql'
+              : 'seed-test-orders.sql';
+
+    const possiblePaths = [
+      path.resolve(process.cwd(), `scripts/${filename}`),
+      path.resolve(__dirname, `../../../../../../scripts/${filename}`),
+      path.resolve(__dirname, `../../../../../scripts/${filename}`),
+      `/home/rafac183/x7pos/x7-pos-back-end/scripts/${filename}`,
+    ];
+
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        const sql = fs.readFileSync(p, 'utf8');
+        await this.dataSource.query(sql);
+        return {
+          success: true,
+          message:
+            mode === 'simple'
+              ? '2 simple test orders reseeded successfully (Smash Burger + Iced Latte)'
+              : mode === 'multi'
+                ? '1 multi-course order reseeded successfully (Appetizer, Beverage, Main, Dessert)'
+                : mode === 'multi2'
+                  ? '2 multi-course orders reseeded successfully (Appetizer, Beverage, Main, Dessert)'
+                  : mode === 'allergy'
+                    ? '3 allergy and modifier test orders reseeded successfully (Severe Allergy, Celiac/Vegan, Color Badges)'
+                    : '8 test orders reseeded successfully with full multi-course pacing',
+        };
+      }
+    }
+
+    throw new BadRequestException(`Seed script ${filename} not found`);
   }
 }

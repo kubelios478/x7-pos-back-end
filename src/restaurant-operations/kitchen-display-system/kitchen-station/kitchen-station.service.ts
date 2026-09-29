@@ -17,6 +17,11 @@ import {
 import type { QueryDeepPartialEntity } from 'typeorm';
 import { KitchenStation } from './entities/kitchen-station.entity';
 import { Merchant } from '../../../platform-saas/merchants/entities/merchant.entity';
+import { KitchenDisplayDevice } from '../kitchen-display-device/entities/kitchen-display-device.entity';
+import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
+import { KitchenOrderBusinessStatus } from '../kitchen-order/constants/kitchen-order-business-status.enum';
+import { KitchenEventLog } from '../kitchen-event-log/entities/kitchen-event-log.entity';
+import { KitchenEventLogStatus } from '../kitchen-event-log/constants/kitchen-event-log-status.enum';
 import { CreateKitchenStationDto } from './dto/create-kitchen-station.dto';
 import { UpdateKitchenStationDto } from './dto/update-kitchen-station.dto';
 import {
@@ -28,9 +33,12 @@ import {
   OneKitchenStationResponseDto,
 } from './dto/kitchen-station-response.dto';
 import { PaginatedKitchenStationResponseDto } from './dto/paginated-kitchen-station-response.dto';
+import {
+  UpdateRerouteConfigDto,
+  RerouteOrdersDto,
+  StationReroutingStatusDto,
+} from './dto/reroute-station.dto';
 import { KitchenStationStatus } from './constants/kitchen-station-status.enum';
-import { KitchenStationType } from './constants/kitchen-station-type.enum';
-import { KitchenDisplayMode } from './constants/kitchen-display-mode.enum';
 
 @Injectable()
 export class KitchenStationService {
@@ -39,6 +47,12 @@ export class KitchenStationService {
     private readonly kitchenStationRepository: Repository<KitchenStation>,
     @InjectRepository(Merchant)
     private readonly merchantRepository: Repository<Merchant>,
+    @InjectRepository(KitchenDisplayDevice)
+    private readonly kitchenDisplayDeviceRepository: Repository<KitchenDisplayDevice>,
+    @InjectRepository(KitchenOrder)
+    private readonly kitchenOrderRepository: Repository<KitchenOrder>,
+    @InjectRepository(KitchenEventLog)
+    private readonly kitchenEventLogRepository: Repository<KitchenEventLog>,
   ) {}
 
   async create(
@@ -107,6 +121,17 @@ export class KitchenStationService {
       .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
       .execute();
 
+    // Compute next merchant-scoped station number
+    const maxNumberRow = await this.kitchenStationRepository
+      .createQueryBuilder('ks')
+      .select('MAX(ks.station_number)', 'max')
+      .where('ks.merchant_id = :merchantId', {
+        merchantId: authenticatedUserMerchantId,
+      })
+      .getRawOne();
+    const nextStationNumber =
+      (maxNumberRow?.max ? parseInt(maxNumberRow.max, 10) : 0) + 1;
+
     // Create kitchen station
     const kitchenStation = new KitchenStation();
     kitchenStation.merchant_id = authenticatedUserMerchantId;
@@ -114,7 +139,18 @@ export class KitchenStationService {
     kitchenStation.station_type = createKitchenStationDto.stationType;
     kitchenStation.display_mode = createKitchenStationDto.displayMode;
     kitchenStation.display_order = targetOrder;
+    kitchenStation.station_number = nextStationNumber;
     kitchenStation.printer_name = createKitchenStationDto.printerName || null;
+    kitchenStation.backup_station_id =
+      createKitchenStationDto.backupStationId || null;
+    kitchenStation.max_active_tickets_capacity =
+      createKitchenStationDto.maxActiveTicketsCapacity ?? 15;
+    kitchenStation.auto_reroute_on_offline =
+      createKitchenStationDto.autoRerouteOnOffline ?? true;
+    kitchenStation.auto_reroute_on_capacity =
+      createKitchenStationDto.autoRerouteOnCapacity ?? true;
+    kitchenStation.fallback_action =
+      createKitchenStationDto.fallbackAction || 'BACKUP_STATION';
     kitchenStation.is_active = true; // Always set to true on creation
     kitchenStation.status = KitchenStationStatus.ACTIVE;
 
@@ -127,7 +163,7 @@ export class KitchenStationService {
     // Fetch the complete kitchen station with relations
     const completeKitchenStation = await this.kitchenStationRepository.findOne({
       where: { id: savedKitchenStation.id },
-      relations: ['merchant'],
+      relations: ['merchant', 'backup_station'],
     });
 
     if (!completeKitchenStation) {
@@ -393,6 +429,20 @@ export class KitchenStationService {
       updateData.display_order = updateKitchenStationDto.displayOrder;
     if (updateKitchenStationDto.printerName !== undefined)
       updateData.printer_name = updateKitchenStationDto.printerName || null;
+    if (updateKitchenStationDto.backupStationId !== undefined)
+      updateData.backup_station_id =
+        updateKitchenStationDto.backupStationId || null;
+    if (updateKitchenStationDto.maxActiveTicketsCapacity !== undefined)
+      updateData.max_active_tickets_capacity =
+        updateKitchenStationDto.maxActiveTicketsCapacity;
+    if (updateKitchenStationDto.autoRerouteOnOffline !== undefined)
+      updateData.auto_reroute_on_offline =
+        updateKitchenStationDto.autoRerouteOnOffline;
+    if (updateKitchenStationDto.autoRerouteOnCapacity !== undefined)
+      updateData.auto_reroute_on_capacity =
+        updateKitchenStationDto.autoRerouteOnCapacity;
+    if (updateKitchenStationDto.fallbackAction !== undefined)
+      updateData.fallback_action = updateKitchenStationDto.fallbackAction;
     if (updateKitchenStationDto.isActive !== undefined)
       updateData.is_active = updateKitchenStationDto.isActive;
 
@@ -411,7 +461,7 @@ export class KitchenStationService {
     // Fetch updated kitchen station
     const updatedKitchenStation = await this.kitchenStationRepository.findOne({
       where: { id },
-      relations: ['merchant'],
+      relations: ['merchant', 'backup_station'],
     });
 
     if (!updatedKitchenStation) {
@@ -500,6 +550,322 @@ export class KitchenStationService {
     }
   }
 
+  async getReroutingStatus(
+    authenticatedUserMerchantId: number,
+  ): Promise<StationReroutingStatusDto[]> {
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to view station rerouting status',
+      );
+    }
+
+    const stations = await this.kitchenStationRepository.find({
+      where: {
+        merchant_id: authenticatedUserMerchantId,
+        status: KitchenStationStatus.ACTIVE,
+      },
+      relations: ['backup_station'],
+      order: { display_order: 'ASC' },
+    });
+
+    const devices = await this.kitchenDisplayDeviceRepository.find({
+      where: {
+        merchant_id: authenticatedUserMerchantId,
+      },
+    });
+
+    const activeOrders = await this.kitchenOrderRepository
+      .createQueryBuilder('ko')
+      .where('ko.merchant_id = :merchantId', {
+        merchantId: authenticatedUserMerchantId,
+      })
+      .andWhere('ko.business_status IN (:...statuses)', {
+        statuses: [
+          KitchenOrderBusinessStatus.PENDING,
+          KitchenOrderBusinessStatus.STARTED,
+        ],
+      })
+      .getMany();
+
+    const now = new Date();
+
+    return stations.map((station) => {
+      const stationDevices = devices.filter(
+        (d) => d.station_id === station.id && d.status === 'active',
+      );
+
+      const onlineDevices = stationDevices.filter((d) => {
+        if (!d.is_online) return false;
+        const lastActivity = d.last_sync || d.updated_at;
+        if (!lastActivity) return false;
+        const diffMs = now.getTime() - new Date(lastActivity).getTime();
+        return diffMs <= 60000; // Online if active in the last 60 seconds
+      });
+
+      const devicesCount = stationDevices.length;
+      const onlineDevicesCount = onlineDevices.length;
+      // If station has no assigned active devices, or all assigned devices have been offline > 60s
+      const isDevicesOffline = devicesCount === 0 || onlineDevicesCount === 0;
+
+      const stationOrders = activeOrders.filter(
+        (o) => o.station_id === station.id,
+      );
+      const activeTicketsCount = stationOrders.length;
+      const capacityThreshold = station.max_active_tickets_capacity || 15;
+      const isCapacityOverflow = activeTicketsCount >= capacityThreshold;
+
+      let fallbackReason: 'DEVICES_OFFLINE' | 'CAPACITY_OVERFLOW' | 'NONE' =
+        'NONE';
+      let isFallbackActive = false;
+
+      if (isDevicesOffline && station.auto_reroute_on_offline) {
+        fallbackReason = 'DEVICES_OFFLINE';
+        isFallbackActive = true;
+      } else if (isCapacityOverflow && station.auto_reroute_on_capacity) {
+        fallbackReason = 'CAPACITY_OVERFLOW';
+        isFallbackActive = true;
+      }
+
+      return {
+        stationId: station.id,
+        stationName: station.name,
+        stationNumber:
+          station.station_number ?? station.display_order ?? station.id,
+        stationType: station.station_type,
+        displayMode: station.display_mode,
+        backupStationId: station.backup_station_id,
+        backupStationName: station.backup_station
+          ? station.backup_station.name
+          : null,
+        maxActiveTicketsCapacity: capacityThreshold,
+        activeTicketsCount,
+        isCapacityOverflow,
+        devicesCount,
+        onlineDevicesCount,
+        isDevicesOffline,
+        printerName: station.printer_name,
+        autoRerouteOnOffline: station.auto_reroute_on_offline ?? true,
+        autoRerouteOnCapacity: station.auto_reroute_on_capacity ?? true,
+        fallbackAction: station.fallback_action || 'BACKUP_STATION',
+        isFallbackActive,
+        fallbackReason,
+      };
+    });
+  }
+
+  async updateRerouteConfig(
+    stationId: number,
+    dto: UpdateRerouteConfigDto,
+    authenticatedUserMerchantId: number,
+  ): Promise<OneKitchenStationResponseDto> {
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to update reroute config',
+      );
+    }
+
+    const station = await this.kitchenStationRepository.findOne({
+      where: {
+        id: stationId,
+        merchant_id: authenticatedUserMerchantId,
+        status: KitchenStationStatus.ACTIVE,
+      },
+      relations: ['merchant', 'backup_station'],
+    });
+
+    if (!station) {
+      throw new NotFoundException('Kitchen station not found');
+    }
+
+    if (dto.backupStationId !== undefined) {
+      if (dto.backupStationId === stationId) {
+        throw new BadRequestException('A station cannot have itself as backup');
+      }
+      if (dto.backupStationId !== null) {
+        const backupStation = await this.kitchenStationRepository.findOne({
+          where: {
+            id: dto.backupStationId,
+            merchant_id: authenticatedUserMerchantId,
+            status: KitchenStationStatus.ACTIVE,
+          },
+        });
+        if (!backupStation) {
+          throw new BadRequestException(
+            'Specified backup station does not exist or is inactive',
+          );
+        }
+        station.backup_station = backupStation;
+        station.backup_station_id = backupStation.id;
+      } else {
+        station.backup_station = null;
+        station.backup_station_id = null;
+      }
+    }
+
+    if (dto.maxActiveTicketsCapacity !== undefined) {
+      if (dto.maxActiveTicketsCapacity < 1) {
+        throw new BadRequestException(
+          'Capacity threshold must be at least 1 ticket',
+        );
+      }
+      station.max_active_tickets_capacity = dto.maxActiveTicketsCapacity;
+    }
+
+    if (dto.autoRerouteOnOffline !== undefined) {
+      station.auto_reroute_on_offline = dto.autoRerouteOnOffline;
+    }
+
+    if (dto.autoRerouteOnCapacity !== undefined) {
+      station.auto_reroute_on_capacity = dto.autoRerouteOnCapacity;
+    }
+
+    if (dto.fallbackAction !== undefined) {
+      station.fallback_action = dto.fallbackAction;
+    }
+
+    if (dto.printerName !== undefined) {
+      station.printer_name = dto.printerName || null;
+    }
+
+    // Direct database update to guarantee columns update cleanly
+    await this.kitchenStationRepository.update(stationId, {
+      backup_station_id: station.backup_station_id,
+      max_active_tickets_capacity: station.max_active_tickets_capacity,
+      auto_reroute_on_offline: station.auto_reroute_on_offline,
+      auto_reroute_on_capacity: station.auto_reroute_on_capacity,
+      fallback_action: station.fallback_action,
+      printer_name: station.printer_name,
+    });
+
+    const updated = await this.kitchenStationRepository.findOne({
+      where: { id: stationId },
+      relations: ['merchant', 'backup_station'],
+    });
+
+    return {
+      statusCode: 200,
+      message: 'Rerouting and fallback configuration updated successfully',
+      data: this.formatKitchenStationResponse(updated || station),
+    };
+  }
+
+  async rerouteOrders(
+    stationId: number,
+    dto: RerouteOrdersDto,
+    authenticatedUserMerchantId: number,
+    userId?: number,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    reroutedCount: number;
+    targetStationId?: number;
+    targetStationName?: string;
+    thermalPrinted?: boolean;
+    fallbackAction?: string;
+  }> {
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to reroute orders',
+      );
+    }
+
+    const station = await this.kitchenStationRepository.findOne({
+      where: {
+        id: stationId,
+        merchant_id: authenticatedUserMerchantId,
+        status: KitchenStationStatus.ACTIVE,
+      },
+    });
+
+    if (!station) {
+      throw new NotFoundException('Source kitchen station not found');
+    }
+
+    const targetStationId = dto.targetStationId || station.backup_station_id;
+    let targetStation: KitchenStation | null = null;
+
+    if (targetStationId) {
+      targetStation = await this.kitchenStationRepository.findOne({
+        where: {
+          id: targetStationId,
+          merchant_id: authenticatedUserMerchantId,
+          status: KitchenStationStatus.ACTIVE,
+        },
+      });
+      if (!targetStation) {
+        throw new BadRequestException(
+          'Target backup station not found or inactive',
+        );
+      }
+    }
+
+    const orderQuery = this.kitchenOrderRepository
+      .createQueryBuilder('ko')
+      .where('ko.merchant_id = :merchantId', {
+        merchantId: authenticatedUserMerchantId,
+      })
+      .andWhere('ko.station_id = :stationId', { stationId })
+      .andWhere('ko.business_status IN (:...statuses)', {
+        statuses: [
+          KitchenOrderBusinessStatus.PENDING,
+          KitchenOrderBusinessStatus.STARTED,
+        ],
+      });
+
+    if (dto.orderIds && dto.orderIds.length > 0) {
+      orderQuery.andWhere('ko.id IN (:...orderIds)', {
+        orderIds: dto.orderIds,
+      });
+    }
+
+    const ordersToReroute = await orderQuery.getMany();
+
+    if (ordersToReroute.length === 0) {
+      return {
+        success: true,
+        message: 'No active orders found to reroute for this station',
+        reroutedCount: 0,
+      };
+    }
+
+    const reason = dto.reason || 'Operational Reroute / Fallback';
+    const isThermalFallback =
+      station.fallback_action === 'THERMAL_PRINTER' ||
+      station.fallback_action === 'BOTH';
+
+    for (const order of ordersToReroute) {
+      if (targetStation) {
+        order.station_id = targetStation.id;
+        await this.kitchenOrderRepository.save(order);
+      }
+
+      // Log event
+      try {
+        const eventLog = new KitchenEventLog();
+        eventLog.kitchen_order_id = order.id;
+        eventLog.station_id = targetStation ? targetStation.id : station.id;
+        eventLog.user_id = userId || null;
+        eventLog.event_type = 'reroute' as any;
+        eventLog.event_time = new Date();
+        eventLog.message = `Ticket #${order.id} rerouted from Station #${station.station_number ?? station.id} (${station.name}) to Station #${targetStation?.station_number ?? targetStation?.id ?? 'Thermal Printer'} (${reason})`;
+        eventLog.status = KitchenEventLogStatus.ACTIVE;
+        await this.kitchenEventLogRepository.save(eventLog);
+      } catch {
+        // Non-blocking log persistence
+      }
+    }
+
+    return {
+      success: true,
+      message: `Successfully rerouted ${ordersToReroute.length} order(s) from "${station.name}" to "${targetStation?.name || station.printer_name || 'Thermal Printer'}"`,
+      reroutedCount: ordersToReroute.length,
+      targetStationId: targetStation?.id,
+      targetStationName: targetStation?.name,
+      thermalPrinted: isThermalFallback,
+      fallbackAction: station.fallback_action,
+    };
+  }
+
   private formatKitchenStationResponse(
     kitchenStation: KitchenStation,
   ): KitchenStationResponseDto {
@@ -514,11 +880,95 @@ export class KitchenStationService {
       stationType: kitchenStation.station_type,
       displayMode: kitchenStation.display_mode,
       displayOrder: kitchenStation.display_order,
+      stationNumber:
+        kitchenStation.station_number ??
+        kitchenStation.display_order ??
+        kitchenStation.id,
+      station_number:
+        kitchenStation.station_number ??
+        kitchenStation.display_order ??
+        kitchenStation.id,
       printerName: kitchenStation.printer_name,
+      printer_name: kitchenStation.printer_name,
+      backupStationId: kitchenStation.backup_station_id,
+      backup_station_id: kitchenStation.backup_station_id,
+      maxActiveTicketsCapacity:
+        kitchenStation.max_active_tickets_capacity ?? 15,
+      max_active_tickets_capacity:
+        kitchenStation.max_active_tickets_capacity ?? 15,
+      autoRerouteOnOffline: kitchenStation.auto_reroute_on_offline ?? true,
+      auto_reroute_on_offline: kitchenStation.auto_reroute_on_offline ?? true,
+      autoRerouteOnCapacity: kitchenStation.auto_reroute_on_capacity ?? true,
+      auto_reroute_on_capacity: kitchenStation.auto_reroute_on_capacity ?? true,
+      fallbackAction: kitchenStation.fallback_action || 'BACKUP_STATION',
+      fallback_action: kitchenStation.fallback_action || 'BACKUP_STATION',
       isActive: kitchenStation.is_active,
       status: kitchenStation.status,
       createdAt: kitchenStation.created_at,
       updatedAt: kitchenStation.updated_at,
+    };
+  }
+
+  async sendStationHeartbeat(
+    stationIdParam: string,
+    authenticatedUserMerchantId: number,
+  ): Promise<{ success: boolean; updatedDevices: number; message: string }> {
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to send station heartbeat',
+      );
+    }
+
+    const now = new Date();
+
+    if (stationIdParam === 'ALL') {
+      const activeDevices = await this.kitchenDisplayDeviceRepository.find({
+        where: {
+          merchant_id: authenticatedUserMerchantId,
+          status: 'active' as any,
+        },
+      });
+
+      for (const dev of activeDevices) {
+        dev.last_sync = now;
+        dev.is_online = true;
+      }
+      if (activeDevices.length > 0) {
+        await this.kitchenDisplayDeviceRepository.save(activeDevices);
+      }
+
+      return {
+        success: true,
+        updatedDevices: activeDevices.length,
+        message: `Heartbeat updated for all active devices (${activeDevices.length})`,
+      };
+    }
+
+    const stationId = parseInt(stationIdParam, 10);
+    if (isNaN(stationId)) {
+      throw new BadRequestException('Invalid station ID for heartbeat');
+    }
+
+    const stationDevices = await this.kitchenDisplayDeviceRepository.find({
+      where: {
+        station_id: stationId,
+        merchant_id: authenticatedUserMerchantId,
+        status: 'active' as any,
+      },
+    });
+
+    for (const dev of stationDevices) {
+      dev.last_sync = now;
+      dev.is_online = true;
+    }
+    if (stationDevices.length > 0) {
+      await this.kitchenDisplayDeviceRepository.save(stationDevices);
+    }
+
+    return {
+      success: true,
+      updatedDevices: stationDevices.length,
+      message: `Heartbeat updated for station #${stationId} devices (${stationDevices.length})`,
     };
   }
 }
