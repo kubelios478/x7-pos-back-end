@@ -40,6 +40,38 @@ export class OnlineStoresService {
     private readonly merchantRepository: Repository<Merchant>,
   ) {}
 
+  private normalizeAndValidateSubdomain(rawSubdomain: string): string {
+    if (!rawSubdomain || typeof rawSubdomain !== 'string') {
+      throw new BadRequestException('Subdomain cannot be empty');
+    }
+
+    // Normalization: lowercase, trim, replace spaces/underscores with hyphens, strip invalid characters
+    const normalized = rawSubdomain
+      .toLowerCase()
+      .trim()
+      .replace(/[\s_]+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .replace(/^-+|-+$/g, '');
+
+    if (!normalized || normalized.length === 0) {
+      throw new BadRequestException('Subdomain must contain valid alphanumeric characters');
+    }
+
+    if (normalized.length > 100) {
+      throw new BadRequestException('Subdomain cannot exceed 100 characters');
+    }
+
+    // DNS compliance: only lowercase alphanumeric and hyphens, cannot start or end with a hyphen
+    const dnsPattern = /^[a-z0-9]([a-z0-9-]{0,98}[a-z0-9])?$/;
+    if (!dnsPattern.test(normalized)) {
+      throw new BadRequestException(
+        'Subdomain must be DNS compliant (only lowercase letters, numbers, and hyphens; cannot start or end with a hyphen)',
+      );
+    }
+
+    return normalized;
+  }
+
   async create(
     createOnlineStoreDto: CreateOnlineStoreDto,
     authenticatedUserMerchantId: number,
@@ -60,77 +92,58 @@ export class OnlineStoresService {
       throw new NotFoundException('Merchant not found');
     }
 
-    // Business rule validation: subdomain must not be empty
-    if (
-      !createOnlineStoreDto.subdomain ||
-      createOnlineStoreDto.subdomain.trim().length === 0
-    ) {
-      throw new BadRequestException('Subdomain cannot be empty');
-    }
+    // Subdomain normalization & DNS compliance validation
+    const normalizedSubdomain = this.normalizeAndValidateSubdomain(
+      createOnlineStoreDto.subdomain,
+    );
 
-    if (createOnlineStoreDto.subdomain.length > 100) {
-      throw new BadRequestException('Subdomain cannot exceed 100 characters');
-    }
-
-    // Business rule validation: subdomain must be unique per merchant
+    // Business rule validation: subdomain must be strictly unique across the platform
     const existingStore = await this.onlineStoreRepository.findOne({
       where: {
-        subdomain: createOnlineStoreDto.subdomain.toLowerCase(),
-        merchant_id: authenticatedUserMerchantId,
+        subdomain: normalizedSubdomain,
         status: OnlineStoreStatus.ACTIVE,
       },
     });
 
     if (existingStore) {
       throw new ConflictException(
-        `An online store with subdomain '${createOnlineStoreDto.subdomain}' already exists for this merchant`,
+        `An online store with subdomain '${normalizedSubdomain}' already exists`,
       );
     }
 
-    // Business rule validation: theme must not be empty
-    if (
-      !createOnlineStoreDto.theme ||
-      createOnlineStoreDto.theme.trim().length === 0
-    ) {
-      throw new BadRequestException('Theme cannot be empty');
-    }
-
-    if (createOnlineStoreDto.theme.length > 100) {
+    // Localization defaults & theme setup
+    const theme = (createOnlineStoreDto.theme || 'default').trim();
+    if (theme.length > 100) {
       throw new BadRequestException('Theme cannot exceed 100 characters');
     }
 
-    // Business rule validation: currency must not be empty
-    if (
-      !createOnlineStoreDto.currency ||
-      createOnlineStoreDto.currency.trim().length === 0
-    ) {
-      throw new BadRequestException('Currency cannot be empty');
-    }
-
-    if (createOnlineStoreDto.currency.length > 10) {
+    const currency = (createOnlineStoreDto.currency || 'USD')
+      .trim()
+      .toUpperCase();
+    if (currency.length > 10) {
       throw new BadRequestException('Currency cannot exceed 10 characters');
     }
 
-    // Business rule validation: timezone must not be empty
-    if (
-      !createOnlineStoreDto.timezone ||
-      createOnlineStoreDto.timezone.trim().length === 0
-    ) {
-      throw new BadRequestException('Timezone cannot be empty');
-    }
-
-    if (createOnlineStoreDto.timezone.length > 50) {
+    const timezone = (
+      createOnlineStoreDto.timezone || 'America/New_York'
+    ).trim();
+    if (timezone.length > 50) {
       throw new BadRequestException('Timezone cannot exceed 50 characters');
     }
+
+    const isActive =
+      createOnlineStoreDto.is_active !== undefined
+        ? createOnlineStoreDto.is_active
+        : true;
 
     // Create online store
     const onlineStore = new OnlineStore();
     onlineStore.merchant_id = authenticatedUserMerchantId;
-    onlineStore.subdomain = createOnlineStoreDto.subdomain.toLowerCase().trim();
-    onlineStore.is_active = true; // Always set to true when creating
-    onlineStore.theme = createOnlineStoreDto.theme.trim();
-    onlineStore.currency = createOnlineStoreDto.currency.trim().toUpperCase();
-    onlineStore.timezone = createOnlineStoreDto.timezone.trim();
+    onlineStore.subdomain = normalizedSubdomain;
+    onlineStore.is_active = isActive;
+    onlineStore.theme = theme;
+    onlineStore.currency = currency;
+    onlineStore.timezone = timezone;
     onlineStore.status = OnlineStoreStatus.ACTIVE;
 
     const savedOnlineStore = await this.onlineStoreRepository.save(onlineStore);
@@ -344,34 +357,25 @@ export class OnlineStoresService {
       throw new NotFoundException('Online store not found');
     }
 
-    // Business rule validation: subdomain must not be empty if provided
+    // Business rule validation: subdomain normalization & platform-wide uniqueness
+    let normalizedSubdomain: string | undefined;
     if (updateOnlineStoreDto.subdomain !== undefined) {
-      if (
-        !updateOnlineStoreDto.subdomain ||
-        updateOnlineStoreDto.subdomain.trim().length === 0
-      ) {
-        throw new BadRequestException('Subdomain cannot be empty');
-      }
-      if (updateOnlineStoreDto.subdomain.length > 100) {
-        throw new BadRequestException('Subdomain cannot exceed 100 characters');
-      }
+      normalizedSubdomain = this.normalizeAndValidateSubdomain(
+        updateOnlineStoreDto.subdomain,
+      );
 
-      // Check uniqueness if subdomain is being changed
-      if (
-        updateOnlineStoreDto.subdomain.toLowerCase() !==
-        existingOnlineStore.subdomain
-      ) {
+      // Check global uniqueness across the platform if subdomain is being changed
+      if (normalizedSubdomain !== existingOnlineStore.subdomain) {
         const existingStore = await this.onlineStoreRepository.findOne({
           where: {
-            subdomain: updateOnlineStoreDto.subdomain.toLowerCase(),
-            merchant_id: authenticatedUserMerchantId,
+            subdomain: normalizedSubdomain,
             status: OnlineStoreStatus.ACTIVE,
           },
         });
 
-        if (existingStore) {
+        if (existingStore && existingStore.id !== id) {
           throw new ConflictException(
-            `An online store with subdomain '${updateOnlineStoreDto.subdomain}' already exists for this merchant`,
+            `An online store with subdomain '${normalizedSubdomain}' already exists`,
           );
         }
       }
@@ -418,10 +422,8 @@ export class OnlineStoresService {
 
     // Update online store
     const updateData: QueryDeepPartialEntity<OnlineStore> = {};
-    if (updateOnlineStoreDto.subdomain !== undefined)
-      updateData.subdomain = updateOnlineStoreDto.subdomain
-        .toLowerCase()
-        .trim();
+    if (normalizedSubdomain !== undefined)
+      updateData.subdomain = normalizedSubdomain;
     if (updateOnlineStoreDto.isActive !== undefined)
       updateData.is_active = updateOnlineStoreDto.isActive;
     if (updateOnlineStoreDto.theme !== undefined)
