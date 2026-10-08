@@ -348,7 +348,6 @@ export class OnlineStoresService {
       where: {
         id,
         merchant_id: authenticatedUserMerchantId,
-        status: OnlineStoreStatus.ACTIVE,
       },
       relations: ['merchant'],
     });
@@ -432,6 +431,8 @@ export class OnlineStoresService {
       updateData.currency = updateOnlineStoreDto.currency.trim().toUpperCase();
     if (updateOnlineStoreDto.timezone !== undefined)
       updateData.timezone = updateOnlineStoreDto.timezone.trim();
+    if (updateOnlineStoreDto.status !== undefined)
+      updateData.status = updateOnlineStoreDto.status;
 
     await this.onlineStoreRepository.update(id, updateData);
 

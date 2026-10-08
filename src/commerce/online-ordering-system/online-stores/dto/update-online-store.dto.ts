@@ -1,6 +1,7 @@
 import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { CreateOnlineStoreDto } from './create-online-store.dto';
+import { OnlineStoreStatus } from '../constants/online-store-status.enum';
 
 export class UpdateOnlineStoreDto extends PartialType(CreateOnlineStoreDto) {
   @ApiPropertyOptional({
@@ -10,4 +11,13 @@ export class UpdateOnlineStoreDto extends PartialType(CreateOnlineStoreDto) {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    enum: OnlineStoreStatus,
+    example: OnlineStoreStatus.ACTIVE,
+    description: 'Logical status of the online store (active or deleted)',
+  })
+  @IsOptional()
+  @IsEnum(OnlineStoreStatus)
+  status?: OnlineStoreStatus;
 }
