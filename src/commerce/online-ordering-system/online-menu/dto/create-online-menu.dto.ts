@@ -32,4 +32,12 @@ export class CreateOnlineMenuDto {
   @IsOptional()
   @IsString({ message: 'Description must be a string' })
   description?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the menu is initially published and active',
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'Is active must be a boolean value' })
+  isActive?: boolean;
 }
