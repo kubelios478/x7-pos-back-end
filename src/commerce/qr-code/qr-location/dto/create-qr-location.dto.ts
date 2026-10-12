@@ -1,6 +1,13 @@
-//src/qr-code/qr-location/dto/create-qr-location.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsEnum, IsIn } from 'class-validator';
+// src/commerce/qr-code/qr-location/dto/create-qr-location.dto.ts
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsEnum,
+  IsIn,
+  IsOptional,
+} from 'class-validator';
 import { QRMenuType } from 'src/commerce/qr-code/constants/qr-menu-type.enum';
 
 export class CreateQRLocationDto {
@@ -14,12 +21,13 @@ export class CreateQRLocationDto {
   @IsNotEmpty()
   qrMenu: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 1,
     description: 'Identifier of the Table',
   })
+  @IsOptional()
   @IsNumber()
-  table: number;
+  table?: number;
 
   @ApiProperty({
     example: 'Main Entrance',

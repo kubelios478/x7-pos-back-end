@@ -46,7 +46,7 @@ import { QueryQRLocationDto } from './dto/query-qr-location.dto';
 import { UpdateQrLocationDto } from './dto/update-qr-location.dto';
 
 @ApiTags('Commerce - QR-Code - QR Location')
-@Controller('qr-location')
+@Controller('qr-locations')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_LOCATIONS)
 export class QRLocationController {
   constructor(private readonly qrLocationService: QRLocationService) {}

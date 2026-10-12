@@ -46,7 +46,7 @@ import { QueryQROrderDto } from './dto/query-qr-order.dto';
 import { UpdateQROrderDto } from './dto/update-qr-order.dto';
 
 @ApiTags('Commerce - QR-Code - QR Orders')
-@Controller('qr-order')
+@Controller('qr-orders')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_ORDERS)
 export class QROrderController {
   constructor(private readonly qrOrderService: QROrderService) {}

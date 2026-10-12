@@ -36,6 +36,7 @@ import {
   ApiForbiddenResponse,
   ApiQuery,
   ApiConflictResponse,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { OneKitchenOrderResponseDto } from './dto/kitchen-order-response.dto';
@@ -54,6 +55,14 @@ import { CancelKitchenOrderDto } from './dto/cancel-kitchen-order.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
+@ApiExtraModels(
+  ErrorResponse,
+  OneKitchenOrderResponseDto,
+  PaginatedKitchenOrderResponseDto,
+  CreateKitchenOrderDto,
+  UpdateKitchenOrderDto,
+  CancelKitchenOrderDto,
+)
 @ApiTags('Restaurant operations - Kitchen Display System - Kitchen Orders')
 @ApiBearerAuth()
 @Controller('kitchen-orders')
@@ -466,8 +475,120 @@ export class KitchenOrderController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @ApiOperation({
+    summary: 'Cancel a Kitchen Order',
+    description:
+      'Cancels an active kitchen order with a specified cancellation reason, optional stock adjustment action, and notes.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Unique identifier of the Kitchen Order to cancel',
+    example: 42,
+  })
+  @ApiBody({
+    type: CancelKitchenOrderDto,
+    description: 'Kitchen order cancellation request payload',
+    examples: {
+      default: {
+        summary: 'Cancel kitchen order request',
+        value: {
+          reason: 'CUSTOMER_CANCELLED',
+          stockAction: 'RESTOCK',
+          notes: 'Customer requested cancellation before food preparation started',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Kitchen order cancelled successfully',
+    type: OneKitchenOrderResponseDto,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Kitchen order cancelled successfully',
+        data: {
+          id: 42,
+          merchantId: 10,
+          orderId: 101,
+          onlineOrderId: null,
+          stationId: 2,
+          priority: 1,
+          businessStatus: 'CANCELLED',
+          startedAt: '2026-09-30T14:00:00.000Z',
+          completedAt: null,
+          cancelledAt: '2026-09-30T14:25:00.000Z',
+          cancellationReason: 'CUSTOMER_CANCELLED',
+          cancelledByUserId: 5,
+          notes: 'Customer requested cancellation before food preparation started',
+          status: 'ACTIVE',
+          createdAt: '2026-09-30T13:55:00.000Z',
+          updatedAt: '2026-09-30T14:25:00.000Z',
+          merchant: {
+            id: 10,
+            name: 'Restaurante Central',
+          },
+          order: {
+            id: 101,
+            status: 'cancelled',
+          },
+          onlineOrder: null,
+          station: {
+            id: 2,
+            name: 'Cocina Principal',
+          },
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid cancellation parameters or order is already completed/cancelled',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Kitchen order is already cancelled or completed',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - Insufficient permissions to cancel kitchen orders',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Kitchen order not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Kitchen order with ID 42 not found',
+        error: 'Not Found',
+      },
+    },
+  })
   async cancelKitchenOrder(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: CancelKitchenOrderDto,
     @Request() req: AuthenticatedRequest,
   ) {
@@ -513,3 +634,4 @@ export class KitchenOrderController {
     );
   }
 }
+
