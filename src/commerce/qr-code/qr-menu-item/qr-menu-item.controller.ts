@@ -46,7 +46,7 @@ import { QueryQRMenuItemDto } from './dto/query-qr-menu-item.dto';
 import { UpdateQRMenuItemDto } from './dto/update-qr-menu-item.dto';
 
 @ApiTags('Commerce - QR-Code - QR Menu Item')
-@Controller('qr-menu-item')
+@Controller('qr-menu-items')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_MENU_ITEMS)
 export class QRMenuItemController {
   constructor(private readonly qrMenuItemService: QRMenuItemService) {}

@@ -46,7 +46,7 @@ import { QueryQRMenuSectionDto } from './dto/query-qr-menu-section.dto';
 import { UpdateQRMenuSectionDto } from './dto/update-qr-menu-section.dto';
 
 @ApiTags('Commerce - QR-Code - QR Menu Section')
-@Controller('qr-menu-section')
+@Controller('qr-menu-sections')
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.QR_CODE_MENU_SECTIONS)
 export class QrMenuSectionController {
   constructor(private readonly qrMenuSectionService: QRMenuSectionService) {}
