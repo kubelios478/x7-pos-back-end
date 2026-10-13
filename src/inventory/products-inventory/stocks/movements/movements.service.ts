@@ -306,9 +306,26 @@ export class MovementsService {
     }
 
     if (query.movementType) {
-      queryBuilder.andWhere('movement.movementType = :movementType', {
-        movementType: query.movementType,
-      });
+      if (
+        query.movementType === 'PURCHASE_RECEIPT' ||
+        query.movementType === 'PURCHASE'
+      ) {
+        queryBuilder.andWhere(
+          'movement.movementType IN (:...purchaseMovementTypes)',
+          {
+            purchaseMovementTypes: [
+              'PURCHASE_RECEIPT',
+              'PURCHASE_RECEIPT_CORRECTION',
+              'PURCHASE_CORRECTION',
+              'PURCHASE_ENTRY',
+            ],
+          },
+        );
+      } else {
+        queryBuilder.andWhere('movement.movementType = :movementType', {
+          movementType: query.movementType,
+        });
+      }
     }
 
     if (query.supplyId) {

@@ -23,30 +23,43 @@ export class CreateOnlineStoreDto {
   })
   subdomain: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'default',
-    description: 'Theme of the online store',
+    description: 'Theme of the online store (defaults to "default")',
+    default: 'default',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(100)
-  theme: string;
+  theme?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'USD',
-    description: 'Currency code used in the online store (ISO 4217 format)',
+    description: 'Currency code used in the online store (defaults to "USD")',
+    default: 'USD',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(10)
-  currency: string;
+  currency?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'America/New_York',
-    description: 'Timezone of the online store (IANA timezone format)',
+    description:
+      'Timezone of the online store (defaults to "America/New_York")',
+    default: 'America/New_York',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @MaxLength(50)
-  timezone: string;
+  timezone?: string;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Whether the online store is publicly available',
+    default: true,
+  })
+  @IsBoolean()
+  @IsOptional()
+  is_active?: boolean;
 }

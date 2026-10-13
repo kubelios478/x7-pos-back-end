@@ -36,6 +36,7 @@ import {
   ApiForbiddenResponse,
   ApiQuery,
   ApiConflictResponse,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import { OneKitchenOrderResponseDto } from './dto/kitchen-order-response.dto';
@@ -54,6 +55,14 @@ import { CancelKitchenOrderDto } from './dto/cancel-kitchen-order.dto';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
+@ApiExtraModels(
+  ErrorResponse,
+  OneKitchenOrderResponseDto,
+  PaginatedKitchenOrderResponseDto,
+  CreateKitchenOrderDto,
+  UpdateKitchenOrderDto,
+  CancelKitchenOrderDto,
+)
 @ApiTags('Restaurant operations - Kitchen Display System - Kitchen Orders')
 @ApiBearerAuth()
 @Controller('kitchen-orders')
@@ -61,6 +70,33 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class KitchenOrderController {
   constructor(private readonly kitchenOrderService: KitchenOrderService) {}
+
+  @Post('reset-test-data')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Reset and re-seed KDS test data',
+    description:
+      'Clears and repopulates test kitchen orders and items for testing',
+  })
+  async resetTestData(
+    @Request() req: AuthenticatedRequest,
+    @Body() body?: {
+      mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy';
+    },
+  ) {
+    const merchantId = req.user?.merchant?.id || 2;
+    return this.kitchenOrderService.resetTestData(
+      merchantId,
+      body?.mode || 'seed',
+    );
+  }
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -128,11 +164,12 @@ export class KitchenOrderController {
     return this.kitchenOrderService.create(
       createKitchenOrderDto,
       authenticatedUserMerchantId,
+      req.user?.id,
     );
   }
 
   @Get()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -256,7 +293,7 @@ export class KitchenOrderController {
   }
 
   @Get(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -301,7 +338,7 @@ export class KitchenOrderController {
   }
 
   @Put(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -438,11 +475,163 @@ export class KitchenOrderController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @ApiOperation({
+    summary: 'Cancel a Kitchen Order',
+    description:
+      'Cancels an active kitchen order with a specified cancellation reason, optional stock adjustment action, and notes.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Unique identifier of the Kitchen Order to cancel',
+    example: 42,
+  })
+  @ApiBody({
+    type: CancelKitchenOrderDto,
+    description: 'Kitchen order cancellation request payload',
+    examples: {
+      default: {
+        summary: 'Cancel kitchen order request',
+        value: {
+          reason: 'CUSTOMER_CANCELLED',
+          stockAction: 'RESTOCK',
+          notes: 'Customer requested cancellation before food preparation started',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Kitchen order cancelled successfully',
+    type: OneKitchenOrderResponseDto,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Kitchen order cancelled successfully',
+        data: {
+          id: 42,
+          merchantId: 10,
+          orderId: 101,
+          onlineOrderId: null,
+          stationId: 2,
+          priority: 1,
+          businessStatus: 'CANCELLED',
+          startedAt: '2026-09-30T14:00:00.000Z',
+          completedAt: null,
+          cancelledAt: '2026-09-30T14:25:00.000Z',
+          cancellationReason: 'CUSTOMER_CANCELLED',
+          cancelledByUserId: 5,
+          notes: 'Customer requested cancellation before food preparation started',
+          status: 'ACTIVE',
+          createdAt: '2026-09-30T13:55:00.000Z',
+          updatedAt: '2026-09-30T14:25:00.000Z',
+          merchant: {
+            id: 10,
+            name: 'Restaurante Central',
+          },
+          order: {
+            id: 101,
+            status: 'cancelled',
+          },
+          onlineOrder: null,
+          station: {
+            id: 2,
+            name: 'Cocina Principal',
+          },
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description:
+      'Bad Request - Invalid cancellation parameters or order is already completed/cancelled',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Kitchen order is already cancelled or completed',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - Insufficient permissions to cancel kitchen orders',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Kitchen order not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Kitchen order with ID 42 not found',
+        error: 'Not Found',
+      },
+    },
+  })
   async cancelKitchenOrder(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: CancelKitchenOrderDto,
-    @Request() req: AuthenticatedUser,
+    @Request() req: AuthenticatedRequest,
   ) {
-    return this.kitchenOrderService.cancelKitchenOrder(id, dto, req);
+    return this.kitchenOrderService.cancelKitchenOrder(id, dto, req.user);
+  }
+
+  @Post(':id/recall')
+  @HttpCode(HttpStatus.OK)
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary:
+      'Recall a bumped/completed kitchen order back to active status (Historia X7P-4209)',
+    description:
+      'Reverts a completed order back to started status, preserving original started_at timestamp, resetting items to in_preparation, and logging an audit event.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Kitchen order ID to recall',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Kitchen order recalled successfully',
+    type: OneKitchenOrderResponseDto,
+  })
+  async recallKitchenOrder(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    const userId = req.user?.id;
+    return this.kitchenOrderService.recallKitchenOrder(
+      id,
+      authenticatedUserMerchantId,
+      userId,
+    );
   }
 }
+

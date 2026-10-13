@@ -34,6 +34,7 @@ import {
   ApiBody,
   ApiForbiddenResponse,
   ApiQuery,
+  ApiExtraModels,
 } from '@nestjs/swagger';
 import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.interface';
 import {
@@ -55,6 +56,16 @@ import {
 import { QueryTipSettlementReportDto } from './dto/query-tip-settlement-report.dto';
 import { LiquidatedTipSettlementsDto } from './dto/liquidated-tip-settlement.dto';
 
+@ApiExtraModels(
+  ErrorResponse,
+  CreateTipSettlementDto,
+  UpdateTipSettlementDto,
+  OneTipSettlementResponseDto,
+  PaginatedTipSettlementResponseDto,
+  TipPayoutDto,
+  QueryTipSettlementReportDto,
+  LiquidatedTipSettlementsDto,
+)
 @ApiTags('Restaurant operations - Tips - Tip Settlements')
 @ApiBearerAuth()
 @Controller('tip-settlements')
@@ -173,13 +184,88 @@ export class TipSettlementsController {
       authenticatedUserMerchantId,
     );
   }
+
   @Get('report')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Generate tip settlement analytical report',
+    description:
+      'Provides aggregated tip totals (cash vs card/transfer) and a list of tip settlements matching query parameters.',
+  })
+  @ApiQuery({ name: 'collaboratorId', required: false, type: Number })
+  @ApiQuery({ name: 'shiftId', required: false, type: Number })
+  @ApiQuery({ name: 'status', required: false, type: String })
+  @ApiOkResponse({
+    description: 'Tip settlement report generated successfully',
+    schema: {
+      example: {
+        totalCashTips: 450.0,
+        totalCardTips: 320.5,
+        totalTips: 770.5,
+        settlements: [
+          {
+            id: 10,
+            company_id: 1,
+            merchant_id: 10,
+            collaborator_id: 5,
+            shift_id: 3,
+            total_amount: 150.0,
+            settlement_method: 'CASH',
+            status: 'LIQUIDATED',
+            settled_by: 12,
+            settled_at: '2026-10-01T10:00:00.000Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request - Invalid query parameters',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Invalid status parameter',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Merchant or resource not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant not found',
+        error: 'Not Found',
+      },
+    },
+  })
   getSettlementReport(
     @Query() query: QueryTipSettlementReportDto,
     @Req() req: AuthenticatedUser,
   ) {
     return this.tipSettlementsService.getSettlementReport(query, req);
   }
+
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -301,6 +387,87 @@ export class TipSettlementsController {
   }
 
   @Patch('liquidated')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Update status of multiple tip settlements to LIQUIDATED',
+    description:
+      'Batch updates specified tip settlements to LIQUIDATED status and registers settlement timestamp and admin user.',
+  })
+  @ApiBody({
+    type: LiquidatedTipSettlementsDto,
+    description: 'List of tip settlement IDs to liquidate',
+    examples: {
+      default: {
+        summary: 'Liquidate tip settlements request',
+        value: {
+          settlementIds: [10, 11, 12],
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Tip settlements liquidated successfully',
+    schema: {
+      example: {
+        success: true,
+        message: 'Tip settlements liquidated successfully',
+        data: [
+          {
+            id: 10,
+            company_id: 1,
+            merchant_id: 10,
+            collaborator_id: 5,
+            shift_id: 3,
+            total_amount: 75.25,
+            settlement_method: 'CASH',
+            status: 'LIQUIDATED',
+            settled_by: 12,
+            settled_at: '2026-10-01T11:30:00.000Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Bad Request - Invalid settlement IDs array',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: ['settlementIds must be an array'],
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'No tip settlements found matching provided IDs',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'No settlements found',
+        error: 'Not Found',
+      },
+    },
+  })
   async liquidatedTipSettlements(
     @Body() dto: LiquidatedTipSettlementsDto,
     @Req() req: AuthenticatedUser,
@@ -323,10 +490,91 @@ export class TipSettlementsController {
     description:
       'Validates distribution according to the active TipRule (POOL, ROLE_BASED), creates settlements in tip_settlements, updates tip status to PAID_OUT, and deducts the total from the current_balance of the cash drawer.',
   })
-  @ApiCreatedResponse({ description: 'Tip payout registered successfully' })
+  @ApiParam({
+    name: 'shiftId',
+    type: Number,
+    description: 'Active cash shift ID',
+    example: 42,
+  })
+  @ApiBody({
+    type: TipPayoutDto,
+    description: 'Tip payout distribution array',
+    examples: {
+      default: {
+        summary: 'Process tip payout request',
+        value: {
+          payments: [
+            { collaboratorId: 5, amount: 75.25 },
+            { collaboratorId: 8, amount: 75.25 },
+          ],
+        },
+      },
+    },
+  })
+  @ApiCreatedResponse({
+    description: 'Tip payout registered successfully',
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Tips paid out successfully',
+        data: {
+          receiptId: 'REC-TIP-42-1711886400000',
+          shiftId: 42,
+          totalPaid: 150.5,
+          paymentDate: '2026-10-01T11:30:00.000Z',
+          settledBy: 12,
+          details: [
+            {
+              collaboratorId: 5,
+              collaboratorName: 'Juan Pérez',
+              role: 'WAITER',
+              amount: 75.25,
+            },
+            {
+              collaboratorId: 8,
+              collaboratorName: 'María Gómez',
+              role: 'WAITER',
+              amount: 75.25,
+            },
+          ],
+        },
+      },
+    },
+  })
   @ApiBadRequestResponse({
     description:
       'Amount exceeds collected tips, shift closed, or incorrect distribution',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message:
+          'Cannot payout 150.5 in tips. The shift register only has 100.0 available in cash.',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Cash drawer or shift not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Cash drawer associated with this shift not found',
+        error: 'Not Found',
+      },
+    },
   })
   async payoutTips(
     @Param('shiftId', ParseIntPipe) shiftId: number,
@@ -356,10 +604,55 @@ export class TipSettlementsController {
     description:
       'Retrieves the sum and count of cash tips in COLLECTED status for the given shift.',
   })
+  @ApiParam({
+    name: 'shiftId',
+    type: Number,
+    description: 'Cash shift ID',
+    example: 42,
+  })
   @ApiOkResponse({
     description: 'Collected tips summary retrieved successfully',
+    schema: {
+      example: {
+        shiftId: 42,
+        totalTipsCollected: 150.5,
+        tipsCount: 8,
+      },
+    },
   })
-  @ApiNotFoundResponse({ description: 'Shift not found' })
+  @ApiBadRequestResponse({
+    description: 'Bad Request - Invalid shift ID parameter',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Validation failed (numeric string is expected)',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Cash shift not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Cash shift with ID 42 not found',
+        error: 'Not Found',
+      },
+    },
+  })
   async getCollectedTips(
     @Param('shiftId', ParseIntPipe) shiftId: number,
     @CurrentUser() user: AuthenticatedUser,
@@ -370,3 +663,4 @@ export class TipSettlementsController {
     );
   }
 }
+

@@ -89,6 +89,12 @@ export class OnlineOrderService {
       );
     }
 
+    if (!onlineStore.is_active) {
+      throw new BadRequestException(
+        'Online store is currently offline (maintenance mode) and not accepting orders',
+      );
+    }
+
     if (createOnlineOrderDto.orderId) {
       const order = await this.orderRepository.findOne({
         where: { id: createOnlineOrderDto.orderId },

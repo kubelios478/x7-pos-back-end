@@ -37,6 +37,11 @@ import {
 import { OneKitchenStationResponseDto } from './dto/kitchen-station-response.dto';
 import { GetKitchenStationQueryDto } from './dto/get-kitchen-station-query.dto';
 import { PaginatedKitchenStationResponseDto } from './dto/paginated-kitchen-station-response.dto';
+import {
+  UpdateRerouteConfigDto,
+  RerouteOrdersDto,
+  StationReroutingStatusDto,
+} from './dto/reroute-station.dto';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
@@ -53,7 +58,7 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
 @ApiTags('Restaurant operations - Kitchen Display System - Stations')
 @ApiBearerAuth()
-@Controller('kitchen-station')
+@Controller(['kitchen-station', 'kitchen-stations'])
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.KITCHEN_STATIONS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class KitchenStationController {
@@ -232,6 +237,35 @@ export class KitchenStationController {
     );
   }
 
+  @Get('rerouting-status')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary:
+      'Get live station rerouting, device health & capacity overflow status',
+    description:
+      'Provides active device connectivity states (>60s offline check), queue capacity overflow flags, and automatic reroute paths.',
+  })
+  @ApiOkResponse({
+    description:
+      'Station rerouting and device health status retrieved successfully',
+    type: [StationReroutingStatusDto],
+  })
+  async getReroutingStatus(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<StationReroutingStatusDto[]> {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenStationService.getReroutingStatus(
+      authenticatedUserMerchantId,
+    );
+  }
+
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -394,4 +428,109 @@ export class KitchenStationController {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     return this.kitchenStationService.remove(id, authenticatedUserMerchantId);
   }
+
+  @Put(':id/reroute-config')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary:
+      'Update station fallback and load balancing reroute configuration',
+    description:
+      'Configures backup_station_id, queue capacity threshold, automatic offline rerouting, and thermal printer fallback.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Kitchen station ID',
+  })
+  @ApiOkResponse({
+    description: 'Rerouting configuration updated successfully',
+    type: OneKitchenStationResponseDto,
+  })
+  async updateRerouteConfig(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateRerouteConfigDto,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<OneKitchenStationResponseDto> {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenStationService.updateRerouteConfig(
+      id,
+      dto,
+      authenticatedUserMerchantId,
+    );
+  }
+
+  @Post(':id/reroute-orders')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Reroute active tickets to secondary station or printer',
+    description:
+      'Reroutes pending/started tickets from this station to the designated backup station or triggers thermal printer fallback.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Source kitchen station ID',
+  })
+  @ApiOkResponse({
+    description: 'Orders rerouted successfully',
+  })
+  async rerouteOrders(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RerouteOrdersDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    const userId = req.user?.id;
+    return this.kitchenStationService.rerouteOrders(
+      id,
+      dto,
+      authenticatedUserMerchantId,
+      userId,
+    );
+  }
+
+  @Post(':id/heartbeat')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Send station terminal keepalive heartbeat',
+    description:
+      'Updates last_sync and is_online for display devices assigned to this station',
+  })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Kitchen station ID or "ALL"',
+  })
+  async sendHeartbeat(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.kitchenStationService.sendStationHeartbeat(
+      id,
+      authenticatedUserMerchantId,
+    );
+  }
 }
+

@@ -76,8 +76,10 @@ export class OnlineMenuService {
     const onlineMenu = new OnlineMenu();
     onlineMenu.store_id = createOnlineMenuDto.storeId;
     onlineMenu.name = createOnlineMenuDto.name.trim();
-    onlineMenu.description = createOnlineMenuDto.description?.trim() || null;
-    onlineMenu.is_active = true; // Always set to true when creating
+    onlineMenu.is_active =
+      createOnlineMenuDto.isActive !== undefined
+        ? createOnlineMenuDto.isActive
+        : true;
 
     const savedOnlineMenu = await this.onlineMenuRepository.save(onlineMenu);
 
@@ -301,8 +303,29 @@ export class OnlineMenuService {
       }
     }
 
+    // Business rule validation: storeId re-assignment (Store Catalog Switcher)
+    if (updateOnlineMenuDto.storeId !== undefined) {
+      if (!updateOnlineMenuDto.storeId || updateOnlineMenuDto.storeId <= 0) {
+        throw new BadRequestException('Store ID must be a valid positive number');
+      }
+      const targetStore = await this.onlineStoreRepository.findOne({
+        where: {
+          id: updateOnlineMenuDto.storeId,
+          merchant_id: authenticatedUserMerchantId,
+          status: OnlineStoreStatus.ACTIVE,
+        },
+      });
+      if (!targetStore) {
+        throw new NotFoundException(
+          'Target online store not found or you do not have access to it',
+        );
+      }
+    }
+
     // Update online menu
     const updateData: QueryDeepPartialEntity<OnlineMenu> = {};
+    if (updateOnlineMenuDto.storeId !== undefined)
+      updateData.store_id = updateOnlineMenuDto.storeId;
     if (updateOnlineMenuDto.name !== undefined)
       updateData.name = updateOnlineMenuDto.name.trim();
     if (updateOnlineMenuDto.description !== undefined)

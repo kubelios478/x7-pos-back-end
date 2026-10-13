@@ -28,6 +28,7 @@ import {
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiExtraModels,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -49,7 +50,12 @@ import {
   OneLoyaltyPointsTransactionResponse,
 } from './dto/loyalty-points-transaction-response.dto';
 
-@ApiExtraModels(ErrorResponse)
+@ApiExtraModels(
+  ErrorResponse,
+  OneLoyaltyPointsTransactionResponse,
+  LoyaltyPointsTransactionResponseDto,
+  AllPaginatedLoyaltyPointsTransactionDto,
+)
 @ApiBearerAuth()
 @ApiTags('Growth - Loyalty - Points Transactions')
 @Controller('loyalty-points-transactions')
@@ -68,17 +74,83 @@ export class LoyaltyPointsTransactionController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Create a new Loyalty Points Transaction' })
+  @ApiOperation({
+    summary: 'Create a new Loyalty Points Transaction',
+    description:
+      'Creates a new loyalty points transaction (earn/redeem/adjust) for a customer.',
+  })
   @ApiCreatedResponse({
     description: 'Loyalty Points Transaction created successfully',
-    type: LoyaltyPointsTransactionResponseDto,
+    type: OneLoyaltyPointsTransactionResponse,
+    schema: {
+      example: {
+        statusCode: 201,
+        message: 'Loyalty Points Transaction Created successfully',
+        data: {
+          id: 1,
+          description: 'Earned points from purchase',
+          source: 'ORDER',
+          points: 100,
+          loyaltyCustomer: {
+            id: 1,
+            customer: {
+              id: 42,
+              name: 'Jane Doe',
+            },
+          },
+          order: {
+            id: 10,
+            orderNumber: 'ORD-1001',
+          },
+          payment: null,
+          createdAt: '2024-01-15T10:00:00.000Z',
+        },
+      },
+    },
   })
   @ApiBadRequestResponse({
-    description: 'Bad Request',
+    description: 'Bad Request - Invalid input data',
     type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'loyalty_customer_id is required',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden - Insufficient permissions',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
   })
   @ApiConflictResponse({
     description: 'Loyalty Points Transaction already exists',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 409,
+        message: 'Transaction already exists for this order',
+        error: 'Conflict',
+      },
+    },
   })
   @ApiBody({ type: CreateLoyaltyPointsTransactionDto })
   create(
@@ -125,15 +197,83 @@ export class LoyaltyPointsTransactionController {
     description:
       'Paginated list of loyalty points transactions retrieved successfully',
     type: AllPaginatedLoyaltyPointsTransactionDto,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Loyalty Points Transactions retrieved successfully',
+        data: [
+          {
+            id: 1,
+            description: 'Earned points from purchase',
+            source: 'ORDER',
+            points: 100,
+            loyaltyCustomer: {
+              id: 1,
+              customer: {
+                id: 42,
+                name: 'Jane Doe',
+              },
+            },
+            order: {
+              id: 10,
+              orderNumber: 'ORD-1001',
+            },
+            payment: null,
+            createdAt: '2024-01-15T10:00:00.000Z',
+          },
+        ],
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    },
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden - Insufficient permissions',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
   })
   @ApiNotFoundResponse({
     description: 'Merchant not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Merchant not found',
+        error: 'Not Found',
+      },
+    },
   })
   @ApiBadRequestResponse({
     description: 'Invalid query parameters or business rule violation',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Page must be >= 1',
+        error: 'Bad Request',
+      },
+    },
   })
   @ApiResponse({
     status: 500,
@@ -157,22 +297,89 @@ export class LoyaltyPointsTransactionController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Get a Loyalty Points Transaction by ID' })
+  @ApiOperation({
+    summary: 'Get a Loyalty Points Transaction by ID',
+    description:
+      'Retrieves details of a single loyalty points transaction including associated customer, order, and payment details.',
+  })
   @ApiParam({
     name: 'id',
     type: Number,
     description: 'Loyalty Points Transaction ID',
+    example: 1,
   })
   @ApiOkResponse({
     description: 'Loyalty Points Transaction found',
-    type: LoyaltyPointsTransactionResponseDto,
+    type: OneLoyaltyPointsTransactionResponse,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Loyalty Points Transaction retrieved successfully',
+        data: {
+          id: 1,
+          description: 'Earned points from purchase',
+          source: 'ORDER',
+          points: 100,
+          loyaltyCustomer: {
+            id: 1,
+            customer: {
+              id: 42,
+              name: 'Jane Doe',
+            },
+          },
+          order: {
+            id: 10,
+            orderNumber: 'ORD-1001',
+          },
+          payment: null,
+          createdAt: '2024-01-15T10:00:00.000Z',
+        },
+      },
+    },
   })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Loyalty Points Transaction not found' })
-  @ApiResponse({
-    status: 400,
+  @ApiBadRequestResponse({
     description: 'Invalid ID',
     type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Loyalty Points Transaction ID is incorrect',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden - Insufficient permissions',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Loyalty Points Transaction not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Loyalty points transaction not found',
+        error: 'Not Found',
+      },
+    },
   })
   findOne(
     @CurrentUser() user: AuthenticatedUser,
@@ -191,20 +398,87 @@ export class LoyaltyPointsTransactionController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Update a Loyalty Points Transaction' })
+  @ApiOperation({
+    summary: 'Update a Loyalty Points Transaction',
+    description: 'Updates points or description of a loyalty points transaction.',
+  })
   @ApiParam({
     name: 'id',
     type: Number,
     description: 'Loyalty Points Transaction ID',
+    example: 1,
   })
   @ApiBody({ type: UpdateLoyaltyPointsTransactionDto })
   @ApiOkResponse({
     description: 'Loyalty Points Transaction updated successfully',
-    type: LoyaltyPointsTransactionResponseDto,
+    type: OneLoyaltyPointsTransactionResponse,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Loyalty Points Transaction Updated successfully',
+        data: {
+          id: 1,
+          description: 'Adjusted points from return',
+          source: 'ADJUSTMENT',
+          points: 50,
+          loyaltyCustomer: {
+            id: 1,
+            customer: {
+              id: 42,
+              name: 'Jane Doe',
+            },
+          },
+          order: null,
+          payment: null,
+          createdAt: '2024-01-15T10:00:00.000Z',
+        },
+      },
+    },
   })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Loyalty Points Transaction not found' })
-  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Points must be a valid number',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden - Insufficient permissions',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Loyalty Points Transaction not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Loyalty points transaction not found',
+        error: 'Not Found',
+      },
+    },
+  })
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,
@@ -228,16 +502,90 @@ export class LoyaltyPointsTransactionController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
-  @ApiOperation({ summary: 'Delete a Loyalty Points Transaction' })
+  @ApiOperation({
+    summary: 'Delete a Loyalty Points Transaction',
+    description:
+      'Soft-deletes a loyalty points transaction by ID and updates the associated customer points balance.',
+  })
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'Loyalty Points Transaction ID',
+    description: 'Unique identifier of the loyalty points transaction to soft-delete',
+    example: 1,
   })
-  @ApiOkResponse({ description: 'Loyalty Points Transaction deleted' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized' })
-  @ApiNotFoundResponse({ description: 'Loyalty Points Transaction not found' })
-  @ApiBadRequestResponse({ description: 'Invalid input data' })
+  @ApiOkResponse({
+    description: 'Loyalty Points Transaction deleted successfully',
+    type: OneLoyaltyPointsTransactionResponse,
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Loyalty Points Transaction Deleted successfully',
+        data: {
+          id: 1,
+          description: 'Earned points from purchase',
+          source: 'ORDER',
+          points: 100,
+          loyaltyCustomer: {
+            id: 1,
+            customer: {
+              id: 42,
+              name: 'Jane Doe',
+            },
+          },
+          order: {
+            id: 10,
+            orderNumber: 'ORD-1001',
+          },
+          payment: null,
+          createdAt: '2024-01-15T10:00:00.000Z',
+        },
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or ID',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 400,
+        message: 'Loyalty Points Transaction ID is incorrect',
+        error: 'Bad Request',
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Missing or invalid authentication token',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Forbidden - Insufficient permissions',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 403,
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Loyalty Points Transaction not found',
+    type: ErrorResponse,
+    schema: {
+      example: {
+        statusCode: 404,
+        message: 'Loyalty points transaction not found',
+        error: 'Not Found',
+      },
+    },
+  })
   remove(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseIntPipe) id: number,

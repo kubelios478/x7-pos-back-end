@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Put,
+  Patch,
   Delete,
   ParseIntPipe,
   UseGuards,
@@ -316,6 +317,56 @@ export class OnlineMenuController {
     },
   })
   async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOnlineMenuDto,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<OneOnlineMenuResponseDto> {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.onlineMenuService.update(id, dto, authenticatedUserMerchantId);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Partially update an Online Menu by ID',
+    description:
+      'Partially updates an existing online menu. Supports updating name, description, active status, or reassigning store channel. Users can only update online menus from their own merchant.',
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Online menu ID to update',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Online menu updated successfully',
+    type: OneOnlineMenuResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - You can only update online menus from your own merchant',
+    type: ErrorResponse,
+  })
+  @ApiNotFoundResponse({
+    description: 'Online menu not found',
+    type: ErrorResponse,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or ID',
+    type: ErrorResponse,
+  })
+  async updatePatch(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOnlineMenuDto,
     @Request() req: AuthenticatedRequest,

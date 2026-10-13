@@ -19,6 +19,10 @@ export class BasicKitchenStationInfoDto {
     description: 'Kitchen Station name',
   })
   name: string;
+
+  stationNumber?: number;
+  station_number?: number;
+  displayOrder?: number;
 }
 
 export class KitchenDisplayDeviceResponseDto {

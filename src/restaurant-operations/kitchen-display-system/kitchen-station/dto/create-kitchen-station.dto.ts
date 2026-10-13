@@ -56,4 +56,43 @@ export class CreateKitchenStationDto {
   @IsString()
   @MaxLength(100)
   printerName?: string;
+
+  @ApiPropertyOptional({
+    example: 10,
+    description: 'ID of the secondary backup station for offline or overload rerouting',
+  })
+  @IsOptional()
+  @IsNumber()
+  backupStationId?: number;
+
+  @ApiPropertyOptional({
+    example: 15,
+    description: 'Maximum active ticket capacity threshold before triggering load balancing overflow',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  maxActiveTicketsCapacity?: number;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Automatically reroute orders when all station devices are offline > 60s',
+  })
+  @IsOptional()
+  autoRerouteOnOffline?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Automatically balance load and reroute overflow orders when capacity limit is breached',
+  })
+  @IsOptional()
+  autoRerouteOnCapacity?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'BACKUP_STATION',
+    description: 'Fallback action: BACKUP_STATION, THERMAL_PRINTER, or BOTH',
+  })
+  @IsOptional()
+  @IsString()
+  fallbackAction?: string;
 }

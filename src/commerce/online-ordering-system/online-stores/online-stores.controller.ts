@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Put,
+  Patch,
   Delete,
   ParseIntPipe,
   UseGuards,
@@ -289,7 +290,7 @@ export class OnlineStoresController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary: 'Update an Online Store by ID',
+    summary: 'Update an Online Store by ID (Full / Partial)',
     description:
       "Updates an existing online store for the authenticated user's merchant. Only portal administrators and merchant administrators can update online stores. All fields are optional.",
   })
@@ -345,6 +346,69 @@ export class OnlineStoresController {
     },
   })
   async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOnlineStoreDto,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<OneOnlineStoreResponseDto> {
+    const authenticatedUserMerchantId = req.user?.merchant?.id;
+    return this.onlineStoresService.update(
+      id,
+      dto,
+      authenticatedUserMerchantId,
+    );
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Partially update an Online Store by ID',
+    description:
+      "Partially updates an existing online store for the authenticated user's merchant. Only portal administrators and merchant administrators can update online stores. All fields are optional.",
+  })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Online store ID to update',
+    example: 1,
+  })
+  @ApiOkResponse({
+    description: 'Online store updated successfully',
+    type: OneOnlineStoreResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Unauthorized - Invalid or missing authentication token',
+    type: ErrorResponse,
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Forbidden - You can only update online stores from your own merchant',
+    type: ErrorResponse,
+  })
+  @ApiNotFoundResponse({
+    description: 'Online store not found',
+    type: ErrorResponse,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid input data or ID',
+    type: ErrorResponse,
+  })
+  @ApiConflictResponse({
+    description:
+      'Conflict - An online store with the same subdomain already exists for this merchant',
+    type: ErrorResponse,
+  })
+  @ApiBody({
+    type: UpdateOnlineStoreDto,
+    description: 'Online store update data (all fields optional)',
+  })
+  async patchUpdate(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOnlineStoreDto,
     @Request() req: AuthenticatedRequest,

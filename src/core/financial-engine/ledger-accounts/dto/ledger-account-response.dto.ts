@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 import { AccountType } from '../constants/account-type.enum';
 
@@ -18,6 +18,18 @@ export class LedgerAccountResponseDto {
     description: 'Account type',
   })
   type: AccountType;
+
+  @ApiPropertyOptional({
+    example: 1250.0,
+    description: 'Current ledger account balance',
+  })
+  balance?: number;
+
+  @ApiPropertyOptional({
+    example: 'ACTIVE',
+    description: 'Account status (ACTIVE or INACTIVE)',
+  })
+  status?: string;
 
   @ApiProperty({
     example: true,
@@ -44,6 +56,11 @@ export class LedgerAccountResponseDto {
   })
   updated_at: Date;
 
+  @ApiPropertyOptional({
+    example: { id: 1, name: 'Acme Corp' },
+    nullable: true,
+    description: 'Company information',
+  })
   company: { id: number; name: string } | null;
 }
 
@@ -62,3 +79,4 @@ export class OneLedgerAccountResponse extends SuccessResponse {
   @ApiProperty({ type: () => LedgerAccountResponseDto })
   data: LedgerAccountResponseDto;
 }
+

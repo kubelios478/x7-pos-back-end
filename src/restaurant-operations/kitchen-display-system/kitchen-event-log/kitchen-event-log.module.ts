@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
 
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,10 +9,12 @@ import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
 import { KitchenOrderItem } from '../kitchen-order-item/entities/kitchen-order-item.entity';
 import { KitchenStation } from '../kitchen-station/entities/kitchen-station.entity';
 import { User } from '../../../platform-saas/users/entities/user.entity';
+import { KitchenOrderModule } from '../kitchen-order/kitchen-order.module';
 
 @Module({
   imports: [
     AuthModule,
+    forwardRef(() => KitchenOrderModule),
     TypeOrmModule.forFeature([
       KitchenEventLog,
       KitchenOrder,

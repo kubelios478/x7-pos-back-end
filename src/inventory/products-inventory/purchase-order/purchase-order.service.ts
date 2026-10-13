@@ -239,9 +239,10 @@ export class PurchaseOrderService {
     // 6. Get total records
     const total = await queryBuilder.getCount();
 
-    // 7. Apply pagination and sorting
+    // 7. Apply pagination and sorting (newest updated to oldest)
     const purchaseOrders = await queryBuilder
-      .orderBy('purchaseOrder.status', 'ASC')
+      .orderBy('purchaseOrder.orderDate', 'DESC')
+      .addOrderBy('purchaseOrder.id', 'DESC')
       .skip(skip)
       .take(limit)
       .getMany();
@@ -454,10 +455,13 @@ export class PurchaseOrderService {
     }
     const { supplierId, ...updateData } = updateProductDto;
 
-    const purchaseOrder = await this.purchaseOrderRepository.findOneBy({
-      id,
-      isActive: true,
-      merchantId: merchant_id,
+    const purchaseOrder = await this.purchaseOrderRepository.findOne({
+      where: {
+        id,
+        isActive: true,
+        merchantId: merchant_id,
+      },
+      relations: ['purchaseOrderItems'],
     });
 
     if (!purchaseOrder) {
@@ -543,6 +547,24 @@ export class PurchaseOrderService {
         // Only override supplierId if explicitly provided in the payload
         ...(supplierId !== undefined ? { supplierId } : {}),
       });
+
+      // Opción A: Al cancelar una orden, se preserva el stock físico recibido
+      // y se ajusta el monto total de la orden al valor efectivamente recibido (cerrando el remanente)
+      if (updateData.status === PurchaseOrderStatus.CANCELLED) {
+        if (
+          purchaseOrder.purchaseOrderItems &&
+          purchaseOrder.purchaseOrderItems.length > 0
+        ) {
+          let adjustedTotal = 0;
+          for (const item of purchaseOrder.purchaseOrderItems) {
+            const receivedQty = Number(item.receivedQuantity) || 0;
+            const unitPrice = Number(item.unitCost || item.unitPrice) || 0;
+            adjustedTotal += receivedQty * unitPrice;
+          }
+          purchaseOrder.totalAmount = Number(adjustedTotal.toFixed(2));
+        }
+      }
+
       await this.purchaseOrderRepository.save(purchaseOrder);
 
       const targetReceivedStatuses = [
@@ -1098,6 +1120,7 @@ export class PurchaseOrderService {
       purchaseOrder.status = PurchaseOrderStatus.SENT;
     }
 
+    purchaseOrder.orderDate = new Date();
     await this.purchaseOrderRepository.save(purchaseOrder);
 
     if (evaluatedStockIds.size > 0) {
