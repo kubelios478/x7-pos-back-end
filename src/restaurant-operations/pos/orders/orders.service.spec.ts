@@ -323,6 +323,7 @@ describe('OrdersService', () => {
             transaction: jest.fn(),
             createQueryRunner: jest.fn(),
             getRepository: jest.fn(),
+            query: jest.fn(),
           },
         },
 
@@ -781,6 +782,50 @@ describe('OrdersService', () => {
       await expect(service.create(dtoWithInvalidDate, 1)).rejects.toThrow(
         'Invalid closedAt date format',
       );
+    });
+  });
+
+  describe('completePurchase', () => {
+    const deliveryOrder = () => ({
+      id: 1,
+      merchant_id: 1,
+      type: OrderType.DELIVERY,
+      delivery_zone_id: 4,
+      status: OrderBusinessStatus.PENDING,
+      subtotal: 8,
+      discount_total: 0,
+      delivery_fee: 3,
+      orderItems: [{ total_price: 8 }],
+    });
+    const admin = { role: 'merchant_admin' } as never;
+
+    it('blocks a delivery checkout below the zone minimum order, with the shortfall', async () => {
+      mockOrderRepository.findOne.mockResolvedValue(deliveryOrder());
+      (service as any).dataSource.query.mockResolvedValue([
+        { min_order_amount: '10.99' },
+      ]);
+      await expect(
+        service.completePurchase(1, {} as never, admin),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'Add $2.99 more to reach the $10.99 minimum order for delivery',
+        ),
+      );
+      expect((service as any).dataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining('delivery_fees'),
+        [4, 1],
+      );
+    });
+
+    it('skips the minimum check for non-delivery orders', async () => {
+      mockOrderRepository.findOne.mockResolvedValue({
+        ...deliveryOrder(),
+        type: OrderType.DINE_IN,
+      });
+      await service
+        .completePurchase(1, {} as never, admin)
+        .catch(() => undefined);
+      expect((service as any).dataSource.query).not.toHaveBeenCalled();
     });
   });
 

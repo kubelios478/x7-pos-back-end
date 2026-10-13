@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Patch,
   Delete,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -39,6 +40,9 @@ import {
 import { PaginatedDeliveryFeeResponseDto } from './dto/paginated-delivery-fee-response.dto';
 import { QueryDeliveryFeeDto } from './dto/query-delivery-fee.dto';
 import { UpdateDeliveryFeeDto } from './dto/update-delivery-fee.dto';
+import { QuoteDeliveryFeeDto } from './dto/quote-delivery-fee.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Commerce - Delivery System - Delivery Fee')
 @Controller('delivery-fee')
@@ -119,8 +123,33 @@ export class DeliveryFeeController {
   })
   async create(
     @Body() dto: CreateDeliveryFeeDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryFeeResponseDto> {
-    return this.deliveryFeeService.create(dto);
+    return this.deliveryFeeService.create(dto, user.merchant?.id);
+  }
+
+  @Post('quote')
+  @HttpCode(200)
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Quote the delivery fee of an order',
+    description:
+      'Applies the active fee schedule of the zone: blocks below min_order_amount (eligible=false with the shortfall), 0.00 when subtotal >= free_above, otherwise base_fee + distance_km x per_km_fee. Inactive/maintenance zones are not eligible.',
+  })
+  @ApiOkResponse({ description: 'Fee quote (eligible or not).' })
+  @ApiNotFoundResponse({ description: 'Delivery zone not found.' })
+  async quote(
+    @Body() dto: QuoteDeliveryFeeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.deliveryFeeService.quote(dto, user.merchant?.id);
   }
 
   @Get()
@@ -172,8 +201,44 @@ export class DeliveryFeeController {
   })
   async findAll(
     @Query() query: QueryDeliveryFeeDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedDeliveryFeeResponseDto> {
-    return this.deliveryFeeService.findAll(query);
+    return this.deliveryFeeService.findAll(query, user.merchant?.id);
+  }
+
+  @Get('summary')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Delivery fee KPI summary',
+    description:
+      'Average base fee of the active fee schedules of active zones, number of active zones offering free delivery (free_above set), and active zones lacking an active fee schedule.',
+  })
+  @ApiOkResponse({
+    description: 'Delivery fee KPIs.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Delivery fee summary retrieved successfully',
+        data: {
+          active_zones: 5,
+          active_fees: 4,
+          avg_base_fee: 4.75,
+          free_shipping_zones: 2,
+          zones_without_fee_count: 1,
+          zones_without_fee: [{ id: 7, name: 'Zona Sur' }],
+        },
+      },
+    },
+  })
+  async summary(@CurrentUser() user: AuthenticatedUser) {
+    return this.deliveryFeeService.summary(user.merchant?.id);
   }
 
   @Get(':id')
@@ -261,12 +326,9 @@ export class DeliveryFeeController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryFeeResponseDto> {
-    if (id <= 0) {
-      throw new Error('ID must be a positive integer');
-    }
-    const deliveryFee = await this.deliveryFeeService.findOne(id);
-    return deliveryFee;
+    return this.deliveryFeeService.findOne(id, user.merchant?.id);
   }
 
   @Patch(':id')
@@ -362,8 +424,9 @@ export class DeliveryFeeController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDeliveryFeeDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryFeeResponseDto> {
-    return this.deliveryFeeService.update(id, dto);
+    return this.deliveryFeeService.update(id, dto, user.merchant?.id);
   }
 
   @Delete(':id')
@@ -451,7 +514,8 @@ export class DeliveryFeeController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryFeeResponseDto> {
-    return this.deliveryFeeService.remove(id);
+    return this.deliveryFeeService.remove(id, user.merchant?.id);
   }
 }

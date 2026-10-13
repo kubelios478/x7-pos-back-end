@@ -280,6 +280,12 @@ export class OrdersService {
     order.source = dto.source ?? OrderSource.POS;
     order.guest_count = dto.guestCount ?? 1;
     order.delivery_address = dto.deliveryAddress ?? null;
+    if (dto.deliveryZoneId != null) {
+      await this.assertDeliveryZoneOpen(
+        dto.deliveryZoneId,
+        authenticatedUserMerchantId,
+      );
+    }
     order.delivery_zone_id =
       dto.deliveryZoneId !== undefined ? dto.deliveryZoneId : null;
     order.delivery_fee = roundMoney(dto.deliveryFee ?? 0);
@@ -331,6 +337,61 @@ export class OrdersService {
   }
 
   // Generates a daily ticket ID in the format "Ticket n.º XX" where XX is a zero-padded number that resets each day for each merchant
+  /**
+   * Una zona de reparto sólo acepta pedidos mientras está `active`: pasarla a inactive o
+   * maintenance (lluvia, tráfico…) bloquea al instante los pedidos nuevos que apunten a ella.
+   * SQL directo para no arrastrar el módulo de reparto (y sus repos) al de pedidos.
+   */
+  private async assertDeliveryZoneOpen(
+    zoneId: number,
+    merchantId: number,
+  ): Promise<void> {
+    const rows: Array<{ name: string; status: string }> =
+      await this.dataSource.query(
+        'SELECT name, status FROM delivery_zones WHERE id = $1 AND merchant_id = $2',
+        [zoneId, merchantId],
+      );
+    const zone = rows[0];
+    if (!zone || zone.status === 'deleted') {
+      throw new NotFoundException(`Delivery zone ${zoneId} not found`);
+    }
+    if (zone.status !== 'active') {
+      throw new BadRequestException(
+        `Delivery zone "${zone.name}" is ${zone.status} and is not accepting orders`,
+      );
+    }
+  }
+
+  /**
+   * Pedido mínimo de la tarifa activa de la zona: por debajo no se cierra el reparto, y el
+   * mensaje dice cuánto falta. Sin tarifa activa o sin mínimo no hay nada que comprobar.
+   */
+  private async assertDeliveryMinOrder(
+    zoneId: number,
+    merchantId: number,
+    subtotal: number,
+  ): Promise<void> {
+    const rows: Array<{ min_order_amount: string | null }> =
+      await this.dataSource.query(
+        `SELECT f.min_order_amount
+           FROM delivery_fees f
+           JOIN delivery_zones z ON z.id = f.delivery_zone_id
+          WHERE f.delivery_zone_id = $1
+            AND z.merchant_id = $2
+            AND f.status = 'active'
+          LIMIT 1`,
+        [zoneId, merchantId],
+      );
+    const min = rows[0]?.min_order_amount;
+    if (min == null) return;
+    const shortfall = roundMoney(Number(min) - subtotal);
+    if (shortfall > 0) {
+      throw new BadRequestException(
+        `Add $${shortfall.toFixed(2)} more to reach the $${Number(min).toFixed(2)} minimum order for delivery`,
+      );
+    }
+  }
+
   private async generateDailyTicketId(merchantId: number): Promise<string> {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -380,6 +441,14 @@ export class OrdersService {
     let subtotal = 0;
     for (const item of order.orderItems) {
       subtotal = roundMoney(subtotal + Number(item.total_price));
+    }
+
+    if (order.type === OrderType.DELIVERY && order.delivery_zone_id != null) {
+      await this.assertDeliveryMinOrder(
+        order.delivery_zone_id,
+        order.merchant_id,
+        subtotal,
+      );
     }
 
     const merchantTaxes = dto.merchantTaxRuleIds?.length
@@ -1126,6 +1195,18 @@ export class OrdersService {
     if (existing.merchant_id !== authenticatedUserMerchantId) {
       throw new ForbiddenException(
         'You can only update orders from your merchant',
+      );
+    }
+
+    // Antes de escribir nada: re-apuntar un pedido a una zona cerrada no debe dejar el
+    // resto del cambio a medio guardar.
+    if (
+      dto.deliveryZoneId != null &&
+      dto.deliveryZoneId !== existing.delivery_zone_id
+    ) {
+      await this.assertDeliveryZoneOpen(
+        dto.deliveryZoneId,
+        authenticatedUserMerchantId,
       );
     }
 

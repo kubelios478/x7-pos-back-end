@@ -1,49 +1,77 @@
 //src/commerce/delivery-system/delivery-fee/dto/create-delivery-fee.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsIn, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
+
+// decimal(12, 2): 10 dígitos enteros como mucho.
+export const DELIVERY_FEE_MAX_AMOUNT = 9999999999.99;
+const money = { maxDecimalPlaces: 2 };
 
 export class CreateDeliveryFeeDto {
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Delivery Zone related',
   })
-  @IsNotEmpty()
+  @IsInt()
+  @IsPositive()
   deliveryZone: number;
 
   @ApiProperty({
-    example: 10.99,
-    description: 'Delivery fee amount',
+    example: 5.99,
+    description: 'Flat delivery fee (positive, 2 decimals max)',
   })
   @IsNotEmpty()
-  @IsNumber()
+  @IsNumber(money)
+  @IsPositive()
+  @Max(DELIVERY_FEE_MAX_AMOUNT)
   base_fee: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 1.5,
-    description: 'Fee per kilometer for the delivery zone',
+    nullable: true,
+    description: 'Charge per kilometer; null or 0 = flat base fee',
   })
-  @IsNotEmpty()
-  @IsNumber()
-  per_km_fee: number;
+  @IsOptional()
+  @IsNumber(money)
+  @Min(0)
+  @Max(DELIVERY_FEE_MAX_AMOUNT)
+  per_km_fee?: number | null;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 10.99,
-    description: 'Minimun Order Amount for the delivery fee to apply',
+    nullable: true,
+    description: 'Minimum order subtotal required to accept a delivery',
   })
-  @IsNotEmpty()
-  @IsNumber()
-  min_order_amount: number;
+  @IsOptional()
+  @IsNumber(money)
+  @Min(0)
+  @Max(DELIVERY_FEE_MAX_AMOUNT)
+  min_order_amount?: number | null;
 
-  @ApiProperty({
-    example: 10.99,
-    description: 'Free above order amount for the delivery fee to apply',
+  @ApiPropertyOptional({
+    example: 50,
+    nullable: true,
+    description:
+      'Order subtotal from which delivery is free; must be greater than min_order_amount',
   })
-  @IsNotEmpty()
-  @IsNumber()
-  free_above: number;
+  @IsOptional()
+  @IsNumber(money)
+  @Min(0)
+  @Max(DELIVERY_FEE_MAX_AMOUNT)
+  free_above?: number | null;
 
   @ApiProperty({
     example: 'active',
+    enum: ['active', 'inactive'],
     description: 'Status of the delivery fee',
   })
   @IsString()

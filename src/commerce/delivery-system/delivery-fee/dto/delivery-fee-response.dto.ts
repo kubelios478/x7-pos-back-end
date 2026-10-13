@@ -24,19 +24,19 @@ export class DeliveryFeeResponseDto {
     example: 1.5,
     description: 'Fee per kilometer for the delivery zone',
   })
-  per_km_fee: number;
+  per_km_fee: number | null;
 
   @ApiProperty({
     example: 10.99,
     description: 'Minimun Order Amount for the delivery fee to apply',
   })
-  min_order_amount: number;
+  min_order_amount: number | null;
 
   @ApiProperty({
     example: 10.99,
     description: 'Free above order amount for the delivery fee to apply',
   })
-  free_above: number;
+  free_above: number | null;
 
   @ApiProperty({
     example: 'active',

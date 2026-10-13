@@ -39,6 +39,9 @@ import {
 import { PaginatedDeliveryTrackingResponseDto } from './dto/paginated-delivery-tracking-response.dto';
 import { QueryDeliveryTrackingDto } from './dto/query-delivery-tracking.dto';
 import { UpdateDeliveryTrackingDto } from './dto/update-delivery-tracking.dto';
+import { QueryLiveTrackingDto } from './dto/query-live-tracking.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Commerce - Delivery System - Delivery Tracking')
 @Controller('delivery-tracking')
@@ -120,8 +123,9 @@ export class DeliveryTrackingController {
   })
   async create(
     @Body() dto: CreateDeliveryTrackingDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryTrackingResponseDto> {
-    return this.deliveryTrackingService.create(dto);
+    return this.deliveryTrackingService.create(dto, user.merchant?.id);
   }
 
   @Get()
@@ -173,8 +177,76 @@ export class DeliveryTrackingController {
   })
   async findAll(
     @Query() query: QueryDeliveryTrackingDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedDeliveryTrackingResponseDto> {
-    return this.deliveryTrackingService.findAll(query);
+    return this.deliveryTrackingService.findAll(query, user.merchant?.id);
+  }
+
+  // Declaradas ANTES de `:id`: al revés, `live`, `summary` y `route` entran por el comodín
+  // del id.
+  @Get('live')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Live fleet map',
+    description:
+      'Latest position of every in-progress delivery (assigned, picked_up, in_transit) with its telemetry state: `active` (ping within 3 minutes), `signal_lost` (older or no ping) or `inactive` (tracking ended by the driver).',
+  })
+  @ApiOkResponse({ description: 'Live tracking entries.' })
+  async live(
+    @Query() query: QueryLiveTrackingDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.deliveryTrackingService.live(query, user.merchant?.id);
+  }
+
+  @Get('summary')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Telemetry KPI summary',
+    description:
+      'Counts of in-progress deliveries by telemetry state (active sessions, signal lost, inactive) and the share of tracked deliveries still within the 45-minute delivery threshold.',
+  })
+  @ApiOkResponse({ description: 'Telemetry KPIs.' })
+  async summary(@CurrentUser() user: AuthenticatedUser) {
+    return this.deliveryTrackingService.summary(user.merchant?.id);
+  }
+
+  @Get('route/:assignmentId')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Breadcrumb route of a delivery',
+    description:
+      'Chronological GPS points of one delivery assignment, to isolate a courier on the map. Capped to the most recent 2000 points (`truncated` tells when older points were dropped).',
+  })
+  @ApiParam({ name: 'assignmentId', type: Number, example: 1 })
+  @ApiOkResponse({ description: 'Route points.' })
+  @ApiNotFoundResponse({ description: 'Delivery assignment not found.' })
+  async route(
+    @Param('assignmentId', ParseIntPipe) assignmentId: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.deliveryTrackingService.route(assignmentId, user.merchant?.id);
   }
 
   @Get(':id')
@@ -261,12 +333,9 @@ export class DeliveryTrackingController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryTrackingResponseDto> {
-    if (id <= 0) {
-      throw new Error('ID must be a positive integer');
-    }
-    const deliveryTracking = await this.deliveryTrackingService.findOne(id);
-    return deliveryTracking;
+    return this.deliveryTrackingService.findOne(id, user.merchant?.id);
   }
 
   @Patch(':id')
@@ -361,8 +430,9 @@ export class DeliveryTrackingController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDeliveryTrackingDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryTrackingResponseDto> {
-    return this.deliveryTrackingService.update(id, dto);
+    return this.deliveryTrackingService.update(id, dto, user.merchant?.id);
   }
 
   @Delete(':id')
@@ -449,7 +519,8 @@ export class DeliveryTrackingController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryTrackingResponseDto> {
-    return this.deliveryTrackingService.remove(id);
+    return this.deliveryTrackingService.remove(id, user.merchant?.id);
   }
 }
