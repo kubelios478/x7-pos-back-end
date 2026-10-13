@@ -1,269 +1,123 @@
 //src/commerce/delivery-system/delivery-driver/delivery-driver.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { DeliveryDriverController } from './delivery-driver.controller';
 import { DeliveryDriverService } from './delivery-driver.service';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { CreateDeliveryDriverDto } from './dto/create-delivery-driver.dto';
-import { UpdateDeliveryDriverDto } from './dto/update-delivery-driver.dto';
-import { PaginatedDeliveryDriverResponseDto } from './dto/paginated-delivery-driver-response.dto';
-import { OneDeliveryDriverResponseDto } from './dto/delivery-driver-response.dto';
+import { QueryDeliveryDriverDto } from './dto/query-delivery-driver.dto';
+import { VehicleType } from './constants/delivery-driver.constants';
+import { normalizeVehicleType } from './utils/delivery-driver-normalize.util';
 
 describe('DeliveryDriverController', () => {
   let controller: DeliveryDriverController;
-  let service: DeliveryDriverService;
-
-  // Mock data
-  const mockMerchant: Merchant = {
-    id: 1,
-    name: 'Test Merchant',
-  } as Merchant;
-
-  const mockDeliveryDriver = {
-    id: 1,
-    merchant: mockMerchant,
-    name: 'Mario Lopez',
-    phone: '809-555-1234',
-    vehicleType: 'Car',
-    status: 'active',
-  };
-
-  const mockCreateDeliveryDriverDto: CreateDeliveryDriverDto = {
-    merchant: 1,
-    name: 'Mario Lopez',
-    phone: '809-555-1234',
-    vehicleType: 'Car',
-    status: 'active',
-  };
-
-  const mockUpdateDeliveryDriverDto: UpdateDeliveryDriverDto = {
-    merchant: 1,
-    name: 'Mario Lopez',
-    phone: '809-555-1234',
-    vehicleType: 'Car',
-    status: 'inactive',
-  };
-
-  const mockPagination = {
-    total: 1,
-    page: 1,
-    limit: 10,
-    totalPages: 1,
-  };
-
-  const mockPaginatedResponse: PaginatedDeliveryDriverResponseDto = {
-    statusCode: 200,
-    message: 'DeliveryDrivers retrieved successfully',
-    data: [mockDeliveryDriver],
-    pagination: mockPagination,
-  };
-
-  const mockOneDeliveryDriverResponseDto: OneDeliveryDriverResponseDto = {
-    statusCode: 200,
-    message: 'DeliveryDriver retrieved successfully',
-    data: mockDeliveryDriver,
-  };
+  let service: Record<string, jest.Mock>;
+  const user = { id: 2, merchant: { id: 3 } } as unknown as AuthenticatedUser;
 
   beforeEach(async () => {
-    const mockDeliveryDriverService = {
-      create: jest.fn(),
-      findAll: jest.fn(),
-      findOne: jest.fn(),
-      update: jest.fn(),
-      remove: jest.fn(),
+    service = {
+      create: jest.fn().mockResolvedValue({ data: {} }),
+      findAll: jest.fn().mockResolvedValue({ data: [] }),
+      findOne: jest.fn().mockResolvedValue({ data: {} }),
+      update: jest.fn().mockResolvedValue({ data: {} }),
+      remove: jest.fn().mockResolvedValue({ data: {} }),
+      summary: jest.fn().mockResolvedValue({ data: {} }),
+      setShift: jest.fn().mockResolvedValue({ data: {} }),
     };
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [DeliveryDriverController],
-      providers: [
-        {
-          provide: DeliveryDriverService,
-          useValue: mockDeliveryDriverService,
-        },
-      ],
+      providers: [{ provide: DeliveryDriverService, useValue: service }],
     }).compile();
-
-    controller = module.get<DeliveryDriverController>(DeliveryDriverController);
-    service = module.get(DeliveryDriverService);
+    controller = module.get(DeliveryDriverController);
   });
 
-  describe('Controller Initialization', () => {
-    it('should be defined', () => {
-      expect(controller).toBeDefined();
-    });
+  it('passes the JWT merchant to every operation', async () => {
+    const dto = {
+      name: 'Mario',
+      phone: '+18095551234',
+      vehicleType: VehicleType.CAR,
+    };
+    await controller.create(dto, user);
+    await controller.findAll({ page: 1, limit: 10 }, user);
+    await controller.summary(user);
+    await controller.findOne(1, user);
+    await controller.update(1, { name: 'M' }, user);
+    await controller.setShift(1, { on_shift: false }, user);
+    await controller.remove(1, user);
 
-    it('should have DeliveryDriverService defined', () => {
-      expect(service).toBeDefined();
-    });
+    expect(service.create).toHaveBeenCalledWith(dto, 3);
+    expect(service.findAll).toHaveBeenCalledWith({ page: 1, limit: 10 }, 3);
+    expect(service.summary).toHaveBeenCalledWith(3);
+    expect(service.findOne).toHaveBeenCalledWith(1, 3);
+    expect(service.update).toHaveBeenCalledWith(1, { name: 'M' }, 3);
+    expect(service.setShift).toHaveBeenCalledWith(1, false, 3);
+    expect(service.remove).toHaveBeenCalledWith(1, 3);
   });
 
-  // ----------------------------------------------------------
-  // POST /delivery-driver
-  // ----------------------------------------------------------
-  describe('POST /delivery-driver', () => {
-    it('should create a delivery driver successfully', async () => {
-      const createResponse: OneDeliveryDriverResponseDto = {
-        statusCode: 201,
-        message: 'Delivery Driver created successfully',
-        data: mockDeliveryDriver,
-      };
-
-      const createSpy = jest.spyOn(service, 'create');
-      createSpy.mockResolvedValue(createResponse);
-
-      const result = await controller.create(mockCreateDeliveryDriverDto);
-
-      expect(createSpy).toHaveBeenCalledWith(mockCreateDeliveryDriverDto);
-      expect(result).toEqual(createResponse);
-    });
-
-    it('should handle errors during creation', async () => {
-      const errorMessage = 'Failed to create Delivery Driver';
-      const createSpy = jest.spyOn(service, 'create');
-      createSpy.mockRejectedValue(new Error(errorMessage));
-
-      await expect(
-        controller.create(mockCreateDeliveryDriverDto),
-      ).rejects.toThrow(errorMessage);
-
-      expect(createSpy).toHaveBeenCalledWith(mockCreateDeliveryDriverDto);
-    });
+  it('declares GET summary before GET :id', () => {
+    const routes = Object.getOwnPropertyNames(
+      DeliveryDriverController.prototype,
+    );
+    expect(routes.indexOf('summary')).toBeLessThan(routes.indexOf('findOne'));
   });
 
-  // ----------------------------------------------------------
-  // GET /delivery-driver
-  // ----------------------------------------------------------
-  describe('GET /delivery-driver', () => {
-    it('should retrieve all delivery drivers successfully', async () => {
-      const findAllSpy = jest.spyOn(service, 'findAll');
-      findAllSpy.mockResolvedValue(mockPaginatedResponse);
+  describe('CreateDeliveryDriverDto', () => {
+    const build = (over: Record<string, unknown> = {}) =>
+      plainToInstance(CreateDeliveryDriverDto, {
+        name: 'Mario Lopez',
+        phone: '+1 (809) 555-1234',
+        vehicleType: 'E-Scooter',
+        ...over,
+      });
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
-
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
-      expect(result).toEqual(mockPaginatedResponse);
+    it('normalises the phone and the vehicle label', async () => {
+      const dto = build();
+      expect(dto.phone).toBe('+18095551234');
+      expect(dto.vehicleType).toBe('e_scooter');
+      expect(await validate(dto)).toHaveLength(0);
     });
 
-    it('should return empty list with pagination', async () => {
-      const emptyPaginatedResponse: PaginatedDeliveryDriverResponseDto = {
-        statusCode: 200,
-        message: 'Delivery drivers retrieved successfully',
-        data: [],
-        pagination: {
-          total: 0,
-          page: 1,
-          limit: 10,
-          totalPages: 0,
-        },
-      };
-
-      const findAllSpy = jest.spyOn(service, 'findAll');
-      findAllSpy.mockResolvedValue(emptyPaginatedResponse);
-
-      const result = await controller.findAll({ page: 1, limit: 10 });
-
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
-      expect(result).toEqual(emptyPaginatedResponse);
-      expect(result.data).toHaveLength(0);
+    it.each([
+      ['on foot', 'on_foot'],
+      ['ON FOOT', 'on_foot'],
+      ['Motorcycle', 'motorcycle'],
+      ['bicycle', 'bicycle'],
+      ['e_scooter', 'e_scooter'],
+      ['Car', 'car'],
+    ])('vehicle %s → %s', (input, expected) => {
+      expect(build({ vehicleType: input }).vehicleType).toBe(expected);
     });
 
-    it('should handle service errors in findAll', async () => {
-      const errorMessage = 'Database error during retrieval';
-      const findAllSpy = jest.spyOn(service, 'findAll');
-      findAllSpy.mockRejectedValue(new Error(errorMessage));
+    it.each([
+      [{ vehicleType: 'tank' }],
+      [{ status: 'on_delivery' }],
+      [{ name: 'x'.repeat(101) }],
+      [{ phone: '+1 809 555 1234 5678 90123' }],
+      [{ phone: 'call me' }],
+      [{ merchant: 1 }],
+    ])('rejects %j', async (over) => {
+      const errors = await validate(build(over), {
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+      expect(errors).not.toHaveLength(0);
+    });
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
-      );
-
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+    it('maps legacy free-text vehicles and leaves unknown ones untouched', () => {
+      expect(normalizeVehicleType('Moto')).toBe('motorcycle');
+      expect(normalizeVehicleType('bike')).toBe('bicycle');
+      expect(normalizeVehicleType('Van')).toBeNull();
     });
   });
 
-  // ----------------------------------------------------------
-  // GET /delivery-driver/:id
-  // ----------------------------------------------------------
-  describe('GET /delivery-driver/:id', () => {
-    it('should retrieve a delivery driver by ID successfully', async () => {
-      const findOneSpy = jest.spyOn(service, 'findOne');
-      findOneSpy.mockResolvedValue(mockOneDeliveryDriverResponseDto);
-
-      const result = await controller.findOne(1);
-
-      expect(findOneSpy).toHaveBeenCalledWith(1);
-      expect(result).toEqual(mockOneDeliveryDriverResponseDto);
+  it('query DTO splits multi-value status and vehicle filters', async () => {
+    const dto = plainToInstance(QueryDeliveryDriverDto, {
+      status: 'active,off_duty',
+      vehicleType: ['Car', 'On Foot'],
     });
-
-    it('should handle errors when retrieving by ID', async () => {
-      const errorMessage = 'Delivery Driver not found';
-      const findOneSpy = jest.spyOn(service, 'findOne');
-      findOneSpy.mockRejectedValue(new Error(errorMessage));
-
-      await expect(controller.findOne(999)).rejects.toThrow(errorMessage);
-
-      expect(findOneSpy).toHaveBeenCalledWith(999);
-    });
-  });
-
-  // ----------------------------------------------------------
-  // PATCH /delivery-driver/:id
-  // ----------------------------------------------------------
-  describe('PATCH /delivery-driver/:id', () => {
-    it('should update a delivery driver successfully', async () => {
-      const updateResponse: OneDeliveryDriverResponseDto = {
-        statusCode: 200,
-        message: 'Delivery Driver updated successfully',
-        data: mockDeliveryDriver,
-      };
-
-      const updateSpy = jest.spyOn(service, 'update');
-      updateSpy.mockResolvedValue(updateResponse);
-
-      const result = await controller.update(1, mockUpdateDeliveryDriverDto);
-
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateDeliveryDriverDto);
-      expect(result).toEqual(updateResponse);
-    });
-
-    it('should handle errors during update', async () => {
-      const errorMessage = 'Failed to update Delivery Driver';
-      const updateSpy = jest.spyOn(service, 'update');
-      updateSpy.mockRejectedValue(new Error(errorMessage));
-
-      await expect(
-        controller.update(999, mockUpdateDeliveryDriverDto),
-      ).rejects.toThrow(errorMessage);
-
-      expect(updateSpy).toHaveBeenCalledWith(999, mockUpdateDeliveryDriverDto);
-    });
-  });
-
-  // ----------------------------------------------------------
-  // DELETE /delivery-driver/:id
-  // ----------------------------------------------------------
-  describe('DELETE /delivery-driver/:id', () => {
-    it('should delete a delivery driver successfully', async () => {
-      const deleteResponse = {
-        statusCode: 200,
-        message: 'Delivery Driver deleted successfully',
-        data: mockOneDeliveryDriverResponseDto.data,
-      };
-      const removeSpy = jest.spyOn(service, 'remove');
-      removeSpy.mockResolvedValue(deleteResponse);
-
-      const result = await controller.remove(1);
-
-      expect(removeSpy).toHaveBeenCalledWith(1);
-      expect(result).toEqual(deleteResponse);
-    });
-
-    it('should handle errors during deletion', async () => {
-      const errorMessage = 'Failed to delete Delivery Zone';
-      const removeSpy = jest.spyOn(service, 'remove');
-      removeSpy.mockRejectedValue(new Error(errorMessage));
-
-      await expect(controller.remove(999)).rejects.toThrow(errorMessage);
-
-      expect(removeSpy).toHaveBeenCalledWith(999);
-    });
+    expect(dto.status).toEqual(['active', 'off_duty']);
+    expect(dto.vehicleType).toEqual(['car', 'on_foot']);
+    expect(await validate(dto)).toHaveLength(0);
   });
 });

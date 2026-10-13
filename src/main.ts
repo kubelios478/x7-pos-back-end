@@ -31,6 +31,9 @@ async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // Conserva además el cuerpo crudo en `req.rawBody` (el JSON se sigue parseando igual):
+    // los webhooks de reparto verifican la firma HMAC sobre los bytes exactos recibidos.
+    rawBody: true,
     logger: isProduction
       ? ['error', 'warn']
       : ['log', 'error', 'warn', 'debug', 'verbose'],

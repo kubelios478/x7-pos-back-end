@@ -23,6 +23,7 @@ import {
   ApiOkResponse,
   ApiParam,
   ApiNotFoundResponse,
+  ApiConflictResponse,
 } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
@@ -39,6 +40,9 @@ import {
 import { PaginatedDeliveryDriverResponseDto } from './dto/paginated-delivery-driver-response.dto';
 import { QueryDeliveryDriverDto } from './dto/query-delivery-driver.dto';
 import { UpdateDeliveryDriverDto } from './dto/update-delivery-driver.dto';
+import { DriverShiftDto } from './dto/driver-shift.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Commerce - Delivery System - Delivery Driver')
 @Controller('delivery-driver')
@@ -65,10 +69,9 @@ export class DeliveryDriverController {
     type: DeliveryDriverResponseDto,
     schema: {
       example: {
-        merchant: 1,
         name: 'Mario Lopez',
-        phone: '809-555-1234',
-        vehicleType: 'Car',
+        phone: '+18095551234',
+        vehicleType: 'car',
         status: 'active',
       },
     },
@@ -80,7 +83,7 @@ export class DeliveryDriverController {
         statusCode: 400,
         message: [
           'Delivery driver name must be a string',
-          'status must be one of the following values: active, inactive',
+          'status must be one of: active, inactive, off_duty (on_delivery is set only by the assignment flow)',
         ],
         error: 'Bad Request',
       },
@@ -116,10 +119,14 @@ export class DeliveryDriverController {
       },
     },
   })
+  @ApiConflictResponse({
+    description: 'Another driver of the merchant already uses this phone',
+  })
   async create(
     @Body() dto: CreateDeliveryDriverDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryDriverResponseDto> {
-    return this.deliveryDriverService.create(dto);
+    return this.deliveryDriverService.create(dto, user.merchant?.id);
   }
 
   @Get()
@@ -171,8 +178,38 @@ export class DeliveryDriverController {
   })
   async findAll(
     @Query() query: QueryDeliveryDriverDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedDeliveryDriverResponseDto> {
-    return this.deliveryDriverService.findAll(query);
+    return this.deliveryDriverService.findAll(query, user.merchant?.id);
+  }
+
+  // Declarado antes de `:id` para que "summary" no se interprete como un id.
+  @Get('summary')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Delivery fleet KPI summary',
+    description:
+      'Drivers of the merchant (deleted excluded): total, available (active), en route (on_delivery) and unavailable (off_duty + inactive).',
+  })
+  @ApiOkResponse({
+    description: 'Fleet KPIs.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Delivery driver summary retrieved successfully',
+        data: { total: 12, available: 5, en_route: 4, unavailable: 3 },
+      },
+    },
+  })
+  async summary(@CurrentUser() user: AuthenticatedUser) {
+    return this.deliveryDriverService.summary(user.merchant?.id);
   }
 
   @Get(':id')
@@ -199,10 +236,9 @@ export class DeliveryDriverController {
     schema: {
       example: {
         id: 1,
-        merchant: 1,
         name: 'Mario Lopez',
-        phone: '809-555-1234',
-        vehicleType: 'Car',
+        phone: '+18095551234',
+        vehicleType: 'car',
         status: 'active',
       },
     },
@@ -259,12 +295,50 @@ export class DeliveryDriverController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryDriverResponseDto> {
-    if (id <= 0) {
-      throw new Error('ID must be a positive integer');
-    }
-    const deliveryDriver = await this.deliveryDriverService.findOne(id);
-    return deliveryDriver;
+    return this.deliveryDriverService.findOne(id, user.merchant?.id);
+  }
+
+  @Patch(':id/shift')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Toggle the shift of a Delivery Driver',
+    description:
+      'on_shift=true → active, on_shift=false → off_duty. Refused (409) while the driver is on_delivery or inactive.',
+  })
+  @ApiParam({ name: 'id', type: Number, example: 1 })
+  @ApiBody({ type: DriverShiftDto })
+  @ApiOkResponse({ type: OneDeliveryDriverResponseDto })
+  @ApiNotFoundResponse({ description: 'Delivery Driver not found' })
+  @ApiConflictResponse({
+    description: 'Driver is on a delivery or inactive',
+    schema: {
+      example: {
+        statusCode: 409,
+        message:
+          'Delivery driver #1 is on a delivery; the shift can be changed once it finishes',
+        error: 'Conflict',
+      },
+    },
+  })
+  async setShift(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DriverShiftDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<OneDeliveryDriverResponseDto> {
+    return this.deliveryDriverService.setShift(
+      id,
+      dto.on_shift,
+      user.merchant?.id,
+    );
   }
 
   @Patch(':id')
@@ -295,10 +369,9 @@ export class DeliveryDriverController {
     schema: {
       example: {
         id: 1,
-        merchant: 1,
         name: 'Mario Lopez',
-        phone: '809-555-1234',
-        vehicleType: 'Car',
+        phone: '+18095551234',
+        vehicleType: 'car',
         status: 'inactive',
       },
     },
@@ -310,7 +383,7 @@ export class DeliveryDriverController {
         statusCode: 400,
         message: [
           'ID must be a number',
-          'status must be one of the following values: active, inactive',
+          'status must be one of: active, inactive, off_duty (on_delivery is set only by the assignment flow)',
         ],
         error: 'Bad Request',
       },
@@ -356,11 +429,16 @@ export class DeliveryDriverController {
       },
     },
   })
+  @ApiConflictResponse({
+    description:
+      'Phone already used by another driver, or status change while on_delivery',
+  })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDeliveryDriverDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryDriverResponseDto> {
-    return this.deliveryDriverService.update(id, dto);
+    return this.deliveryDriverService.update(id, dto, user.merchant?.id);
   }
 
   @Delete(':id')
@@ -387,10 +465,9 @@ export class DeliveryDriverController {
     schema: {
       example: {
         id: 1,
-        merchant: 1,
         name: 'Mario Lopez',
-        phone: '809-555-1234',
-        vehicleType: 'Car',
+        phone: '+18095551234',
+        vehicleType: 'car',
         status: 'deleted',
       },
     },
@@ -445,9 +522,11 @@ export class DeliveryDriverController {
       },
     },
   })
+  @ApiConflictResponse({ description: 'Driver is on a delivery' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryDriverResponseDto> {
-    return this.deliveryDriverService.remove(id);
+    return this.deliveryDriverService.remove(id, user.merchant?.id);
   }
 }

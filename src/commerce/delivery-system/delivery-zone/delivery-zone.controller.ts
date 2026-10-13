@@ -39,6 +39,10 @@ import {
 import { PaginatedDeliveryZoneResponseDto } from './dto/paginated-delivery-zone-response.dto';
 import { QueryDeliveryZoneDto } from './dto/query-delivery-zone.dto';
 import { UpdateDeliveryZoneDto } from './dto/update-delivery-zone.dto';
+import { LocateDeliveryZoneDto } from './dto/locate-delivery-zone.dto';
+import { RadiusPolygonDto } from './dto/radius-polygon.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 @ApiTags('Commerce - Delivery System - Delivery Zone')
 @Controller('delivery-zone')
@@ -119,8 +123,9 @@ export class DeliveryZoneController {
   })
   async create(
     @Body() dto: CreateDeliveryZoneDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryZoneResponseDto> {
-    return this.deliveryZoneService.create(dto);
+    return this.deliveryZoneService.create(dto, user.merchant?.id);
   }
 
   @Get()
@@ -172,8 +177,78 @@ export class DeliveryZoneController {
   })
   async findAll(
     @Query() query: QueryDeliveryZoneDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedDeliveryZoneResponseDto> {
-    return this.deliveryZoneService.findAll(query);
+    return this.deliveryZoneService.findAll(query, user.merchant?.id);
+  }
+
+  // Declaradas ANTES de `:id`: al revés, `locate` y `coverage` entran por el comodín del id.
+  @Get('locate')
+  @Roles(UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Point-in-polygon lookup',
+    description:
+      'Returns the zones of the authenticated merchant whose boundary contains (lat, lng). `covered` is true only when an ACTIVE zone contains the point; inactive/maintenance zones are reported in `blocked_zones`.',
+  })
+  @ApiOkResponse({ description: 'Geofencing result.' })
+  @ApiBadRequestResponse({ description: 'lat/lng missing or out of range.' })
+  async locate(
+    @Query() query: LocateDeliveryZoneDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.deliveryZoneService.locate(
+      query.lat,
+      query.lng,
+      user.merchant?.id,
+    );
+  }
+
+  @Get('radius-polygon')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Radius-to-polygon template',
+    description:
+      'Builds a closed GeoJSON Polygon approximating a circle of `radius_km` around (lat, lng), ready to send as `geojson` when creating or editing a zone. Nothing is saved.',
+  })
+  @ApiOkResponse({ description: 'Generated GeoJSON Polygon.' })
+  @ApiBadRequestResponse({
+    description: 'lat/lng/radius missing or out of range.',
+  })
+  radiusPolygon(@Query() query: RadiusPolygonDto) {
+    return this.deliveryZoneService.radiusPolygon(query);
+  }
+
+  @Get('coverage')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Geofenced coverage KPI',
+    description:
+      'Zone KPI banner: share of the merchant delivery orders linked to a zone that has a GeoJSON boundary, number of active zones, and live zones missing a GeoJSON boundary.',
+  })
+  @ApiOkResponse({ description: 'Coverage figures.' })
+  async coverage(@CurrentUser() user: AuthenticatedUser) {
+    return this.deliveryZoneService.coverage(user.merchant?.id);
   }
 
   @Get(':id')
@@ -270,12 +345,9 @@ export class DeliveryZoneController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryZoneResponseDto> {
-    if (id <= 0) {
-      throw new Error('ID must be a positive integer');
-    }
-    const deliveryZone = await this.deliveryZoneService.findOne(id);
-    return deliveryZone;
+    return this.deliveryZoneService.findOne(id, user.merchant?.id);
   }
 
   @Patch(':id')
@@ -371,8 +443,9 @@ export class DeliveryZoneController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDeliveryZoneDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryZoneResponseDto> {
-    return this.deliveryZoneService.update(id, dto);
+    return this.deliveryZoneService.update(id, dto, user.merchant?.id);
   }
 
   @Delete(':id')
@@ -460,7 +533,8 @@ export class DeliveryZoneController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryZoneResponseDto> {
-    return this.deliveryZoneService.remove(id);
+    return this.deliveryZoneService.remove(id, user.merchant?.id);
   }
 }

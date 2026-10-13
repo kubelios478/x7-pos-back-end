@@ -10,6 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { ZoneGeometry } from '../utils/zone-geojson.util';
 
 @Entity({ name: 'delivery_zones' })
 export class DeliveryZone {
@@ -41,15 +42,26 @@ export class DeliveryZone {
     description: 'Description of the Delivery Zone',
   })
   @Column({ type: 'varchar', length: 500, nullable: true })
-  description: string;
+  description: string | null;
 
   @ApiProperty({
-    example:
-      '{"type":"Polygon","coordinates":[[[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662]]]}',
-    description: 'Polygon coordinates defining the delivery zone area',
+    example: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [-69.94, 18.47],
+          [-69.92, 18.47],
+          [-69.92, 18.45],
+          [-69.94, 18.47],
+        ],
+      ],
+    },
+    nullable: true,
+    description:
+      'GeoJSON Polygon or MultiPolygon ([lng, lat] order) defining the delivery zone area',
   })
   @Column({ type: 'json', nullable: true })
-  geojson: string;
+  geojson: ZoneGeometry | null;
 
   @ApiProperty({
     example: 'active',

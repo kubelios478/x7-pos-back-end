@@ -1,391 +1,317 @@
-//src/commerce/delivery-system/delivery-zone/delivery-zone.service.spec.ts
+//src/commerce/delivery-system/delivery-fee/delivery-fee.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { SelectQueryBuilder } from 'typeorm';
-import { DeliveryFee } from './entity/delivery-fee.entity';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Repository } from 'typeorm';
 import { DeliveryFeeService } from './delivery-fee.service';
+import { DeliveryFee } from './entity/delivery-fee.entity';
 import { DeliveryZone } from '../delivery-zone/entity/delivery-zone.entity';
-import { CreateDeliveryFeeDto } from './dto/create-delivery-fee.dto';
-import { UpdateDeliveryFeeDto } from './dto/update-delivery-fee.dto';
+
+const MERCHANT_ID = 3;
 
 describe('DeliveryFeeService', () => {
   let service: DeliveryFeeService;
-  let repository: jest.Mocked<Repository<DeliveryFee>>;
-  let deliveryZoneRepository: jest.Mocked<Repository<DeliveryZone>>;
+  let feeRepo: jest.Mocked<Repository<DeliveryFee>>;
+  let zoneRepo: jest.Mocked<Repository<DeliveryZone>>;
+  let qb: Record<string, jest.Mock>;
 
-  // Mock data
-  const mockDeliveryZone: DeliveryZone = {
-    id: 1,
-    merchant: {
+  const zone = (over: Partial<DeliveryZone> = {}) =>
+    ({
       id: 1,
-      name: 'Mock Merchant',
-    },
-    name: 'Porvidencia 1459, Santiago',
-    description: 'Zona de entrega en el sector de Providencia, Santiago.',
-    geojson:
-      '{"type":"Polygon","coordinates":[[[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662],[-69.9384,18.4662]]]}',
-    status: 'active',
-  } as DeliveryZone;
-
-  const mockDeliveryFee: Partial<DeliveryFee> = {
-    id: 1,
-    deliveryZone: mockDeliveryZone,
-    base_fee: 5.99,
-    per_km_fee: 1.5,
-    min_order_amount: 10.99,
-    free_above: 20.99,
-    status: 'active',
-  };
-
-  const mockCreateDeliveryFeeDto: CreateDeliveryFeeDto = {
-    deliveryZone: 1,
-    base_fee: 5.99,
-    per_km_fee: 1.5,
-    min_order_amount: 10.99,
-    free_above: 20.99,
-    status: 'active',
-  };
-
-  const mockUpdateDeliveryFeeDto: UpdateDeliveryFeeDto = {
-    deliveryZone: 1,
-    base_fee: 5.99,
-    per_km_fee: 1.5,
-    min_order_amount: 10.99,
-    free_above: 20.99,
-    status: 'inactive',
-  };
+      name: 'Centro, Zona Norte',
+      status: 'active',
+      ...over,
+    }) as DeliveryZone;
+  const fee = (over: Partial<DeliveryFee> = {}) =>
+    ({
+      id: 10,
+      deliveryZone: zone(),
+      base_fee: 5.99,
+      per_km_fee: 1.5,
+      min_order_amount: 10.99,
+      free_above: 50,
+      status: 'active',
+      ...over,
+    }) as DeliveryFee;
 
   beforeEach(async () => {
-    const mockQueryBuilder: any = {
-      leftJoin: jest.fn().mockReturnThis(),
+    qb = {
+      innerJoin: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
-      getManyAndCount: jest.fn().mockResolvedValue([[mockDeliveryFee], 1]),
+      getManyAndCount: jest.fn().mockResolvedValue([[fee()], 1]),
     };
-
-    const mockRepository = {
-      create: jest.fn(),
-      save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
-      remove: jest.fn(),
-      createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeliveryFeeService,
         {
           provide: getRepositoryToken(DeliveryFee),
-          useValue: mockRepository,
+          useValue: {
+            create: jest.fn((v) => v),
+            save: jest.fn((v) => Promise.resolve({ id: 10, ...v })),
+            findOne: jest.fn().mockResolvedValue(null),
+            createQueryBuilder: jest.fn(() => qb),
+          },
         },
         {
           provide: getRepositoryToken(DeliveryZone),
           useValue: {
-            findOne: jest.fn(),
-            find: jest.fn(),
-            create: jest.fn(),
-            save: jest.fn(),
-            remove: jest.fn(),
+            findOne: jest.fn().mockResolvedValue(zone()),
+            query: jest.fn().mockResolvedValue([]),
           },
         },
       ],
     }).compile();
 
-    service = module.get<DeliveryFeeService>(DeliveryFeeService);
-    repository = module.get(getRepositoryToken(DeliveryFee));
-    deliveryZoneRepository = module.get(getRepositoryToken(DeliveryZone));
-    jest.clearAllMocks();
+    service = module.get(DeliveryFeeService);
+    feeRepo = module.get(getRepositoryToken(DeliveryFee));
+    zoneRepo = module.get(getRepositoryToken(DeliveryZone));
   });
 
-  describe('Service Initialization', () => {
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-    it('repository should be defined', () => {
-      expect(repository).toBeDefined();
-    });
-  });
+  describe('create', () => {
+    const dto = {
+      deliveryZone: 1,
+      base_fee: 5.99,
+      per_km_fee: 1.5,
+      min_order_amount: 10.99,
+      free_above: 50,
+      status: 'active',
+    };
 
-  describe('Create Delivery Fee', () => {
-    it('should create and return a delivery fee successfully', async () => {
-      jest
-        .spyOn(deliveryZoneRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as DeliveryZone);
-
-      const createSpy = jest.spyOn(repository, 'create');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      createSpy.mockReturnValue(mockDeliveryFee as DeliveryFee);
-      saveSpy.mockResolvedValue(mockDeliveryFee as DeliveryFee);
-
-      const result = await service.create(mockCreateDeliveryFeeDto);
-
-      expect(createSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          deliveryZone: { id: 1 },
-        }),
-      );
-      expect(saveSpy).toHaveBeenCalledWith(mockDeliveryFee);
-      expect(result).toEqual({
-        statusCode: 201,
-        message: 'Delivery Fee created successfully',
-        data: mockDeliveryFee,
-      });
-    });
-
-    it('should handle database errors during creation', async () => {
-      jest
-        .spyOn(deliveryZoneRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as DeliveryZone);
-
-      const createSpy = jest.spyOn(repository, 'create');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      createSpy.mockReturnValue(mockDeliveryFee as DeliveryFee);
-      saveSpy.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.create(mockCreateDeliveryFeeDto)).rejects.toThrow(
-        'Database error',
-      );
-
-      expect(createSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          deliveryZone: { id: 1 },
-        }),
-      );
-      expect(saveSpy).toHaveBeenCalledWith(mockDeliveryFee);
-    });
-  });
-
-  describe('Find All Delivery Fees', () => {
-    it('should return all delivery fees', async () => {
-      const mockDeliveryFees = [mockDeliveryFee as DeliveryFee];
-
-      // QueryBuilder ya mockeado en el beforeEach
-      const qb = repository.createQueryBuilder() as Partial<
-        SelectQueryBuilder<DeliveryFee>
-      >;
-
-      jest
-        .spyOn(qb, 'getManyAndCount')
-        .mockResolvedValue([mockDeliveryFees, mockDeliveryFees.length]);
-
-      const result = await service.findAll({
-        page: 1,
-        limit: 10,
-      });
-
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Fees retrieved successfully',
-        data: [mockDeliveryFee],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: mockDeliveryFees.length,
-          totalPages: 1,
-        },
-      });
-    });
-
-    it('should return an empty array when no delivery fee found', async () => {
-      const qb = repository.createQueryBuilder() as Partial<
-        SelectQueryBuilder<DeliveryFee>
-      >;
-
-      jest.spyOn(qb, 'getManyAndCount').mockResolvedValue([[], 0]);
-
-      const result = await service.findAll({
-        page: 1,
-        limit: 10,
-      });
-
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Fees retrieved successfully',
-        data: [],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: 0,
-          totalPages: 0,
-        },
-      });
-    });
-  });
-
-  describe('Find One Delivery Fee', () => {
-    it('should throw error for invalid ID (null)', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      await expect(service.findOne(null as any)).rejects.toThrow();
-    });
-
-    it('should throw error for invalid ID (zero)', async () => {
-      await expect(service.findOne(0)).rejects.toThrow();
-    });
-
-    it('should throw error for invalid ID (negative)', async () => {
-      await expect(service.findOne(-1)).rejects.toThrow();
-    });
-
-    it('should handle not found delivery fee', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      findOneSpy.mockResolvedValue(null);
-
-      await expect(service.findOne(999)).rejects.toThrow(
-        'Delivery Fee not found',
-      );
-
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 999,
-          status: In(['active', 'inactive']),
-        },
-        relations: ['deliveryZone'],
-      });
-    });
-
-    it('should return a delivery fee when found', async () => {
-      const mockFound = {
-        id: 1,
-        status: 'active',
-        deliveryZone: {
+    it('creates a fee for a zone of the JWT merchant (eager zone attached)', async () => {
+      const result = await service.create(dto, MERCHANT_ID);
+      expect(zoneRepo.findOne).toHaveBeenCalledWith({
+        where: expect.objectContaining({
           id: 1,
-          name: 'Porvidencia 1459, Santiago',
-        },
-      } as DeliveryFee;
-
-      jest.spyOn(repository, 'findOne').mockResolvedValue(mockFound);
-
-      const result = await service.findOne(1);
-
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Fee retrieved successfully',
-        data: mockFound,
+          merchant: { id: MERCHANT_ID },
+        }),
       });
+      expect(result.data.deliveryZone.name).toBe('Centro, Zona Norte');
     });
-  });
 
-  describe('Update Delivery Fee', () => {
-    it('should update and return a delivery fee successfully', async () => {
-      const updatedDeliveryFee: Partial<DeliveryFee> = {
-        ...mockDeliveryFee,
-        ...mockUpdateDeliveryFeeDto,
-        deliveryZone:
-          mockUpdateDeliveryFeeDto.deliveryZone as unknown as DeliveryZone,
-      };
-
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      findOneSpy.mockResolvedValue(mockDeliveryFee as DeliveryFee);
-      saveSpy.mockResolvedValue(updatedDeliveryFee as DeliveryFee);
-
-      const result = await service.update(1, mockUpdateDeliveryFeeDto);
-
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-          status: In(['active', 'inactive']),
-        },
-        relations: ['deliveryZone'],
-      });
-      expect(saveSpy).toHaveBeenCalledWith(updatedDeliveryFee);
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Fee updated successfully',
-        data: updatedDeliveryFee,
+    it('stores missing optional amounts as null', async () => {
+      const result = await service.create(
+        { deliveryZone: 1, base_fee: 3, status: 'inactive' },
+        MERCHANT_ID,
+      );
+      expect(result.data).toMatchObject({
+        per_km_fee: null,
+        min_order_amount: null,
+        free_above: null,
       });
     });
 
-    it('should throw error for invalid ID during update', async () => {
+    it('404s for a zone of another merchant', async () => {
+      zoneRepo.findOne.mockResolvedValue(null);
+      await expect(service.create(dto, MERCHANT_ID)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('rejects free_above <= min_order_amount', async () => {
       await expect(
-        service.update(0, mockUpdateDeliveryFeeDto),
+        service.create({ ...dto, free_above: 10.99 }, MERCHANT_ID),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create({ ...dto, free_above: 5 }, MERCHANT_ID),
+      ).rejects.toThrow(/must be greater than min_order_amount/);
+    });
+
+    it('rejects a second active fee for the same zone with 409', async () => {
+      feeRepo.findOne.mockResolvedValue(fee({ id: 7 }));
+      await expect(service.create(dto, MERCHANT_ID)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(feeRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('allows an inactive draft next to an active fee', async () => {
+      feeRepo.findOne.mockResolvedValue(fee({ id: 7 }));
+      await expect(
+        service.create({ ...dto, status: 'inactive' }, MERCHANT_ID),
+      ).resolves.toBeDefined();
+    });
+
+    it('maps the unique-index violation of a race to 409', async () => {
+      feeRepo.save.mockRejectedValue(
+        Object.assign(new Error('dup'), { code: '23505' }),
+      );
+      await expect(service.create(dto, MERCHANT_ID)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('validates thresholds against the stored values', async () => {
+      feeRepo.findOne.mockResolvedValueOnce(fee());
+      await expect(
+        service.update(10, { min_order_amount: 60 }, MERCHANT_ID),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('excludes itself from the single-active check', async () => {
+      feeRepo.findOne.mockResolvedValueOnce(fee()).mockResolvedValueOnce(null);
+      const result = await service.update(10, { base_fee: 6.5 }, MERCHANT_ID);
+      expect(result.data.base_fee).toBe(6.5);
+      expect(feeRepo.findOne).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'active',
+            id: expect.anything(),
+          }),
+        }),
+      );
+    });
+
+    it('409s when activating while another fee is active', async () => {
+      feeRepo.findOne
+        .mockResolvedValueOnce(fee({ status: 'inactive' }))
+        .mockResolvedValueOnce(fee({ id: 11 }));
+      await expect(
+        service.update(10, { status: 'active' }, MERCHANT_ID),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('resolves a new zone id to the scoped entity', async () => {
+      feeRepo.findOne.mockResolvedValueOnce(fee({ status: 'inactive' }));
+      zoneRepo.findOne.mockResolvedValue(zone({ id: 2, name: 'Sur' }));
+      const result = await service.update(10, { deliveryZone: 2 }, MERCHANT_ID);
+      expect(result.data.deliveryZone).toMatchObject({ id: 2, name: 'Sur' });
+    });
+  });
+
+  describe('findAll', () => {
+    it('scopes by merchant, hides deleted zones and filters by zone name', async () => {
+      await service.findAll(
+        { page: 1, limit: 10, search: 'norte' },
+        MERCHANT_ID,
+      );
+      expect(qb.where).toHaveBeenCalledWith('merchant.id = :merchantId', {
+        merchantId: MERCHANT_ID,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'deliveryZone.status <> :deletedZone',
+        {
+          deletedZone: 'deleted',
+        },
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'deliveryZone.name ILIKE :term',
+        {
+          term: '%norte%',
+        },
+      );
+    });
+    it('filters by several statuses at once', async () => {
+      await service.findAll(
+        { page: 1, limit: 10, status: ['active', 'inactive'] },
+        MERCHANT_ID,
+      );
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'deliveryFee.status IN (:...statuses)',
+        {
+          statuses: ['active', 'inactive'],
+        },
+      );
+    });
+  });
+
+  describe('summary', () => {
+    it('averages active fees, counts free-shipping zones and flags zones without fee', async () => {
+      zoneRepo.query.mockResolvedValue([
+        { id: 1, name: 'Centro', base_fee: '4.00', free_above: '50.00' },
+        { id: 2, name: 'Norte', base_fee: '5.99', free_above: null },
+        { id: 3, name: 'Sur', base_fee: null, free_above: null },
+      ]);
+      const { data } = await service.summary(MERCHANT_ID);
+      expect(zoneRepo.query).toHaveBeenCalledWith(expect.any(String), [
+        MERCHANT_ID,
+        'active',
+      ]);
+      expect(data).toEqual({
+        active_zones: 3,
+        active_fees: 2,
+        avg_base_fee: 5,
+        free_shipping_zones: 1,
+        zones_without_fee_count: 1,
+        zones_without_fee: [{ id: 3, name: 'Sur' }],
+      });
+    });
+
+    it('returns a null average when no zone has an active fee', async () => {
+      const { data } = await service.summary(MERCHANT_ID);
+      expect(data.avg_base_fee).toBeNull();
+      expect(data.zones_without_fee_count).toBe(0);
+    });
+
+    it('requires a merchant', async () => {
+      await expect(
+        service.summary(undefined as unknown as number),
       ).rejects.toThrow();
     });
-
-    it('should throw error when delivery fee to update not found', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      findOneSpy.mockResolvedValue(null);
-
-      await expect(
-        service.update(999, mockUpdateDeliveryFeeDto),
-      ).rejects.toThrow('Delivery Fee not found');
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: { id: 999, status: In(['active', 'inactive']) },
-        relations: ['deliveryZone'],
-      });
-    });
-
-    it('should handle database errors during update', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      findOneSpy.mockResolvedValue(mockDeliveryFee as DeliveryFee);
-      saveSpy.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.update(1, mockUpdateDeliveryFeeDto)).rejects.toThrow(
-        'Database error',
-      );
-    });
   });
 
-  describe('Remove Delivery Fee', () => {
-    it('should remove a delivery fee successfully', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      findOneSpy.mockResolvedValue(mockDeliveryFee as DeliveryFee);
-      saveSpy.mockResolvedValue(mockDeliveryFee as DeliveryFee);
-
-      const result = await service.remove(1);
-
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-        },
-      });
-      expect(saveSpy).toHaveBeenCalled();
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Fee deleted successfully',
-        data: mockDeliveryFee,
-      });
-    });
-
-    it('should throw error for invalid ID during removal', async () => {
-      await expect(service.remove(0)).rejects.toThrow();
-    });
-
-    it('should throw error when delivery fee to remove not found', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      findOneSpy.mockResolvedValue(null);
-
-      await expect(service.remove(999)).rejects.toThrow(
-        'Delivery Fee not found',
+  describe('quote', () => {
+    it('computes base + distance x per km', async () => {
+      feeRepo.findOne.mockResolvedValue(fee());
+      const { data } = await service.quote(
+        { delivery_zone_id: 1, subtotal: 20, distance_km: 3 },
+        MERCHANT_ID,
       );
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 999,
-        },
+      expect(data).toMatchObject({ eligible: true, fee: 10.49, reason: null });
+    });
+
+    it('is free at or above free_above', async () => {
+      feeRepo.findOne.mockResolvedValue(fee());
+      const { data } = await service.quote(
+        { delivery_zone_id: 1, subtotal: 50, distance_km: 3 },
+        MERCHANT_ID,
+      );
+      expect(data).toMatchObject({ free_delivery: true, fee: 0 });
+    });
+
+    it('blocks below the minimum order with the missing amount', async () => {
+      feeRepo.findOne.mockResolvedValue(fee());
+      const { data } = await service.quote(
+        { delivery_zone_id: 1, subtotal: 8, distance_km: 1 },
+        MERCHANT_ID,
+      );
+      expect(data).toMatchObject({
+        eligible: false,
+        reason: 'below_min_order',
+        shortfall: 2.99,
+      });
+      expect(data.message).toMatch(/Add \$2\.99 more/);
+    });
+
+    it('blocks a zone that is inactive or in maintenance', async () => {
+      zoneRepo.findOne.mockResolvedValue(zone({ status: 'maintenance' }));
+      feeRepo.findOne.mockResolvedValue(fee());
+      const { data } = await service.quote(
+        { delivery_zone_id: 1, subtotal: 30 },
+        MERCHANT_ID,
+      );
+      expect(data).toMatchObject({
+        eligible: false,
+        reason: 'zone_not_accepting_orders',
       });
     });
-  });
 
-  describe('Repository Integration', () => {
-    it('should properly integrate with the delivery fee repository', () => {
-      expect(repository).toBeDefined();
-      expect(typeof repository.find).toBe('function');
-      expect(typeof repository.findOne).toBe('function');
-      expect(typeof repository.create).toBe('function');
-      expect(typeof repository.save).toBe('function');
-      expect(typeof repository.remove).toBe('function');
+    it('blocks a zone without an active fee', async () => {
+      const { data } = await service.quote(
+        { delivery_zone_id: 1, subtotal: 30 },
+        MERCHANT_ID,
+      );
+      expect(data).toMatchObject({ eligible: false, reason: 'no_active_fee' });
     });
   });
 });

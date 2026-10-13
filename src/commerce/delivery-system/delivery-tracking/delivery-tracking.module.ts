@@ -5,9 +5,13 @@ import { DeliveryTrackingService } from './delivery-tracking.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DeliveryTracking } from './entity/delivery-tracking.entity';
 import { DeliveryAssignment } from '../delivery-assignment/entity/delivery-assignment.entity';
+import { DeliveryRealtimeModule } from '../realtime/delivery-realtime.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DeliveryTracking, DeliveryAssignment])],
+  imports: [
+    TypeOrmModule.forFeature([DeliveryTracking, DeliveryAssignment]),
+    DeliveryRealtimeModule,
+  ],
   controllers: [DeliveryTrackingController],
   providers: [DeliveryTrackingService],
 })

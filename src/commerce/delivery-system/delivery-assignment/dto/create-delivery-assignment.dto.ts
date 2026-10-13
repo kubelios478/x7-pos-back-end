@@ -1,65 +1,84 @@
-//src/commerce/delivery-system/delivery-driver/dto/create-delivery-driver.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+//src/commerce/delivery-system/delivery-assignment/dto/create-delivery-assignment.dto.ts
+//
+// `delivery_status` y los timestamps (assigned_at, picked_up_at, delivered_at) ya NO se
+// aceptan: los fija el servidor según el ciclo de vida. Con `forbidNonWhitelisted` enviarlos
+// devuelve 400.
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsString,
-  IsNotEmpty,
-  IsInt,
-  IsIn,
   IsEnum,
-  IsDate,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  Min,
 } from 'class-validator';
-import { DeliveryStatus } from '../../constants/delivery-status.enum';
+import { AssignmentType } from '../constants/assignment-type.enum';
 
 export class CreateDeliveryAssignmentDto {
   @ApiProperty({ example: 1, description: 'Identifier of the Order' })
   @IsInt()
+  @Min(1)
   @IsNotEmpty()
   order: number;
 
-  @ApiProperty({ example: 1, description: 'Identifier of the Delivery Driver' })
+  @ApiPropertyOptional({
+    example: 1,
+    description:
+      'Identifier of an ACTIVE Delivery Driver (IN_HOUSE only). With a driver the assignment starts as ASSIGNED; without one it starts as PENDING.',
+  })
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  deliveryDriver: number;
+  @Min(1)
+  deliveryDriver?: number;
 
-  @ApiProperty({
-    example: DeliveryStatus,
-    enum: DeliveryStatus,
-    description: 'Status of the Delivery',
+  @ApiPropertyOptional({
+    enum: AssignmentType,
+    default: AssignmentType.IN_HOUSE,
+    description: 'In-house driver or third-party DSP',
   })
-  @IsEnum(DeliveryStatus)
-  @IsNotEmpty()
-  delivery_status: DeliveryStatus;
+  @IsOptional()
+  @IsEnum(AssignmentType)
+  assignment_type?: AssignmentType;
 
-  @ApiProperty({
-    example: '2024-06-01T12:00:00Z',
-    description: 'Scheduled delivery time assignment',
+  @ApiPropertyOptional({
+    example: 'a1b2c3d4-dsp',
+    description: 'Delivery id at the DSP (DSP assignments only)',
   })
-  @IsDate()
-  @IsNotEmpty()
-  assigned_at: Date;
-
-  @ApiProperty({
-    example: '2024-06-01T12:15:00Z',
-    description: 'Actual pickup time',
-  })
-  @IsDate()
-  @IsNotEmpty()
-  picked_up_at: Date;
-
-  @ApiProperty({
-    example: '2024-06-01T12:30:00Z',
-    description: 'Actual delivery time',
-  })
-  @IsDate()
-  @IsNotEmpty()
-  delivered_at: Date;
-
-  @ApiProperty({
-    example: 'active',
-    description: 'Status of the delivery driver',
-  })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(255)
+  external_delivery_id?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://track.example.com/a1b2c3d4',
+    description: 'HTTPS tracking URL from the DSP (DSP assignments only)',
+  })
+  @IsOptional()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(2048)
+  external_tracking_url?: string;
+
+  @ApiPropertyOptional({
+    example: 7.5,
+    description: 'Fee charged by the DSP (DSP assignments only)',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  external_dsp_fee?: number;
+
+  @ApiPropertyOptional({
+    example: 'active',
+    default: 'active',
+    description: 'Logical status of the record',
+  })
+  @IsOptional()
+  @IsString()
   @IsIn(['active', 'inactive'])
-  status: string;
+  status?: string;
 }
