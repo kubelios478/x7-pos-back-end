@@ -19,8 +19,6 @@ import { FinanceHrModule } from './finance-hr/finance-hr.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { RestaurantOperationsModule } from './restaurant-operations/restaurant-operations.module';
 
-import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
-
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
@@ -71,7 +69,6 @@ import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-
     GrowthModule,
     FinanceHrModule,
     RealtimeModule,
-    KitchenAnalyticsModule,
   ],
 })
 export class AppModule {}
