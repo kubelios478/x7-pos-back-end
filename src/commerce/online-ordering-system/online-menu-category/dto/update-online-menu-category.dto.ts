@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, Min, IsInt } from 'class-validator';
 import { OnlineMenuCategoryStatus } from '../constants/online-menu-category-status.enum';
 
 export class UpdateOnlineMenuCategoryDto {
@@ -24,7 +24,7 @@ export class UpdateOnlineMenuCategoryDto {
     description: 'Display order of the category in the menu',
   })
   @IsOptional()
-  @IsNumber({}, { message: 'Display order must be a number' })
+  @IsInt({ message: 'Display order must be an integer' })
   @Min(0, { message: 'Display order must be greater than or equal to 0' })
   displayOrder?: number;
 

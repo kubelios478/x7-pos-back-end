@@ -92,7 +92,8 @@ export class OnlineMenuCategoryService {
 
     if (existingCategoryInMenu) {
       if (existingCategoryInMenu.status === OnlineMenuCategoryStatus.DELETED) {
-        existingCategoryInMenu.status = OnlineMenuCategoryStatus.ACTIVE;
+        existingCategoryInMenu.status =
+          createOnlineMenuCategoryDto.status || OnlineMenuCategoryStatus.ACTIVE;
         existingCategoryInMenu.display_order = createOnlineMenuCategoryDto.displayOrder;
         await this.onlineMenuCategoryRepository.save(existingCategoryInMenu);
 
@@ -114,14 +115,17 @@ export class OnlineMenuCategoryService {
           data: this.formatOnlineMenuCategoryResponse(completeOnlineMenuCategory!),
         };
       }
-      throw new BadRequestException(
+      throw new ConflictException(
         'This category is already associated with this menu',
       );
     }
 
-    if (createOnlineMenuCategoryDto.displayOrder < 0) {
+    if (
+      createOnlineMenuCategoryDto.displayOrder < 0 ||
+      !Number.isInteger(createOnlineMenuCategoryDto.displayOrder)
+    ) {
       throw new BadRequestException(
-        'Display order must be greater than or equal to 0',
+        'Display order must be an integer greater than or equal to 0',
       );
     }
 
@@ -129,6 +133,8 @@ export class OnlineMenuCategoryService {
     onlineMenuCategory.menu_id = createOnlineMenuCategoryDto.menuId;
     onlineMenuCategory.category_id = createOnlineMenuCategoryDto.categoryId;
     onlineMenuCategory.display_order = createOnlineMenuCategoryDto.displayOrder;
+    onlineMenuCategory.status =
+      createOnlineMenuCategoryDto.status || OnlineMenuCategoryStatus.ACTIVE;
 
     const savedOnlineMenuCategory =
       await this.onlineMenuCategoryRepository.save(onlineMenuCategory);
@@ -398,20 +404,34 @@ export class OnlineMenuCategoryService {
           'You can only use categories from your own merchant',
         );
       }
+    }
 
-      const menuIdToCheck =
-        updateOnlineMenuCategoryDto.menuId ||
-        existingOnlineMenuCategory.menu_id;
+    const menuIdToCheck =
+      updateOnlineMenuCategoryDto.menuId ||
+      existingOnlineMenuCategory.menu_id;
+    const categoryIdToCheck =
+      updateOnlineMenuCategoryDto.categoryId ||
+      existingOnlineMenuCategory.category_id;
+
+    if (
+      updateOnlineMenuCategoryDto.menuId !== undefined ||
+      updateOnlineMenuCategoryDto.categoryId !== undefined ||
+      updateOnlineMenuCategoryDto.status === OnlineMenuCategoryStatus.ACTIVE
+    ) {
       const existingCategoryInMenu =
         await this.onlineMenuCategoryRepository.findOne({
           where: {
             menu_id: menuIdToCheck,
-            category_id: updateOnlineMenuCategoryDto.categoryId,
+            category_id: categoryIdToCheck,
           },
         });
 
-      if (existingCategoryInMenu && existingCategoryInMenu.id !== id) {
-        throw new BadRequestException(
+      if (
+        existingCategoryInMenu &&
+        existingCategoryInMenu.id !== id &&
+        existingCategoryInMenu.status === OnlineMenuCategoryStatus.ACTIVE
+      ) {
+        throw new ConflictException(
           'This category is already associated with this menu',
         );
       }
@@ -419,10 +439,11 @@ export class OnlineMenuCategoryService {
 
     if (
       updateOnlineMenuCategoryDto.displayOrder !== undefined &&
-      updateOnlineMenuCategoryDto.displayOrder < 0
+      (updateOnlineMenuCategoryDto.displayOrder < 0 ||
+        !Number.isInteger(updateOnlineMenuCategoryDto.displayOrder))
     ) {
       throw new BadRequestException(
-        'Display order must be greater than or equal to 0',
+        'Display order must be an integer greater than or equal to 0',
       );
     }
 

@@ -7,6 +7,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { OnlineMenuCategoryService } from './online-menu-category.service';
 import { OnlineMenuCategory } from './entities/online-menu-category.entity';
@@ -271,7 +272,7 @@ describe('OnlineMenuCategoryService', () => {
       ).rejects.toThrow('You can only use categories from your own merchant');
     });
 
-    it('should throw BadRequestException if category already associated with menu', async () => {
+    it('should throw ConflictException if category already associated with menu', async () => {
       jest
         .spyOn(onlineMenuRepository, 'createQueryBuilder')
         .mockReturnValue(
@@ -291,7 +292,7 @@ describe('OnlineMenuCategoryService', () => {
 
       await expect(
         service.create(createOnlineMenuCategoryDto, 1),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(ConflictException);
       await expect(
         service.create(createOnlineMenuCategoryDto, 1),
       ).rejects.toThrow('This category is already associated with this menu');

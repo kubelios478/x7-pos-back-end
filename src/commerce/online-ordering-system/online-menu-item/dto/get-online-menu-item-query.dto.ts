@@ -107,4 +107,12 @@ export class GetOnlineMenuItemQueryDto {
   @IsOptional()
   @IsEnum(['ASC', 'DESC'])
   sortOrder?: 'ASC' | 'DESC' = 'DESC';
+
+  @ApiPropertyOptional({
+    example: 'active',
+    description: 'Filter by lifecycle status (active, deleted, or ALL)',
+  })
+  @IsOptional()
+  @IsString()
+  status?: string;
 }
