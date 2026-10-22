@@ -5,8 +5,6 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull, In } from 'typeorm';
 import { KitchenOrder } from './entities/kitchen-order.entity';
@@ -200,12 +198,6 @@ export class KitchenOrderService {
       );
     }
 
-    if (createKitchenOrderDto.orderId && createKitchenOrderDto.onlineOrderId) {
-      throw new BadRequestException(
-        'Cannot provide both orderId and onlineOrderId',
-      );
-    }
-
     let validOrderId: number | null = null;
     if (createKitchenOrderDto.orderId) {
       const order = await this.orderRepository.findOne({
@@ -238,20 +230,25 @@ export class KitchenOrderService {
     }
 
     if (createKitchenOrderDto.onlineOrderId) {
-      const onlineOrder = await this.onlineOrderRepository
-        .createQueryBuilder('onlineOrder')
-        .leftJoin('onlineOrder.store', 'store')
-        .leftJoin('store.merchant', 'merchant')
-        .where('onlineOrder.id = :orderId', {
-          orderId: createKitchenOrderDto.onlineOrderId,
-        })
-        .andWhere('merchant.id = :merchantId', {
-          merchantId: authenticatedUserMerchantId,
-        })
-        .andWhere('onlineOrder.status != :deletedStatus', {
-          deletedStatus: OnlineOrderStatus.DELETED,
-        })
-        .getOne();
+      const existingKoOnline = await this.kitchenOrderRepository.findOne({
+        where: {
+          online_order_id: createKitchenOrderDto.onlineOrderId,
+          merchant_id: authenticatedUserMerchantId,
+          status: KitchenOrderStatus.ACTIVE,
+        },
+      });
+      if (existingKoOnline) {
+        throw new ConflictException(
+          'An active kitchen order already exists for this online order',
+        );
+      }
+
+      const onlineOrder = await this.onlineOrderRepository.findOne({
+        where: {
+          id: createKitchenOrderDto.onlineOrderId,
+          merchant_id: authenticatedUserMerchantId,
+        },
+      });
 
       if (!onlineOrder) {
         throw new NotFoundException(
@@ -265,6 +262,22 @@ export class KitchenOrderService {
     let isRerouted = false;
     let originalStationNumber: number | null = null;
     let rerouteReason = '';
+
+    if (!targetStationId && authenticatedUserMerchantId) {
+      const defaultStation = await this.kitchenStationRepository.findOne({
+        where: {
+          merchant_id: authenticatedUserMerchantId,
+          status: KitchenStationStatus.ACTIVE,
+        },
+        order: {
+          display_order: 'ASC',
+          id: 'ASC',
+        },
+      });
+      if (defaultStation) {
+        targetStationId = defaultStation.id;
+      }
+    }
 
     if (createKitchenOrderDto.stationId) {
       const station = await this.kitchenStationRepository.findOne({
@@ -1716,58 +1729,4 @@ export class KitchenOrderService {
     };
   }
 
-  async resetTestData(
-    merchantId: number,
-    mode: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy' = 'seed',
-  ) {
-    if (mode === 'clear') {
-      await this.dataSource.query(
-        `TRUNCATE TABLE kitchen_event_log, kitchen_order_item, kitchen_order RESTART IDENTITY CASCADE;`,
-      );
-      return {
-        success: true,
-        message: 'All kitchen orders cleared successfully',
-      };
-    }
-
-    const filename =
-      mode === 'simple'
-        ? 'seed-simple-orders.sql'
-        : mode === 'multi'
-          ? 'seed-multi-orders.sql'
-          : mode === 'multi2'
-            ? 'seed-multi2-orders.sql'
-            : mode === 'allergy'
-              ? 'seed-allergy-orders.sql'
-              : 'seed-test-orders.sql';
-
-    const possiblePaths = [
-      path.resolve(process.cwd(), `scripts/${filename}`),
-      path.resolve(__dirname, `../../../../../../scripts/${filename}`),
-      path.resolve(__dirname, `../../../../../scripts/${filename}`),
-      `/home/rafac183/x7pos/x7-pos-back-end/scripts/${filename}`,
-    ];
-
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        const sql = fs.readFileSync(p, 'utf8');
-        await this.dataSource.query(sql);
-        return {
-          success: true,
-          message:
-            mode === 'simple'
-              ? '2 simple test orders reseeded successfully (Smash Burger + Iced Latte)'
-              : mode === 'multi'
-                ? '1 multi-course order reseeded successfully (Appetizer, Beverage, Main, Dessert)'
-                : mode === 'multi2'
-                  ? '2 multi-course orders reseeded successfully (Appetizer, Beverage, Main, Dessert)'
-                  : mode === 'allergy'
-                    ? '3 allergy and modifier test orders reseeded successfully (Severe Allergy, Celiac/Vegan, Color Badges)'
-                    : '8 test orders reseeded successfully with full multi-course pacing',
-        };
-      }
-    }
-
-    throw new BadRequestException(`Seed script ${filename} not found`);
-  }
 }

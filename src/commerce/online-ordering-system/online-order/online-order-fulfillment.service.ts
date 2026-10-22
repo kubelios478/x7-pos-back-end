@@ -62,6 +62,7 @@ export class OnlineOrderFulfillmentService {
   async acceptOnlineOrder(
     onlineOrderId: number,
     merchantId: number,
+    userId?: number,
   ): Promise<OneOnlineOrderResponseDto> {
     if (!merchantId) {
       throw new ForbiddenException(
@@ -202,8 +203,9 @@ export class OnlineOrderFulfillmentService {
 
     try {
       await this.kitchenOrderService.create(
-        { orderId: posOrderId },
+        { orderId: posOrderId, onlineOrderId },
         merchantId,
+        userId,
       );
     } catch (e) {
       if (!(e instanceof ConflictException)) {

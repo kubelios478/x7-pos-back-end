@@ -14,6 +14,17 @@ import { KitchenStation } from '../kitchen-station/entities/kitchen-station.enti
 import { OrdersModule } from '../../pos/orders/orders.module';
 import { ProductsInventoryModule } from 'src/inventory/products-inventory/products-inventory.module';
 
+let devControllers: any[] = [];
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const sim = (require as any)('./kitchen-order-simulator.controller');
+  if (sim && sim.KitchenOrderSimulatorController) {
+    devControllers.push(sim.KitchenOrderSimulatorController);
+  }
+} catch {
+  // Ignored when simulator file is removed
+}
+
 @Module({
   imports: [
     AuthModule,
@@ -29,7 +40,7 @@ import { ProductsInventoryModule } from 'src/inventory/products-inventory/produc
     forwardRef(() => OrdersModule),
     ProductsInventoryModule,
   ],
-  controllers: [KitchenOrderController],
+  controllers: [KitchenOrderController, ...devControllers],
   providers: [KitchenOrderService, KitchenOrderSyncService],
   exports: [KitchenOrderService, KitchenOrderSyncService],
 })

@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   Put,
+  Patch,
   Delete,
   ParseIntPipe,
   UseGuards,
@@ -48,6 +49,7 @@ import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
 import { OnlineOrderType } from './constants/online-order-type.enum';
 import { OnlineOrderPaymentStatus } from './constants/online-order-payment-status.enum';
+import { OnlineOrderFulfillmentStatus } from './constants/online-order-fulfillment-status.enum';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 
@@ -143,6 +145,7 @@ export class OnlineOrderController {
     return this.onlineOrderService.create(dto, authenticatedUserMerchantId);
   }
 
+
   @Post(':id/accept')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(
@@ -167,7 +170,12 @@ export class OnlineOrderController {
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOnlineOrderResponseDto> {
     const merchantId = req.user?.merchant?.id;
-    return this.onlineOrderFulfillmentService.acceptOnlineOrder(id, merchantId);
+    const userId = req.user?.id;
+    return this.onlineOrderFulfillmentService.acceptOnlineOrder(
+      id,
+      merchantId,
+      userId,
+    );
   }
 
   @Post(':id/cancel')
@@ -195,6 +203,47 @@ export class OnlineOrderController {
   ): Promise<OneOnlineOrderResponseDto> {
     const merchantId = req.user?.merchant?.id;
     return this.onlineOrderFulfillmentService.cancelOnlineOrder(id, merchantId);
+  }
+
+  @Patch(':id/fulfillment-status')
+  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.ADMIN_PORTAL,
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @ApiOperation({
+    summary: 'Update fulfillment status of an online order',
+    description:
+      'Updates the fulfillment status and automatically records milestone timestamps (accepted_at, ready_at, completed_at). If changing to accepted and not yet accepted, triggers POS order creation.',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'Online order ID' })
+  @ApiOkResponse({
+    description: 'Online order fulfillment status updated successfully',
+    type: OneOnlineOrderResponseDto,
+  })
+  async updateFulfillmentStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('fulfillmentStatus') fulfillmentStatus: OnlineOrderFulfillmentStatus,
+    @Request() req: AuthenticatedRequest,
+  ): Promise<OneOnlineOrderResponseDto> {
+    const merchantId = req.user?.merchant?.id;
+    const userId = req.user?.id;
+    if (fulfillmentStatus === OnlineOrderFulfillmentStatus.ACCEPTED) {
+      return this.onlineOrderFulfillmentService.acceptOnlineOrder(
+        id,
+        merchantId,
+        userId,
+      );
+    }
+    return this.onlineOrderService.updateFulfillmentStatus(
+      id,
+      fulfillmentStatus,
+      merchantId,
+      userId,
+    );
   }
 
   @Get()
