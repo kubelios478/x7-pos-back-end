@@ -17,6 +17,7 @@ import { Location } from 'src/inventory/products-inventory/stocks/locations/enti
 import { CashTransaction } from 'src/restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
 import { CashTransactionType } from 'src/restaurant-operations/cashdrawer/cash-transactions/constants/cash-transaction-type.enum';
 import { CashDrawer } from 'src/restaurant-operations/cashdrawer/cash-drawers/entities/cash-drawer.entity';
+import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 import type { OrderFullyPaidPayload } from './order-paid.events';
 import { StockLevelMonitorService } from '../stock-alerts/stock-level-monitor.service';
 
@@ -195,9 +196,7 @@ export class SaleInventoryDeductionService {
         }
       }
 
-      const shiftId =
-        payload.shiftId ??
-        (await this.resolveShiftIdFromCashSales(queryRunner.manager, orderId));
+      const shiftId = await this.resolveWorkShiftId(queryRunner.manager, order);
 
       const affectedStockItemIds: number[] = [];
 
@@ -307,15 +306,32 @@ export class SaleInventoryDeductionService {
     }
   }
 
-  private async resolveShiftIdFromCashSales(
+  /**
+   * Work shift (`shift`, the FK of stock_movement.shift_id) for the kardex line: the one the
+   * order was taken in, or else the shift of the drawer that received its cash sale. Never a
+   * cash shift id, and never a shift of another merchant.
+   */
+  private async resolveWorkShiftId(
     manager: EntityManager,
-    orderId: number,
+    order: Pick<Order, 'id' | 'merchant_id' | 'shift_id'>,
   ): Promise<number | null> {
+    if (order.shift_id != null) {
+      const owned = await manager.exists(Shift, {
+        where: { id: order.shift_id, merchantId: order.merchant_id },
+      });
+      if (owned) {
+        return order.shift_id;
+      }
+    }
+
     const row = await manager
       .createQueryBuilder(CashTransaction, 'ct')
       .innerJoin(CashDrawer, 'cd', 'cd.id = ct.cash_drawer_id')
       .select('cd.shift_id', 'shiftId')
-      .where('ct.order_id = :orderId', { orderId })
+      .where('ct.order_id = :orderId', { orderId: order.id })
+      .andWhere('cd.merchant_id = :merchantId', {
+        merchantId: order.merchant_id,
+      })
       .andWhere('ct.type = :sale', { sale: CashTransactionType.SALE })
       .orderBy('ct.created_at', 'DESC')
       .limit(1)
