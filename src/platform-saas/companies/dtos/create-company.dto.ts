@@ -19,9 +19,9 @@ export class CreateCompanyDto {
   @Length(2, 100, {
     message: 'Company name must be between 2 and 100 characters',
   })
-  @Matches(/^[a-zA-Z0-9\s\-.&]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’]+$/u, {
     message:
-      'Company name can only contain letters, numbers, spaces, hyphens, dots and ampersands',
+      'Company name can only contain letters, numbers, spaces, hyphens, dots, apostrophes, and ampersands',
   })
   @ApiProperty({
     example: 'Acme Corp',
@@ -79,8 +79,9 @@ export class CreateCompanyDto {
   @IsString({ message: 'City must be a string' })
   @IsNotEmpty({ message: 'City is required' })
   @Length(2, 50, { message: 'City must be between 2 and 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'City can only contain letters, spaces, hyphens and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'City can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Miami',
@@ -93,8 +94,9 @@ export class CreateCompanyDto {
   @IsString({ message: 'State must be a string' })
   @IsNotEmpty({ message: 'State is required' })
   @Length(2, 50, { message: 'State must be between 2 and 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'State can only contain letters, spaces, hyphens and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'State can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'California',
@@ -107,8 +109,9 @@ export class CreateCompanyDto {
   @IsString({ message: 'Country must be a string' })
   @IsNotEmpty({ message: 'Country is required' })
   @Length(2, 50, { message: 'Country must be between 2 and 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'Country can only contain letters, spaces, hyphens and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'Country can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'USA',
