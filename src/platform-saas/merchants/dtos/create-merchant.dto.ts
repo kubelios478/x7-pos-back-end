@@ -13,7 +13,7 @@ import {
 } from 'class-validator';
 import {
   IsBusinessEmail,
-  IsValidRUT,
+  IsTaxId,
 } from '../../../common/decorators/validation.decorators';
 import { MerchantStatus } from '../constants/merchant-status.enum';
 
@@ -63,15 +63,13 @@ export class CreateMerchantDto {
   phone?: string;
 
   @IsOptional()
-  @IsString({ message: 'RUT must be a string' })
-  @IsValidRUT({
-    message: 'Please provide a valid Chilean RUT (format: 12345678-9)',
-  })
+  @IsString({ message: 'Tax ID must be a string' })
+  @IsTaxId()
   @ApiProperty({
-    example: '12345678-9',
-    description: 'Chilean RUT of the Merchant',
+    example: '12-3456789',
+    description:
+      'Tax ID of the Merchant (e.g. US EIN 12-3456789). Stored in the rut column.',
     required: false,
-    pattern: '^[0-9]{7,8}-[0-9kK]$',
   })
   rut?: string;
 
