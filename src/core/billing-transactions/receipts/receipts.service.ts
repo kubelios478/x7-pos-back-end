@@ -120,6 +120,7 @@ export class ReceiptsService {
 
     const entity = this.receiptRepo.create({
       order_id: dto.orderId,
+      merchant_id: order.merchant_id,
       type: typeValue,
       fiscal_data: dto.fiscalData ?? null,
       subtotal: 0,
