@@ -6,9 +6,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager, Between, IsNull, In } from 'typeorm';
+import { Repository, EntityManager, Between, IsNull, In, Not } from 'typeorm';
 import { TableAssignment } from './entities/table-assignment.entity';
 import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
+import { ShiftStatus } from 'src/restaurant-operations/shift/shifts/constants/shift-status.enum';
 import { Table } from '../tables/entities/table.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 import { CreateTableAssignmentDto } from './dto/create-table-assignment.dto';
@@ -69,6 +70,16 @@ export class TableAssignmentsService {
     };
   }
 
+  /** Whether two shifts' time windows overlap; a shift without endTime is open-ended. */
+  private shiftsOverlap(a: Shift, b: Shift): boolean {
+    const aEnd = a.endTime ? new Date(a.endTime).getTime() : Infinity;
+    const bEnd = b.endTime ? new Date(b.endTime).getTime() : Infinity;
+    return (
+      new Date(a.startTime).getTime() < bEnd &&
+      new Date(b.startTime).getTime() < aEnd
+    );
+  }
+
   async create(
     dto: CreateTableAssignmentDto,
     authenticatedUserMerchantId: number,
@@ -123,7 +134,9 @@ export class TableAssignmentsService {
     }
 
     // 5. Validate business rules
-    const assignedAtDate = new Date();
+    const assignedAtDate = dto.assignedAt
+      ? new Date(dto.assignedAt)
+      : new Date();
 
     const releasedAtDate = dto.releasedAt ? new Date(dto.releasedAt) : null;
 
@@ -133,14 +146,24 @@ export class TableAssignmentsService {
       );
     }
 
-    // 6. Check for existing active assignment for the same table
-    const existingAssignment = await this.tableAssignmentRepo.findOne({
+    // 6. The table can't be held twice at once: an open assignment conflicts if it is in the
+    // same shift, or in another active shift whose time window overlaps this one. Open
+    // assignments of finished shifts (e.g. lunch while pre-assigning dinner) don't block.
+    const openAssignments = await this.tableAssignmentRepo.find({
       where: {
         tableId: dto.tableId,
         releasedAt: IsNull(),
+        status: Not('deleted'),
       },
+      relations: ['shift'],
     });
-    if (existingAssignment) {
+    const conflict = openAssignments.some(
+      (open) =>
+        open.shiftId === dto.shiftId ||
+        (open.shift?.status === ShiftStatus.ACTIVE &&
+          this.shiftsOverlap(open.shift, shift)),
+    );
+    if (conflict) {
       throw new ConflictException(
         'Table is already assigned to another collaborator',
       );
