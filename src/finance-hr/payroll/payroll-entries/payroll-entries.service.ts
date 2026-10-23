@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -49,9 +50,47 @@ export class PayrollEntriesService {
     };
   }
 
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { payrollRun: { merchant_id: scopedMerchantId } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { payroll_run_id?: number; collaborator_id?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.payroll_run_id != null) {
+      const owned = await this.payrollRunRepo.exists({
+        where: { id: dto.payroll_run_id, merchant_id: scopedMerchantId },
+      });
+      if (!owned) {
+        throw new ForbiddenException(
+          'You can only access payroll data of your merchant',
+        );
+      }
+    }
+    if (dto.collaborator_id != null) {
+      const owned = await this.collaboratorRepo.exists({
+        where: { id: dto.collaborator_id, merchant_id: scopedMerchantId },
+      });
+      if (!owned) {
+        throw new ForbiddenException(
+          'You can only access payroll data of your merchant',
+        );
+      }
+    }
+  }
+
   async create(
     dto: CreatePayrollEntryDto,
+    scopedMerchantId?: number,
   ): Promise<OnePayrollEntryResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+
     const payrollRun = await this.payrollRunRepo.findOne({
       where: { id: dto.payroll_run_id },
     });
@@ -94,6 +133,7 @@ export class PayrollEntriesService {
 
   async findAll(
     query: GetPayrollEntriesQueryDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedPayrollEntriesResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -104,6 +144,13 @@ export class PayrollEntriesService {
     const qb = this.entryRepo
       .createQueryBuilder('entry')
       .where('entry.deleted_at IS NULL');
+
+    if (scopedMerchantId != null) {
+      qb.innerJoin('entry.payrollRun', 'scopeRun').andWhere(
+        'scopeRun.merchant_id = :scopedMerchantId',
+        { scopedMerchantId },
+      );
+    }
 
     if (query.payroll_run_id != null) {
       qb.andWhere('entry.payroll_run_id = :payrollRunId', {
@@ -145,13 +192,16 @@ export class PayrollEntriesService {
     };
   }
 
-  async findOne(id: number): Promise<OnePayrollEntryResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollEntryResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll entry ID');
     }
 
     const entry = await this.entryRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!entry) {
       throw new NotFoundException(`Payroll entry with ID ${id} not found`);
@@ -167,17 +217,20 @@ export class PayrollEntriesService {
   async update(
     id: number,
     dto: UpdatePayrollEntryDto,
+    scopedMerchantId?: number,
   ): Promise<OnePayrollEntryResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll entry ID');
     }
 
     const entry = await this.entryRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!entry) {
       throw new NotFoundException(`Payroll entry with ID ${id} not found`);
     }
+
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
     if (dto.payroll_run_id != null) {
       const payrollRun = await this.payrollRunRepo.findOne({
@@ -220,13 +273,16 @@ export class PayrollEntriesService {
     };
   }
 
-  async remove(id: number): Promise<OnePayrollEntryResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollEntryResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll entry ID');
     }
 
     const entry = await this.entryRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!entry) {
       throw new NotFoundException(`Payroll entry with ID ${id} not found`);

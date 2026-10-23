@@ -44,6 +44,9 @@ import { QRLocationService } from './qr-location.service';
 import { PaginatedQRLocationResponseDto } from './dto/paginated-qr-location-response.dto';
 import { QueryQRLocationDto } from './dto/query-qr-location.dto';
 import { UpdateQrLocationDto } from './dto/update-qr-location.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Commerce - QR-Code - QR Location')
 @Controller('qr-locations')
@@ -132,8 +135,9 @@ export class QRLocationController {
   })
   async create(
     @Body() dto: CreateQRLocationDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRLocationResponseDto> {
-    return this.qrLocationService.create(dto);
+    return this.qrLocationService.create(dto, merchantScopeOf(user));
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -185,8 +189,9 @@ export class QRLocationController {
   })
   async findAll(
     @Query() query: QueryQRLocationDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedQRLocationResponseDto> {
-    return this.qrLocationService.findAll(query);
+    return this.qrLocationService.findAll(query, merchantScopeOf(user));
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -276,11 +281,15 @@ export class QRLocationController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRLocationResponseDto> {
     if (id <= 0) {
       throw new BadRequestException('Invalid ID. Must be a positive number.');
     }
-    const qrLocation = await this.qrLocationService.findOne(id);
+    const qrLocation = await this.qrLocationService.findOne(
+      id,
+      merchantScopeOf(user),
+    );
     return qrLocation;
   }
   @Patch(':id')
@@ -379,8 +388,9 @@ export class QRLocationController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateQrLocationDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRLocationResponseDto> {
-    return this.qrLocationService.update(id, dto);
+    return this.qrLocationService.update(id, dto, merchantScopeOf(user));
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -470,7 +480,8 @@ export class QRLocationController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRLocationResponseDto> {
-    return this.qrLocationService.remove(id);
+    return this.qrLocationService.remove(id, merchantScopeOf(user));
   }
 }

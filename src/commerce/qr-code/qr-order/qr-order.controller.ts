@@ -44,6 +44,9 @@ import { QROrderService } from './qr-order.service';
 import { PaginatedQROrderResponseDto } from './dto/paginated-qr-order-response.dto';
 import { QueryQROrderDto } from './dto/query-qr-order.dto';
 import { UpdateQROrderDto } from './dto/update-qr-order.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Commerce - QR-Code - QR Orders')
 @Controller('qr-orders')
@@ -129,8 +132,11 @@ export class QROrderController {
       },
     },
   })
-  async create(@Body() dto: CreateQROrderDto): Promise<OneQROrderResponseDto> {
-    return this.qrOrderService.create(dto);
+  async create(
+    @Body() dto: CreateQROrderDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<OneQROrderResponseDto> {
+    return this.qrOrderService.create(dto, merchantScopeOf(user));
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -182,8 +188,9 @@ export class QROrderController {
   })
   async findAll(
     @Query() query: QueryQROrderDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedQROrderResponseDto> {
-    return this.qrOrderService.findAll(query);
+    return this.qrOrderService.findAll(query, merchantScopeOf(user));
   }
 
   @Get(':id')
@@ -275,11 +282,15 @@ export class QROrderController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQROrderResponseDto> {
     if (id <= 0) {
       throw new BadRequestException('ID must be a positive integer');
     }
-    const qrOrder = await this.qrOrderService.findOne(id);
+    const qrOrder = await this.qrOrderService.findOne(
+      id,
+      merchantScopeOf(user),
+    );
     return qrOrder;
   }
 
@@ -380,8 +391,9 @@ export class QROrderController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateQROrderDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQROrderResponseDto> {
-    return this.qrOrderService.update(id, dto);
+    return this.qrOrderService.update(id, dto, merchantScopeOf(user));
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -472,7 +484,8 @@ export class QROrderController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQROrderResponseDto> {
-    return this.qrOrderService.remove(id);
+    return this.qrOrderService.remove(id, merchantScopeOf(user));
   }
 }

@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -41,9 +42,40 @@ export class PayrollAdjustmentsService {
     };
   }
 
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { payrollEntry: { payrollRun: { merchant_id: scopedMerchantId } } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { payroll_entry_id?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.payroll_entry_id != null) {
+      const owned = await this.payrollEntryRepo.exists({
+        where: {
+          id: dto.payroll_entry_id,
+          payrollRun: { merchant_id: scopedMerchantId },
+        },
+      });
+      if (!owned) {
+        throw new ForbiddenException(
+          'You can only access payroll data of your merchant',
+        );
+      }
+    }
+  }
+
   async create(
     dto: CreatePayrollAdjustmentDto,
+    scopedMerchantId?: number,
   ): Promise<OnePayrollAdjustmentResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+
     const payrollEntry = await this.payrollEntryRepo.findOne({
       where: { id: dto.payroll_entry_id },
     });
@@ -89,6 +121,7 @@ export class PayrollAdjustmentsService {
 
   async findAll(
     query: GetPayrollAdjustmentsQueryDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedPayrollAdjustmentsResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -99,6 +132,14 @@ export class PayrollAdjustmentsService {
     const qb = this.adjustmentRepo
       .createQueryBuilder('adjustment')
       .where('adjustment.deleted_at IS NULL');
+
+    if (scopedMerchantId != null) {
+      qb.innerJoin('adjustment.payrollEntry', 'scopeEntry')
+        .innerJoin('scopeEntry.payrollRun', 'scopeRun')
+        .andWhere('scopeRun.merchant_id = :scopedMerchantId', {
+          scopedMerchantId,
+        });
+    }
 
     if (query.payroll_entry_id != null) {
       qb.andWhere('adjustment.payroll_entry_id = :payrollEntryId', {
@@ -138,13 +179,16 @@ export class PayrollAdjustmentsService {
     };
   }
 
-  async findOne(id: number): Promise<OnePayrollAdjustmentResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollAdjustmentResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll adjustment ID');
     }
 
     const adjustment = await this.adjustmentRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!adjustment) {
       throw new NotFoundException(`Payroll adjustment with ID ${id} not found`);
@@ -160,17 +204,20 @@ export class PayrollAdjustmentsService {
   async update(
     id: number,
     dto: UpdatePayrollAdjustmentDto,
+    scopedMerchantId?: number,
   ): Promise<OnePayrollAdjustmentResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll adjustment ID');
     }
 
     const adjustment = await this.adjustmentRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!adjustment) {
       throw new NotFoundException(`Payroll adjustment with ID ${id} not found`);
     }
+
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
     if (dto.payroll_entry_id != null) {
       const payrollEntry = await this.payrollEntryRepo.findOne({
@@ -210,13 +257,16 @@ export class PayrollAdjustmentsService {
     };
   }
 
-  async remove(id: number): Promise<OnePayrollAdjustmentResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollAdjustmentResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll adjustment ID');
     }
 
     const adjustment = await this.adjustmentRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!adjustment) {
       throw new NotFoundException(`Payroll adjustment with ID ${id} not found`);
