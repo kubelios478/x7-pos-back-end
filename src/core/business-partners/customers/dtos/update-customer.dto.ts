@@ -1,6 +1,12 @@
 // src/customers/dtos/update-customer.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, IsNumber } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsNumber,
+  MaxLength,
+} from 'class-validator';
 
 export class UpdateCustomerDto {
   @ApiProperty({
@@ -36,12 +42,24 @@ export class UpdateCustomerDto {
   @IsString()
   phone?: string;
 
-  @ApiProperty({
-    example: '1234567890',
-    description: 'RUT of the customer',
+  @ApiPropertyOptional({
+    example: 'D123-4567-8901',
+    description:
+      "Optional identification document of the customer (e.g. driver's license or tax ID). Customers usually have none.",
   })
   @IsOptional()
   @IsString()
+  @MaxLength(50)
+  document_id?: string | null;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use document_id. Accepted as an alias on input.',
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
   rut?: string;
 
   @ApiProperty({

@@ -44,8 +44,10 @@ export class CustomersService {
       if (!company) throw new NotFoundException('Company not found');
     }
 
+    const { rut, document_id, ...fields } = dto;
     const customerData: Partial<Customer> = {
-      ...dto,
+      ...fields,
+      document_id: document_id ?? rut ?? null,
       merchant,
       ...(company ? { company } : {}),
     };
@@ -62,7 +64,7 @@ export class CustomersService {
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
-      rut: customer.rut,
+      document_id: customer.document_id,
       address: customer.address,
       city: customer.city,
       state: customer.state,
@@ -90,7 +92,7 @@ export class CustomersService {
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
-      rut: customer.rut,
+      document_id: customer.document_id,
       address: customer.address,
       city: customer.city,
       state: customer.state,
@@ -121,7 +123,13 @@ export class CustomersService {
       customer.company = company;
     }
 
-    Object.assign(customer, { ...dto, company: customer.company });
+    const { rut, document_id, ...fields } = dto;
+    Object.assign(customer, { ...fields, company: customer.company });
+    // `rut` is the deprecated name of document_id; null clears it.
+    if (document_id !== undefined || rut !== undefined) {
+      customer.document_id =
+        (document_id !== undefined ? document_id : rut) ?? null;
+    }
     return this.customerRepo.save(customer);
   }
 
