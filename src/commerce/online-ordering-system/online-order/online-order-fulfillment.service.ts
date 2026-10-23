@@ -32,6 +32,9 @@ import {
 } from './online-order-pricing.util';
 import { Product } from '../../../inventory/products-inventory/products/entities/product.entity';
 import { Variant } from '../../../inventory/products-inventory/variants/entities/variant.entity';
+import { Order } from '../../../restaurant-operations/pos/orders/entities/order.entity';
+import { OrderPayment } from '../../../restaurant-operations/pos/order-payments/entities/order-payment.entity';
+import { OnlineOrderPaymentStatus } from './constants/online-order-payment-status.enum';
 
 function mapOnlineTypeToOrderType(t: OnlineOrderType): OrderType {
   switch (t) {
@@ -216,6 +219,32 @@ export class OnlineOrderFulfillmentService {
     }
 
     await this.ordersService.syncOrderAggregates(posOrderId);
+
+    if (precheck.payment_status === OnlineOrderPaymentStatus.PAID) {
+      const posOrder = await this.dataSource.getRepository(Order).findOne({
+        where: { id: posOrderId },
+      });
+      if (posOrder) {
+        const orderPaymentRepo = this.dataSource.getRepository(OrderPayment);
+        const existingOp = await orderPaymentRepo.findOne({
+          where: { order_id: posOrderId, source: 'ONLINE' },
+        });
+        if (!existingOp) {
+          const op = new OrderPayment();
+          op.order_id = posOrderId;
+          op.amount = Number(posOrder.total);
+          op.method = 'online';
+          op.provider = 'online_order';
+          op.reference = `ONLINE-#${onlineOrderId}`;
+          op.tip_amount = 0;
+          op.is_refund = false;
+          op.source = 'ONLINE';
+          op.shift_id = null;
+          await orderPaymentRepo.save(op);
+          await this.ordersService.syncOrderAggregates(posOrderId);
+        }
+      }
+    }
 
     const effectiveStationId = stationId
       ? Number(stationId)

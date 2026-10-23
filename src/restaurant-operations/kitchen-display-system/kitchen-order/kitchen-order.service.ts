@@ -1300,6 +1300,11 @@ export class KitchenOrderService {
       }
     }
 
+    // Sincronizar agregados POS y Online Order
+    if (isRecall || updateKitchenOrderDto.businessStatus !== undefined) {
+      await this.syncPosAndOnlineOrder(updatedKitchenOrder, isRecall);
+    }
+
     const completeKitchenOrder = await this.kitchenOrderRepository.findOne({
       where: { id: updatedKitchenOrder.id },
       relations: KITCHEN_ORDER_DETAIL_RELATIONS,
@@ -1415,6 +1420,9 @@ export class KitchenOrderService {
     } catch (err) {
       console.error('Failed to log RECALL event:', err);
     }
+
+    // 5. Synchronize POS order & Online Order back to in_preparation
+    await this.syncPosAndOnlineOrder(existingKitchenOrder, true);
 
     const response = await this.findOne(id, authenticatedUserMerchantId);
     return {
@@ -1729,4 +1737,76 @@ export class KitchenOrderService {
     };
   }
 
+  private async syncPosAndOnlineOrder(
+    kitchenOrder: KitchenOrder,
+    isRecall: boolean = false,
+  ): Promise<void> {
+    try {
+      let targetOrderId = kitchenOrder.order_id;
+      if (!targetOrderId && kitchenOrder.online_order_id) {
+        const linkedOnline = await this.onlineOrderRepository.findOne({
+          where: { id: kitchenOrder.online_order_id },
+        });
+        if (linkedOnline?.order_id) {
+          targetOrderId = linkedOnline.order_id;
+        }
+      }
+
+      if (targetOrderId) {
+        await this.kitchenOrderSyncService.syncPosOrderFromKitchenOrders(
+          targetOrderId,
+        );
+      }
+
+      if (isRecall) {
+        const onlineOrderId =
+          kitchenOrder.online_order_id ||
+          (targetOrderId
+            ? (
+                await this.onlineOrderRepository.findOne({
+                  where: { order_id: targetOrderId },
+                })
+              )?.id
+            : null);
+
+        if (onlineOrderId) {
+          await this.dataSource.query(
+            `UPDATE online_order
+             SET fulfillment_status = 'in_preparation',
+                 ready_at = NULL,
+                 completed_at = NULL
+             WHERE id = $1;`,
+            [onlineOrderId],
+          );
+          await this.dataSource.query(
+            `UPDATE online_order_item
+             SET kitchen_line_status = 'in_preparation'
+             WHERE online_order_id = $1;`,
+            [onlineOrderId],
+          );
+        }
+
+        if (targetOrderId) {
+          await this.dataSource.query(
+            `UPDATE orders
+             SET kitchen_status = 'preparing',
+                 ready_at = NULL
+             WHERE id = $1;`,
+            [targetOrderId],
+          );
+          await this.dataSource.query(
+            `UPDATE order_item
+             SET kitchen_status = 'in_preparation'
+             WHERE order_id = $1;`,
+            [targetOrderId],
+          );
+        }
+      }
+    } catch (err) {
+      console.error(
+        'Failed to sync POS and online order from kitchen order:',
+        err,
+      );
+    }
+  }
 }

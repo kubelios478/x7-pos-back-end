@@ -255,13 +255,26 @@ export class OnlineOrderController {
   ): Promise<OneOnlineOrderResponseDto> {
     const merchantId = req.user?.merchant?.id;
     const userId = req.user?.id;
-    if (fulfillmentStatus === OnlineOrderFulfillmentStatus.ACCEPTED) {
-      return this.onlineOrderFulfillmentService.acceptOnlineOrder(
+    if (
+      fulfillmentStatus &&
+      fulfillmentStatus !== OnlineOrderFulfillmentStatus.RECEIVED &&
+      fulfillmentStatus !== OnlineOrderFulfillmentStatus.CANCELLED
+    ) {
+      const existing = await this.onlineOrderService.findOne(
         id,
         merchantId,
-        userId,
-        stationId ? Number(stationId) : undefined,
       );
+      if (!existing.data.orderId) {
+        await this.onlineOrderFulfillmentService.acceptOnlineOrder(
+          id,
+          merchantId,
+          userId,
+          stationId ? Number(stationId) : undefined,
+        );
+      }
+    }
+    if (fulfillmentStatus === OnlineOrderFulfillmentStatus.ACCEPTED) {
+      return this.onlineOrderService.findOne(id, merchantId);
     }
     return this.onlineOrderService.updateFulfillmentStatus(
       id,
@@ -525,7 +538,11 @@ export class OnlineOrderController {
   ): Promise<OneOnlineOrderResponseDto> {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
     const userId = req.user?.id;
-    if (dto.fulfillmentStatus === OnlineOrderFulfillmentStatus.ACCEPTED) {
+    if (
+      dto.fulfillmentStatus &&
+      dto.fulfillmentStatus !== OnlineOrderFulfillmentStatus.RECEIVED &&
+      dto.fulfillmentStatus !== OnlineOrderFulfillmentStatus.CANCELLED
+    ) {
       const existing = await this.onlineOrderService.findOne(
         id,
         authenticatedUserMerchantId,
