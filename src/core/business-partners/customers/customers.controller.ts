@@ -133,8 +133,8 @@ export class CustomersController {
     'merchant_user',
     'customer_user',
   )
-  findAll() {
-    return this.customersService.findAll();
+  findAll(@Request() req: ExpressRequest & { user?: AuthenticatedUser }) {
+    return this.customersService.findAll(this.merchantIdOf(req));
   }
 
   @Get(':id')

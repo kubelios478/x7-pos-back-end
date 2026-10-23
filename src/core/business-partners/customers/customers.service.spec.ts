@@ -277,9 +277,10 @@ describe('CustomersService', () => {
         .spyOn(customerRepository, 'find')
         .mockResolvedValue(mockCustomers as any);
 
-      const result = await service.findAll();
+      const result = await service.findAll(mockCustomer.merchantId);
 
       expect(customerRepository.find).toHaveBeenCalledWith({
+        where: { merchantId: mockCustomer.merchantId },
         relations: ['merchant', 'company'],
       });
       expect(result).toHaveLength(2);
@@ -315,7 +316,7 @@ describe('CustomersService', () => {
         .spyOn(customerRepository, 'find')
         .mockResolvedValue(customersWithoutRelations as any);
 
-      const result = await service.findAll();
+      const result = await service.findAll(mockCustomer.merchantId);
 
       expect(result[0].merchant).toBeNull();
       expect(result[0].company).toBeNull();
