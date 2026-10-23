@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-tax-rule/merchant-tax-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantTaxRuleController } from './merchant-tax-rule.controller';
 import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 import { MerchantTaxRule } from './entity/merchant-tax-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { User } from 'src/platform-saas/users/entities/user.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TaxType } from '../constants/tax-type.enum';
@@ -28,6 +28,7 @@ describe('MerchantTaxRuleController', () => {
     city: 'Test City',
     state: 'Test State',
     country: 'Test Country',
+    status: CompanyStatus.ACTIVE,
     merchants: [],
     customers: [],
     suppliers: [],
@@ -332,9 +333,9 @@ describe('MerchantTaxRuleController', () => {
         .spyOn(service, 'remove')
         .mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(1);
+      const result = await controller.remove(1, mockAuthenticatedUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(deleteResponse);
     });
 
@@ -344,9 +345,11 @@ describe('MerchantTaxRuleController', () => {
         .spyOn(service, 'remove')
         .mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(1)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(1, mockAuthenticatedUser)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
   });
 });

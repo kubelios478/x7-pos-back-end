@@ -332,17 +332,27 @@ export class MerchantTipRuleService {
     };
   }
 
-  async remove(id: number): Promise<OneMerchantTipRuleResponseDto> {
+  async remove(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantTipRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
     const merchantTipRule = await this.merchantTipRuleRepository.findOne({
       where: { id },
+      relations: ['company'],
     });
     if (!merchantTipRule) {
       ErrorHandler.merchantTipRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantTipRule.company.id,
+    );
 
     merchantTipRule.status = 'deleted';
     const deletedMerchantTipRule =

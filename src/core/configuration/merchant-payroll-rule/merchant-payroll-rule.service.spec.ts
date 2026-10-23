@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-payroll-rule/merchant-payroll-rule.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantPayrollRuleService } from './merchant-payroll-rule.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MerchantPayrollRule } from './entity/merchant-payroll-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { PayrollFrequency } from '../constants/payroll-frequency.enum';
 import { CreateMerchantPayrollRuleDto } from './dto/create-merchant-payroll-rule.dto';
 import { UpdateMerchantPayrollRuleDto } from './dto/update-merchant-payroll-rule.dto';
@@ -64,6 +64,7 @@ describe('MerchantPayrollRuleService', () => {
       city: 'Test City',
       state: 'Test State',
       country: 'Test Country',
+      status: CompanyStatus.ACTIVE,
       suppliers: [],
       merchants: [],
       customers: [],
@@ -807,7 +808,7 @@ describe('MerchantPayrollRuleService', () => {
         .spyOn(merchantPayrollRuleRepository, 'save')
         .mockResolvedValue(mockMerchantPayrollRule as MerchantPayrollRule);
 
-      const result = await service.remove(1);
+      const result = await service.remove(1, mockPortalAdminUser);
 
       expect(saveSpy).toHaveBeenCalled();
       expect(result.message).toBe('Merchant Payroll Rule deleted successfully');
@@ -818,7 +819,7 @@ describe('MerchantPayrollRuleService', () => {
         .spyOn(merchantPayrollRuleRepository, 'findOne')
         .mockResolvedValue(null);
 
-      await expect(service.remove(999)).rejects.toThrow(
+      await expect(service.remove(999, mockPortalAdminUser)).rejects.toThrow(
         'Merchant Payroll Rule not found',
       );
     });

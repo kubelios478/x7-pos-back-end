@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-tax-rule/merchant-tax-rule.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MerchantTaxRule } from './entity/merchant-tax-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TaxType } from '../constants/tax-type.enum';
 import { CreateMerchantTaxRuleDto } from './dto/create-merchant-tax-rule.dto';
@@ -35,6 +35,7 @@ describe('MerchantTaxRuleService', () => {
       city: 'Test City',
       state: 'Test State',
       country: 'Test Country',
+      status: CompanyStatus.ACTIVE,
       suppliers: [],
       merchants: [],
       customers: [],
@@ -866,10 +867,11 @@ describe('MerchantTaxRuleService', () => {
       findOneSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
       saveSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
 
-      const result = await service.remove(1);
+      const result = await service.remove(1, mockPortalAdminUser);
 
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 1 },
+        relations: ['company'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -880,18 +882,19 @@ describe('MerchantTaxRuleService', () => {
     });
 
     it('should throw error for invalid ID during removal', async () => {
-      await expect(service.remove(0)).rejects.toThrow();
+      await expect(service.remove(0, mockPortalAdminUser)).rejects.toThrow();
     });
 
     it('should throw error when merchant tax rule to remove not found', async () => {
       const findOneSpy = jest.spyOn(merchantTaxRuleRepository, 'findOne');
       findOneSpy.mockResolvedValue(null);
 
-      await expect(service.remove(999)).rejects.toThrow(
+      await expect(service.remove(999, mockPortalAdminUser)).rejects.toThrow(
         'Merchant Tax Rule not found',
       );
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
+        relations: ['company'],
       });
     });
   });

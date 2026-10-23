@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-tip-rule/merchant-tip-rule.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantTipRuleService } from './merchant-tip-rule.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MerchantTipRule } from './entity/merchant-tip-rule-entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { TipCalculationMethod } from '../constants/tip-calculation-method.enum';
 import { TipDistributionMethod } from '../constants/tip-distribution-method.enum';
 import { CreateMerchantTipRuleDto } from './dto/create-merchant-tip-rule.dto';
@@ -66,6 +66,7 @@ describe('MerchantTipRuleService', () => {
       city: 'Test City',
       state: 'Test State',
       country: 'Test Country',
+      status: CompanyStatus.ACTIVE,
       merchants: [],
       customers: [],
       configurations: [],
@@ -847,12 +848,13 @@ describe('MerchantTipRuleService', () => {
       findOneSpy.mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
       saveSpy.mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
 
-      const result = await service.remove(1);
+      const result = await service.remove(1, mockPortalAdminUser);
 
       expect(findOneSpy).toHaveBeenCalledWith({
         where: {
           id: 1,
         },
+        relations: ['company'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -862,21 +864,38 @@ describe('MerchantTipRuleService', () => {
       });
     });
 
+    it("rejects removing another company's tip rule", async () => {
+      jest
+        .spyOn(merchantTipRuleRepository, 'findOne')
+        .mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 999,
+      } as Merchant);
+      const saveSpy = jest.spyOn(merchantTipRuleRepository, 'save');
+
+      await expect(service.remove(1, mockMerchantAdminUser)).rejects.toThrow(
+        'You do not have access to this record.',
+      );
+      expect(saveSpy).not.toHaveBeenCalled();
+    });
+
     it('should throw error for invalid ID during removal', async () => {
-      await expect(service.remove(0)).rejects.toThrow();
+      await expect(service.remove(0, mockPortalAdminUser)).rejects.toThrow();
     });
 
     it('should throw error when merchant tip rule to remove not found', async () => {
       const findOneSpy = jest.spyOn(merchantTipRuleRepository, 'findOne');
       findOneSpy.mockResolvedValue(null);
 
-      await expect(service.remove(999)).rejects.toThrow(
+      await expect(service.remove(999, mockPortalAdminUser)).rejects.toThrow(
         'Merchant Tip Rule not found',
       );
       expect(findOneSpy).toHaveBeenCalledWith({
         where: {
           id: 999,
         },
+        relations: ['company'],
       });
     });
   });
