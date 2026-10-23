@@ -41,11 +41,11 @@ export class SupplierInvoice {
   invoice_number: string;
 
   @ApiProperty({ example: '2025-03-01' })
-  @Column({ type: 'date', name: 'invoice_date' })
+  @Column({ type: 'date', utc: true, name: 'invoice_date' })
   invoice_date: Date;
 
   @ApiProperty({ example: '2025-03-31' })
-  @Column({ type: 'date', name: 'due_date' })
+  @Column({ type: 'date', utc: true, name: 'due_date' })
   due_date: Date;
 
   @ApiProperty({ example: 1000.0 })
