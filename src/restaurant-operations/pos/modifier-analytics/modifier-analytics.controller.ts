@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 
 import {
   ApiBearerAuth,
@@ -26,6 +26,7 @@ import { ModifierAnalyticsService } from './modifier-analytics.service';
 import { GetModifierAnalyticsQueryDto } from './dto/get-modifier-analytics-query.dto';
 import { PaginatedModifierAnalyticsResponseDto } from './dto/paginated-modifier-analytics-response.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 
 @ApiTags('Restaurant operations - POS - Modifier Analytics')
 @ApiBearerAuth()
@@ -55,10 +56,10 @@ export class ModifierAnalyticsController {
   })
   async getTopModifiers(
     @Query() query: GetModifierAnalyticsQueryDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedModifierAnalyticsResponseDto> {
     return this.modifierAnalyticsService.getTopModifiers(
-      req.merchant.id,
+      user.merchant.id,
       query,
     );
   }
