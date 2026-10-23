@@ -131,7 +131,7 @@ describe('AuthController', () => {
       companyName: 'Acme Corp',
       companyEmail: 'contact@acme.com',
       companyPhone: '+56 9 1234 5678',
-      rut: '12.345.678-9',
+      tax_id: '12.345.678-9',
       address: '123 Main Street, Suite 100',
       city: 'Santiago',
       state: 'Metropolitan Region',

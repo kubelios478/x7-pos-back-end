@@ -23,6 +23,7 @@ import { Table } from 'src/restaurant-operations/dining-system/tables/entities/t
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 import { MerchantAdminSummaryResponseDto } from './dtos/merchant-admin-summary.dto';
 import { CollaboratorStatus } from 'src/finance-hr/hr/collaborators/constants/collaborator-status.enum';
+import { normalizeTaxId } from 'src/common/utils/tax-id.util';
 
 @Injectable()
 export class MerchantsService {
@@ -71,7 +72,7 @@ export class MerchantsService {
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
-        rut: dto.rut,
+        tax_id: dto.tax_id ?? dto.rut,
         address: dto.address,
         city: dto.city,
         state: dto.state,
@@ -106,7 +107,7 @@ export class MerchantsService {
     }
 
     const nameTaken = await this.merchantRepo.exists({
-      where: { name: dto.name.trim() },
+      where: { name: dto.name.trim(), companyId },
     });
     if (nameTaken) {
       ErrorHandler.exists(ErrorMessage.MERCHANT_NAME_EXISTS);
@@ -115,7 +116,7 @@ export class MerchantsService {
     try {
       const merchant = this.merchantRepo.create({
         name: dto.name.trim(),
-        rut: dto.rut.trim(),
+        tax_id: (dto.tax_id ?? dto.rut)!.trim(),
         email: dto.email?.trim() || undefined,
         phone: dto.phone?.trim() || undefined,
         address: dto.address.trim(),
@@ -176,7 +177,7 @@ export class MerchantsService {
       select: {
         id: true,
         name: true,
-        rut: true,
+        tax_id: true,
         email: true,
         phone: true,
         address: true,
@@ -352,7 +353,7 @@ export class MerchantsService {
       }
 
       const { defaultSalesStockLocationId: _skip, ...rest } = dto;
-      Object.assign(merchant, rest);
+      Object.assign(merchant, normalizeTaxId(rest));
       const updatedMerchant = await this.merchantRepo.save(merchant);
 
       return {

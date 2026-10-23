@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LegacyRutSubscriber } from './platform-saas/companies/legacy-rut.subscriber';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
 // Core & Platform Modules
@@ -43,6 +44,7 @@ import { RestaurantOperationsModule } from './restaurant-operations/restaurant-o
 
           // Automatic loading of all entities declared in each submodule (forFeature)
           autoLoadEntities: true,
+          subscribers: [LegacyRutSubscriber],
 
           synchronize: false,
           // El esquema se cambia con migraciones (npm run migration:run), nunca al arrancar.

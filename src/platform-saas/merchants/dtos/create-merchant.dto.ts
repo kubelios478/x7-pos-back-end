@@ -1,5 +1,5 @@
 // src/merchants/dtos/create-merchant.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNumber,
@@ -62,15 +62,24 @@ export class CreateMerchantDto {
   })
   phone?: string;
 
-  @IsOptional()
-  @IsString({ message: 'Tax ID must be a string' })
-  @IsTaxId()
   @ApiProperty({
     example: '12-3456789',
-    description:
-      'Tax ID of the Merchant (e.g. US EIN 12-3456789). Stored in the rut column.',
+    description: 'Tax ID of the merchant (e.g. US EIN 12-3456789)',
     required: false,
   })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
+  tax_id?: string;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use tax_id. Accepted as an alias.',
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
   rut?: string;
 
   @IsString({ message: 'Address must be a string' })

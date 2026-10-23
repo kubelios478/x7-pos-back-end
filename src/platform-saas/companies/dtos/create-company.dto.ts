@@ -1,5 +1,5 @@
 // src/companies/dtos/create-company.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsString,
@@ -7,7 +7,9 @@ import {
   Matches,
   IsOptional,
   Length,
+  ValidateIf,
 } from 'class-validator';
+import { IsTaxId } from 'src/common/decorators/validation.decorators';
 // import {
 //   IsValidRUT,
 //   IsBusinessEmail,
@@ -53,17 +55,26 @@ export class CreateCompanyDto {
   })
   phone?: string;
 
-  @IsString({ message: 'RUT must be a string' })
-  // @IsNotEmpty({ message: 'RUT is required' })
-  // @Length(7, 15, { message: 'RUT must be between 7 and 15 characters' })
-  // @IsValidRUT({ message: 'Please provide a valid Chilean RUT format' })
   @ApiProperty({
-    example: '12.345.678-9',
-    description: 'RUT of the company',
-    minLength: 7,
-    maxLength: 15,
+    example: '12-3456789',
+    description: 'Tax ID of the company (e.g. US EIN 12-3456789)',
+    required: true,
   })
-  rut: string;
+  @ValidateIf((o: CreateCompanyDto) => o.rut === undefined)
+  @IsString()
+  @IsNotEmpty()
+  @IsTaxId()
+  tax_id?: string;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use tax_id. Accepted as an alias.',
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
+  rut?: string;
 
   @IsString({ message: 'Address must be a string' })
   @IsNotEmpty({ message: 'Address is required' })
