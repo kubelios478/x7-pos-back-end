@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-tip-rule/merchant-tip-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantTipRuleController } from './merchant-tip-rule.controller';
 import { MerchantTipRuleService } from './merchant-tip-rule.service';
 import { MerchantTipRule } from './entity/merchant-tip-rule-entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TipCalculationMethod } from '../constants/tip-calculation-method.enum';
 import { TipDistributionMethod } from '../constants/tip-distribution-method.enum';
@@ -29,6 +29,7 @@ describe('MerchantTipRuleController', () => {
     city: 'Test City',
     state: 'Test State',
     country: 'Test Country',
+    status: CompanyStatus.ACTIVE,
     merchants: [],
     customers: [],
     configurations: [],

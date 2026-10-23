@@ -81,7 +81,12 @@ export class MerchantTipRuleService {
     }
   }
 
-  private validateSuggestedPercentagesSum(
+  /**
+   * Suggested tips are independent options shown to the customer (e.g. 18%, 20%, 22%),
+   * stored as fractions of the bill. Each one must be in (0, 1]; they do not add up to
+   * anything.
+   */
+  private validateSuggestedPercentages(
     tipCalculationMethod: TipCalculationMethod,
     suggestedPercentages?: number[],
   ): void {
@@ -89,13 +94,20 @@ export class MerchantTipRuleService {
       return;
     }
 
-    const sum = (suggestedPercentages ?? []).reduce(
-      (acc, n) => acc + Number(n),
-      0,
-    );
+    if (!suggestedPercentages?.length) {
+      ErrorHandler.invalidInput(
+        'Percentage calculation requires at least one suggested percentage',
+      );
+    }
 
-    if (Math.abs(sum - 1) > 0.01) {
-      ErrorHandler.invalidInput('Suggested percentages must sum to 100%');
+    const outOfRange = suggestedPercentages.some((value) => {
+      const n = Number(value);
+      return !Number.isFinite(n) || n <= 0 || n > 1;
+    });
+    if (outOfRange) {
+      ErrorHandler.invalidInput(
+        'Each suggested percentage must be greater than 0 and at most 1 (e.g. 0.18 for 18%)',
+      );
     }
   }
 
@@ -109,7 +121,7 @@ export class MerchantTipRuleService {
       dto.kitchenPercentage,
       dto.managerPercentage,
     );
-    this.validateSuggestedPercentagesSum(
+    this.validateSuggestedPercentages(
       dto.tipCalculationMethod,
       dto.suggestedPercentages,
     );
@@ -305,7 +317,7 @@ export class MerchantTipRuleService {
       dto.tipCalculationMethod !== undefined ||
       dto.suggestedPercentages !== undefined
     ) {
-      this.validateSuggestedPercentagesSum(
+      this.validateSuggestedPercentages(
         dto.tipCalculationMethod ?? merchantTipRule.tipCalculationMethod,
         dto.suggestedPercentages ?? merchantTipRule.suggestedPercentages,
       );
