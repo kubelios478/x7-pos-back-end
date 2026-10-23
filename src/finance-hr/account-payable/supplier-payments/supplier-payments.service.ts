@@ -165,13 +165,20 @@ export class SupplierPaymentsService {
     };
   }
 
-  async findOne(id: number): Promise<OneSupplierPaymentResponseDto> {
+  async findOne(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierPaymentResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier payment ID');
     }
 
     const payment = await this.paymentRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: IsNull(),
+      },
     });
     if (!payment) {
       throw new NotFoundException(`Supplier payment with ID ${id} not found`);
@@ -257,13 +264,20 @@ export class SupplierPaymentsService {
     };
   }
 
-  async remove(id: number): Promise<OneSupplierPaymentResponseDto> {
+  async remove(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierPaymentResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier payment ID');
     }
 
     const payment = await this.paymentRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: IsNull(),
+      },
     });
     if (!payment) {
       throw new NotFoundException(`Supplier payment with ID ${id} not found`);

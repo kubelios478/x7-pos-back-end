@@ -156,8 +156,12 @@ export class SupplierPaymentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierPaymentResponseDto> {
-    return this.supplierPaymentsService.findOne(id);
+    return this.supplierPaymentsService.findOne(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Put(':id')
@@ -215,7 +219,11 @@ export class SupplierPaymentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierPaymentResponseDto> {
-    return this.supplierPaymentsService.remove(id);
+    return this.supplierPaymentsService.remove(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 }

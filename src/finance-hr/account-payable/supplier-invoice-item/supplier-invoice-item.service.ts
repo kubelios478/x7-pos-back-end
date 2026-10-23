@@ -261,7 +261,10 @@ export class SupplierInvoiceItemService {
     };
   }
 
-  async findOne(id: number): Promise<OneSupplierInvoiceItemResponseDto> {
+  async findOne(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierInvoiceItemResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier invoice item ID');
     }
@@ -274,6 +277,9 @@ export class SupplierInvoiceItemService {
         `Supplier invoice item with ID ${id} not found`,
       );
     }
+
+    // Scope guard: the item's invoice must belong to the user's company.
+    await this.assertInvoiceExists(row.invoice_id, scopedCompanyId);
 
     return {
       statusCode: 200,

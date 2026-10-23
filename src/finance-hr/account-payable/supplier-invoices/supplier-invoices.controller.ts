@@ -198,8 +198,12 @@ export class SupplierInvoicesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceResponseDto> {
-    return this.supplierInvoicesService.findOne(id);
+    return this.supplierInvoicesService.findOne(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Put(':id')
@@ -227,8 +231,13 @@ export class SupplierInvoicesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateSupplierInvoiceDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceResponseDto> {
-    return this.supplierInvoicesService.update(id, dto);
+    return this.supplierInvoicesService.update(
+      id,
+      dto,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Delete(':id')
@@ -252,8 +261,12 @@ export class SupplierInvoicesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceResponseDto> {
-    return this.supplierInvoicesService.remove(id);
+    return this.supplierInvoicesService.remove(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Post(':id/restore')
@@ -279,7 +292,11 @@ export class SupplierInvoicesController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async restore(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceResponseDto> {
-    return this.supplierInvoicesService.restore(id);
+    return this.supplierInvoicesService.restore(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 }

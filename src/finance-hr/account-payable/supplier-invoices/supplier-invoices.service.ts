@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Not } from 'typeorm';
@@ -179,13 +180,20 @@ export class SupplierInvoicesService {
     };
   }
 
-  async findOne(id: number): Promise<OneSupplierInvoiceResponseDto> {
+  async findOne(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierInvoiceResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier invoice ID');
     }
 
     const invoice = await this.invoiceRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: IsNull(),
+      },
     });
     if (!invoice) {
       throw new NotFoundException(`Supplier invoice with ID ${id} not found`);
@@ -201,18 +209,32 @@ export class SupplierInvoicesService {
   async update(
     id: number,
     dto: UpdateSupplierInvoiceDto,
+    scopedCompanyId?: number,
   ): Promise<OneSupplierInvoiceResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier invoice ID');
     }
 
     const invoice = await this.invoiceRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: IsNull(),
+      },
     });
     if (!invoice) {
       throw new NotFoundException(`Supplier invoice with ID ${id} not found`);
     }
 
+    if (
+      scopedCompanyId != null &&
+      dto.company_id != null &&
+      dto.company_id !== scopedCompanyId
+    ) {
+      throw new ForbiddenException(
+        'You can only manage supplier invoices of your company',
+      );
+    }
     if (dto.company_id != null) {
       const company = await this.companyRepo.findOne({
         where: { id: dto.company_id },
@@ -226,7 +248,10 @@ export class SupplierInvoicesService {
     }
     if (dto.supplier_id != null) {
       const supplier = await this.supplierRepo.findOne({
-        where: { id: dto.supplier_id },
+        where: {
+          id: dto.supplier_id,
+          ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        },
       });
       if (!supplier) {
         throw new NotFoundException(
@@ -256,13 +281,20 @@ export class SupplierInvoicesService {
     };
   }
 
-  async remove(id: number): Promise<OneSupplierInvoiceResponseDto> {
+  async remove(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierInvoiceResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier invoice ID');
     }
 
     const invoice = await this.invoiceRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: IsNull(),
+      },
     });
     if (!invoice) {
       throw new NotFoundException(`Supplier invoice with ID ${id} not found`);
@@ -278,13 +310,20 @@ export class SupplierInvoicesService {
     };
   }
 
-  async restore(id: number): Promise<OneSupplierInvoiceResponseDto> {
+  async restore(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierInvoiceResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier invoice ID');
     }
 
     const invoice = await this.invoiceRepo.findOne({
-      where: { id, deleted_at: Not(IsNull()) },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: Not(IsNull()),
+      },
     });
     if (!invoice) {
       throw new NotFoundException(
