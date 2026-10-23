@@ -63,6 +63,7 @@ export class OnlineOrderFulfillmentService {
     onlineOrderId: number,
     merchantId: number,
     userId?: number,
+    stationId?: number,
   ): Promise<OneOnlineOrderResponseDto> {
     if (!merchantId) {
       throw new ForbiddenException(
@@ -77,6 +78,12 @@ export class OnlineOrderFulfillmentService {
       throw new NotFoundException('Online order not found');
     }
     if (precheck.order_id) {
+      if (stationId) {
+        await this.dataSource.query(
+          `UPDATE kitchen_order SET station_id = $1 WHERE online_order_id = $2 AND merchant_id = $3`,
+          [Number(stationId), onlineOrderId, merchantId],
+        );
+      }
       return this.onlineOrderService.findOne(onlineOrderId, merchantId);
     }
 
@@ -96,6 +103,12 @@ export class OnlineOrderFulfillmentService {
       }
       if (oo.order_id) {
         await queryRunner.commitTransaction();
+        if (stationId) {
+          await this.dataSource.query(
+            `UPDATE kitchen_order SET station_id = $1 WHERE online_order_id = $2 AND merchant_id = $3`,
+            [Number(stationId), onlineOrderId, merchantId],
+          );
+        }
         return this.onlineOrderService.findOne(onlineOrderId, merchantId);
       }
       if (oo.status === OnlineOrderStatus.DELETED) {
@@ -189,6 +202,9 @@ export class OnlineOrderFulfillmentService {
       oo.order_id = order.id;
       oo.fulfillment_status = OnlineOrderFulfillmentStatus.ACCEPTED;
       oo.accepted_at = new Date();
+      if (stationId) {
+        oo.station_id = Number(stationId);
+      }
       await queryRunner.manager.save(OnlineOrder, oo);
 
       await queryRunner.commitTransaction();
@@ -201,9 +217,19 @@ export class OnlineOrderFulfillmentService {
 
     await this.ordersService.syncOrderAggregates(posOrderId);
 
+    const effectiveStationId = stationId
+      ? Number(stationId)
+      : precheck.station_id
+      ? Number(precheck.station_id)
+      : undefined;
+
     try {
       await this.kitchenOrderService.create(
-        { orderId: posOrderId, onlineOrderId },
+        {
+          orderId: posOrderId,
+          onlineOrderId,
+          stationId: effectiveStationId,
+        },
         merchantId,
         userId,
       );

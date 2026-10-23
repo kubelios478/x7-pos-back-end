@@ -396,24 +396,60 @@ export class KitchenStationService {
       }
     }
 
-    // Business rule validation: display order must be non-negative if provided
+    // Business rule validation & shift logic for displayOrder reordering
     if (updateKitchenStationDto.displayOrder !== undefined) {
-      const targetOrder = updateKitchenStationDto.displayOrder;
-      if (targetOrder < 0) {
-        throw new BadRequestException('Display order must be non-negative');
+      let targetOrder = updateKitchenStationDto.displayOrder;
+      if (targetOrder < 1) {
+        targetOrder = 1;
       }
-      if (targetOrder !== existingKitchenStation.display_order) {
-        await this.kitchenStationRepository
-          .createQueryBuilder()
-          .update(KitchenStation)
-          .set({ display_order: () => 'display_order + 1' })
-          .where('merchant_id = :merchantId', {
-            merchantId: authenticatedUserMerchantId,
-          })
-          .andWhere('display_order >= :targetOrder', { targetOrder })
-          .andWhere('id != :id', { id })
-          .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
-          .execute();
+
+      const oldOrder = existingKitchenStation.display_order;
+
+      // Count active stations for this merchant to clamp targetOrder
+      const activeCount = await this.kitchenStationRepository.count({
+        where: {
+          merchant_id: authenticatedUserMerchantId,
+          status: KitchenStationStatus.ACTIVE,
+        },
+      });
+
+      if (activeCount > 0 && targetOrder > activeCount) {
+        targetOrder = activeCount;
+      }
+      updateKitchenStationDto.displayOrder = targetOrder;
+
+      if (targetOrder !== oldOrder) {
+        if (oldOrder < targetOrder) {
+          // Moving DOWN (e.g. from 1 to 3):
+          // Shift intermediate stations (oldOrder, targetOrder] UP by 1 (display_order - 1)
+          await this.kitchenStationRepository
+            .createQueryBuilder()
+            .update(KitchenStation)
+            .set({ display_order: () => 'display_order - 1' })
+            .where('merchant_id = :merchantId', {
+              merchantId: authenticatedUserMerchantId,
+            })
+            .andWhere('display_order > :oldOrder', { oldOrder })
+            .andWhere('display_order <= :targetOrder', { targetOrder })
+            .andWhere('id != :id', { id })
+            .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
+            .execute();
+        } else {
+          // Moving UP (e.g. from 3 to 1):
+          // Shift intermediate stations [targetOrder, oldOrder) DOWN by 1 (display_order + 1)
+          await this.kitchenStationRepository
+            .createQueryBuilder()
+            .update(KitchenStation)
+            .set({ display_order: () => 'display_order + 1' })
+            .where('merchant_id = :merchantId', {
+              merchantId: authenticatedUserMerchantId,
+            })
+            .andWhere('display_order >= :targetOrder', { targetOrder })
+            .andWhere('display_order < :oldOrder', { oldOrder })
+            .andWhere('id != :id', { id })
+            .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
+            .execute();
+        }
       }
     }
 

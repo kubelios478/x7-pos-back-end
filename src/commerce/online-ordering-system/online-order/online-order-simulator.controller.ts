@@ -30,13 +30,11 @@ export class OnlineOrderSimulatorController {
   ) {}
 
   @Post('reset-test-data')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
-  @Scopes(
-    Scope.ADMIN_PORTAL,
-    Scope.MERCHANT_WEB,
-    Scope.MERCHANT_ANDROID,
-    Scope.MERCHANT_IOS,
-    Scope.MERCHANT_CLOVER,
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
   )
   @ApiOperation({
     summary: 'Isolated dev simulator: Reset and re-seed Online Orders test data',
@@ -122,6 +120,24 @@ export class OnlineOrderSimulatorController {
         `DELETE FROM online_order WHERE merchant_id = $1;`,
         [merchantId],
       );
+
+      // 5. Reset sequence so order IDs restart cleanly
+      const remainingOrders = await this.dataSource.query(
+        `SELECT MAX(id) as max_id FROM online_order;`,
+      );
+      const maxId = remainingOrders[0]?.max_id;
+      if (!maxId) {
+        await this.dataSource.query(
+          `SELECT setval('online_order_id_seq', 1, false);
+           SELECT setval('online_order_item_id_seq', 1, false);`,
+        );
+      } else {
+        await this.dataSource.query(
+          `SELECT setval('online_order_id_seq', $1, true);
+           SELECT setval('online_order_item_id_seq', COALESCE((SELECT MAX(id) FROM online_order_item), 1), (SELECT MAX(id) FROM online_order_item) IS NOT NULL);`,
+          [maxId],
+        );
+      }
 
       return {
         success: true,

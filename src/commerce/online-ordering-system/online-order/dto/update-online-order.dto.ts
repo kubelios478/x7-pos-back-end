@@ -122,5 +122,14 @@ export class UpdateOnlineOrderDto {
   @IsOptional()
   @IsString({ message: 'Completed at must be a valid date string' })
   completedAt?: string | null;
+
+  @ApiPropertyOptional({
+    example: 6,
+    description: 'Target Kitchen Station ID for KDS routing',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Station ID must be a number' })
+  stationId?: number | null;
 }
 

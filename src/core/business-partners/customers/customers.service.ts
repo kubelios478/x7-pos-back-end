@@ -53,8 +53,13 @@ export class CustomersService {
     return this.customerRepo.save(customer);
   }
 
-  async findAll() {
+  async findAll(user?: AuthenticatedUser) {
+    const where: any = {};
+    if (user?.merchant?.id) {
+      where.merchantId = user.merchant.id;
+    }
     const customers = await this.customerRepo.find({
+      where,
       relations: ['merchant', 'company'],
     });
     return customers.map((customer) => ({

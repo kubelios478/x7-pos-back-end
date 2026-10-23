@@ -65,7 +65,12 @@ export class OnlineOrderController {
   ) {}
 
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -147,7 +152,12 @@ export class OnlineOrderController {
 
 
   @Post(':id/accept')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -167,19 +177,27 @@ export class OnlineOrderController {
   })
   async accept(
     @Param('id', ParseIntPipe) id: number,
+    @Body() body: { stationId?: number },
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOnlineOrderResponseDto> {
     const merchantId = req.user?.merchant?.id;
     const userId = req.user?.id;
+    const stationId = body?.stationId ? Number(body.stationId) : undefined;
     return this.onlineOrderFulfillmentService.acceptOnlineOrder(
       id,
       merchantId,
       userId,
+      stationId,
     );
   }
 
   @Post(':id/cancel')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -206,7 +224,12 @@ export class OnlineOrderController {
   }
 
   @Patch(':id/fulfillment-status')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -227,6 +250,7 @@ export class OnlineOrderController {
   async updateFulfillmentStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body('fulfillmentStatus') fulfillmentStatus: OnlineOrderFulfillmentStatus,
+    @Body('stationId') stationId: number | undefined,
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOnlineOrderResponseDto> {
     const merchantId = req.user?.merchant?.id;
@@ -236,6 +260,7 @@ export class OnlineOrderController {
         id,
         merchantId,
         userId,
+        stationId ? Number(stationId) : undefined,
       );
     }
     return this.onlineOrderService.updateFulfillmentStatus(
@@ -247,7 +272,12 @@ export class OnlineOrderController {
   }
 
   @Get()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -374,7 +404,12 @@ export class OnlineOrderController {
   }
 
   @Get(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -415,7 +450,12 @@ export class OnlineOrderController {
   }
 
   @Put(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -484,11 +524,36 @@ export class OnlineOrderController {
     @Request() req: AuthenticatedRequest,
   ): Promise<OneOnlineOrderResponseDto> {
     const authenticatedUserMerchantId = req.user?.merchant?.id;
-    return this.onlineOrderService.update(id, dto, authenticatedUserMerchantId);
+    const userId = req.user?.id;
+    if (dto.fulfillmentStatus === OnlineOrderFulfillmentStatus.ACCEPTED) {
+      const existing = await this.onlineOrderService.findOne(
+        id,
+        authenticatedUserMerchantId,
+      );
+      if (!existing.data.orderId) {
+        await this.onlineOrderFulfillmentService.acceptOnlineOrder(
+          id,
+          authenticatedUserMerchantId,
+          userId,
+          dto.stationId ? Number(dto.stationId) : undefined,
+        );
+      }
+    }
+    return this.onlineOrderService.update(
+      id,
+      dto,
+      authenticatedUserMerchantId,
+      userId,
+    );
   }
 
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,

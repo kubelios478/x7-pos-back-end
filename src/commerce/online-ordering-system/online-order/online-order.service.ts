@@ -144,6 +144,9 @@ export class OnlineOrderService {
       ? new Date(createOnlineOrderDto.placedAt)
       : null;
     onlineOrder.notes = createOnlineOrderDto.notes || null;
+    onlineOrder.station_id = createOnlineOrderDto.stationId
+      ? Number(createOnlineOrderDto.stationId)
+      : null;
     onlineOrder.fulfillment_status = OnlineOrderFulfillmentStatus.RECEIVED;
     onlineOrder.accepted_at = null;
     onlineOrder.ready_at = null;
@@ -447,6 +450,33 @@ export class OnlineOrderService {
       throw new ConflictException('Cannot update a deleted online order');
     }
 
+    if (
+      existingOnlineOrder.fulfillment_status === OnlineOrderFulfillmentStatus.COMPLETED ||
+      existingOnlineOrder.fulfillment_status === OnlineOrderFulfillmentStatus.CANCELLED
+    ) {
+      throw new BadRequestException(
+        `Cannot edit an online order in '${existingOnlineOrder.fulfillment_status}' status`,
+      );
+    }
+
+    const isEditingDetails =
+      updateOnlineOrderDto.customerId !== undefined ||
+      updateOnlineOrderDto.storeId !== undefined ||
+      updateOnlineOrderDto.type !== undefined ||
+      updateOnlineOrderDto.notes !== undefined ||
+      updateOnlineOrderDto.scheduledAt !== undefined ||
+      updateOnlineOrderDto.paymentStatus !== undefined;
+
+    if (
+      isEditingDetails &&
+      existingOnlineOrder.fulfillment_status !== OnlineOrderFulfillmentStatus.RECEIVED &&
+      existingOnlineOrder.fulfillment_status !== OnlineOrderFulfillmentStatus.ACCEPTED
+    ) {
+      throw new BadRequestException(
+        `Order details can only be edited when order is in 'received' or 'accepted' stage (current: '${existingOnlineOrder.fulfillment_status}')`,
+      );
+    }
+
     if (updateOnlineOrderDto.storeId !== undefined) {
       const onlineStore = await this.onlineStoreRepository
         .createQueryBuilder('onlineStore')
@@ -590,6 +620,26 @@ export class OnlineOrderService {
         updateOnlineOrderDto.fulfillmentStatus,
         userId,
       );
+    }
+
+    if (updateOnlineOrderDto.stationId !== undefined) {
+      existingOnlineOrder.station_id = updateOnlineOrderDto.stationId
+        ? Number(updateOnlineOrderDto.stationId)
+        : null;
+      await this.onlineOrderRepository.update(
+        { id, merchant_id: authenticatedUserMerchantId },
+        { station_id: existingOnlineOrder.station_id },
+      );
+      if (this.dataSource) {
+        await this.dataSource.query(
+          `UPDATE kitchen_order SET station_id = $1 WHERE online_order_id = $2 AND merchant_id = $3`,
+          [
+            existingOnlineOrder.station_id,
+            existingOnlineOrder.id,
+            authenticatedUserMerchantId,
+          ],
+        );
+      }
     }
 
     const completeOnlineOrder = await this.addOnlineOrderDetailJoins(
