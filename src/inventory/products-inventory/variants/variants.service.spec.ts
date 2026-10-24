@@ -222,6 +222,7 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
         where: [
@@ -271,6 +272,7 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
         where: [
@@ -312,6 +314,7 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
       expect(variantRepository.create).not.toHaveBeenCalled();
       expect(variantRepository.save).not.toHaveBeenCalled();
@@ -327,6 +330,7 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
         where: [
