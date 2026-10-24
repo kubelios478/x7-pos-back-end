@@ -188,48 +188,63 @@ describe('OnlineStoresService', () => {
       );
     });
 
-    it('should throw BadRequestException if theme is empty', async () => {
+    it('should default theme to default when it is empty', async () => {
       const dtoWithEmptyTheme = { ...createOnlineStoreDto, theme: '' };
       jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue(mockMerchant as unknown as Merchant);
-      jest.spyOn(onlineStoreRepository, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(onlineStoreRepository, 'findOne')
+        .mockResolvedValueOnce(null) // subdomain is free
+        .mockResolvedValueOnce(mockOnlineStore as unknown as OnlineStore); // reload
+      jest
+        .spyOn(onlineStoreRepository, 'save')
+        .mockResolvedValue(mockOnlineStore as unknown as OnlineStore);
 
-      await expect(service.create(dtoWithEmptyTheme, 1)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.create(dtoWithEmptyTheme, 1)).rejects.toThrow(
-        'Theme cannot be empty',
+      await service.create(dtoWithEmptyTheme, 1);
+
+      expect(onlineStoreRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ theme: 'default' }),
       );
     });
 
-    it('should throw BadRequestException if currency is empty', async () => {
+    it('should default currency to USD when it is empty', async () => {
       const dtoWithEmptyCurrency = { ...createOnlineStoreDto, currency: '' };
       jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue(mockMerchant as unknown as Merchant);
-      jest.spyOn(onlineStoreRepository, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(onlineStoreRepository, 'findOne')
+        .mockResolvedValueOnce(null) // subdomain is free
+        .mockResolvedValueOnce(mockOnlineStore as unknown as OnlineStore); // reload
+      jest
+        .spyOn(onlineStoreRepository, 'save')
+        .mockResolvedValue(mockOnlineStore as unknown as OnlineStore);
 
-      await expect(service.create(dtoWithEmptyCurrency, 1)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.create(dtoWithEmptyCurrency, 1)).rejects.toThrow(
-        'Currency cannot be empty',
+      await service.create(dtoWithEmptyCurrency, 1);
+
+      expect(onlineStoreRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: 'USD' }),
       );
     });
 
-    it('should throw BadRequestException if timezone is empty', async () => {
+    it('should default timezone to America/New_York when it is empty', async () => {
       const dtoWithEmptyTimezone = { ...createOnlineStoreDto, timezone: '' };
       jest
         .spyOn(merchantRepository, 'findOne')
         .mockResolvedValue(mockMerchant as unknown as Merchant);
-      jest.spyOn(onlineStoreRepository, 'findOne').mockResolvedValue(null);
+      jest
+        .spyOn(onlineStoreRepository, 'findOne')
+        .mockResolvedValueOnce(null) // subdomain is free
+        .mockResolvedValueOnce(mockOnlineStore as unknown as OnlineStore); // reload
+      jest
+        .spyOn(onlineStoreRepository, 'save')
+        .mockResolvedValue(mockOnlineStore as unknown as OnlineStore);
 
-      await expect(service.create(dtoWithEmptyTimezone, 1)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.create(dtoWithEmptyTimezone, 1)).rejects.toThrow(
-        'Timezone cannot be empty',
+      await service.create(dtoWithEmptyTimezone, 1);
+
+      expect(onlineStoreRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ timezone: 'America/New_York' }),
       );
     });
 
@@ -577,10 +592,12 @@ describe('OnlineStoresService', () => {
         .mockResolvedValueOnce(mockOnlineStore as unknown as OnlineStore) // First call: find existing store (subdomain: 'my-store')
         .mockResolvedValueOnce(existingStore as unknown as OnlineStore); // Second call: check if subdomain 'updated-store' exists (it does, different id)
 
-      await expect(service.update(1, updateOnlineStoreDto, 1)).rejects.toThrow(
-        ConflictException,
-      );
-      await expect(service.update(1, updateOnlineStoreDto, 1)).rejects.toThrow(
+      const error: unknown = await service
+        .update(1, updateOnlineStoreDto, 1)
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(ConflictException);
+      expect((error as Error).message).toContain(
         'An online store with subdomain',
       );
     });
