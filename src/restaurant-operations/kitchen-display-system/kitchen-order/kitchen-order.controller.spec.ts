@@ -45,6 +45,9 @@ describe('KitchenOrderController', () => {
     statusCode: 201,
     message: 'Kitchen order created successfully',
     data: {
+      cancelledAt: null,
+      cancellationReason: null,
+      cancelledByUserId: null,
       id: 1,
       merchantId: 1,
       orderId: 1,

@@ -36,6 +36,7 @@ describe('CompaniesController', () => {
     city: 'Test City',
     state: 'Test State',
     country: 'Test Country',
+    status: CompanyStatus.ACTIVE,
     merchants: [],
     customers: [],
     configurations: [],

@@ -85,6 +85,8 @@ describe('VariantsService', () => {
   };
 
   const mockProductResponseDto = {
+    isOutOfStock: false,
+    isLowStock: false,
     id: mockProduct.id!,
     name: mockProduct.name!,
     sku: mockProduct.sku!,
@@ -96,6 +98,9 @@ describe('VariantsService', () => {
   };
 
   const mockVariantResponseDto: VariantResponseDto = {
+    isOutOfStock: false,
+    isLowStock: false,
+    isActive: true,
     id: mockVariant.id!,
     name: mockVariant.name!,
     price: mockVariant.price!,

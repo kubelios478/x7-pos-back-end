@@ -38,6 +38,15 @@ describe('RecipeTheoreticalCostService', () => {
 
   it('uses the latest purchase order row by orderDate', async () => {
     const poiNew: PurchaseOrderItem = {
+      rawMaterialId: null,
+      purchaseUnit: null,
+      quantityOrdered: null,
+      unitCost: null,
+      taxAmount: null,
+      rawMaterial: null,
+      receivedQuantity: 0,
+      locationId: 1,
+      location: {} as PurchaseOrderItem['location'],
       id: 2,
       purchaseOrderId: 2,
       productId: 10,

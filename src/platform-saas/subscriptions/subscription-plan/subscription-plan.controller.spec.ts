@@ -13,6 +13,9 @@ describe('SubscriptionPlanController', () => {
 
   // Mock data
   const mockSubscriptionPlan = {
+    recommended: false,
+    isCustomPricing: false,
+    displayFeatures: [],
     id: 1,
     name: 'Basic Plan',
     description: 'Includes basic features',

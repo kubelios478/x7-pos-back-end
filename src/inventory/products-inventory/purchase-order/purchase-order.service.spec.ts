@@ -112,6 +112,15 @@ describe('PurchaseOrderService', () => {
   };
 
   const mockPurchaseOrderItem1: PurchaseOrderItem = {
+    rawMaterialId: null,
+    purchaseUnit: null,
+    quantityOrdered: null,
+    unitCost: null,
+    taxAmount: null,
+    rawMaterial: null,
+    receivedQuantity: 0,
+    locationId: 1,
+    location: {} as PurchaseOrderItem['location'],
     id: 1,
     purchaseOrderId: mockPurchaseOrder.id,
     productId: mockProduct.id,
@@ -126,6 +135,15 @@ describe('PurchaseOrderService', () => {
   };
 
   const mockPurchaseOrderItem2: PurchaseOrderItem = {
+    rawMaterialId: null,
+    purchaseUnit: null,
+    quantityOrdered: null,
+    unitCost: null,
+    taxAmount: null,
+    rawMaterial: null,
+    receivedQuantity: 0,
+    locationId: 1,
+    location: {} as PurchaseOrderItem['location'],
     id: 2,
     purchaseOrderId: mockPurchaseOrder.id,
     productId: mockProduct.id,
@@ -810,7 +828,6 @@ describe('PurchaseOrderService', () => {
       };
 
       const mockProductWithRelations: Product = {
-        stock: 0, // fixture al día con el tipo
         ...mockProduct,
         merchant: mockMerchant as Merchant,
         category: mockCategory,

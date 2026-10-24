@@ -1,3 +1,4 @@
+import { KitchenCourse } from 'src/restaurant-operations/kitchen-display-system/kitchen-order-item/constants/kitchen-course.enum';
 import { Test, TestingModule } from '@nestjs/testing';
 import { KitchenOrderItemController } from './kitchen-order-item.controller';
 import { KitchenOrderItemService } from './kitchen-order-item.service';
@@ -47,6 +48,9 @@ describe('KitchenOrderItemController', () => {
     statusCode: 201,
     message: 'Kitchen order item created successfully',
     data: {
+      course: KitchenCourse.MAIN_COURSE,
+      holdUntil: null,
+      firedAt: null,
       id: 1,
       kitchenOrderId: 1,
       orderItemId: 1,

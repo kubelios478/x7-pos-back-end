@@ -87,6 +87,8 @@ describe('ModifiersService', () => {
   };
 
   const mockProductResponseDto = {
+    isOutOfStock: false,
+    isLowStock: false,
     id: mockProduct.id!,
     name: mockProduct.name!,
     sku: mockProduct.sku!,
@@ -98,6 +100,7 @@ describe('ModifiersService', () => {
   };
 
   const mockModifierResponseDto: ModifierResponseDto = {
+    isActive: true,
     id: mockModifier.id!,
     name: mockModifier.name!,
     priceDelta: mockModifier.priceDelta!,
