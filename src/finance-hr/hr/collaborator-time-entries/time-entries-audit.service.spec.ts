@@ -88,6 +88,13 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
     }).compile();
 
     service = module.get(CollaboratorTimeEntriesService);
+
+    // the service checks that company, merchant and collaborator belong together
+    merchantRepo.findOne.mockResolvedValue({ id: MERCHANT_ID, companyId: 1 });
+    collaboratorRepo.findOne.mockResolvedValue({
+      id: 4,
+      merchant_id: MERCHANT_ID,
+    });
   });
 
   afterEach(() => {
@@ -153,7 +160,7 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
 
     const prime = () => {
       companyRepo.findOne.mockResolvedValue({ id: 1 });
-      merchantRepo.findOne.mockResolvedValue({ id: MERCHANT_ID });
+      merchantRepo.findOne.mockResolvedValue({ id: MERCHANT_ID, companyId: 1 });
       // The service validates that the collaborator is from the same merchant.
       collaboratorRepo.findOne.mockResolvedValue({
         id: 4,
@@ -381,6 +388,25 @@ describe('CollaboratorTimeEntriesService · punch rules & audit', () => {
       await expect(service.revisions(404, MERCHANT_ID)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('ownership', () => {
+    it('a merchant user cannot move a time entry to another merchant', async () => {
+      timeEntryRepo.findOne.mockResolvedValue(entry());
+
+      await expect(
+        service.update(42, { merchant_id: 99 }, MERCHANT_ID, SUPERVISOR_ID),
+      ).rejects.toThrow('A time entry cannot be moved to another merchant');
+    });
+
+    it("rejects pointing the entry at another merchant's shift", async () => {
+      timeEntryRepo.findOne.mockResolvedValue(entry());
+      shiftRepo.findOne.mockResolvedValue({ id: 5, merchantId: 99 });
+
+      await expect(
+        service.update(42, { shift_id: 5 }, MERCHANT_ID, SUPERVISOR_ID),
+      ).rejects.toThrow('Shift does not belong to the given merchant');
     });
   });
 });

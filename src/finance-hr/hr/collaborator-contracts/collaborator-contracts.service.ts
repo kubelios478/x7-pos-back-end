@@ -259,6 +259,15 @@ export class CollaboratorContractsService {
       );
     }
 
+    await this.assertConsistentOwner(
+      {
+        company_id: dto.company_id,
+        merchant_id: dto.merchant_id,
+        collaborator_id: dto.collaborator_id,
+      },
+      authenticatedUserMerchantId,
+    );
+
     if (dto.active !== false) {
       this.assertNoOverlap(
         await this.blockingActiveContract(dto.collaborator_id),
@@ -495,6 +504,7 @@ export class CollaboratorContractsService {
       contract.collaborator_id = dto.collaborator_id;
       contract.collaborator = collaborator;
     }
+    await this.assertConsistentOwner(contract, authenticatedUserMerchantId);
 
     const compensation = this.resolveCompensation(dto, contract);
     contract.pay_frequency = compensation.pay_frequency;
@@ -616,5 +626,44 @@ export class CollaboratorContractsService {
       message: 'Collaborator contract deleted successfully',
       data: snapshot,
     };
+  }
+
+  /**
+   * A contract stays inside one merchant: its company is that merchant's company and its
+   * collaborator works there. Merchant users cannot move it to another merchant.
+   */
+  private async assertConsistentOwner(
+    row: { company_id: number; merchant_id: number; collaborator_id: number },
+    authenticatedUserMerchantId: number | undefined,
+  ): Promise<void> {
+    if (
+      authenticatedUserMerchantId != null &&
+      row.merchant_id !== authenticatedUserMerchantId
+    ) {
+      throw new ForbiddenException(
+        'A contract cannot be moved to another merchant',
+      );
+    }
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: row.merchant_id },
+    });
+    if (!merchant) {
+      throw new NotFoundException(
+        `Merchant with ID ${row.merchant_id} not found`,
+      );
+    }
+    if (merchant.companyId !== row.company_id) {
+      throw new BadRequestException(
+        "The company does not match the merchant's company",
+      );
+    }
+    const collaborator = await this.collaboratorRepo.findOne({
+      where: { id: row.collaborator_id },
+    });
+    if (!collaborator || collaborator.merchant_id !== row.merchant_id) {
+      throw new BadRequestException(
+        'Collaborator does not belong to the given merchant',
+      );
+    }
   }
 }
