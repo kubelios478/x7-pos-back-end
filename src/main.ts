@@ -6,6 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe, BadRequestException, Logger } from '@nestjs/common';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import type { Request, Response } from 'express';
 import * as dotenv from 'dotenv';
 import { useContainer } from 'class-validator';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
@@ -129,6 +130,11 @@ async function bootstrap() {
     fs.mkdirSync(uploadsPath, { recursive: true });
   }
 
+  // Signed contracts used to live here; they are personal data and are no longer public
+  // (served through signed links, see contract-document-url.ts).
+  app.use('/uploads/contracts', (_req: Request, res: Response) =>
+    res.status(404).end(),
+  );
   app.useStaticAssets(uploadsPath, {
     prefix: '/uploads/',
   });
