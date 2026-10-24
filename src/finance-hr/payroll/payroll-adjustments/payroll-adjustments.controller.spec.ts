@@ -2,8 +2,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PayrollAdjustmentsController } from './payroll-adjustments.controller';
 import { PayrollAdjustmentsService } from './payroll-adjustments.service';
 import { AdjustmentType } from './constants/adjustment-type.enum';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('PayrollAdjustmentsController', () => {
+  const merchantUser = {
+    id: 1,
+    email: 'admin@merchant.dev',
+    role: UserRole.MERCHANT_ADMIN,
+    merchant: { id: 7, companyId: 3 },
+  } as AuthenticatedUser;
+
   let controller: PayrollAdjustmentsController;
 
   const mockPayrollAdjustmentsService = {
@@ -48,8 +57,8 @@ describe('PayrollAdjustmentsController', () => {
         data: { id: 1, ...dto },
       });
 
-      await controller.create(dto);
-      expect(mockPayrollAdjustmentsService.create).toHaveBeenCalledWith(dto);
+      await controller.create(dto, merchantUser);
+      expect(mockPayrollAdjustmentsService.create).toHaveBeenCalledWith(dto, 7);
     });
   });
 
@@ -61,8 +70,11 @@ describe('PayrollAdjustmentsController', () => {
         data: [],
         paginationMeta: {},
       });
-      await controller.findAll(query);
-      expect(mockPayrollAdjustmentsService.findAll).toHaveBeenCalledWith(query);
+      await controller.findAll(query, merchantUser);
+      expect(mockPayrollAdjustmentsService.findAll).toHaveBeenCalledWith(
+        query,
+        7,
+      );
     });
   });
 
@@ -72,8 +84,8 @@ describe('PayrollAdjustmentsController', () => {
         statusCode: 200,
         data: { id: 1 },
       });
-      await controller.findOne(1);
-      expect(mockPayrollAdjustmentsService.findOne).toHaveBeenCalledWith(1);
+      await controller.findOne(1, merchantUser);
+      expect(mockPayrollAdjustmentsService.findOne).toHaveBeenCalledWith(1, 7);
     });
   });
 });

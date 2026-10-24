@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -51,7 +52,30 @@ export class PayrollRunsService {
     };
   }
 
-  async create(dto: CreatePayrollRunDto): Promise<OnePayrollRunResponseDto> {
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null ? { merchant_id: scopedMerchantId } : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { merchant_id?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.merchant_id != null && dto.merchant_id !== scopedMerchantId) {
+      throw new ForbiddenException(
+        'You can only access payroll data of your merchant',
+      );
+    }
+  }
+
+  async create(
+    dto: CreatePayrollRunDto,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollRunResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+
     const company = await this.companyRepo.findOne({
       where: { id: dto.company_id },
     });
@@ -67,6 +91,11 @@ export class PayrollRunsService {
     if (!merchant) {
       throw new NotFoundException(
         `Merchant with ID ${dto.merchant_id} not found`,
+      );
+    }
+    if (merchant.companyId !== dto.company_id) {
+      throw new BadRequestException(
+        `Merchant ${dto.merchant_id} does not belong to company ${dto.company_id}`,
       );
     }
 
@@ -96,6 +125,7 @@ export class PayrollRunsService {
 
   async findAll(
     query: GetPayrollRunsQueryDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedPayrollRunsResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -106,6 +136,10 @@ export class PayrollRunsService {
     const qb = this.runRepo
       .createQueryBuilder('run')
       .where('run.deleted_at IS NULL');
+
+    if (scopedMerchantId != null) {
+      qb.andWhere('run.merchant_id = :scopedMerchantId', { scopedMerchantId });
+    }
 
     if (query.company_id != null) {
       qb.andWhere('run.company_id = :companyId', {
@@ -150,13 +184,16 @@ export class PayrollRunsService {
     };
   }
 
-  async findOne(id: number): Promise<OnePayrollRunResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollRunResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll run ID');
     }
 
     const run = await this.runRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!run) {
       throw new NotFoundException(`Payroll run with ID ${id} not found`);
@@ -172,17 +209,20 @@ export class PayrollRunsService {
   async update(
     id: number,
     dto: UpdatePayrollRunDto,
+    scopedMerchantId?: number,
   ): Promise<OnePayrollRunResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll run ID');
     }
 
     const run = await this.runRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!run) {
       throw new NotFoundException(`Payroll run with ID ${id} not found`);
     }
+
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
     if (dto.company_id != null) {
       const company = await this.companyRepo.findOne({
@@ -205,6 +245,16 @@ export class PayrollRunsService {
         );
       }
       run.merchant_id = dto.merchant_id;
+    }
+    if (dto.company_id != null || dto.merchant_id != null) {
+      const merchant = await this.merchantRepo.findOne({
+        where: { id: run.merchant_id },
+      });
+      if (merchant?.companyId !== run.company_id) {
+        throw new BadRequestException(
+          `Merchant ${run.merchant_id} does not belong to company ${run.company_id}`,
+        );
+      }
     }
     if (dto.period_start != null) run.period_start = new Date(dto.period_start);
     if (dto.period_end != null) run.period_end = new Date(dto.period_end);
@@ -232,13 +282,16 @@ export class PayrollRunsService {
     };
   }
 
-  async remove(id: number): Promise<OnePayrollRunResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollRunResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll run ID');
     }
 
     const run = await this.runRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!run) {
       throw new NotFoundException(`Payroll run with ID ${id} not found`);

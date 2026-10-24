@@ -44,6 +44,9 @@ import { CreateQRMenuItemDto } from './dto/create-qr-menu-item.dto';
 import { PaginatedQRMenuItemResponseDto } from './dto/paginated-qr-menu-item-response.dto';
 import { QueryQRMenuItemDto } from './dto/query-qr-menu-item.dto';
 import { UpdateQRMenuItemDto } from './dto/update-qr-menu-item.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Commerce - QR-Code - QR Menu Item')
 @Controller('qr-menu-items')
@@ -138,8 +141,9 @@ export class QRMenuItemController {
   })
   async create(
     @Body() dto: CreateQRMenuItemDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuItemResponseDto> {
-    return this.qrMenuItemService.create(dto);
+    return this.qrMenuItemService.create(dto, merchantScopeOf(user));
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -191,8 +195,9 @@ export class QRMenuItemController {
   })
   async findAll(
     @Query() query: QueryQRMenuItemDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedQRMenuItemResponseDto> {
-    return this.qrMenuItemService.findAll(query);
+    return this.qrMenuItemService.findAll(query, merchantScopeOf(user));
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -290,11 +295,15 @@ export class QRMenuItemController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuItemResponseDto> {
     if (id <= 0) {
       throw new BadRequestException('Invalid ID. Must be a positive number.');
     }
-    const qrMenuItem = await this.qrMenuItemService.findOne(id);
+    const qrMenuItem = await this.qrMenuItemService.findOne(
+      id,
+      merchantScopeOf(user),
+    );
     return qrMenuItem;
   }
   @Patch(':id')
@@ -401,8 +410,9 @@ export class QRMenuItemController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateQRMenuItemDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuItemResponseDto> {
-    return this.qrMenuItemService.update(id, dto);
+    return this.qrMenuItemService.update(id, dto, merchantScopeOf(user));
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -500,7 +510,8 @@ export class QRMenuItemController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuItemResponseDto> {
-    return this.qrMenuItemService.remove(id);
+    return this.qrMenuItemService.remove(id, merchantScopeOf(user));
   }
 }

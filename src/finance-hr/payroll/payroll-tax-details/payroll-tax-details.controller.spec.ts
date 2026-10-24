@@ -1,8 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PayrollTaxDetailsController } from './payroll-tax-details.controller';
 import { PayrollTaxDetailsService } from './payroll-tax-details.service';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('PayrollTaxDetailsController', () => {
+  const merchantUser = {
+    id: 1,
+    email: 'admin@merchant.dev',
+    role: UserRole.MERCHANT_ADMIN,
+    merchant: { id: 7, companyId: 3 },
+  } as AuthenticatedUser;
+
   let controller: PayrollTaxDetailsController;
 
   const mockPayrollTaxDetailsService = {
@@ -47,8 +56,8 @@ describe('PayrollTaxDetailsController', () => {
         message: 'Payroll tax detail created successfully',
         data: { id: 1, ...dto },
       });
-      await controller.create(dto);
-      expect(mockPayrollTaxDetailsService.create).toHaveBeenCalledWith(dto);
+      await controller.create(dto, merchantUser);
+      expect(mockPayrollTaxDetailsService.create).toHaveBeenCalledWith(dto, 7);
     });
   });
 
@@ -60,8 +69,11 @@ describe('PayrollTaxDetailsController', () => {
         data: [],
         paginationMeta: {},
       });
-      await controller.findAll(query);
-      expect(mockPayrollTaxDetailsService.findAll).toHaveBeenCalledWith(query);
+      await controller.findAll(query, merchantUser);
+      expect(mockPayrollTaxDetailsService.findAll).toHaveBeenCalledWith(
+        query,
+        7,
+      );
     });
   });
 });

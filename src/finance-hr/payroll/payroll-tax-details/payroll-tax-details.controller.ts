@@ -42,6 +42,9 @@ import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { PayrollTaxDetailSortBy } from './dto/get-payroll-tax-details-query.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Finance & HR - Payroll - Payroll tax details')
 @ApiBearerAuth()
@@ -78,8 +81,9 @@ export class PayrollTaxDetailsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async create(
     @Body() dto: CreatePayrollTaxDetailDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollTaxDetailResponseDto> {
-    return this.payrollTaxDetailsService.create(dto);
+    return this.payrollTaxDetailsService.create(dto, merchantScopeOf(user));
   }
 
   @Get()
@@ -105,8 +109,9 @@ export class PayrollTaxDetailsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findAll(
     @Query() query: GetPayrollTaxDetailsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedPayrollTaxDetailsResponseDto> {
-    return this.payrollTaxDetailsService.findAll(query);
+    return this.payrollTaxDetailsService.findAll(query, merchantScopeOf(user));
   }
 
   @Get(':id')
@@ -130,8 +135,9 @@ export class PayrollTaxDetailsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollTaxDetailResponseDto> {
-    return this.payrollTaxDetailsService.findOne(id);
+    return this.payrollTaxDetailsService.findOne(id, merchantScopeOf(user));
   }
 
   @Put(':id')
@@ -159,8 +165,9 @@ export class PayrollTaxDetailsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePayrollTaxDetailDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollTaxDetailResponseDto> {
-    return this.payrollTaxDetailsService.update(id, dto);
+    return this.payrollTaxDetailsService.update(id, dto, merchantScopeOf(user));
   }
 
   @Delete(':id')
@@ -184,7 +191,8 @@ export class PayrollTaxDetailsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollTaxDetailResponseDto> {
-    return this.payrollTaxDetailsService.remove(id);
+    return this.payrollTaxDetailsService.remove(id, merchantScopeOf(user));
   }
 }
