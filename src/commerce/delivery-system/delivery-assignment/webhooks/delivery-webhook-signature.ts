@@ -1,39 +1,24 @@
 //src/commerce/delivery-system/delivery-assignment/webhooks/delivery-webhook-signature.ts
 //
 // LIMITACIÓN: DoorDash y Uber firman sus webhooks con formatos de cabecera propios (y
-// distintos entre sí). Como aún no hay contrato con ninguno, los dos usan por ahora un
-// formato GENÉRICO documentado:
-//   x-signature: sha256=<hex HMAC-SHA256 del cuerpo crudo con el secreto del proveedor>
+// distintos entre sí). Como aún no hay contrato con ninguno, los dos usan por ahora el
+// formato GENÉRICO de `webhook-signature.util` (x-signature: sha256=<hex HMAC-SHA256>).
 // Cada proveedor tiene su propia función `verify`, así que el formato real se enchufa
 // cambiando sólo esa función.
-import { createHmac, timingSafeEqual } from 'crypto';
+import {
+  SignatureVerifier,
+  verifyGenericHmacSha256,
+} from 'src/common/utils/webhook-signature.util';
 import { AssignmentType } from '../constants/assignment-type.enum';
 
-export type WebhookHeaders = Record<string, string | string[] | undefined>;
-export type SignatureVerifier = (
-  rawBody: Buffer,
-  headers: WebhookHeaders,
-  secret: string,
-) => boolean;
-
-export const GENERIC_SIGNATURE_HEADER = 'x-signature';
-
-export const verifyGenericHmacSha256: SignatureVerifier = (
-  rawBody,
-  headers,
-  secret,
-) => {
-  const header = headers[GENERIC_SIGNATURE_HEADER];
-  if (typeof header !== 'string') return false;
-  const match = /^sha256=([0-9a-f]{64})$/i.exec(header.trim());
-  if (!match) return false;
-
-  const expected = createHmac('sha256', secret).update(rawBody).digest();
-  const provided = Buffer.from(match[1], 'hex');
-  // timingSafeEqual lanza si las longitudes difieren: se comprueba antes.
-  if (provided.length !== expected.length) return false;
-  return timingSafeEqual(provided, expected);
-};
+export {
+  GENERIC_SIGNATURE_HEADER,
+  verifyGenericHmacSha256,
+} from 'src/common/utils/webhook-signature.util';
+export type {
+  SignatureVerifier,
+  WebhookHeaders,
+} from 'src/common/utils/webhook-signature.util';
 
 export interface WebhookProviderConfig {
   assignmentType: AssignmentType;

@@ -36,6 +36,30 @@ function webhookPayloadRecord(
   };
 }
 
+/** Calendar day of a `date` column, which pg may hand back as a string or a Date. */
+function isoDay(value: Date | string): string {
+  return typeof value === 'string'
+    ? value.slice(0, 10)
+    : value.toISOString().slice(0, 10);
+}
+
+/** Next end date after one billing cycle, as 'YYYY-MM-DD' (no time zone involved). */
+function addBillingCycle(day: string, billingCycle?: string | null): string {
+  const [year, month, dayOfMonth] = day.split('-').map(Number);
+  const cycle = (billingCycle ?? 'monthly').toLowerCase();
+  const months = cycle === 'yearly' || cycle === 'annual' ? 12 : 1;
+  // Day 0 of the following month is the last day of the target month: Jan 31 → Feb 28.
+  const lastDay = new Date(Date.UTC(year, month - 1 + months + 1, 0));
+  const target = new Date(
+    Date.UTC(
+      year,
+      month - 1 + months,
+      Math.min(dayOfMonth, lastDay.getUTCDate()),
+    ),
+  );
+  return target.toISOString().slice(0, 10);
+}
+
 @Injectable()
 export class SubscriptionPaymentsService {
   constructor(
@@ -138,6 +162,12 @@ export class SubscriptionPaymentsService {
       if (!payment) {
         throw new NotFoundException('Payment not found');
       }
+      // Gateways retry: only a pending intent is processed, so a repeated event can
+      // neither extend the subscription twice nor overturn a settled payment.
+      if (payment.status !== 'pending') {
+        await queryRunner.commitTransaction();
+        return { statusCode: 200, message: 'Payment already processed' };
+      }
       if (!payment.company_id) {
         throw new BadRequestException('Payment is missing company context');
       }
@@ -152,21 +182,23 @@ export class SubscriptionPaymentsService {
       }
       payment.plan = plan;
 
-      const expectedAmount = Number(payment.plan.price);
-      const paidAmount = Number(dto.amount);
-      const sameAmount = Math.abs(expectedAmount - paidAmount) < 0.00001;
-      if (!sameAmount) {
-        payment.status = 'rejected';
-        payment.external_transaction_id = dto.externalTransactionId;
-        payment.raw_payload = webhookPayloadRecord(dto);
-        await queryRunner.manager.save(SubscriptionPayment, payment);
-        throw new BadRequestException('Paid amount does not match plan price');
-      }
-
       payment.external_transaction_id = dto.externalTransactionId;
-      payment.currency = dto.currency;
-      payment.amount = paidAmount;
       payment.raw_payload = webhookPayloadRecord(dto);
+
+      // Compared with what the intent recorded, not the plan's current price.
+      const sameAmount =
+        Math.abs(Number(payment.amount) - Number(dto.amount)) < 0.00001;
+      const sameCurrency =
+        payment.currency.toUpperCase() === dto.currency.toUpperCase();
+      if (!sameAmount || !sameCurrency) {
+        payment.status = 'rejected';
+        await queryRunner.manager.save(SubscriptionPayment, payment);
+        // Committed before answering, so the rejection is not rolled back.
+        await queryRunner.commitTransaction();
+        throw new BadRequestException(
+          'Paid amount or currency does not match the payment intent',
+        );
+      }
 
       if (dto.status === 'rejected') {
         payment.status = 'rejected';
@@ -178,34 +210,26 @@ export class SubscriptionPaymentsService {
       payment.status = 'paid';
       await queryRunner.manager.save(SubscriptionPayment, payment);
 
-      // Activate/extend company subscription.
-      const today = new Date();
+      // Activate/extend company subscription. Renewing before expiry keeps the days left.
+      const today = isoDay(new Date());
       const existing = await queryRunner.manager.findOne(CompanySubscription, {
         where: { company: { id: payment.company_id } },
         order: { startDate: 'DESC' as const, id: 'DESC' as const },
       });
-
-      const baseDate =
-        existing?.endDate && existing.endDate >= today
-          ? existing.endDate
-          : today;
-
-      const nextEndDate = new Date(baseDate);
-      const cycle = (payment.plan.billingCycle ?? 'monthly').toLowerCase();
-      if (cycle === 'monthly') {
-        nextEndDate.setMonth(nextEndDate.getMonth() + 1);
-      } else if (cycle === 'yearly' || cycle === 'annual') {
-        nextEndDate.setFullYear(nextEndDate.getFullYear() + 1);
-      } else {
-        nextEndDate.setMonth(nextEndDate.getMonth() + 1);
-      }
+      const currentEnd = existing?.endDate ? isoDay(existing.endDate) : null;
+      const baseDay = currentEnd && currentEnd >= today ? currentEnd : today;
+      // Strings, so TypeORM stores the calendar day as is in any server time zone.
+      const nextEndDate = addBillingCycle(
+        baseDay,
+        payment.plan.billingCycle,
+      ) as unknown as Date;
 
       const subscription = queryRunner.manager.create(CompanySubscription, {
         id: existing?.id,
         company_id: payment.company_id,
         company: { id: payment.company_id } as Company,
         plan: { id: payment.plan_id } as SubscriptionPlan,
-        startDate: existing?.startDate ?? today,
+        startDate: existing?.startDate ?? (today as unknown as Date),
         endDate: nextEndDate,
         renewalDate: nextEndDate,
         status: 'active',
@@ -216,7 +240,9 @@ export class SubscriptionPaymentsService {
       await queryRunner.commitTransaction();
       return { statusCode: 200, message: 'Payment processed successfully' };
     } catch (e) {
-      await queryRunner.rollbackTransaction();
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
       throw e;
     } finally {
       await queryRunner.release();
