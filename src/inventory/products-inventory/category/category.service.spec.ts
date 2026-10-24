@@ -112,6 +112,8 @@ describe('CategoryService', () => {
           // Dependency that the service won and this spec never registered.
           provide: ProductsService,
           useValue: {
+            // remove() also hides the products of the category tree
+            softRemoveByCategoryId: jest.fn().mockResolvedValue(undefined),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -163,6 +165,7 @@ describe('CategoryService', () => {
       expect(categoryRepo.create).toHaveBeenCalledWith({
         name: mockCreateCategoryDto.name,
         merchantId: mockMerchant.id,
+        isActive: true,
         parentId: mockCreateCategoryDto.parentId,
       });
       expect(categoryRepo.save).toHaveBeenCalledWith(mockCategory);
@@ -172,6 +175,7 @@ describe('CategoryService', () => {
         data: {
           id: mockCategory.id,
           name: mockCategory.name,
+          isActive: mockCategory.isActive,
           merchant: { id: mockMerchant.id, name: mockMerchant.name }, // Ensure merchant is an object with id and name
           parents: [],
         },
@@ -212,6 +216,7 @@ describe('CategoryService', () => {
         data: {
           id: activeCategory.id,
           name: activeCategory.name,
+          isActive: activeCategory.isActive,
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           parents: [],
         },
@@ -281,6 +286,7 @@ describe('CategoryService', () => {
       expect(categoryRepo.create).toHaveBeenCalledWith({
         name: mockCreateCategoryDto.name,
         merchantId: mockMerchant.id,
+        isActive: true,
         parentId: mockCreateCategoryDto.parentId,
       });
       expect(categoryRepo.save).toHaveBeenCalledWith(mockCategory);
@@ -304,10 +310,6 @@ describe('CategoryService', () => {
         'category.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'category.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'category.name',
         'ASC',
@@ -322,6 +324,7 @@ describe('CategoryService', () => {
           {
             id: mockCategory.id,
             name: mockCategory.name,
+            isActive: mockCategory.isActive,
             merchant: mockMerchant,
             parents: [],
           },
@@ -349,10 +352,6 @@ describe('CategoryService', () => {
         'category.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'category.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'category.name',
         'ASC',
@@ -376,7 +375,6 @@ describe('CategoryService', () => {
         where: {
           id: mockCategory.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
         relations: ['merchant'],
       });
@@ -387,6 +385,7 @@ describe('CategoryService', () => {
         data: {
           id: mockCategory.id,
           name: mockCategory.name,
+          isActive: mockCategory.isActive,
           merchant: mockMerchant,
           parents: [],
         },
@@ -405,7 +404,6 @@ describe('CategoryService', () => {
         where: {
           id: id_not_found,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
         relations: ['merchant'],
       });
@@ -444,7 +442,6 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenCalledWith({
         id: mockCategory.id,
         merchantId: mockCategory.merchant?.id,
-        isActive: true,
       });
       expect(categoryRepo.findOne).toHaveBeenNthCalledWith(1, {
         where: {
@@ -457,7 +454,6 @@ describe('CategoryService', () => {
         where: {
           id: mockCategory.id,
           merchantId: mockCategory.merchant!.id,
-          isActive: true,
         },
         relations: ['merchant'],
       });
@@ -474,6 +470,7 @@ describe('CategoryService', () => {
         data: {
           id: updatedCategory.id,
           name: updatedCategory.name,
+          isActive: updatedCategory.isActive,
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           parents: [],
         },
@@ -495,7 +492,6 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenCalledWith({
         id: idNotFound,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(categoryRepo.save).not.toHaveBeenCalled();
     });
@@ -520,7 +516,6 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenCalledWith({
         id: mockCategory.id,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(categoryRepo.findOne).toHaveBeenCalledWith({
         where: {
@@ -551,9 +546,9 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenNthCalledWith(1, {
         id: mockCategory.id,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       // Verification that parent was not found
+      // the new parent must still be an active category
       expect(categoryRepo.findOneBy).toHaveBeenNthCalledWith(2, {
         id: dtoWithInvalidParent.parentId,
         merchantId: mockMerchant.id,
@@ -615,7 +610,6 @@ describe('CategoryService', () => {
         where: {
           id: mockCategory.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
         relations: ['merchant'],
       });
@@ -627,6 +621,7 @@ describe('CategoryService', () => {
         data: {
           id: inactiveCategory.id,
           name: inactiveCategory.name,
+          isActive: inactiveCategory.isActive,
           merchant: inactiveCategory.merchant,
           parents: [],
         },
@@ -745,7 +740,6 @@ describe('CategoryService', () => {
         where: {
           id: parentCategory.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
         relations: ['merchant'],
       });
@@ -756,6 +750,7 @@ describe('CategoryService', () => {
         data: {
           id: expectedParentSaved.id,
           name: expectedParentSaved.name,
+          isActive: expectedParentSaved.isActive,
           merchant: expectedParentSaved.merchant,
           parents: [],
         },
