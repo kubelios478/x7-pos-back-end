@@ -91,6 +91,7 @@ export class KitchenOrderItemService {
         where: {
           id: createKitchenOrderItemDto.orderItemId,
           status: OrderItemStatus.ACTIVE,
+          order: { merchant_id: authenticatedUserMerchantId },
         },
       });
 
@@ -100,7 +101,10 @@ export class KitchenOrderItemService {
     }
 
     const product = await this.productRepository.findOne({
-      where: { id: createKitchenOrderItemDto.productId },
+      where: {
+        id: createKitchenOrderItemDto.productId,
+        merchantId: authenticatedUserMerchantId,
+      },
     });
 
     if (!product) {
@@ -109,7 +113,10 @@ export class KitchenOrderItemService {
 
     if (createKitchenOrderItemDto.variantId) {
       const variant = await this.variantRepository.findOne({
-        where: { id: createKitchenOrderItemDto.variantId },
+        where: {
+          id: createKitchenOrderItemDto.variantId,
+          product: { merchantId: authenticatedUserMerchantId },
+        },
       });
 
       if (!variant) {
@@ -518,6 +525,7 @@ export class KitchenOrderItemService {
           where: {
             id: updateKitchenOrderItemDto.orderItemId,
             status: OrderItemStatus.ACTIVE,
+            order: { merchant_id: authenticatedUserMerchantId },
           },
         });
 
@@ -531,7 +539,10 @@ export class KitchenOrderItemService {
 
     if (updateKitchenOrderItemDto.productId !== undefined) {
       const product = await this.productRepository.findOne({
-        where: { id: updateKitchenOrderItemDto.productId },
+        where: {
+          id: updateKitchenOrderItemDto.productId,
+          merchantId: authenticatedUserMerchantId,
+        },
       });
 
       if (!product) {
@@ -543,7 +554,10 @@ export class KitchenOrderItemService {
     if (updateKitchenOrderItemDto.variantId !== undefined) {
       if (updateKitchenOrderItemDto.variantId !== null) {
         const variant = await this.variantRepository.findOne({
-          where: { id: updateKitchenOrderItemDto.variantId },
+          where: {
+            id: updateKitchenOrderItemDto.variantId,
+            product: { merchantId: authenticatedUserMerchantId },
+          },
         });
 
         if (!variant) {

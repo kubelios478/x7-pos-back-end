@@ -413,6 +413,34 @@ describe('KitchenOrderService', () => {
     });
   });
 
+  describe('cancelKitchenOrder', () => {
+    it("cannot cancel another merchant's kitchen order (nor move its stock)", async () => {
+      jest.spyOn(kitchenOrderRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.cancelKitchenOrder(
+          42,
+          {} as any,
+          {
+            id: 7,
+            merchant: { id: 1 },
+          } as any,
+        ),
+      ).rejects.toThrow('Kitchen order not found');
+      expect(kitchenOrderRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 42, merchant_id: 1 } }),
+      );
+    });
+
+    it('requires a merchant', async () => {
+      await expect(
+        service.cancelKitchenOrder(42, {} as any, { id: 7 } as any),
+      ).rejects.toThrow(
+        'You must be associated with a merchant to cancel kitchen orders',
+      );
+    });
+  });
+
   describe('remove', () => {
     it('should remove a kitchen order successfully', async () => {
       const deletedItem = {
