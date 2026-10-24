@@ -282,6 +282,7 @@ describe('PurchaseOrderItemService', () => {
       });
       expect(purchaseOrderItemRepo.create).toHaveBeenCalledWith({
         purchaseOrderId: createDtoWithoutVariant.purchaseOrderId,
+        locationId: createDtoWithoutVariant.locationId,
         productId: createDtoWithoutVariant.productId,
         variantId: undefined,
         quantity: createDtoWithoutVariant.quantity,
@@ -348,6 +349,7 @@ describe('PurchaseOrderItemService', () => {
       });
       expect(purchaseOrderItemRepo.create).toHaveBeenCalledWith({
         purchaseOrderId: mockCreatePurchaseOrderItemDto.purchaseOrderId,
+        locationId: mockCreatePurchaseOrderItemDto.locationId,
         productId: mockCreatePurchaseOrderItemDto.productId,
         variantId: mockCreatePurchaseOrderItemDto.variantId,
         quantity: mockCreatePurchaseOrderItemDto.quantity,

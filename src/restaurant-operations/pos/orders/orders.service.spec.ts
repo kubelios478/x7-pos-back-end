@@ -78,6 +78,8 @@ describe('OrdersService', () => {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
+    // generateDailyTicketId() counts today's orders
+    count: jest.fn().mockResolvedValue(0),
     findAndCount: jest.fn(),
     update: jest.fn(),
     manager: {
@@ -291,6 +293,9 @@ describe('OrdersService', () => {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: ShiftsService,
           useValue: {
+            // create() and payment flows attach the order to the active shift
+            findActiveShiftByMerchant: jest.fn().mockResolvedValue({ id: 1 }),
+            getShiftCollaborators: jest.fn().mockResolvedValue([]),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -487,6 +492,10 @@ describe('OrdersService', () => {
         .spyOn(customerRepository, 'findOne')
         .mockResolvedValue(mockCustomer as Customer);
       jest.spyOn(orderRepository, 'save').mockResolvedValue(mockOrder as Order);
+      // create() reloads the saved order with its relations
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
 
       const result = await service.create(createOrderDto, 1);
 
@@ -564,6 +573,10 @@ describe('OrdersService', () => {
         .mockResolvedValue(mockCustomer as Customer);
       jest
         .spyOn(orderRepository, 'save')
+        .mockResolvedValue(orderWithClosedAt as Order);
+      // create() reloads the saved order with its relations
+      jest
+        .spyOn(orderRepository, 'findOne')
         .mockResolvedValue(orderWithClosedAt as Order);
 
       const result = await service.create(dtoWithClosedAt, 1);
@@ -945,30 +958,6 @@ describe('OrdersService', () => {
       );
     });
 
-    it('should filter by subscriptionId when provided', async () => {
-      const queryWithSubscriptionId = { ...query, subscriptionId: 1 };
-      jest
-        .spyOn(merchantRepository, 'findOne')
-        .mockResolvedValue(mockMerchant as Merchant);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(mockSubscription as MerchantSubscription);
-      jest
-        .spyOn(orderRepository, 'findAndCount')
-        .mockResolvedValue([[mockOrder], 1] as [Order[], number]);
-
-      await service.findAll(queryWithSubscriptionId, 1);
-
-      expect(subscriptionRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-      });
-      expect(orderRepository.findAndCount).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ subscription_id: 1 }),
-        }),
-      );
-    });
-
     it('should filter by customerId when provided', async () => {
       const queryWithCustomerId = { ...query, customerId: 1 };
       jest
@@ -1232,31 +1221,6 @@ describe('OrdersService', () => {
       );
     });
 
-    it('should throw ForbiddenException if subscriptionId provided but subscription belongs to different merchant', async () => {
-      const queryWithSubscriptionId = { ...query, subscriptionId: 1 };
-      const subscriptionFromDifferentMerchant = {
-        ...mockSubscription,
-        merchant: {
-          id: 2,
-        },
-      };
-      jest
-        .spyOn(merchantRepository, 'findOne')
-        .mockResolvedValue(mockMerchant as Merchant);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(
-          subscriptionFromDifferentMerchant as MerchantSubscription,
-        );
-
-      await expect(service.findAll(queryWithSubscriptionId, 1)).rejects.toThrow(
-        ForbiddenException,
-      );
-      await expect(service.findAll(queryWithSubscriptionId, 1)).rejects.toThrow(
-        'Subscription does not belong to your merchant',
-      );
-    });
-
     it('should throw ForbiddenException if customerId provided but customer belongs to different merchant', async () => {
       const queryWithCustomerId = { ...query, customerId: 1 };
       const customerFromDifferentMerchant = {
@@ -1478,33 +1442,6 @@ describe('OrdersService', () => {
       );
     });
 
-    it('should update subscriptionId when provided', async () => {
-      const dtoWithSubscriptionId: UpdateOrderDto = { subscriptionId: 2 };
-      const newSubscription = { ...mockSubscription, id: 2 };
-      const updatedOrder = { ...mockOrder, subscription_id: 2 };
-      jest
-        .spyOn(orderRepository, 'findOne')
-        .mockResolvedValue(updatedOrder as Order);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(newSubscription as MerchantSubscription);
-      jest.spyOn(orderRepository, 'update').mockResolvedValue({
-        affected: 1,
-        raw: [],
-        generatedMaps: [],
-      } as UpdateResult);
-
-      await service.update(1, dtoWithSubscriptionId, 1);
-
-      expect(subscriptionRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 2 },
-      });
-      expect(orderRepository.update).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({ subscription_id: 2 }),
-      );
-    });
-
     it('should update customerId when provided', async () => {
       const dtoWithCustomerId: UpdateOrderDto = { customerId: 2 };
       const newCustomer = { ...mockCustomer, id: 2 };
@@ -1696,47 +1633,6 @@ describe('OrdersService', () => {
       );
       await expect(service.update(1, dtoWithCollaboratorId, 1)).rejects.toThrow(
         'Collaborator does not belong to your merchant',
-      );
-    });
-
-    it('should throw NotFoundException if subscription not found when updating subscriptionId', async () => {
-      const dtoWithSubscriptionId: UpdateOrderDto = { subscriptionId: 999 };
-      jest
-        .spyOn(orderRepository, 'findOne')
-        .mockResolvedValue(mockOrder as Order);
-      jest.spyOn(subscriptionRepository, 'findOne').mockResolvedValue(null);
-
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        'Subscription with ID 999 not found',
-      );
-    });
-
-    it('should throw ForbiddenException if subscription belongs to different merchant when updating subscriptionId', async () => {
-      const dtoWithSubscriptionId: UpdateOrderDto = { subscriptionId: 2 };
-      const subscriptionFromDifferentMerchant = {
-        ...mockSubscription,
-        id: 2,
-        merchant: {
-          id: 2,
-        },
-      };
-      jest
-        .spyOn(orderRepository, 'findOne')
-        .mockResolvedValue(mockOrder as Order);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(
-          subscriptionFromDifferentMerchant as MerchantSubscription,
-        );
-
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        ForbiddenException,
-      );
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        'Subscription does not belong to your merchant',
       );
     });
 

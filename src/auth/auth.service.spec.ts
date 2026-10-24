@@ -11,7 +11,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
@@ -31,7 +31,7 @@ import { UserRole } from '../platform-saas/users/constants/role.enum';
 import { getAllSubscriptionFeatureIds } from '../common/subscription/subscription-feature-ids';
 
 // Mock bcrypt
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
 // Mock uuid
@@ -460,7 +460,9 @@ describe('AuthService', () => {
       jest
         .spyOn(usersService, 'findByResetToken')
         .mockResolvedValue(mockUser as any);
-      mockedBcrypt.hash.mockRejectedValue(new Error('Hashing failed') as never);
+      mockedBcrypt.hash.mockRejectedValueOnce(
+        new Error('Hashing failed') as never,
+      );
 
       await expect(service.resetPassword(token, newPassword)).rejects.toThrow(
         'Hashing failed',

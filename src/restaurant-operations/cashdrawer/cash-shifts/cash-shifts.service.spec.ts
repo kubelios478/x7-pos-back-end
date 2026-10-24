@@ -58,6 +58,7 @@ describe('CashShiftsService', () => {
   const mockEntityManager = {
     findOne: jest.fn(),
     query: jest.fn(),
+    createQueryBuilder: jest.fn(),
     getRepository: jest.fn().mockReturnThis(),
     create: jest.fn(),
     save: jest.fn(),
@@ -145,7 +146,11 @@ describe('CashShiftsService', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    // reset (not just clear): queued mockResolvedValueOnce values must not leak into
+    // the next test.
+    jest.resetAllMocks();
+    mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
+    mockEntityManager.getRepository.mockReturnThis();
   });
 
   it('should be defined', () => {
@@ -183,12 +188,11 @@ describe('CashShiftsService', () => {
       };
       jest.spyOn(cashShiftRepo, 'create').mockReturnValue(savedShift as any);
       jest.spyOn(cashShiftRepo, 'save').mockResolvedValue(savedShift as any);
-      // Exactly 3 queued values for the 3 real cashShiftRepo.findOne calls this
-      // path makes, in order: the per-collaborator guard, the per-drawer guard,
-      // and the post-save refetch-with-relations.
+      // Exactly 2 queued values for the 2 real cashShiftRepo.findOne calls this
+      // path makes, in order: the per-drawer guard and the post-save
+      // refetch-with-relations.
       jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValueOnce(null) // collaborator guard
         .mockResolvedValueOnce(null) // drawer guard
         .mockResolvedValueOnce({
           ...savedShift,
@@ -249,12 +253,18 @@ describe('CashShiftsService', () => {
       } as any);
       jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null) // drawer guard: this drawer is free
         .mockResolvedValueOnce({
           id: 99,
           status: CashShiftStatus.OPEN,
           openedByCollaborator: mockCollaborator,
-        } as any);
+        } as any); // post-save refetch
+      jest
+        .spyOn(cashShiftRepo, 'create')
+        .mockReturnValue({ id: 99, status: CashShiftStatus.OPEN } as any);
+      jest
+        .spyOn(cashShiftRepo, 'save')
+        .mockResolvedValue({ id: 99, status: CashShiftStatus.OPEN } as any);
 
       const result = await service.openShift(createDto, activeUser);
       expect(result.statusCode).toBe(201);
@@ -266,7 +276,6 @@ describe('CashShiftsService', () => {
         .mockResolvedValue(mockCollaborator as any);
       jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValueOnce(null) // collaborator guard
         .mockResolvedValueOnce({ id: 42, status: CashShiftStatus.OPEN } as any); // drawer guard
 
       // A single invocation, inspected once: two separate `await expect(...)`
@@ -509,6 +518,16 @@ describe('CashShiftsService', () => {
   });
 
   describe('addManualTransaction', () => {
+    // Query builder returning the till's live balance for the locked shift.
+    const liveBalanceQuery = (liveBalance: string) => ({
+      leftJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ liveBalance }),
+    });
+
     const manualDto: ManualCashTransactionDto = {
       amount: 50,
       type: CashShiftMovementType.OUT,
@@ -534,7 +553,9 @@ describe('CashShiftsService', () => {
         .mockResolvedValue({ id: 5, merchant_id: 10 } as any);
 
       mockEntityManager.findOne.mockResolvedValue(activeShift);
-      mockEntityManager.query.mockResolvedValue([{ balance: '120' }]);
+      mockEntityManager.createQueryBuilder.mockReturnValue(
+        liveBalanceQuery('120'),
+      );
       jest
         .spyOn(cashFlowService, 'addMovement')
         .mockResolvedValue({ id: 1, amount: 50, type: 'withdrawal' } as any);
@@ -556,7 +577,9 @@ describe('CashShiftsService', () => {
         .mockResolvedValue({ id: 5, merchant_id: 10 } as any);
 
       mockEntityManager.findOne.mockResolvedValue(activeShift);
-      mockEntityManager.query.mockResolvedValue([{ balance: '30' }]);
+      mockEntityManager.createQueryBuilder.mockReturnValue(
+        liveBalanceQuery('30'),
+      );
 
       await expect(
         service.addManualTransaction(99, manualDto, 10),

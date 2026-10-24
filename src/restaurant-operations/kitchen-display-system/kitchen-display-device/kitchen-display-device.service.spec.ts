@@ -210,7 +210,7 @@ describe('KitchenDisplayDeviceService', () => {
       await expect(
         service.create(createKitchenDisplayDeviceDto, 1),
       ).rejects.toThrow(
-        'A device with this identifier already exists for your merchant',
+        "A device with identifier 'DEV-001' is already paired in this store.",
       );
     });
   });
