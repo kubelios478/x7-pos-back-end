@@ -1,3 +1,6 @@
+import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
+import { KitchenEventLog } from '../kitchen-event-log/entities/kitchen-event-log.entity';
+import { KitchenDisplayDevice } from '../kitchen-display-device/entities/kitchen-display-device.entity';
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -70,6 +73,39 @@ describe('KitchenStationService', () => {
         {
           provide: getRepositoryToken(Merchant),
           useValue: mockMerchantRepository,
+        },
+        {
+          provide: getRepositoryToken(KitchenDisplayDevice),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(KitchenOrder),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(KitchenEventLog),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
         },
       ],
     }).compile();

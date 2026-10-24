@@ -1,3 +1,9 @@
+import { Supply } from 'src/inventory/supplies/entities/supply.entity';
+import { StockLevelMonitorService } from '../../stock-alerts/stock-level-monitor.service';
+import { MovementsService } from '../stocks/movements/movements.service';
+import { Movement } from '../stocks/movements/entities/movement.entity';
+import { Location } from '../stocks/locations/entities/location.entity';
+import { Item } from '../stocks/items/entities/item.entity';
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument*/
 import { Test, TestingModule } from '@nestjs/testing';
 import { PurchaseOrderService } from './purchase-order.service';
@@ -230,6 +236,62 @@ describe('PurchaseOrderService', () => {
         {
           provide: getRepositoryToken(PurchaseOrderItem),
           useValue: mockPurchaseOrderItemRepo,
+        },
+        {
+          provide: getRepositoryToken(Location),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Item),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Supply),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Movement),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: MovementsService,
+          useValue: {
+            create: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: StockLevelMonitorService,
+          useValue: {
+            evaluateStockItems: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

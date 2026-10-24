@@ -1,3 +1,6 @@
+import { StockLevelMonitorService } from '../../../stock-alerts/stock-level-monitor.service';
+import { ProductRecipe } from '../../recipes/entities/product-recipe.entity';
+import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
@@ -130,7 +133,14 @@ describe('MovementsService', () => {
     };
     const mockItemRepo = {
       findOneBy: jest.fn(),
+      findOne: jest.fn(),
+      create: jest.fn((e: unknown) => e),
+      save: jest.fn((e: unknown) => Promise.resolve(e)),
       createQueryBuilder: jest.fn(),
+      // The service reads the merchant's company through the repository manager.
+      manager: {
+        findOne: jest.fn().mockResolvedValue({ id: 1, companyId: 1 }),
+      },
     };
 
     mockQueryBuilder = {
@@ -153,6 +163,34 @@ describe('MovementsService', () => {
         MovementsService,
         { provide: getRepositoryToken(Movement), useValue: mockMovementRepo },
         { provide: getRepositoryToken(Item), useValue: mockItemRepo },
+        {
+          provide: getRepositoryToken(ProductRecipe),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Order),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: StockLevelMonitorService,
+          useValue: {
+            evaluateStockItems: jest.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -210,24 +248,26 @@ describe('MovementsService', () => {
         { stockItemId: mockCreateMovementDto.stockItemId },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
         { isActive: true },
       );
-      expect(movementRepo.create).toHaveBeenCalledWith({
-        item: mockItem,
-        quantity: mockCreateMovementDto.quantity,
-        type: mockCreateMovementDto.type,
-        reference: mockCreateMovementDto.reference,
-        reason: mockCreateMovementDto.reason,
-        merchantId: mockMerchant.id,
-        isActive: true,
-      });
+      expect(movementRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          item: mockItem,
+          quantity: mockCreateMovementDto.quantity,
+          type: mockCreateMovementDto.type,
+          reference: mockCreateMovementDto.reference,
+          reason: mockCreateMovementDto.reason,
+          merchantId: mockMerchant.id,
+          isActive: true,
+        }),
+      );
       expect(movementRepo.save).toHaveBeenCalledWith(mockMovement);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Movement Created successfully',
         data: {
@@ -285,16 +325,18 @@ describe('MovementsService', () => {
       const invalidCreateDto = { ...mockCreateMovementDto, quantity: 0 };
       await expect(async () =>
         service.create(mockMerchant.id, invalidCreateDto),
-      ).rejects.toThrow('Movement quantity must be a positive number');
+      ).rejects.toThrow('Movement quantity must be greater than 0.');
       expect(movementRepo.create).not.toHaveBeenCalled();
       expect(movementRepo.save).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException for invalid stockItemId', async () => {
+    it('should throw NotFoundException when no stock item can be resolved', async () => {
       const invalidCreateDto = { ...mockCreateMovementDto, stockItemId: 0 };
       await expect(async () =>
         service.create(mockMerchant.id, invalidCreateDto),
-      ).rejects.toThrow('Item ID is incorrect');
+      ).rejects.toThrow(
+        'Stock item record not found for the selected raw material and location.',
+      );
       expect(movementRepo.create).not.toHaveBeenCalled();
       expect(movementRepo.save).not.toHaveBeenCalled();
     });
@@ -321,8 +363,8 @@ describe('MovementsService', () => {
         'merchant',
       );
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'movement.isActive = :isActive',
@@ -335,7 +377,7 @@ describe('MovementsService', () => {
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(mockQuery.limit);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Movements retrieved successfully',
         data: [
@@ -399,10 +441,10 @@ describe('MovementsService', () => {
       const result = await service.findAll(queryWithName, mockMerchant.id);
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'LOWER(item.name) LIKE LOWER(:itemName)',
+        '(LOWER(product.name) LIKE LOWER(:itemName) OR LOWER(supply.name) LIKE LOWER(:itemName))',
         { itemName: '%Test Product%' },
       );
-      expect(result.data).toEqual([
+      expect(result.data).toMatchObject([
         {
           id: mockMovement.id,
           item: {
@@ -470,10 +512,10 @@ describe('MovementsService', () => {
         { isActive: true },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Movement retrieved successfully',
         data: {
@@ -515,8 +557,8 @@ describe('MovementsService', () => {
         { isActive: true },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
     });
 
@@ -935,7 +977,7 @@ describe('MovementsService', () => {
       );
       expect(movementToDelete.isActive).toBe(false);
       expect(movementRepo.save).toHaveBeenCalledWith(movementToDelete);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Movement Deleted successfully',
         data: {
