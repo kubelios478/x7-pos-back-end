@@ -9,6 +9,10 @@ import { RealtimeEventBusService } from './realtime-event-bus.service';
 import { RealtimeAuthService } from './realtime-auth.service';
 import { RealtimeTestController } from './realtime-test.controller';
 
+/** Dev/testing helper only: in production any user could push events to its company. */
+const devOnlyControllers =
+  process.env.NODE_ENV === 'production' ? [] : [RealtimeTestController];
+
 @Module({
   imports: [
     ConfigModule,
@@ -22,7 +26,7 @@ import { RealtimeTestController } from './realtime-test.controller';
       }),
     }),
   ],
-  controllers: [RealtimeTestController],
+  controllers: devOnlyControllers,
   providers: [RealtimeGateway, RealtimeEventBusService, RealtimeAuthService],
   exports: [RealtimeEventBusService],
 })
