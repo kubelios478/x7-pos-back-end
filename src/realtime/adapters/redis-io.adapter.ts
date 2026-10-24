@@ -1,4 +1,4 @@
-import { IoAdapter } from '@nestjs/platform-socket.io';
+import { CorsIoAdapter } from './cors-io.adapter';
 import type { INestApplicationContext } from '@nestjs/common';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
@@ -12,14 +12,15 @@ type IoServer = Server<
   unknown
 >;
 
-export class RedisIoAdapter extends IoAdapter {
+export class RedisIoAdapter extends CorsIoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter> | undefined;
 
   constructor(
     app: INestApplicationContext,
     private readonly redisUrl: string,
+    origins: string[] | null = null,
   ) {
-    super(app);
+    super(app, origins);
   }
 
   async connectToRedis(): Promise<void> {
