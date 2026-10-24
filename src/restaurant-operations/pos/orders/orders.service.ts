@@ -159,13 +159,20 @@ export class OrdersService {
       );
     }
 
-    // Validate table exists and belongs to user merchant
-    const table = await this.tableRepo.findOne({ where: { id: dto.tableId } });
-    if (!table) {
-      throw new NotFoundException(`Table with ID ${dto.tableId} not found`);
+    // Take-out and delivery orders have no table; dine-in orders must have one
+    if (dto.type === OrderType.DINE_IN && dto.tableId == null) {
+      throw new BadRequestException('tableId is required for dine_in orders');
     }
-    if (table.merchant_id !== authenticatedUserMerchantId) {
-      throw new ForbiddenException('Table does not belong to your merchant');
+    if (dto.tableId != null) {
+      const table = await this.tableRepo.findOne({
+        where: { id: dto.tableId },
+      });
+      if (!table) {
+        throw new NotFoundException(`Table with ID ${dto.tableId} not found`);
+      }
+      if (table.merchant_id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException('Table does not belong to your merchant');
+      }
     }
 
     // Validate collaborator exists and belongs to user merchant
@@ -263,7 +270,7 @@ export class OrdersService {
 
     const order = new Order();
     order.merchant_id = dto.merchantId;
-    order.table_id = dto.tableId;
+    order.table_id = dto.tableId ?? null;
     order.collaborator_id = dto.collaboratorId;
     order.subscription_id = dto.subscriptionId;
     order.type = dto.type;
@@ -1212,7 +1219,16 @@ export class OrdersService {
 
     const updateData: QueryDeepPartialEntity<Order> = {};
 
-    if (dto.tableId !== undefined) {
+    const nextType = dto.type ?? existing.type;
+    const nextTableId =
+      dto.tableId !== undefined ? dto.tableId : existing.table_id;
+    if (nextType === OrderType.DINE_IN && nextTableId == null) {
+      throw new BadRequestException('tableId is required for dine_in orders');
+    }
+
+    if (dto.tableId === null) {
+      updateData.table_id = null;
+    } else if (dto.tableId !== undefined) {
       // Validate table exists and belongs to user merchant
       const table = await this.tableRepo.findOne({
         where: { id: dto.tableId },

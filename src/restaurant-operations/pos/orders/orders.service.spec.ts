@@ -511,6 +511,33 @@ describe('OrdersService', () => {
       expect(result.data.id).toBe(1);
     });
 
+    it('rejects a dine_in order without a table', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+
+      await expect(
+        service.create({ ...createOrderDto, tableId: undefined }, 1),
+      ).rejects.toThrow('tableId is required for dine_in orders');
+      expect(tableRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it.each([OrderType.TAKE_OUT, OrderType.DELIVERY])(
+      'does not look up a table for a %s order without one',
+      async (type) => {
+        jest
+          .spyOn(merchantRepository, 'findOne')
+          .mockResolvedValue(mockMerchant as Merchant);
+        // Stop right after the table step: the collaborator lookup comes next.
+        jest.spyOn(collaboratorRepository, 'findOne').mockResolvedValue(null);
+
+        await expect(
+          service.create({ ...createOrderDto, type, tableId: undefined }, 1),
+        ).rejects.toThrow('Collaborator with ID 1 not found');
+        expect(tableRepository.findOne).not.toHaveBeenCalled();
+      },
+    );
+
     it('should create an order with closedAt', async () => {
       const dtoWithClosedAt: CreateOrderDto = {
         ...createOrderDto,
@@ -1390,6 +1417,38 @@ describe('OrdersService', () => {
         1,
         expect.objectContaining({ table_id: 2 }),
       );
+    });
+
+    it('clears the table when a take_out order sends tableId null', async () => {
+      jest.spyOn(orderRepository, 'findOne').mockResolvedValue({
+        ...mockOrder,
+        type: OrderType.TAKE_OUT,
+      } as Order);
+      jest.spyOn(orderRepository, 'update').mockResolvedValue({
+        affected: 1,
+        raw: [],
+        generatedMaps: [],
+      } as UpdateResult);
+
+      await service.update(1, { tableId: null }, 1);
+
+      expect(tableRepository.findOne).not.toHaveBeenCalled();
+      expect(orderRepository.update).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ table_id: null }),
+      );
+    });
+
+    it('rejects turning an order without a table into dine_in', async () => {
+      jest.spyOn(orderRepository, 'findOne').mockResolvedValue({
+        ...mockOrder,
+        type: OrderType.DELIVERY,
+        table_id: null,
+      } as Order);
+
+      await expect(
+        service.update(1, { type: OrderType.DINE_IN }, 1),
+      ).rejects.toThrow('tableId is required for dine_in orders');
     });
 
     it('should update collaboratorId when provided', async () => {
