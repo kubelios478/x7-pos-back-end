@@ -37,6 +37,8 @@ describe('KitchenOrderItemService', () => {
   const mockKitchenOrderItemRepository = {
     save: jest.fn(),
     findOne: jest.fn(),
+    // sibling items, read to auto-bump the parent kitchen order
+    find: jest.fn().mockResolvedValue([]),
     createQueryBuilder: jest.fn(),
   };
 
@@ -842,15 +844,18 @@ describe('KitchenOrderItemService', () => {
       ).toHaveBeenCalledWith(1);
     });
 
-    it('should throw ConflictException when already PENDING', async () => {
+    it('should throw ConflictException when already at the initial status (HELD)', async () => {
       jest
         .spyOn(kitchenOrderItemRepository, 'createQueryBuilder')
         .mockReturnValue(
           mockQueryBuilder as unknown as SelectQueryBuilder<KitchenOrderItem>,
         );
-      mockQueryBuilder.getOne.mockResolvedValue(
-        mockKitchenOrderItem as unknown as KitchenOrderItem,
-      );
+      // a fresh copy: earlier tests advance the shared fixture's status
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockKitchenOrderItem,
+        // HELD (coursing) now precedes PENDING as the first status
+        preparation_status: KitchenOrderItemPreparationStatus.HELD,
+      } as unknown as KitchenOrderItem);
 
       await expect(service.revertPreparationStatus(1, 1)).rejects.toThrow(
         ConflictException,

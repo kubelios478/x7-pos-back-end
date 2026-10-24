@@ -84,6 +84,8 @@ describe('KitchenOrderService', () => {
 
   const mockDataSource = {
     createQueryRunner: jest.fn(() => mockQueryRunner),
+    // raw UPDATE of the order's items when it starts
+    query: jest.fn().mockResolvedValue([]),
   };
 
   const mockMerchant = {
@@ -130,6 +132,7 @@ describe('KitchenOrderService', () => {
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     getOne: jest.fn(),
@@ -284,7 +287,7 @@ describe('KitchenOrderService', () => {
         BadRequestException,
       );
       await expect(service.create(dtoWithoutOrder, 1)).rejects.toThrow(
-        'Either orderId or onlineOrderId must be provided',
+        'Either orderId, onlineOrderId, or kitchenOrderItems must be provided',
       );
     });
   });

@@ -132,7 +132,11 @@ describe('KitchenOrderItemController', () => {
 
       const result = await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
+      expect(createSpy).toHaveBeenCalledWith(
+        createDto,
+        mockUser.merchant.id,
+        mockUser.id,
+      );
       expect(result).toEqual(mockKitchenOrderItemResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Kitchen order item created successfully');
@@ -188,7 +192,11 @@ describe('KitchenOrderItemController', () => {
 
       const result = await controller.advancePreparationStatus(1, mockRequest);
 
-      expect(advanceSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(advanceSpy).toHaveBeenCalledWith(
+        1,
+        mockUser.merchant.id,
+        mockUser.id,
+      );
       expect(result).toEqual(response);
     });
   });
@@ -205,7 +213,11 @@ describe('KitchenOrderItemController', () => {
 
       const result = await controller.revertPreparationStatus(1, mockRequest);
 
-      expect(revertSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
+      expect(revertSpy).toHaveBeenCalledWith(
+        1,
+        mockUser.merchant.id,
+        mockUser.id,
+      );
       expect(result).toEqual(response);
     });
   });
@@ -236,6 +248,7 @@ describe('KitchenOrderItemController', () => {
         1,
         updateDto,
         mockUser.merchant.id,
+        mockUser.id,
       );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);
