@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import { KitchenAnalyticsService } from './kitchen-analytics.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
@@ -155,10 +155,10 @@ export class KitchenAnalyticsController {
   })
   async getCancelledOrders(
     @Query() query: GetCancelledOrdersDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const data = await this.service.getCancelledKitchenOrders(
-      req.merchant.id,
+      user.merchant.id,
       query.startDate,
       query.endDate,
     );
@@ -232,8 +232,8 @@ export class KitchenAnalyticsController {
       },
     },
   })
-  async getSummary(@Request() req: AuthenticatedUser) {
-    const data = await this.service.getCancellationSummary(req.merchant.id);
+  async getSummary(@CurrentUser() user: AuthenticatedUser) {
+    const data = await this.service.getCancellationSummary(user.merchant.id);
 
     return {
       statusCode: 200,
