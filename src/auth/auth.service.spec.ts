@@ -6,13 +6,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
 import { Merchant } from '../platform-saas/merchants/entities/merchant.entity';
 import { SubscriptionPlan } from '../platform-saas/subscriptions/subscription-plan/entity/subscription-plan.entity';
+import { CompanySubscription } from '../platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
+import { OnboardingRegisterDto } from './dto/onboarding-register.dto';
 import { UsersService } from '../platform-saas/users/users.service';
 import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
@@ -547,6 +553,118 @@ describe('AuthService', () => {
       await expect(service.refreshToken('expired-token')).rejects.toThrow(
         'Refresh token expired or invalid',
       );
+    });
+  });
+
+  describe('registerOnboarding', () => {
+    const dto: OnboardingRegisterDto = {
+      companyName: 'Demo Group',
+      companyEmail: 'contact@demo.dev',
+      rut: '76.123.456-7',
+      address: '123 Main Street',
+      city: 'Austin',
+      state: 'Texas',
+      country: 'USA',
+      branchName: 'Downtown',
+      adminEmail: 'admin@demo.dev',
+      password: 'Secret123',
+    };
+
+    let manager: { create: jest.Mock; save: jest.Mock };
+    const originalDefaultPlan = process.env.ONBOARDING_DEFAULT_PLAN_ID;
+
+    beforeEach(() => {
+      mockUserRepository.exists.mockResolvedValue(false);
+      mockCompanyRepository.exists.mockResolvedValue(false);
+      mockMerchantRepository.exists.mockResolvedValue(false);
+      mockSubscriptionPlanRepository.findOne.mockImplementation(
+        ({ where }: { where: { id: number } }) =>
+          Promise.resolve({ id: where.id, status: 'active' }),
+      );
+      mockSubscriptionAccessService.getSubscriptionAccessForCompany.mockResolvedValue(
+        { planId: 2, authorizedFeatureIds: [1, 2] },
+      );
+      mockJwtService.sign.mockReturnValue('token');
+
+      manager = {
+        create: jest.fn((_entity, data) => ({ ...data })),
+        save: jest.fn((entity, data) => {
+          const ids = new Map<unknown, number>([
+            [Company, 10],
+            [Merchant, 20],
+            [User, 30],
+          ]);
+          return Promise.resolve({ ...data, id: ids.get(entity) ?? 40 });
+        }),
+      };
+      mockDataSource.createQueryRunner.mockReturnValue({
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager,
+      });
+    });
+
+    afterEach(() => {
+      if (originalDefaultPlan === undefined) {
+        delete process.env.ONBOARDING_DEFAULT_PLAN_ID;
+      } else {
+        process.env.ONBOARDING_DEFAULT_PLAN_ID = originalDefaultPlan;
+      }
+    });
+
+    it('creates an active company subscription for the requested plan', async () => {
+      const result = await service.registerOnboarding({ ...dto, planId: 2 });
+
+      const subscriptionSave = manager.save.mock.calls.find(
+        ([entity]) => entity === CompanySubscription,
+      );
+      expect(subscriptionSave).toBeDefined();
+      expect(subscriptionSave![1]).toMatchObject({
+        company_id: 10,
+        plan: { id: 2 },
+        status: 'active',
+        paymentMethod: 'onboarding',
+      });
+      expect(
+        mockSubscriptionAccessService.getSubscriptionAccessForCompany,
+      ).toHaveBeenCalledWith(10);
+      expect(result.user.planId).toBe(2);
+      expect(result.user.authorizedFeatureIds).toEqual([1, 2]);
+    });
+
+    it('falls back to ONBOARDING_DEFAULT_PLAN_ID when planId is omitted', async () => {
+      process.env.ONBOARDING_DEFAULT_PLAN_ID = '1';
+
+      await service.registerOnboarding(dto);
+
+      expect(mockSubscriptionPlanRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, status: 'active' },
+      });
+      const subscriptionSave = manager.save.mock.calls.find(
+        ([entity]) => entity === CompanySubscription,
+      );
+      expect(subscriptionSave![1]).toMatchObject({ plan: { id: 1 } });
+    });
+
+    it('rejects the registration when no plan can be resolved', async () => {
+      delete process.env.ONBOARDING_DEFAULT_PLAN_ID;
+
+      await expect(service.registerOnboarding(dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown or inactive plan', async () => {
+      mockSubscriptionPlanRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.registerOnboarding({ ...dto, planId: 99 }),
+      ).rejects.toThrow('Subscription plan 99 does not exist or is not active');
+      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
     });
   });
 });

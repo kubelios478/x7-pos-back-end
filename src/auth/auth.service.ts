@@ -1,5 +1,6 @@
 // src/auth/service/auth.service.ts
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
@@ -17,6 +18,8 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
 import { Merchant } from '../platform-saas/merchants/entities/merchant.entity';
+import { CompanySubscription } from '../platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
+import { SubscriptionPlan } from '../platform-saas/subscriptions/subscription-plan/entity/subscription-plan.entity';
 import { LoginDto } from './dto/login.dto';
 import { OnboardingRegisterDto } from './dto/onboarding-register.dto';
 import { JwtPayload } from 'src/auth/interfaces/JwtPayload.interface';
@@ -41,6 +44,8 @@ export class AuthService {
     private readonly companyRepository: Repository<Company>,
     @InjectRepository(Merchant)
     private readonly merchantRepository: Repository<Merchant>,
+    @InjectRepository(SubscriptionPlan)
+    private readonly subscriptionPlanRepository: Repository<SubscriptionPlan>,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private usersService: UsersService,
@@ -261,6 +266,8 @@ export class AuthService {
       );
     }
 
+    const plan = await this.resolveOnboardingPlan(dto.planId);
+
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -268,6 +275,7 @@ export class AuthService {
     await queryRunner.startTransaction();
 
     let savedUser: User;
+    let companyId: number;
     try {
       const company = queryRunner.manager.create(Company, {
         name: dto.companyName,
@@ -280,6 +288,7 @@ export class AuthService {
         country: dto.country,
       });
       const savedCompany = await queryRunner.manager.save(Company, company);
+      companyId = savedCompany.id;
 
       const merchant = queryRunner.manager.create(Merchant, {
         name: merchantName,
@@ -303,6 +312,26 @@ export class AuthService {
         merchantId: savedMerchant.id,
       });
       savedUser = await queryRunner.manager.save(User, user);
+
+      // Without an active company subscription every feature-gated route answers 402.
+      const today = new Date();
+      const endDate = new Date(today);
+      endDate.setMonth(endDate.getMonth() + 1);
+
+      const companySubscription = queryRunner.manager.create(
+        CompanySubscription,
+        {
+          company_id: savedCompany.id,
+          company: { id: savedCompany.id } as Company,
+          plan: { id: plan.id } as SubscriptionPlan,
+          startDate: today,
+          endDate,
+          renewalDate: endDate,
+          status: 'active',
+          paymentMethod: 'onboarding',
+        },
+      );
+      await queryRunner.manager.save(CompanySubscription, companySubscription);
 
       await queryRunner.commitTransaction();
     } catch (e) {
@@ -330,6 +359,11 @@ export class AuthService {
 
     await this.usersService.updateRefreshToken(savedUser.id, refreshToken);
 
+    const access =
+      await this.subscriptionAccessService.getSubscriptionAccessForCompany(
+        companyId,
+      );
+
     return {
       access_token: accessToken,
       refreshToken,
@@ -339,9 +373,39 @@ export class AuthService {
         role: savedUser.role,
         scope: savedUser.scope,
         merchant: { id: savedUser.merchantId },
-        planId: undefined,
-        authorizedFeatureIds: [],
+        planId: access.planId,
+        authorizedFeatureIds: access.authorizedFeatureIds,
       },
     };
+  }
+
+  /**
+   * Plan for a company registered through `register-onboarding`: the one chosen at checkout,
+   * or ONBOARDING_DEFAULT_PLAN_ID when the client does not send it.
+   */
+  private async resolveOnboardingPlan(
+    requestedPlanId?: number,
+  ): Promise<SubscriptionPlan> {
+    const defaultPlanId = Number(process.env.ONBOARDING_DEFAULT_PLAN_ID);
+    const planId =
+      requestedPlanId ??
+      (Number.isInteger(defaultPlanId) && defaultPlanId > 0
+        ? defaultPlanId
+        : undefined);
+    if (!planId) {
+      throw new BadRequestException(
+        'planId is required (no ONBOARDING_DEFAULT_PLAN_ID is configured)',
+      );
+    }
+
+    const plan = await this.subscriptionPlanRepository.findOne({
+      where: { id: planId, status: 'active' },
+    });
+    if (!plan) {
+      throw new BadRequestException(
+        `Subscription plan ${planId} does not exist or is not active`,
+      );
+    }
+    return plan;
   }
 }
