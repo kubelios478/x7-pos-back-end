@@ -99,7 +99,7 @@ export class OnboardingService {
     const session = await this.getActiveSession(dto.sessionId);
 
     const rutTaken = await this.companyRepository.exists({
-      where: { rut: dto.taxId },
+      where: { tax_id: dto.taxId },
     });
     if (rutTaken) {
       throw new BadRequestException(
@@ -175,7 +175,7 @@ export class OnboardingService {
     this.ensureReadyForProvisioning(session);
 
     const rutTaken = await this.companyRepository.exists({
-      where: { rut: session.taxId! },
+      where: { tax_id: session.taxId! },
     });
     if (rutTaken) {
       throw new ConflictException(
@@ -183,15 +183,9 @@ export class OnboardingService {
       );
     }
 
-    const merchantName = `${session.merchantName} (${session.taxId})`;
-    const merchantTaken = await this.merchantRepository.exists({
-      where: { name: merchantName },
-    });
-    if (merchantTaken) {
-      throw new ConflictException(
-        'An outlet with this name and tax ID combination already exists',
-      );
-    }
+    // The company is created in this same transaction, so the outlet name cannot clash:
+    // merchant names are unique per company, not globally.
+    const merchantName = session.merchantName!;
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const username = workEmail.split('@')[0];
@@ -206,7 +200,7 @@ export class OnboardingService {
         name: session.legalBusinessName!,
         email: session.merchantEmail!,
         phone: session.merchantPhone ?? undefined,
-        rut: session.taxId!,
+        tax_id: session.taxId!,
         address: session.registeredAddress!,
         city: session.city!,
         state: session.state!,
@@ -218,7 +212,7 @@ export class OnboardingService {
         name: merchantName,
         email: session.merchantEmail!,
         phone: session.merchantPhone ?? undefined,
-        rut: session.taxId!,
+        tax_id: session.taxId!,
         address: session.merchantAddress!,
         city: session.merchantCity!,
         state: session.merchantState!,

@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
 import { User } from '../../users/entities/user.entity';
@@ -30,13 +31,17 @@ import { Location } from 'src/inventory/products-inventory/stocks/locations/enti
 import { MerchantStatus } from '../constants/merchant-status.enum';
 
 @Entity()
+@Unique('UQ_merchant_company_name', ['companyId', 'name'])
 export class Merchant {
   @ApiProperty({ example: 1, description: 'Unique identifier of the Merchant' })
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ApiProperty({ example: 'Acme Corp', description: 'Name of the Merchant' })
-  @Column({ unique: true })
+  @ApiProperty({
+    example: 'Downtown Branch',
+    description: 'Name of the Merchant, unique within its company',
+  })
+  @Column()
   name: string;
 
   @ApiProperty({
@@ -54,11 +59,11 @@ export class Merchant {
   phone?: string;
 
   @ApiProperty({
-    example: '1234567890',
-    description: 'RUT of the customer',
+    example: '12-3456789',
+    description: 'Tax ID of the Merchant (e.g. US EIN 12-3456789)',
   })
-  @Column({ nullable: true })
-  rut: string;
+  @Column({ name: 'tax_id', nullable: true })
+  tax_id: string;
 
   @ApiProperty({
     example: '123 Main St',
@@ -254,4 +259,12 @@ export class Merchant {
 
   @OneToMany(() => Location, (location) => location.merchant)
   stockLocations: Location[];
+
+  @ApiProperty({
+    example: '12-3456789',
+    description:
+      'Deprecated: same value as tax_id, kept in responses while clients migrate (set by LegacyRutSubscriber, not a column).',
+    deprecated: true,
+  })
+  rut?: string;
 }

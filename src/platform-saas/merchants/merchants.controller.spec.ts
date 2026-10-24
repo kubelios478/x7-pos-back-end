@@ -23,7 +23,7 @@ describe('MerchantsController', () => {
     name: 'Test Merchant',
     email: 'merchant@test.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
@@ -49,7 +49,7 @@ describe('MerchantsController', () => {
     name: 'New Merchant',
     email: 'new@merchant.com',
     phone: '9876543210',
-    rut: '98765432-1',
+    tax_id: '98765432-1',
     address: '456 New St',
     city: 'New City',
     state: 'New State',
@@ -239,7 +239,7 @@ describe('MerchantsController', () => {
 
       const result = await controller.createBranch(mockUser, {
         name: 'Branch Two',
-        rut: '12-3456789',
+        tax_id: '12-3456789',
         address: '123 Main Street',
         city: 'Miami',
         state: 'Florida',

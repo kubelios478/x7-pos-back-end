@@ -237,8 +237,9 @@ export class AuthService {
       throw new ConflictException('Admin email is already registered');
     }
 
+    const taxId = (dto.tax_id ?? dto.rut)!;
     const rutTaken = await this.companyRepository.exists({
-      where: { rut: dto.rut },
+      where: { tax_id: taxId },
     });
     if (rutTaken) {
       throw new ConflictException('A company with this tax ID already exists');
@@ -256,15 +257,9 @@ export class AuthService {
       }
     }
 
-    const merchantName = `${dto.branchName} (${dto.rut})`;
-    const nameTaken = await this.merchantRepository.exists({
-      where: { name: merchantName },
-    });
-    if (nameTaken) {
-      throw new ConflictException(
-        'An outlet with this name and tax ID combination already exists',
-      );
-    }
+    // The company is created in this same transaction, so the outlet name cannot clash:
+    // merchant names are unique per company, not globally.
+    const merchantName = dto.branchName.trim();
 
     const plan = await this.resolveOnboardingPlan(dto.planId);
 
@@ -281,7 +276,7 @@ export class AuthService {
         name: dto.companyName,
         email: dto.companyEmail,
         phone: dto.companyPhone,
-        rut: dto.rut,
+        tax_id: taxId,
         address: dto.address,
         city: dto.city,
         state: dto.state,
@@ -294,7 +289,7 @@ export class AuthService {
         name: merchantName,
         email: dto.companyEmail,
         phone: dto.companyPhone,
-        rut: dto.rut,
+        tax_id: taxId,
         address: dto.address,
         city: dto.city,
         state: dto.state,

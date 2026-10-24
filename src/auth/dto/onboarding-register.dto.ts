@@ -10,7 +10,9 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
+import { IsTaxId } from 'src/common/decorators/validation.decorators';
 import { IsBusinessEmail } from 'src/common/decorators/validation.decorators';
 
 /** Public onboarding: creates legal entity, first branch, and merchant admin in one transaction. */
@@ -52,13 +54,27 @@ export class OnboardingRegisterDto {
   companyPhone?: string;
 
   @ApiProperty({
-    example: '12.345.678-9',
-    description: 'Company tax ID (Chilean RUT); must be unique',
+    example: '12-3456789',
+    description:
+      'Tax ID of the company; must be unique (e.g. US EIN 12-3456789)',
+    required: true,
   })
+  @ValidateIf((o: OnboardingRegisterDto) => o.rut === undefined)
   @IsString()
   @IsNotEmpty()
   @Length(7, 15)
-  rut: string;
+  @IsTaxId()
+  tax_id?: string;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use tax_id. Accepted as an alias.',
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
+  rut?: string;
 
   @ApiProperty({
     example: '123 Main Street, Suite 100',
