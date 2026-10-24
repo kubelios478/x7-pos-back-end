@@ -416,7 +416,10 @@ export class SupplierPaymentAllocationsService {
     };
   }
 
-  async findOne(id: number): Promise<OneSupplierPaymentAllocationResponseDto> {
+  async findOne(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierPaymentAllocationResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier payment allocation ID');
     }
@@ -429,6 +432,9 @@ export class SupplierPaymentAllocationsService {
         `Supplier payment allocation with ID ${id} not found`,
       );
     }
+
+    // Scope guard: the allocation's payment must belong to the user's company.
+    await this.validateRelations({}, row, scopedCompanyId);
 
     return {
       statusCode: 200,

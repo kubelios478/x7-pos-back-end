@@ -43,6 +43,9 @@ import {
 import { QueryFloorZoneDto } from './dto/query-floor-zone.dto';
 import { PaginatedFloorZoneResponseDto } from './dto/paginated-floor-zone-response.dto';
 import { UpdateFloorZoneDto } from './dto/update-floor-zone.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Restaurant operations - Dining System - Floor Zone')
 @Controller('floor-zone')
@@ -123,8 +126,9 @@ export class FloorZoneController {
   })
   async create(
     @Body() dto: CreateFloorZoneDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorZoneResponseDto> {
-    return this.floorZoneService.create(dto);
+    return this.floorZoneService.create(dto, merchantScopeOf(user));
   }
   @Get()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -175,8 +179,9 @@ export class FloorZoneController {
   })
   async findAll(
     @Query() query: QueryFloorZoneDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedFloorZoneResponseDto> {
-    return this.floorZoneService.findAll(query);
+    return this.floorZoneService.findAll(query, merchantScopeOf(user));
   }
 
   @Get(':id')
@@ -263,11 +268,15 @@ export class FloorZoneController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorZoneResponseDto> {
     if (id <= 0) {
       throw new Error('ID must be a positive integer');
     }
-    const floorZone = await this.floorZoneService.findOne(id);
+    const floorZone = await this.floorZoneService.findOne(
+      id,
+      merchantScopeOf(user),
+    );
     return floorZone;
   }
 
@@ -363,8 +372,9 @@ export class FloorZoneController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateFloorZoneDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorZoneResponseDto> {
-    return this.floorZoneService.update(id, dto);
+    return this.floorZoneService.update(id, dto, merchantScopeOf(user));
   }
 
   @Delete(':id')
@@ -451,7 +461,8 @@ export class FloorZoneController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorZoneResponseDto> {
-    return this.floorZoneService.remove(id);
+    return this.floorZoneService.remove(id, merchantScopeOf(user));
   }
 }

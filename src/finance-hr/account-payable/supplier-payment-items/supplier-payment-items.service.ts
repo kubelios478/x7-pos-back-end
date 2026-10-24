@@ -208,7 +208,10 @@ export class SupplierPaymentItemsService {
     };
   }
 
-  async findOne(id: number): Promise<OneSupplierPaymentItemResponseDto> {
+  async findOne(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierPaymentItemResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid supplier payment item ID');
     }
@@ -221,6 +224,9 @@ export class SupplierPaymentItemsService {
         `Supplier payment item with ID ${id} not found`,
       );
     }
+
+    // Scope guard: the item's payment must belong to the user's company.
+    await this.assertPaymentExists(item.payment_id, scopedCompanyId);
 
     return {
       statusCode: 200,

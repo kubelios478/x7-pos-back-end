@@ -512,7 +512,8 @@ export class MerchantOvertimeRuleController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantOvertimeRuleResponseDto> {
-    return this.merchantOvertimeRuleService.remove(id);
+    return this.merchantOvertimeRuleService.remove(id, user);
   }
 }

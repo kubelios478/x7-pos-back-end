@@ -129,7 +129,10 @@ export class UsersService {
     return user;
   }
 
-  async findOne(id: number): Promise<OneUserResponseDto> {
+  async findOne(
+    id: number,
+    currentUser?: AuthenticatedUser,
+  ): Promise<OneUserResponseDto> {
     // Validate ID parameter
     if (!id || id <= 0) {
       ErrorHandler.invalidId('User ID must be a positive number');
@@ -140,7 +143,7 @@ export class UsersService {
       relations: ['merchant'],
     });
 
-    if (!user) {
+    if (!user || (currentUser && !this.canManageUser(user, currentUser))) {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
@@ -177,7 +180,11 @@ export class UsersService {
     };
   }
 
-  async findByEmail(email: string): Promise<OneUserResponseDto> {
+  /** `currentUser` is set for API lookups; internal callers (password reset) omit it. */
+  async findByEmail(
+    email: string,
+    currentUser?: AuthenticatedUser,
+  ): Promise<OneUserResponseDto> {
     // Validate email format
     if (!email || !email.includes('@')) {
       ErrorHandler.invalidFormat('Please provide a valid email address');
@@ -188,7 +195,10 @@ export class UsersService {
       relations: ['merchant'],
     });
 
-    if (!foundUser) {
+    if (
+      !foundUser ||
+      (currentUser && !this.canManageUser(foundUser, currentUser))
+    ) {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
@@ -384,21 +394,25 @@ export class UsersService {
     };
   }
 
-  private assertCanManageUser(
-    user: User,
-    currentUser: AuthenticatedUser,
-  ): void {
+  /** Portal admins reach every user; anyone else only themselves and their merchant's users. */
+  private canManageUser(user: User, currentUser: AuthenticatedUser): boolean {
     if (currentUser.role === UserRole.PORTAL_ADMIN) {
-      return;
+      return true;
     }
 
     const isSelf = user.id === currentUser.id;
     const sameMerchant =
-      user.merchant?.id &&
-      currentUser.merchant?.id &&
+      !!user.merchant?.id &&
+      !!currentUser.merchant?.id &&
       user.merchant.id === currentUser.merchant.id;
+    return isSelf || sameMerchant;
+  }
 
-    if (!isSelf && !sameMerchant) {
+  private assertCanManageUser(
+    user: User,
+    currentUser: AuthenticatedUser,
+  ): void {
+    if (!this.canManageUser(user, currentUser)) {
       ErrorHandler.insufficientPermissions(
         'You can only manage your own profile or users from your merchant',
       );

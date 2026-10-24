@@ -355,9 +355,9 @@ describe('MerchantTipRuleController', () => {
         .mockResolvedValue(deleteResponse);
       removeSpy.mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(1);
+      const result = await controller.remove(1, mockAuthenticatedUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(deleteResponse);
     });
 
@@ -368,9 +368,11 @@ describe('MerchantTipRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(1)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(1, mockAuthenticatedUser)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
   });
 });
