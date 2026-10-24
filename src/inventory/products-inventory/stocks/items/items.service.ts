@@ -494,9 +494,6 @@ export class ItemsService {
       existingItem.supply = null;
     }
 
-    if (currentQty !== undefined) {
-      existingItem.currentQty = currentQty;
-    }
     if (minimumQty !== undefined) {
       existingItem.minimumQty = minimumQty ?? null;
     }
@@ -518,6 +515,15 @@ export class ItemsService {
         type: MovementsStatus.IN,
         reference: `Movement between locations: Entry to ${updatedItem.location.name}`,
         reason: 'Transfer between stock locations',
+      });
+    }
+
+    // A new quantity goes through an adjustment, so the kardex explains the stock.
+    if (currentQty !== undefined) {
+      await this.adjust(updatedItem.id, merchantId, {
+        value: currentQty,
+        type: 'absolute',
+        reason: 'Quantity edited on the stock item',
       });
     }
 
