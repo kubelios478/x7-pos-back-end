@@ -39,8 +39,10 @@ describe('MovementsService', () => {
     take: jest.Mock;
     getMany: jest.Mock;
     getOne: jest.Mock;
+    setLock: jest.Mock;
   };
   let mockQueryBuilder: MockQueryBuilder;
+  let txManager: { getRepository: jest.Mock; exists: jest.Mock };
 
   const mockMerchant = {
     id: 1,
@@ -136,11 +138,23 @@ describe('MovementsService', () => {
       create: jest.fn((e: unknown) => e),
       save: jest.fn((e: unknown) => Promise.resolve(e)),
       createQueryBuilder: jest.fn(),
-      // The service reads the merchant's company through the repository manager.
+      // The service reads the merchant's company through the repository manager,
+      // and runs create() in a transaction on it.
       manager: {
         findOne: jest.fn().mockResolvedValue({ id: 1, companyId: 1 }),
+        transaction: jest.fn(),
       },
     };
+    // inside the transaction the same repository mocks answer
+    txManager = {
+      getRepository: jest.fn((entity: unknown) =>
+        entity === Item ? mockItemRepo : mockMovementRepo,
+      ),
+      exists: jest.fn().mockResolvedValue(true),
+    };
+    mockItemRepo.manager.transaction.mockImplementation(
+      (work: (manager: typeof txManager) => unknown) => work(txManager),
+    );
 
     mockQueryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -152,6 +166,7 @@ describe('MovementsService', () => {
       getCount: jest.fn(),
       getMany: jest.fn(),
       getOne: jest.fn(),
+      setLock: jest.fn().mockReturnThis(),
     };
 
     mockMovementRepo.createQueryBuilder.mockReturnValue(mockQueryBuilder);
@@ -362,6 +377,143 @@ describe('MovementsService', () => {
       );
       expect(movementRepo.create).not.toHaveBeenCalled();
       expect(movementRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Create: transaction, cost and transfers', () => {
+    beforeEach(() => {
+      // earlier tests leave queued getOne results behind (clearAllMocks keeps them)
+      mockQueryBuilder.getOne.mockReset();
+      movementRepo.create.mockImplementation((m) => m as Movement);
+      movementRepo.save.mockImplementation((m) =>
+        Promise.resolve({ id: 50, ...m } as Movement),
+      );
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+    });
+
+    it('locks the stock row inside a transaction', async () => {
+      // explicit quantity: earlier tests mutate the shared mockItem
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 10,
+      });
+
+      await service.create(mockMerchant.id, {
+        stockItemId: 1,
+        quantity: 2,
+        type: MovementsStatus.OUT,
+      });
+
+      expect(itemRepo.manager.transaction).toHaveBeenCalled();
+      expect(mockQueryBuilder.setLock).toHaveBeenCalledWith(
+        'pessimistic_write',
+        undefined,
+        ['item'],
+      );
+      expect(itemRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ currentQty: 8 }),
+      );
+    });
+
+    it('weights the average cost of an entry instead of replacing it', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 10,
+        weightedAverageUnitCost: '2.0000',
+      });
+
+      await service.create(mockMerchant.id, {
+        stockItemId: 1,
+        quantity: 10,
+        type: MovementsStatus.IN,
+        unitCost: 4,
+      });
+
+      expect(itemRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentQty: 20,
+          weightedAverageUnitCost: '3.0000',
+        }),
+      );
+    });
+
+    it('moves stock to the same product/variant at the destination and records both sides', async () => {
+      mockQueryBuilder.getOne
+        .mockResolvedValueOnce({
+          ...mockItem,
+          currentQty: 10,
+          supplyId: null,
+          weightedAverageUnitCost: '2.0000',
+        })
+        .mockResolvedValueOnce(null); // no stock row yet at the destination
+
+      await service.create(mockMerchant.id, {
+        stockItemId: 1,
+        quantity: 4,
+        type: MovementsStatus.OUT,
+        movementType: 'TRANSFER',
+        destinationLocationId: 2,
+      });
+
+      // a null key must match NULL, not any value (it used to pick another variant)
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'item.supplyId IS NULL',
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'item.variantId = :variantId',
+        { variantId: mockItem.variantId },
+      );
+      expect(itemRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1, currentQty: 6 }),
+      );
+      expect(itemRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationId: 2,
+          variantId: mockItem.variantId,
+          currentQty: 4,
+        }),
+      );
+      expect(movementRepo.save).toHaveBeenCalledTimes(2);
+      expect(movementRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: MovementsStatus.IN,
+          movementType: 'TRANSFER',
+          destinationLocationId: 2,
+          quantity: 4,
+        }),
+      );
+    });
+
+    it('rejects a transfer to a location of another merchant', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({ ...mockItem });
+      txManager.exists.mockResolvedValueOnce(false);
+
+      await expect(
+        service.create(mockMerchant.id, {
+          stockItemId: 1,
+          quantity: 4,
+          type: MovementsStatus.OUT,
+          movementType: 'TRANSFER',
+          destinationLocationId: 99,
+        }),
+      ).rejects.toThrow('Destination location not found');
+      expect(itemRepo.save).not.toHaveBeenCalled();
+      expect(movementRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("does not create stock for another company's raw material", async () => {
+      txManager.exists.mockResolvedValueOnce(false); // the supply is not the company's
+
+      await expect(
+        service.create(mockMerchant.id, {
+          stockItemId: 0,
+          quantity: 4,
+          type: MovementsStatus.IN,
+          supplyId: 77,
+          destinationLocationId: 1,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(itemRepo.save).not.toHaveBeenCalled();
     });
   });
 

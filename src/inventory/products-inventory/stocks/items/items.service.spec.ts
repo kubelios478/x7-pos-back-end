@@ -105,6 +105,8 @@ describe('ItemsService', () => {
       findOne: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // update() checks the kardex history through the manager
+      manager: { exists: jest.fn().mockResolvedValue(false) },
     };
     const mockProductRepo = {
       findOneBy: jest.fn(),
@@ -782,6 +784,34 @@ describe('ItemsService', () => {
           movementType: MovementsStatus.ADJUSTMENT,
         }),
       );
+    });
+
+    it('refuses to re-point a stock item with stock to another product', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 10,
+      } as Item);
+
+      await expect(
+        service.update(mockItem.id!, mockMerchant.id, {
+          productId: 2,
+          variantId: 2,
+        }),
+      ).rejects.toThrow('cannot change its product or raw material');
+      expect(itemRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses to re-point an empty stock item that has kardex history', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 0,
+      } as Item);
+      (itemRepo.manager.exists as jest.Mock).mockResolvedValueOnce(true);
+
+      await expect(
+        service.update(mockItem.id!, mockMerchant.id, { supplyId: 5 }),
+      ).rejects.toThrow('cannot change its product or raw material');
+      expect(itemRepo.save).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if Item to update is not found', async () => {
