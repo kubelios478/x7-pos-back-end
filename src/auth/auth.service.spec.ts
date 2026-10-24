@@ -106,6 +106,7 @@ describe('AuthService', () => {
       name: 'Test Merchant',
       companyId: 1,
     },
+    isActive: true,
     refreshToken: null,
   };
 
@@ -255,6 +256,17 @@ describe('AuthService', () => {
       );
       await expect(service.login(loginDto)).rejects.toThrow(
         'Invalid Credentials',
+      );
+    });
+
+    it('should reject a deactivated account once the password is right', async () => {
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ ...mockUser, isActive: false } as any);
+      mockedBcrypt.compare.mockResolvedValue(true as never);
+
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'This account has been deactivated',
       );
     });
 
@@ -473,6 +485,23 @@ describe('AuthService', () => {
   describe('refreshToken', () => {
     const refreshToken = 'valid-refresh-token';
     const newAccessToken = 'new-access-token';
+
+    it('should reject the refresh of a deactivated account', async () => {
+      jest
+        .spyOn(jwtService, 'verify')
+        .mockReturnValue({ sub: mockUser.id, email: mockUser.email } as any);
+      jest
+        .spyOn(usersService, 'findById')
+        .mockResolvedValue({
+          ...mockUser,
+          refreshToken,
+          isActive: false,
+        } as any);
+
+      await expect(service.refreshToken(refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
 
     it('should refresh token successfully with valid refresh token', async () => {
       const payload = { sub: mockUser.id, email: mockUser.email };

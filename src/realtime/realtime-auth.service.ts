@@ -46,7 +46,7 @@ export class RealtimeAuthService {
       relations: ['merchant'],
     });
 
-    if (!user || !user.merchant) {
+    if (!user || !user.isActive || !user.merchant) {
       throw new UnauthorizedException('Invalid token');
     }
 
