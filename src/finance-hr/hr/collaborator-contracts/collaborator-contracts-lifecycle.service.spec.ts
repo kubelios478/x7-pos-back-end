@@ -122,7 +122,9 @@ describe('CollaboratorContractsService — lifecycle', () => {
         {
           provide: getRepositoryToken(Merchant),
           useValue: {
-            findOne: jest.fn().mockResolvedValue({ id: MERCHANT_ID }),
+            findOne: jest
+              .fn()
+              .mockResolvedValue({ id: MERCHANT_ID, companyId: 1 }),
           },
         },
         {
@@ -432,6 +434,34 @@ describe('CollaboratorContractsService — lifecycle', () => {
       await expect(service.findOne(404, MERCHANT_ID)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('ownership', () => {
+    it('a merchant user cannot move a contract to another merchant', async () => {
+      contractRepo.findOne.mockResolvedValue(contractFixture());
+
+      await expect(
+        service.update(12, { merchant_id: 99 }, MERCHANT_ID),
+      ).rejects.toThrow('A contract cannot be moved to another merchant');
+    });
+
+    it("rejects assigning another merchant's collaborator", async () => {
+      contractRepo.findOne.mockResolvedValue(contractFixture());
+      collaboratorRepo.findOne.mockResolvedValue({
+        id: 77,
+        merchant_id: 99,
+      });
+
+      await expect(
+        service.update(12, { collaborator_id: 77 }, MERCHANT_ID),
+      ).rejects.toThrow('Collaborator does not belong to the given merchant');
+    });
+
+    it("rejects a company that is not the merchant's company", async () => {
+      await expect(
+        service.create({ ...baseCreateDto, company_id: 2 }, MERCHANT_ID),
+      ).rejects.toThrow("The company does not match the merchant's company");
     });
   });
 });
