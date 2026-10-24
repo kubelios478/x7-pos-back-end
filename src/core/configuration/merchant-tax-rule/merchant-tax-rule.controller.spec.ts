@@ -23,7 +23,7 @@ describe('MerchantTaxRuleController', () => {
     name: 'Test Company',
     email: 'test@company.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',

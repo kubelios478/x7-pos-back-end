@@ -1,3 +1,4 @@
+import { signContractDocumentUrl } from './contract-document-url';
 import {
   Injectable,
   NotFoundException,
@@ -91,7 +92,8 @@ export class CollaboratorContractsService {
       pay_frequency: c.pay_frequency ?? PayFrequency.MONTHLY,
       wage_rate: this.wageRateOf(c),
       working_hours_per_week: Number(c.working_hours_per_week ?? 0),
-      document_url: c.document_url ?? null,
+      // a short-lived signed link, never the stored path
+      document_url: signContractDocumentUrl(c.id, c.document_url),
       document_name: c.document_name ?? null,
       base_salary: Number(c.base_salary),
       hourly_rate: Number(c.hourly_rate),
@@ -259,6 +261,15 @@ export class CollaboratorContractsService {
       );
     }
 
+    await this.assertConsistentOwner(
+      {
+        company_id: dto.company_id,
+        merchant_id: dto.merchant_id,
+        collaborator_id: dto.collaborator_id,
+      },
+      authenticatedUserMerchantId,
+    );
+
     if (dto.active !== false) {
       this.assertNoOverlap(
         await this.blockingActiveContract(dto.collaborator_id),
@@ -274,14 +285,20 @@ export class CollaboratorContractsService {
 
     const compensation = this.resolveCompensation(dto);
 
+    if (dto.document_url != null) {
+      throw new BadRequestException(
+        'document_url is set by uploading the document (POST /collaborator-contracts/:id/document)',
+      );
+    }
+
     const contract = this.contractRepo.create({
       company_id: dto.company_id,
       merchant_id: dto.merchant_id,
       collaborator_id: dto.collaborator_id,
       employment_type: dto.employment_type ?? EmploymentType.FULL_TIME,
       working_hours_per_week: dto.working_hours_per_week ?? 40,
-      document_url: dto.document_url ?? null,
-      document_name: dto.document_name ?? null,
+      document_url: null,
+      document_name: null,
       overtime_multiplier: dto.overtime_multiplier ?? 1.5,
       double_overtime_multiplier: dto.double_overtime_multiplier ?? 2.0,
       tips_included_in_payroll: dto.tips_included_in_payroll ?? false,
@@ -495,6 +512,7 @@ export class CollaboratorContractsService {
       contract.collaborator_id = dto.collaborator_id;
       contract.collaborator = collaborator;
     }
+    await this.assertConsistentOwner(contract, authenticatedUserMerchantId);
 
     const compensation = this.resolveCompensation(dto, contract);
     contract.pay_frequency = compensation.pay_frequency;
@@ -506,8 +524,16 @@ export class CollaboratorContractsService {
       contract.employment_type = dto.employment_type;
     if (dto.working_hours_per_week != null)
       contract.working_hours_per_week = dto.working_hours_per_week;
-    if (dto.document_url !== undefined)
-      contract.document_url = dto.document_url ?? null;
+    if (dto.document_url !== undefined) {
+      // a document is attached by uploading it; here it can only be removed
+      if (dto.document_url !== null) {
+        throw new BadRequestException(
+          'document_url is set by uploading the document (POST /collaborator-contracts/:id/document); send null to remove it',
+        );
+      }
+      contract.document_url = null;
+      contract.document_name = null;
+    }
     if (dto.document_name !== undefined)
       contract.document_name = dto.document_name ?? null;
     if (dto.overtime_multiplier != null)
@@ -616,5 +642,44 @@ export class CollaboratorContractsService {
       message: 'Collaborator contract deleted successfully',
       data: snapshot,
     };
+  }
+
+  /**
+   * A contract stays inside one merchant: its company is that merchant's company and its
+   * collaborator works there. Merchant users cannot move it to another merchant.
+   */
+  private async assertConsistentOwner(
+    row: { company_id: number; merchant_id: number; collaborator_id: number },
+    authenticatedUserMerchantId: number | undefined,
+  ): Promise<void> {
+    if (
+      authenticatedUserMerchantId != null &&
+      row.merchant_id !== authenticatedUserMerchantId
+    ) {
+      throw new ForbiddenException(
+        'A contract cannot be moved to another merchant',
+      );
+    }
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: row.merchant_id },
+    });
+    if (!merchant) {
+      throw new NotFoundException(
+        `Merchant with ID ${row.merchant_id} not found`,
+      );
+    }
+    if (merchant.companyId !== row.company_id) {
+      throw new BadRequestException(
+        "The company does not match the merchant's company",
+      );
+    }
+    const collaborator = await this.collaboratorRepo.findOne({
+      where: { id: row.collaborator_id },
+    });
+    if (!collaborator || collaborator.merchant_id !== row.merchant_id) {
+      throw new BadRequestException(
+        'Collaborator does not belong to the given merchant',
+      );
+    }
   }
 }

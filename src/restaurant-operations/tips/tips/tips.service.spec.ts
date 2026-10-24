@@ -58,6 +58,8 @@ describe('TipsService', () => {
   const mockTipRepository = {
     save: jest.fn(),
     findOne: jest.fn(),
+    // updateOrderTipTotal() sums the order's tips
+    find: jest.fn().mockResolvedValue([]),
     update: jest.fn(),
     createQueryBuilder: jest.fn(() => ({
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -72,7 +74,11 @@ describe('TipsService', () => {
 
   const mockCompanyRepository = { findOne: jest.fn() };
   const mockMerchantRepository = { findOne: jest.fn() };
-  const mockOrderRepository = { findOne: jest.fn() };
+  const mockOrderRepository = {
+    findOne: jest.fn(),
+    // updateOrderTipTotal() stores the recomputed tip on the order
+    save: jest.fn((order: unknown) => Promise.resolve(order)),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

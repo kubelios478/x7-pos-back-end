@@ -158,6 +158,13 @@ export class UsersController {
   }
 
   @Put(':id')
+  // Any staff account may edit its own profile; the service decides what else it may touch.
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @ApiOperation({ summary: 'Update a user by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'User ID' })
   @ApiOkResponse({
@@ -173,8 +180,8 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @Req() req: Request & { user: AuthenticatedUser },
   ): Promise<OneUserResponseDto> {
-    const currentUser = req.user;
-    return this.usersService.update(id, dto, currentUser);
+    const authenticatedUser = req.user;
+    return this.usersService.update(id, dto, authenticatedUser);
   }
 
   @Patch(':id/status')

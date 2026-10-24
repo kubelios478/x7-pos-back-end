@@ -1,3 +1,9 @@
+import { Supply } from 'src/inventory/supplies/entities/supply.entity';
+import { StockLevelMonitorService } from '../../stock-alerts/stock-level-monitor.service';
+import { MovementsService } from '../stocks/movements/movements.service';
+import { Movement } from '../stocks/movements/entities/movement.entity';
+import { Location } from '../stocks/locations/entities/location.entity';
+import { Item } from '../stocks/items/entities/item.entity';
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument*/
 import { Test, TestingModule } from '@nestjs/testing';
 import { PurchaseOrderService } from './purchase-order.service';
@@ -26,6 +32,7 @@ describe('PurchaseOrderService', () => {
     andWhere: jest.Mock;
     getCount: jest.Mock;
     orderBy: jest.Mock;
+    addOrderBy: jest.Mock;
     skip: jest.Mock;
     take: jest.Mock;
     getMany: jest.Mock;
@@ -112,6 +119,15 @@ describe('PurchaseOrderService', () => {
   };
 
   const mockPurchaseOrderItem1: PurchaseOrderItem = {
+    rawMaterialId: null,
+    purchaseUnit: null,
+    quantityOrdered: null,
+    unitCost: null,
+    taxAmount: null,
+    rawMaterial: null,
+    receivedQuantity: 0,
+    locationId: 1,
+    location: {} as PurchaseOrderItem['location'],
     id: 1,
     purchaseOrderId: mockPurchaseOrder.id,
     productId: mockProduct.id,
@@ -126,6 +142,15 @@ describe('PurchaseOrderService', () => {
   };
 
   const mockPurchaseOrderItem2: PurchaseOrderItem = {
+    rawMaterialId: null,
+    purchaseUnit: null,
+    quantityOrdered: null,
+    unitCost: null,
+    taxAmount: null,
+    rawMaterial: null,
+    receivedQuantity: 0,
+    locationId: 1,
+    location: {} as PurchaseOrderItem['location'],
     id: 2,
     purchaseOrderId: mockPurchaseOrder.id,
     productId: mockProduct.id,
@@ -177,7 +202,7 @@ describe('PurchaseOrderService', () => {
     };
 
     const mockPurchaseOrderItemRepo = {
-      find: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
       save: jest.fn(),
     };
 
@@ -186,6 +211,7 @@ describe('PurchaseOrderService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       getCount: jest.fn(),
@@ -212,6 +238,62 @@ describe('PurchaseOrderService', () => {
         {
           provide: getRepositoryToken(PurchaseOrderItem),
           useValue: mockPurchaseOrderItemRepo,
+        },
+        {
+          provide: getRepositoryToken(Location),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Item),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Supply),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Movement),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: MovementsService,
+          useValue: {
+            create: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: StockLevelMonitorService,
+          useValue: {
+            evaluateStockItems: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();
@@ -264,7 +346,15 @@ describe('PurchaseOrderService', () => {
           isActive: true,
           merchantId: mockMerchant.id,
         },
-        relations: ['merchant', 'supplier'],
+        relations: [
+          'merchant',
+          'supplier',
+          'purchaseOrderItems',
+          'purchaseOrderItems.product',
+          'purchaseOrderItems.variant',
+          'purchaseOrderItems.rawMaterial',
+          'purchaseOrderItems.location',
+        ],
       });
       expect(result).toEqual({
         statusCode: 201,
@@ -274,6 +364,7 @@ describe('PurchaseOrderService', () => {
           status: mockPurchaseOrder.status,
           totalAmount: mockPurchaseOrder.totalAmount,
           orderDate: mockPurchaseOrder.orderDate,
+          purchaseOrderItems: [],
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           supplier: {
             id: mockSupplier.id,
@@ -359,8 +450,12 @@ describe('PurchaseOrderService', () => {
         { status: mockGetPurchaseOrdersQueryDto.status },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
-        'purchaseOrder.status',
-        'ASC',
+        'purchaseOrder.orderDate',
+        'DESC',
+      );
+      expect(mockQueryBuilder.addOrderBy).toHaveBeenCalledWith(
+        'purchaseOrder.id',
+        'DESC',
       );
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(
@@ -375,6 +470,7 @@ describe('PurchaseOrderService', () => {
             status: mockPurchaseOrder.status,
             totalAmount: mockPurchaseOrder.totalAmount,
             orderDate: mockPurchaseOrder.orderDate,
+            purchaseOrderItems: [],
             merchant: { id: mockMerchant.id, name: mockMerchant.name },
             supplier: {
               id: mockSupplier.id,
@@ -426,8 +522,12 @@ describe('PurchaseOrderService', () => {
         { status: mockGetPurchaseOrdersQueryDto.status },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
-        'purchaseOrder.status',
-        'ASC',
+        'purchaseOrder.orderDate',
+        'DESC',
+      );
+      expect(mockQueryBuilder.addOrderBy).toHaveBeenCalledWith(
+        'purchaseOrder.id',
+        'DESC',
       );
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(
@@ -455,7 +555,15 @@ describe('PurchaseOrderService', () => {
           merchantId: mockMerchant.id,
           isActive: true,
         },
-        relations: ['merchant', 'supplier'],
+        relations: [
+          'merchant',
+          'supplier',
+          'purchaseOrderItems',
+          'purchaseOrderItems.product',
+          'purchaseOrderItems.variant',
+          'purchaseOrderItems.rawMaterial',
+          'purchaseOrderItems.location',
+        ],
       });
 
       expect(result).toEqual({
@@ -466,6 +574,7 @@ describe('PurchaseOrderService', () => {
           status: mockPurchaseOrder.status,
           totalAmount: mockPurchaseOrder.totalAmount,
           orderDate: mockPurchaseOrder.orderDate,
+          purchaseOrderItems: [],
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           supplier: {
             id: mockSupplier.id,
@@ -492,7 +601,15 @@ describe('PurchaseOrderService', () => {
           merchantId: mockMerchant.id,
           isActive: true,
         },
-        relations: ['merchant', 'supplier'],
+        relations: [
+          'merchant',
+          'supplier',
+          'purchaseOrderItems',
+          'purchaseOrderItems.product',
+          'purchaseOrderItems.variant',
+          'purchaseOrderItems.rawMaterial',
+          'purchaseOrderItems.location',
+        ],
       });
     });
 
@@ -512,14 +629,22 @@ describe('PurchaseOrderService', () => {
   });
 
   describe('Update', () => {
+    // Details can only be edited while the order is DRAFT or SENT.
+    const editablePurchaseOrder: PurchaseOrder = {
+      ...mockPurchaseOrder,
+      status: PurchaseOrderStatus.DRAFT,
+    };
+
     it('should update a PurchaseOrder successfully', async () => {
       const updatedPurchaseOrder: PurchaseOrder = {
-        ...mockPurchaseOrder,
+        ...editablePurchaseOrder,
         status: mockUpdatePurchaseOrderDto.status!,
         totalAmount: mockUpdatePurchaseOrderDto.totalAmount!,
       };
 
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(mockPurchaseOrder);
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...editablePurchaseOrder,
+      });
       supplierRepo.findOneBy.mockResolvedValueOnce(mockSupplier);
       purchaseOrderRepo.save.mockResolvedValueOnce(updatedPurchaseOrder);
       purchaseOrderRepo.findOne.mockResolvedValueOnce(updatedPurchaseOrder);
@@ -530,10 +655,13 @@ describe('PurchaseOrderService', () => {
         mockUpdatePurchaseOrderDto,
       );
 
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockPurchaseOrder.id,
-        isActive: true,
-        merchantId: mockMerchant.id,
+      expect(purchaseOrderRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          id: mockPurchaseOrder.id,
+          isActive: true,
+          merchantId: mockMerchant.id,
+        },
+        relations: ['purchaseOrderItems'],
       });
       expect(supplierRepo.findOneBy).not.toHaveBeenCalled(); // Supplier ID not changed
       expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
@@ -549,7 +677,15 @@ describe('PurchaseOrderService', () => {
           isActive: true,
           merchantId: mockMerchant.id,
         },
-        relations: ['merchant', 'supplier'],
+        relations: [
+          'merchant',
+          'supplier',
+          'purchaseOrderItems',
+          'purchaseOrderItems.product',
+          'purchaseOrderItems.variant',
+          'purchaseOrderItems.rawMaterial',
+          'purchaseOrderItems.location',
+        ],
       });
       expect(result).toEqual({
         statusCode: 200,
@@ -559,6 +695,7 @@ describe('PurchaseOrderService', () => {
           status: updatedPurchaseOrder.status,
           totalAmount: updatedPurchaseOrder.totalAmount,
           orderDate: updatedPurchaseOrder.orderDate,
+          purchaseOrderItems: [],
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           supplier: {
             id: mockSupplier.id,
@@ -595,7 +732,9 @@ describe('PurchaseOrderService', () => {
         supplierId: newMockSupplier.id,
       };
 
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(mockPurchaseOrder);
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...editablePurchaseOrder,
+      });
       supplierRepo.findOneBy.mockResolvedValueOnce(newMockSupplier);
       purchaseOrderRepo.save.mockResolvedValueOnce(
         updatedPurchaseOrderWithNewSupplier,
@@ -610,10 +749,13 @@ describe('PurchaseOrderService', () => {
         dtoWithNewSupplier,
       );
 
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockPurchaseOrder.id,
-        isActive: true,
-        merchantId: mockMerchant.id,
+      expect(purchaseOrderRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          id: mockPurchaseOrder.id,
+          isActive: true,
+          merchantId: mockMerchant.id,
+        },
+        relations: ['purchaseOrderItems'],
       });
       expect(supplierRepo.findOneBy).toHaveBeenCalledWith({
         id: newMockSupplier.id,
@@ -631,7 +773,15 @@ describe('PurchaseOrderService', () => {
           isActive: true,
           merchantId: mockMerchant.id,
         },
-        relations: ['merchant', 'supplier'],
+        relations: [
+          'merchant',
+          'supplier',
+          'purchaseOrderItems',
+          'purchaseOrderItems.product',
+          'purchaseOrderItems.variant',
+          'purchaseOrderItems.rawMaterial',
+          'purchaseOrderItems.location',
+        ],
       });
       expect(result).toEqual({
         statusCode: 200,
@@ -641,6 +791,7 @@ describe('PurchaseOrderService', () => {
           status: updatedPurchaseOrderWithNewSupplier.status,
           totalAmount: updatedPurchaseOrderWithNewSupplier.totalAmount,
           orderDate: updatedPurchaseOrderWithNewSupplier.orderDate,
+          purchaseOrderItems: [],
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           supplier: {
             id: newMockSupplier.id,
@@ -655,7 +806,7 @@ describe('PurchaseOrderService', () => {
 
     it('should throw NotFoundException if Purchase Order to update is not found', async () => {
       const idNotFound = 999;
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(null);
+      purchaseOrderRepo.findOne.mockResolvedValueOnce(null);
 
       await expect(
         async () =>
@@ -666,10 +817,13 @@ describe('PurchaseOrderService', () => {
           ),
       ).rejects.toThrow('Purchase Order not found');
 
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: idNotFound,
-        isActive: true,
-        merchantId: mockMerchant.id,
+      expect(purchaseOrderRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          id: idNotFound,
+          isActive: true,
+          merchantId: mockMerchant.id,
+        },
+        relations: ['purchaseOrderItems'],
       });
       expect(purchaseOrderRepo.save).not.toHaveBeenCalled();
     });
@@ -679,7 +833,9 @@ describe('PurchaseOrderService', () => {
         supplierId: 999,
       };
 
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(mockPurchaseOrder);
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...editablePurchaseOrder,
+      });
       supplierRepo.findOneBy.mockResolvedValueOnce(null);
 
       await expect(
@@ -691,10 +847,13 @@ describe('PurchaseOrderService', () => {
           ),
       ).rejects.toThrow('Supplier not found');
 
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockPurchaseOrder.id,
-        isActive: true,
-        merchantId: mockMerchant.id,
+      expect(purchaseOrderRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          id: mockPurchaseOrder.id,
+          isActive: true,
+          merchantId: mockMerchant.id,
+        },
+        relations: ['purchaseOrderItems'],
       });
       expect(supplierRepo.findOneBy).toHaveBeenCalledWith({
         id: dtoWithInvalidSupplier.supplierId,
@@ -725,7 +884,9 @@ describe('PurchaseOrderService', () => {
     });
 
     it('should throw an error if updating the purchase order fails', async () => {
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(mockPurchaseOrder);
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...editablePurchaseOrder,
+      });
       purchaseOrderRepo.save.mockRejectedValueOnce(new Error('Database error'));
 
       await expect(
@@ -737,10 +898,13 @@ describe('PurchaseOrderService', () => {
           ),
       ).rejects.toThrow('Database operation failed');
 
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockPurchaseOrder.id,
-        isActive: true,
-        merchantId: mockMerchant.id,
+      expect(purchaseOrderRepo.findOne).toHaveBeenCalledWith({
+        where: {
+          id: mockPurchaseOrder.id,
+          isActive: true,
+          merchantId: mockMerchant.id,
+        },
+        relations: ['purchaseOrderItems'],
       });
       expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -749,6 +913,19 @@ describe('PurchaseOrderService', () => {
           totalAmount: mockUpdatePurchaseOrderDto.totalAmount,
         }),
       );
+    });
+
+    // BUG (Fase 3): PENDING es el default de la entidad y del DTO y el backoffice lo trata
+    // como editable, pero update() solo admite DRAFT/SENT. Pasar a `it` cuando se corrija.
+    it.failing('should allow editing a PENDING purchase order', async () => {
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({ ...mockPurchaseOrder });
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({ ...mockPurchaseOrder });
+
+      await expect(
+        service.update(mockPurchaseOrder.id, mockMerchant.id, {
+          totalAmount: 200,
+        }),
+      ).resolves.toBeDefined();
     });
   });
 
@@ -790,6 +967,7 @@ describe('PurchaseOrderService', () => {
           status: inactivePurchaseOrder.status,
           totalAmount: inactivePurchaseOrder.totalAmount,
           orderDate: inactivePurchaseOrder.orderDate,
+          purchaseOrderItems: [],
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           supplier: {
             id: mockSupplier.id,
@@ -810,7 +988,6 @@ describe('PurchaseOrderService', () => {
       };
 
       const mockProductWithRelations: Product = {
-        stock: 0, // fixture al día con el tipo
         ...mockProduct,
         merchant: mockMerchant as Merchant,
         category: mockCategory,
@@ -881,6 +1058,7 @@ describe('PurchaseOrderService', () => {
           status: inactivePurchaseOrder.status,
           totalAmount: inactivePurchaseOrder.totalAmount,
           orderDate: inactivePurchaseOrder.orderDate,
+          purchaseOrderItems: [],
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           supplier: {
             id: mockSupplier.id,

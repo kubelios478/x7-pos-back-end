@@ -1,3 +1,4 @@
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import {
   Injectable,
   NotFoundException,
@@ -1469,10 +1470,21 @@ export class KitchenOrderService {
     return StockAdjustmentType.RETURN_TO_INVENTORY;
   }
 
-  async cancelKitchenOrder(id: number, dto: CancelKitchenOrderDto, user: any) {
-    const actorUserId = user?.id || user?.user?.id || null;
+  async cancelKitchenOrder(
+    id: number,
+    dto: CancelKitchenOrderDto,
+    authenticatedUser: AuthenticatedUser,
+  ) {
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to cancel kitchen orders',
+      );
+    }
+    const actorUserId = authenticatedUser.id ?? null;
+    // Only the merchant's own orders: cancelling also moves the products' stock.
     const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
-      where: { id },
+      where: { id, merchant_id: authenticatedUserMerchantId },
       relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
     });
 
@@ -1552,7 +1564,7 @@ export class KitchenOrderService {
     existingKitchenOrder.business_status = KitchenOrderBusinessStatus.CANCELLED;
     existingKitchenOrder.cancellation_reason =
       dto.reason || KitchenCancellationReason.OTHER;
-    existingKitchenOrder.cancelled_by_user_id = user?.id || null;
+    existingKitchenOrder.cancelled_by_user_id = actorUserId;
     existingKitchenOrder.cancelled_at = new Date();
     if (dto.notes) {
       existingKitchenOrder.notes = existingKitchenOrder.notes

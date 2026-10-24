@@ -13,8 +13,12 @@ import { DataSource, Repository } from 'typeorm';
 import { UsersService } from '../platform-saas/users/users.service';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
 import { JwtService } from '@nestjs/jwt';
+import {
+  createPasswordResetToken,
+  hashToken,
+  isPasswordResetTokenLive,
+} from 'src/platform-saas/users/auth-tokens.util';
 import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
 import { Merchant } from '../platform-saas/merchants/entities/merchant.entity';
@@ -74,6 +78,11 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid Credentials');
+    }
+
+    // Checked after the password, so it reveals nothing to someone guessing emails.
+    if (!user.isActive) {
+      throw new UnauthorizedException('This account has been deactivated');
     }
 
     if (!user.merchant) {
@@ -179,8 +188,12 @@ export class AuthService {
       throw err;
     }
 
-    const resetToken = uuidv4();
-    await this.usersService.saveResetToken(user.id, resetToken);
+    if (!user.isActive) {
+      return { message: neutralMessage };
+    }
+
+    const { token: resetToken, hash } = createPasswordResetToken();
+    await this.usersService.saveResetToken(user.id, hash);
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
@@ -199,7 +212,10 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const user = await this.usersService.findByResetToken(token);
+    // expired links are refused before touching the database; used ones are no longer stored
+    const user = isPasswordResetTokenLive(token)
+      ? await this.usersService.findByResetToken(hashToken(token))
+      : null;
     if (!user) throw new NotFoundException('Invalid or expired token');
 
     const hashed = await bcrypt.hash(newPassword, 10);
@@ -214,7 +230,11 @@ export class AuthService {
       });
 
       const user = await this.usersService.findById(payload.sub);
-      if (!user || user.refreshToken !== refreshToken) {
+      if (
+        !user ||
+        !user.isActive ||
+        user.refreshToken !== hashToken(refreshToken)
+      ) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 

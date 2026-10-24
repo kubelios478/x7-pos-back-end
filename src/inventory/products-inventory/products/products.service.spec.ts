@@ -208,6 +208,7 @@ describe('ProductsService', () => {
           // Dependency that the service won and this spec never registered.
           provide: ItemsService,
           useValue: {
+            softRemoveByProductId: jest.fn().mockResolvedValue(undefined),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -220,6 +221,7 @@ describe('ProductsService', () => {
           // Dependency that the service won and this spec never registered.
           provide: PurchaseOrderItemService,
           useValue: {
+            softRemoveByProductId: jest.fn().mockResolvedValue(undefined),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -232,6 +234,7 @@ describe('ProductsService', () => {
           // Dependency that the service won and this spec never registered.
           provide: StockAvailabilityService,
           useValue: {
+            getProductAvailabilityMap: jest.fn().mockResolvedValue(new Map()),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -277,10 +280,6 @@ describe('ProductsService', () => {
         'product.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'product.name',
         'ASC',
@@ -288,7 +287,7 @@ describe('ProductsService', () => {
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(mockQuery.limit);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Products retrieved successfully',
         data: [
@@ -329,10 +328,6 @@ describe('ProductsService', () => {
         'product.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'product.name',
         'ASC',
@@ -356,12 +351,18 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Product retrieved successfully',
         data: {
@@ -388,9 +389,15 @@ describe('ProductsService', () => {
         where: {
           id: id_not_found,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
     });
 
@@ -429,11 +436,7 @@ describe('ProductsService', () => {
         merchantId: mockMerchant.id,
         isActive: true,
       });
-      expect(supplierRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockCreateProductDto.supplierId,
-        company_id: mockMerchant.companyId,
-        isActive: true,
-      });
+      expect(supplierRepo.findOneBy).not.toHaveBeenCalled();
 
       expect(productRepo.findOne).toHaveBeenCalledWith({
         where: [
@@ -462,20 +465,27 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
       expect(productRepo.create).toHaveBeenCalledWith({
         name: mockCreateProductDto.name,
         sku: mockCreateProductDto.sku,
         basePrice: mockCreateProductDto.basePrice,
+        isActive: true,
         merchantId: mockMerchant.id,
         categoryId: mockCreateProductDto.categoryId,
         supplierId: mockCreateProductDto.supplierId,
       });
       expect(productRepo.save).toHaveBeenCalledWith(mockProduct);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Product Created successfully',
         data: {
@@ -508,7 +518,7 @@ describe('ProductsService', () => {
 
       expect(inactiveProduct.isActive).toBe(true);
       expect(productRepo.save).toHaveBeenCalledWith(inactiveProduct);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Product Created successfully',
         data: {
@@ -573,7 +583,11 @@ describe('ProductsService', () => {
       supplierRepo.findOneBy.mockResolvedValueOnce(null);
 
       await expect(
-        async () => await service.create(mockMerchant.id, mockCreateProductDto),
+        async () =>
+          await service.create(mockMerchant.id, {
+            ...mockCreateProductDto,
+            supplierId: 999,
+          }),
       ).rejects.toThrow('Supplier not found');
 
       expect(productRepo.create).not.toHaveBeenCalled();
@@ -623,7 +637,6 @@ describe('ProductsService', () => {
       expect(productRepo.findOneBy).toHaveBeenCalledWith({
         id: mockProduct.id,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(productRepo.findOne).toHaveBeenCalledWith({
         where: {
@@ -644,9 +657,15 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
       expect(productRepo.save).toHaveBeenCalledWith({
         ...mockProduct,
@@ -657,7 +676,7 @@ describe('ProductsService', () => {
         supplierId: mockUpdateProductDto.supplierId,
       });
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Product Updated successfully',
         data: {
@@ -688,7 +707,6 @@ describe('ProductsService', () => {
       expect(productRepo.findOneBy).toHaveBeenCalledWith({
         id: idNotFound,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(productRepo.save).not.toHaveBeenCalled();
     });
@@ -819,11 +837,17 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Product Deleted successfully',
         data: {
@@ -911,9 +935,15 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
     });
   });

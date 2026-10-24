@@ -46,6 +46,7 @@ describe('KitchenStationController', () => {
     statusCode: 201,
     message: 'Kitchen station created successfully',
     data: {
+      stationNumber: 1,
       id: 1,
       merchantId: 1,
       merchant: {

@@ -45,6 +45,9 @@ describe('KitchenOrderController', () => {
     statusCode: 201,
     message: 'Kitchen order created successfully',
     data: {
+      cancelledAt: null,
+      cancellationReason: null,
+      cancelledByUserId: null,
       id: 1,
       merchantId: 1,
       orderId: 1,
@@ -125,7 +128,11 @@ describe('KitchenOrderController', () => {
 
       const result = await controller.create(createDto, mockRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(createDto, mockUser.merchant.id);
+      expect(createSpy).toHaveBeenCalledWith(
+        createDto,
+        mockUser.merchant.id,
+        mockUser.id,
+      );
       expect(result).toEqual(mockKitchenOrderResponse);
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Kitchen order created successfully');
@@ -190,6 +197,7 @@ describe('KitchenOrderController', () => {
         1,
         updateDto,
         mockUser.merchant.id,
+        mockUser.id,
       );
       expect(result).toEqual(updatedResponse);
       expect(result.statusCode).toBe(200);

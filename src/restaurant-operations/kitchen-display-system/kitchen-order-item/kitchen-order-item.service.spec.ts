@@ -37,6 +37,8 @@ describe('KitchenOrderItemService', () => {
   const mockKitchenOrderItemRepository = {
     save: jest.fn(),
     findOne: jest.fn(),
+    // sibling items, read to auto-bump the parent kitchen order
+    find: jest.fn().mockResolvedValue([]),
     createQueryBuilder: jest.fn(),
   };
 
@@ -271,6 +273,27 @@ describe('KitchenOrderItemService', () => {
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Kitchen order item created successfully');
       expect(result.data.kitchenOrderId).toBe(1);
+    });
+
+    it('only accepts an order line and a product of the merchant', async () => {
+      jest
+        .spyOn(kitchenOrderRepository, 'findOne')
+        .mockResolvedValue(mockKitchenOrder as unknown as KitchenOrder);
+      jest
+        .spyOn(orderItemRepository, 'findOne')
+        .mockResolvedValue(mockOrderItem as unknown as OrderItem);
+      // another merchant's product: the merchant-scoped lookup finds nothing
+      jest.spyOn(productRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.create(createDto, 1)).rejects.toThrow(
+        'Product not found',
+      );
+      expect(orderItemRepository.findOne).toHaveBeenCalledWith({
+        where: expect.objectContaining({ order: { merchant_id: 1 } }),
+      });
+      expect(productRepository.findOne).toHaveBeenCalledWith({
+        where: { id: createDto.productId, merchantId: 1 },
+      });
     });
 
     it('should create a kitchen order item with variant successfully', async () => {
@@ -842,15 +865,18 @@ describe('KitchenOrderItemService', () => {
       ).toHaveBeenCalledWith(1);
     });
 
-    it('should throw ConflictException when already PENDING', async () => {
+    it('should throw ConflictException when already at the initial status (HELD)', async () => {
       jest
         .spyOn(kitchenOrderItemRepository, 'createQueryBuilder')
         .mockReturnValue(
           mockQueryBuilder as unknown as SelectQueryBuilder<KitchenOrderItem>,
         );
-      mockQueryBuilder.getOne.mockResolvedValue(
-        mockKitchenOrderItem as unknown as KitchenOrderItem,
-      );
+      // a fresh copy: earlier tests advance the shared fixture's status
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockKitchenOrderItem,
+        // HELD (coursing) now precedes PENDING as the first status
+        preparation_status: KitchenOrderItemPreparationStatus.HELD,
+      } as unknown as KitchenOrderItem);
 
       await expect(service.revertPreparationStatus(1, 1)).rejects.toThrow(
         ConflictException,

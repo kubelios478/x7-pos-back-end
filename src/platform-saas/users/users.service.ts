@@ -2,8 +2,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import { User } from './entities/user.entity';
+import { createPasswordResetToken, hashToken } from './auth-tokens.util';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { Company } from '../companies/entities/company.entity';
@@ -15,6 +15,7 @@ import {
 } from './dtos/user-response.dto';
 import { UserHrSummaryResponseDto } from './dtos/user-hr-summary.dto';
 import { UserRole } from './constants/role.enum';
+import { Scope } from './constants/scope.enum';
 // import * as bcrypt from 'bcrypt';
 import * as bcrypt from 'bcryptjs';
 // import { console } from 'inspector';
@@ -35,6 +36,22 @@ function toSafeUser(user: User) {
   };
 }
 
+/** Roles and scopes a merchant admin may hand out; everything else is portal-only. */
+const MERCHANT_ASSIGNABLE_ROLES: readonly UserRole[] = [
+  UserRole.MERCHANT_ADMIN,
+  UserRole.MERCHANT_USER,
+];
+const MERCHANT_ASSIGNABLE_SCOPES: readonly Scope[] = [
+  Scope.MERCHANT_WEB,
+  Scope.MERCHANT_ANDROID,
+  Scope.MERCHANT_IOS,
+  Scope.MERCHANT_CLOVER,
+];
+
+function isPortalRole(role: UserRole | undefined): boolean {
+  return role === UserRole.PORTAL_ADMIN || role === UserRole.PORTAL_USER;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -52,13 +69,17 @@ export class UsersService {
 
   async create(
     dto: CreateUserDto,
-    currentUser?: AuthenticatedUser,
+    authenticatedUser?: AuthenticatedUser,
   ): Promise<OneUserResponseDto> {
     // Merchant admins can only provision users inside their own merchant (AC 3).
     // We ignore any client-provided merchantId and anchor to the admin's merchant.
-    const isMerchantAdmin = currentUser?.role === UserRole.MERCHANT_ADMIN;
+    if (authenticatedUser) {
+      this.assertCanGrantAccess(dto, authenticatedUser);
+    }
+
+    const isMerchantAdmin = authenticatedUser?.role === UserRole.MERCHANT_ADMIN;
     const resolvedMerchantId = isMerchantAdmin
-      ? currentUser?.merchant?.id
+      ? authenticatedUser?.merchant?.id
       : dto.merchantId;
 
     // Validate input ID parameters
@@ -131,7 +152,7 @@ export class UsersService {
 
   async findOne(
     id: number,
-    currentUser?: AuthenticatedUser,
+    authenticatedUser?: AuthenticatedUser,
   ): Promise<OneUserResponseDto> {
     // Validate ID parameter
     if (!id || id <= 0) {
@@ -143,7 +164,10 @@ export class UsersService {
       relations: ['merchant'],
     });
 
-    if (!user || (currentUser && !this.canManageUser(user, currentUser))) {
+    if (
+      !user ||
+      (authenticatedUser && !this.canManageUser(user, authenticatedUser))
+    ) {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
@@ -180,10 +204,10 @@ export class UsersService {
     };
   }
 
-  /** `currentUser` is set for API lookups; internal callers (password reset) omit it. */
+  /** `authenticatedUser` is set for API lookups; internal callers (password reset) omit it. */
   async findByEmail(
     email: string,
-    currentUser?: AuthenticatedUser,
+    authenticatedUser?: AuthenticatedUser,
   ): Promise<OneUserResponseDto> {
     // Validate email format
     if (!email || !email.includes('@')) {
@@ -197,7 +221,7 @@ export class UsersService {
 
     if (
       !foundUser ||
-      (currentUser && !this.canManageUser(foundUser, currentUser))
+      (authenticatedUser && !this.canManageUser(foundUser, authenticatedUser))
     ) {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
@@ -214,7 +238,7 @@ export class UsersService {
   }
 
   async findByRefreshToken(token: string): Promise<User | null> {
-    return this.userRepo.findOne({ where: { refreshToken: token } });
+    return this.userRepo.findOne({ where: { refreshToken: hashToken(token) } });
   }
 
   async saveResetToken(userId: number, token: string): Promise<void> {
@@ -222,24 +246,28 @@ export class UsersService {
   }
 
   async updatePassword(userId: number, hashedPassword: string): Promise<void> {
+    // a new password ends every open session (refresh token) and any pending reset link
     await this.userRepo.update(userId, {
       password: hashedPassword,
       resetToken: null,
+      refreshToken: null,
     });
   }
 
   async saveRefreshToken(userId: number, refreshToken: string): Promise<void> {
-    await this.userRepo.update(userId, { refreshToken });
+    await this.userRepo.update(userId, {
+      refreshToken: hashToken(refreshToken),
+    });
   }
 
   async updateRefreshToken(userId: number, token: string) {
-    await this.userRepo.update(userId, { refreshToken: token });
+    await this.userRepo.update(userId, { refreshToken: hashToken(token) });
   }
 
   async update(
     id: number,
     dto: UpdateUserDto,
-    currentUser: AuthenticatedUser,
+    authenticatedUser: AuthenticatedUser,
   ): Promise<OneUserResponseDto> {
     // Validate ID parameter
     if (!id || id <= 0) {
@@ -255,10 +283,13 @@ export class UsersService {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
-    this.assertCanManageUser(user, currentUser);
+    this.assertCanManageUser(user, authenticatedUser);
+    this.assertCanGrantAccess(dto, authenticatedUser, user);
 
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
+      // a new password ends every open session
+      user.refreshToken = null;
     }
 
     try {
@@ -281,7 +312,7 @@ export class UsersService {
   async setActiveStatus(
     id: number,
     isActive: boolean,
-    currentUser: AuthenticatedUser,
+    authenticatedUser: AuthenticatedUser,
   ): Promise<OneUserResponseDto> {
     if (!id || id <= 0) {
       ErrorHandler.invalidId('User ID must be a positive number');
@@ -296,9 +327,13 @@ export class UsersService {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
-    this.assertCanManageUser(user, currentUser);
+    this.assertCanManageUser(user, authenticatedUser);
 
     user.isActive = isActive;
+    if (!isActive) {
+      // the session cannot be renewed either
+      user.refreshToken = null;
+    }
     const updatedUser = await this.userRepo.save(user);
 
     return {
@@ -316,7 +351,7 @@ export class UsersService {
    */
   async triggerPasswordReset(
     id: number,
-    currentUser: AuthenticatedUser,
+    authenticatedUser: AuthenticatedUser,
   ): Promise<{ statusCode: number; message: string }> {
     if (!id || id <= 0) {
       ErrorHandler.invalidId('User ID must be a positive number');
@@ -331,10 +366,10 @@ export class UsersService {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
-    this.assertCanManageUser(user, currentUser);
+    this.assertCanManageUser(user, authenticatedUser);
 
-    const resetToken = uuidv4();
-    await this.saveResetToken(user.id, resetToken);
+    const { token: resetToken, hash } = createPasswordResetToken();
+    await this.saveResetToken(user.id, hash);
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
@@ -357,7 +392,7 @@ export class UsersService {
    */
   async getHrSummary(
     id: number,
-    currentUser: AuthenticatedUser,
+    authenticatedUser: AuthenticatedUser,
   ): Promise<UserHrSummaryResponseDto> {
     if (!id || id <= 0) {
       ErrorHandler.invalidId('User ID must be a positive number');
@@ -372,7 +407,7 @@ export class UsersService {
       ErrorHandler.notFound(ErrorMessage.USER_NOT_FOUND);
     }
 
-    this.assertCanManageUser(user, currentUser);
+    this.assertCanManageUser(user, authenticatedUser);
 
     const collaborators = (user.collaborators ?? []).map((collaborator) => ({
       id: collaborator.id,
@@ -395,24 +430,78 @@ export class UsersService {
   }
 
   /** Portal admins reach every user; anyone else only themselves and their merchant's users. */
-  private canManageUser(user: User, currentUser: AuthenticatedUser): boolean {
-    if (currentUser.role === UserRole.PORTAL_ADMIN) {
+  /**
+   * Who may touch a user record: portal admins anyone; everyone else themselves; merchant
+   * admins also the merchant's own (non-portal) users.
+   */
+  private canManageUser(
+    user: User,
+    authenticatedUser: AuthenticatedUser,
+  ): boolean {
+    if (authenticatedUser.role === UserRole.PORTAL_ADMIN) {
       return true;
     }
 
-    const isSelf = user.id === currentUser.id;
+    const isSelf = user.id === authenticatedUser.id;
+    if (isSelf) {
+      return true;
+    }
+
     const sameMerchant =
       !!user.merchant?.id &&
-      !!currentUser.merchant?.id &&
-      user.merchant.id === currentUser.merchant.id;
-    return isSelf || sameMerchant;
+      !!authenticatedUser.merchant?.id &&
+      user.merchant.id === authenticatedUser.merchant.id;
+    return (
+      authenticatedUser.role === UserRole.MERCHANT_ADMIN &&
+      sameMerchant &&
+      !isPortalRole(user.role)
+    );
+  }
+
+  /**
+   * Role, scope and active status decide what an account can reach, so only admins change
+   * them, and a merchant admin only within merchant roles and scopes. Values sent unchanged
+   * (the backoffice form always sends role and scope) are not a change.
+   */
+  private assertCanGrantAccess(
+    dto: { role?: UserRole; scope?: Scope; isActive?: boolean },
+    authenticatedUser: AuthenticatedUser,
+    target?: User,
+  ): void {
+    if (authenticatedUser.role === UserRole.PORTAL_ADMIN) {
+      return;
+    }
+
+    const roleChanges = dto.role !== undefined && dto.role !== target?.role;
+    const scopeChanges = dto.scope !== undefined && dto.scope !== target?.scope;
+    const statusChanges =
+      dto.isActive !== undefined && dto.isActive !== target?.isActive;
+    if (!roleChanges && !scopeChanges && !statusChanges) {
+      return;
+    }
+
+    if (authenticatedUser.role !== UserRole.MERCHANT_ADMIN) {
+      ErrorHandler.insufficientPermissions(
+        'Only administrators can change a user role, scope or status',
+      );
+    }
+    if (roleChanges && !MERCHANT_ASSIGNABLE_ROLES.includes(dto.role!)) {
+      ErrorHandler.insufficientPermissions(
+        `Merchant admins can only assign the roles: ${MERCHANT_ASSIGNABLE_ROLES.join(', ')}`,
+      );
+    }
+    if (scopeChanges && !MERCHANT_ASSIGNABLE_SCOPES.includes(dto.scope!)) {
+      ErrorHandler.insufficientPermissions(
+        `Merchant admins can only assign the scopes: ${MERCHANT_ASSIGNABLE_SCOPES.join(', ')}`,
+      );
+    }
   }
 
   private assertCanManageUser(
     user: User,
-    currentUser: AuthenticatedUser,
+    authenticatedUser: AuthenticatedUser,
   ): void {
-    if (!this.canManageUser(user, currentUser)) {
+    if (!this.canManageUser(user, authenticatedUser)) {
       ErrorHandler.insufficientPermissions(
         'You can only manage your own profile or users from your merchant',
       );

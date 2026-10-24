@@ -81,6 +81,9 @@ describe('ItemsController', () => {
         productName: 'Test',
       };
       const expectedItem: ItemResponseDto = {
+        weightedAverageUnitCost: null,
+        minimumQty: null,
+        supply: null,
         id: 1,
         currentQty: 10,
         product: mockProductLittleResponse,
@@ -140,6 +143,9 @@ describe('ItemsController', () => {
     it('should return a single item', async () => {
       const itemId = 1;
       const expectedItem: ItemResponseDto = {
+        weightedAverageUnitCost: null,
+        minimumQty: null,
+        supply: null,
         id: itemId,
         currentQty: 10,
         product: mockProductLittleResponse,
@@ -187,6 +193,9 @@ describe('ItemsController', () => {
         currentQty: 5,
       };
       const expectedItem: ItemResponseDto = {
+        weightedAverageUnitCost: null,
+        minimumQty: null,
+        supply: null,
         id: 10,
         currentQty: 5,
         product: mockProductLittleResponse,
@@ -238,6 +247,9 @@ describe('ItemsController', () => {
         locationId: 2,
       };
       const updatedItemResponse: ItemResponseDto = {
+        weightedAverageUnitCost: null,
+        minimumQty: null,
+        supply: null,
         id: itemId,
         currentQty: 15,
         product: mockProductLittleResponse,
@@ -287,6 +299,9 @@ describe('ItemsController', () => {
     it('should remove an item', async () => {
       const itemId = 1;
       const expectedItem: ItemResponseDto = {
+        weightedAverageUnitCost: null,
+        minimumQty: null,
+        supply: null,
         id: itemId,
         currentQty: 10,
         product: mockProductLittleResponse,

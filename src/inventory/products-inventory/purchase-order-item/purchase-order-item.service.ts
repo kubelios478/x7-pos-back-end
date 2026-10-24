@@ -16,6 +16,7 @@ import {
 import { ProductsService } from '../products/products.service';
 import { VariantsService } from '../variants/variants.service';
 import { Product } from '../products/entities/product.entity';
+import { Location } from '../stocks/locations/entities/location.entity';
 import { Variant } from '../variants/entities/variant.entity';
 
 @Injectable()
@@ -29,6 +30,8 @@ export class PurchaseOrderItemService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    @InjectRepository(Location)
+    private readonly locationRepository: Repository<Location>,
     @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
     private readonly variantsService: VariantsService,
@@ -70,6 +73,11 @@ export class PurchaseOrderItemService {
     if (!purchaseOrder) {
       ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
     }
+
+    await this.assertLocationOwned(
+      purchaseOrderItemData.locationId,
+      merchant_id,
+    );
 
     try {
       const newPurchaseOrderItem = this.purchaseOrderItemRepository.create({
@@ -320,6 +328,8 @@ export class PurchaseOrderItemService {
       ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
 
+    await this.assertLocationOwned(updateData.locationId, merchant_id);
+
     Object.assign(purchaseOrderItem, {
       ...updateData,
       totalPrice:
@@ -384,5 +394,17 @@ export class PurchaseOrderItemService {
       }
       await this.purchaseOrderItemRepository.save(items);
     }
+  }
+
+  /** The receiving location must be one of the merchant's own. */
+  private async assertLocationOwned(
+    locationId: number | undefined,
+    merchantId: number,
+  ): Promise<void> {
+    if (locationId == null) return;
+    const owned = await this.locationRepository.exists({
+      where: { id: locationId, merchantId },
+    });
+    if (!owned) ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
   }
 }

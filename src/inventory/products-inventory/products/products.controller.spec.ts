@@ -23,6 +23,8 @@ describe('ProductsController', () => {
   };
 
   const mockProduct = {
+    isOutOfStock: false,
+    isLowStock: false,
     id: 1,
     name: 'Test Product',
     sku: 'SKU-001',

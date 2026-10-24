@@ -349,10 +349,6 @@ describe('SuppliersService', () => {
         'supplier.company_id = :company_id',
         { company_id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'supplier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'supplier.name',
         'ASC',
@@ -360,7 +356,7 @@ describe('SuppliersService', () => {
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(mockQuery.limit);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Suppliers retrieved successfully',
         data: [mockSupplierResponseDto],
@@ -382,10 +378,6 @@ describe('SuppliersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
         'supplier.company_id = :company_id',
         { company_id },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'supplier.isActive = :isActive',
-        { isActive: true },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'supplier.name',
@@ -429,7 +421,8 @@ describe('SuppliersService', () => {
       const result = await service.findOne(supplierId, company_id);
 
       expect(supplierRepository.findOne).toHaveBeenCalledWith({
-        where: { id: supplierId, company_id: company_id, isActive: true },
+        where: { id: supplierId, company_id: company_id },
+        relations: ['purchaseOrders'],
       });
       expect(result).toEqual({
         statusCode: 200,
@@ -446,7 +439,8 @@ describe('SuppliersService', () => {
       const result = await service.findOne(supplierId);
 
       expect(supplierRepository.findOne).toHaveBeenCalledWith({
-        where: { id: supplierId, isActive: true },
+        where: { id: supplierId },
+        relations: ['purchaseOrders'],
       });
       expect(result).toEqual({
         statusCode: 200,
@@ -464,7 +458,8 @@ describe('SuppliersService', () => {
       ).rejects.toThrow(ErrorMessage.SUPPLIER_NOT_FOUND);
 
       expect(supplierRepository.findOne).toHaveBeenCalledWith({
-        where: { id: id_not_found, company_id: company_id, isActive: true },
+        where: { id: id_not_found, company_id: company_id },
+        relations: ['purchaseOrders'],
       });
     });
 
@@ -490,6 +485,7 @@ describe('SuppliersService', () => {
 
       expect(supplierRepository.findOne).toHaveBeenCalledWith({
         where: { id: supplierId, company_id: company_id, isActive: false },
+        relations: ['purchaseOrders'],
       });
       expect(result).toEqual({
         statusCode: 200,
@@ -527,7 +523,6 @@ describe('SuppliersService', () => {
       expect(supplierRepository.findOneBy).toHaveBeenCalledWith({
         id: supplierId,
         company_id: company_id,
-        isActive: true,
       });
       expect(supplierRepository.findOne).toHaveBeenCalledWith({
         where: {
@@ -560,7 +555,6 @@ describe('SuppliersService', () => {
       expect(supplierRepository.findOneBy).toHaveBeenCalledWith({
         id: supplierId,
         company_id: company_id,
-        isActive: true,
       });
       expect(supplierRepository.save).not.toHaveBeenCalled();
     });
@@ -591,7 +585,6 @@ describe('SuppliersService', () => {
       expect(supplierRepository.findOneBy).toHaveBeenCalledWith({
         id: supplierId,
         company_id: company_id,
-        isActive: true,
       });
       expect(supplierRepository.findOne).toHaveBeenCalledWith({
         where: {

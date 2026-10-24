@@ -1,3 +1,8 @@
+import {
+  createPasswordResetToken,
+  hashToken,
+  isPasswordResetTokenLive,
+} from 'src/platform-saas/users/auth-tokens.util';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -11,7 +16,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
@@ -31,7 +36,7 @@ import { UserRole } from '../platform-saas/users/constants/role.enum';
 import { getAllSubscriptionFeatureIds } from '../common/subscription/subscription-feature-ids';
 
 // Mock bcrypt
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
 // Mock uuid
@@ -106,6 +111,7 @@ describe('AuthService', () => {
       name: 'Test Merchant',
       companyId: 1,
     },
+    isActive: true,
     refreshToken: null,
   };
 
@@ -258,6 +264,17 @@ describe('AuthService', () => {
       );
     });
 
+    it('should reject a deactivated account once the password is right', async () => {
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ ...mockUser, isActive: false } as any);
+      mockedBcrypt.compare.mockResolvedValue(true as never);
+
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'This account has been deactivated',
+      );
+    });
+
     it('should throw UnauthorizedException if user has no associated merchant', async () => {
       const userWithoutMerchant = { ...mockUser, merchant: null };
 
@@ -369,15 +386,17 @@ describe('AuthService', () => {
       const result = await service.sendResetLink(email);
 
       expect(usersService.findByEmail).toHaveBeenCalledWith(email);
+      // the link carries the token; only its hash is stored
+      const mail = (mailService.sendMail as jest.Mock).mock.calls[0][0];
+      const sentToken = /token=([^"&\s]+)/.exec(mail.text)![1];
+      expect(isPasswordResetTokenLive(sentToken)).toBe(true);
       expect(usersService.saveResetToken).toHaveBeenCalledWith(
         mockUser.id,
-        'test-uuid-123',
+        hashToken(sentToken),
       );
-      expect(mailService.sendMail).toHaveBeenCalledWith({
+      expect(mail).toMatchObject({
         to: mockUser.email,
         subject: 'Reset Password',
-        text: expect.stringContaining('test-uuid-123'),
-        html: expect.stringContaining('test-uuid-123'),
       });
       expect(result).toEqual({
         message:
@@ -420,8 +439,24 @@ describe('AuthService', () => {
     });
   });
 
+  describe('sendResetLink for a deactivated account', () => {
+    it('sends nothing and answers with the same neutral message', async () => {
+      jest
+        .spyOn(usersService, 'findByEmail')
+        .mockResolvedValue({ data: { ...mockUser, isActive: false } } as any);
+      const sendMail = jest.spyOn(mailService, 'sendMail');
+
+      const result = await service.sendResetLink(mockUser.email);
+
+      expect(sendMail).not.toHaveBeenCalled();
+      expect(result.message).toContain(
+        'If the email matches an active account',
+      );
+    });
+  });
+
   describe('resetPassword', () => {
-    const token = 'reset-token-123';
+    const token = createPasswordResetToken().token;
     const newPassword = 'newPassword456';
     const hashedPassword = 'hashedNewPassword789';
 
@@ -436,7 +471,9 @@ describe('AuthService', () => {
 
       const result = await service.resetPassword(token, newPassword);
 
-      expect(usersService.findByResetToken).toHaveBeenCalledWith(token);
+      expect(usersService.findByResetToken).toHaveBeenCalledWith(
+        hashToken(token),
+      );
       expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 10);
       expect(usersService.updatePassword).toHaveBeenCalledWith(
         mockUser.id,
@@ -456,11 +493,24 @@ describe('AuthService', () => {
       );
     });
 
+    it('should refuse an expired link without querying the database', async () => {
+      const expired = createPasswordResetToken(
+        new Date(Date.now() - 31 * 60 * 1000),
+      ).token;
+
+      await expect(service.resetPassword(expired, newPassword)).rejects.toThrow(
+        'Invalid or expired token',
+      );
+      expect(usersService.findByResetToken).not.toHaveBeenCalled();
+    });
+
     it('should handle password hashing errors', async () => {
       jest
         .spyOn(usersService, 'findByResetToken')
         .mockResolvedValue(mockUser as any);
-      mockedBcrypt.hash.mockRejectedValue(new Error('Hashing failed') as never);
+      mockedBcrypt.hash.mockRejectedValueOnce(
+        new Error('Hashing failed') as never,
+      );
 
       await expect(service.resetPassword(token, newPassword)).rejects.toThrow(
         'Hashing failed',
@@ -472,9 +522,29 @@ describe('AuthService', () => {
     const refreshToken = 'valid-refresh-token';
     const newAccessToken = 'new-access-token';
 
+    it('should reject the refresh of a deactivated account', async () => {
+      jest
+        .spyOn(jwtService, 'verify')
+        .mockReturnValue({ sub: mockUser.id, email: mockUser.email } as any);
+      jest
+        .spyOn(usersService, 'findById')
+        .mockResolvedValue({
+          ...mockUser,
+          refreshToken,
+          isActive: false,
+        } as any);
+
+      await expect(service.refreshToken(refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
     it('should refresh token successfully with valid refresh token', async () => {
       const payload = { sub: mockUser.id, email: mockUser.email };
-      const userWithRefreshToken = { ...mockUser, refreshToken };
+      const userWithRefreshToken = {
+        ...mockUser,
+        refreshToken: hashToken(refreshToken),
+      };
 
       jest.spyOn(jwtService, 'verify').mockReturnValue(payload as any);
       jest

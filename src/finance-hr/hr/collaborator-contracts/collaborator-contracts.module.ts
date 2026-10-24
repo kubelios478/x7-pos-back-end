@@ -6,6 +6,7 @@ import { CollaboratorContract } from './entities/collaborator-contract.entity';
 import { CollaboratorContractRevision } from './entities/collaborator-contract-revision.entity';
 import { CollaboratorContractsService } from './collaborator-contracts.service';
 import { CollaboratorContractsController } from './collaborator-contracts.controller';
+import { ContractDocumentsController } from './contract-documents.controller';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { Collaborator } from '../collaborators/entities/collaborator.entity';
@@ -21,7 +22,7 @@ import { Collaborator } from '../collaborators/entities/collaborator.entity';
       Collaborator,
     ]),
   ],
-  controllers: [CollaboratorContractsController],
+  controllers: [CollaboratorContractsController, ContractDocumentsController],
   providers: [CollaboratorContractsService],
   exports: [CollaboratorContractsService],
 })

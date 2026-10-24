@@ -31,14 +31,14 @@ export class VariantsService {
     private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
 
-
   async create(
     merchant_id: number,
     createVariantDto: CreateVariantDto,
   ): Promise<OneVariantResponse> {
     const { productId, ...variantData } = createVariantDto;
 
-    const product = await this.productsService.findOne(productId);
+    // the merchant's own product only (findOne answers 404 for anyone else's)
+    const product = await this.productsService.findOne(productId, merchant_id);
 
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);

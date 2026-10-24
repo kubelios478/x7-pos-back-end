@@ -87,6 +87,8 @@ describe('ModifiersService', () => {
   };
 
   const mockProductResponseDto = {
+    isOutOfStock: false,
+    isLowStock: false,
     id: mockProduct.id!,
     name: mockProduct.name!,
     sku: mockProduct.sku!,
@@ -98,6 +100,7 @@ describe('ModifiersService', () => {
   };
 
   const mockModifierResponseDto: ModifierResponseDto = {
+    isActive: true,
     id: mockModifier.id!,
     name: mockModifier.name!,
     priceDelta: mockModifier.priceDelta!,
@@ -359,10 +362,6 @@ describe('ModifiersService', () => {
         'product.merchantId = :merchantId',
         { merchantId },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'modifier.name',
         'ASC',
@@ -409,10 +408,6 @@ describe('ModifiersService', () => {
         'product.merchantId = :merchantId',
         { merchantId },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'modifier.name',
         'ASC',
@@ -455,10 +450,6 @@ describe('ModifiersService', () => {
         id: mockModifier.id,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
       );
@@ -494,10 +485,6 @@ describe('ModifiersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('modifier.id = :id', {
         id: mockModifier.id,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         expect.any(Object),
@@ -520,10 +507,6 @@ describe('ModifiersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('modifier.id = :id', {
         id: id_not_found,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
@@ -571,10 +554,6 @@ describe('ModifiersService', () => {
         id: modifierId,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId: merchantId },
       );
@@ -609,10 +588,6 @@ describe('ModifiersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('modifier.id = :id', {
         id: modifierId,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId: merchantId },
@@ -726,6 +701,7 @@ describe('ModifiersService', () => {
           id: inactiveModifier.id,
           name: inactiveModifier.name,
           priceDelta: inactiveModifier.priceDelta,
+          isActive: false,
           product: mockProductResponseDto,
           parent: null,
         },

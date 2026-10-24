@@ -44,7 +44,11 @@ export class RealtimeTestController {
       };
     }
 
-    const event = dto.event?.trim() || 'test.notification';
+    // always under test.*: a test call must not pass for a real event (order.created…)
+    const requested = dto.event?.trim() || 'notification';
+    const event = requested.startsWith('test.')
+      ? requested
+      : `test.${requested}`;
     this.eventBus.emitToRoom(companyRoom(companyId), event, {
       message: dto.message,
       companyId,

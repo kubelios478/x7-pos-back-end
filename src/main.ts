@@ -2,10 +2,16 @@
 import './polyfill';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import {
+  configureHttpSecurity,
+  parseCorsOrigins,
+} from './common/security/http-security';
+import { CorsIoAdapter } from './realtime/adapters/cors-io.adapter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe, BadRequestException, Logger } from '@nestjs/common';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import type { Request, Response } from 'express';
 import * as dotenv from 'dotenv';
 import { useContainer } from 'class-validator';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
@@ -43,6 +49,9 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   app.setGlobalPrefix('api');
+
+  // trust proxy, security headers and CORS (CORS_ORIGINS); before any route, Swagger included
+  configureHttpSecurity(app, logger);
 
   // Swagger Configuration
   const config = new DocumentBuilder()
@@ -106,21 +115,27 @@ async function bootstrap() {
   // Global exception filter
   app.useGlobalFilters(new ValidationExceptionFilter());
 
-  app.enableCors();
-
-  // WebSockets Adapter with Redis
+  // WebSockets: same allowed origins as HTTP unless WS_CORS_ORIGIN says otherwise
+  const wsOrigins = parseCorsOrigins(
+    process.env.WS_CORS_ORIGIN ?? process.env.CORS_ORIGINS,
+  );
+  let wsAdapterSet = false;
   const wsRedisEnabled =
     (process.env.WS_REDIS_ENABLED ?? '').toLowerCase() === 'true';
   const redisUrl = process.env.REDIS_URL;
   if (wsRedisEnabled && redisUrl) {
     try {
-      const redisAdapter = new RedisIoAdapter(app, redisUrl);
+      const redisAdapter = new RedisIoAdapter(app, redisUrl, wsOrigins);
       await redisAdapter.connectToRedis();
       app.useWebSocketAdapter(redisAdapter);
+      wsAdapterSet = true;
       logger.log('Redis WebSocket Adapter initialized successfully.');
     } catch (redisError) {
       logger.error('Error connecting Redis WebSocket Adapter:', redisError);
     }
+  }
+  if (!wsAdapterSet) {
+    app.useWebSocketAdapter(new CorsIoAdapter(app, wsOrigins));
   }
 
   // Ensure the uploads folder exists before serving static files
@@ -129,6 +144,11 @@ async function bootstrap() {
     fs.mkdirSync(uploadsPath, { recursive: true });
   }
 
+  // Signed contracts used to live here; they are personal data and are no longer public
+  // (served through signed links, see contract-document-url.ts).
+  app.use('/uploads/contracts', (_req: Request, res: Response) =>
+    res.status(404).end(),
+  );
   app.useStaticAssets(uploadsPath, {
     prefix: '/uploads/',
   });
