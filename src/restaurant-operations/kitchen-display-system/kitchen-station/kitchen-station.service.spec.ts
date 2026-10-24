@@ -30,12 +30,27 @@ describe('KitchenStationService', () => {
   let kitchenStationRepository: Repository<KitchenStation>;
   let merchantRepository: Repository<Merchant>;
 
+  // Chainable query builder for the duplicate-name check, display-order shift and
+  // MAX(station_number) lookup the service runs on create/update.
+  const mockStationQueryBuilder = {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+    getOne: jest.fn().mockResolvedValue(null),
+    getRawOne: jest.fn().mockResolvedValue({ max: null }),
+    execute: jest.fn().mockResolvedValue({ affected: 0 }),
+  };
+
   const mockKitchenStationRepository = {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
     findAndCount: jest.fn(),
     update: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
+    createQueryBuilder: jest.fn(() => mockStationQueryBuilder),
   };
 
   const mockMerchantRepository = {
