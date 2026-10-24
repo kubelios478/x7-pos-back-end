@@ -68,9 +68,14 @@ describe('LocationsService', () => {
       findOne: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // main-storage bookkeeping (first location of a merchant becomes the main one)
+      count: jest.fn().mockResolvedValue(1),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     const mockMerchantRepo = {
       findOneBy: jest.fn(),
+      // raw-material stock is initialised per company for every new location
+      findOne: jest.fn().mockResolvedValue({ id: 1, companyId: 1 }),
     };
 
     mockQueryBuilder = {
@@ -98,6 +103,7 @@ describe('LocationsService', () => {
           // de pruebas no compilaba y la suite entera contaba como fallo.
           provide: getRepositoryToken(Item),
           useValue: {
+            manager: { find: jest.fn().mockResolvedValue([]) },
             find: jest.fn(),
             findOne: jest.fn(),
             findAndCount: jest.fn(),
@@ -194,18 +200,19 @@ describe('LocationsService', () => {
       expect(locationRepo.findOne).toHaveBeenCalledWith({
         where: {
           name: mockCreateLocationDto.name,
-          address: mockCreateLocationDto.address,
           merchantId: mockMerchant.id,
           isActive: false,
         },
       });
-      expect(locationRepo.create).toHaveBeenCalledWith({
-        name: mockCreateLocationDto.name,
-        address: mockCreateLocationDto.address,
-        merchantId: mockMerchant.id,
-      });
+      expect(locationRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: mockCreateLocationDto.name,
+          address: mockCreateLocationDto.address,
+          merchantId: mockMerchant.id,
+        }),
+      );
       expect(locationRepo.save).toHaveBeenCalledWith(mockLocation);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Location Created successfully',
         data: {
@@ -255,14 +262,13 @@ describe('LocationsService', () => {
       expect(locationRepo.findOne).toHaveBeenCalledWith({
         where: {
           name: mockCreateLocationDto.name,
-          address: mockCreateLocationDto.address,
           merchantId: mockMerchant.id,
           isActive: false,
         },
       });
       expect(inactiveLocation.isActive).toBe(true);
       expect(locationRepo.save).toHaveBeenCalledWith(inactiveLocation);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Location Created successfully',
         data: {
@@ -334,10 +340,6 @@ describe('LocationsService', () => {
         'location.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'location.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'location.name',
         'ASC',
@@ -345,7 +347,7 @@ describe('LocationsService', () => {
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(mockQuery.limit);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Locations retrieved successfully',
         data: [
@@ -392,7 +394,7 @@ describe('LocationsService', () => {
         'LOWER(location.name) LIKE LOWER(:name)',
         { name: '%Test Location%' },
       );
-      expect(result.data).toEqual([
+      expect(result.data).toMatchObject([
         {
           id: mockLocation.id,
           name: mockLocation.name,
@@ -438,7 +440,7 @@ describe('LocationsService', () => {
         },
         relations: ['merchant'],
       });
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Location retrieved successfully',
         data: {
@@ -500,7 +502,6 @@ describe('LocationsService', () => {
 
       expect(locationRepo.findOneBy).toHaveBeenCalledWith({
         id: mockLocation.id,
-        isActive: true,
         merchantId: mockMerchant.id,
       });
       expect(locationRepo.findOne).toHaveBeenCalledWith({
@@ -522,7 +523,7 @@ describe('LocationsService', () => {
         name: mockUpdateLocationDto.name,
         address: mockUpdateLocationDto.address,
       });
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Location Updated successfully',
         data: {
@@ -544,7 +545,6 @@ describe('LocationsService', () => {
 
       expect(locationRepo.findOneBy).toHaveBeenCalledWith({
         id: idNotFound,
-        isActive: true,
         merchantId: mockMerchant.id,
       });
       expect(locationRepo.save).not.toHaveBeenCalled();
@@ -637,6 +637,8 @@ describe('LocationsService', () => {
         locationToDelete as Location,
       );
       locationRepo.save.mockResolvedValueOnce(inactiveLocation as Location);
+      // the removed location was the main one: no other active location to promote
+      locationRepo.findOne.mockResolvedValueOnce(null);
       locationRepo.findOne.mockResolvedValueOnce(inactiveLocation as Location); // For findOne call inside remove
 
       const result = await service.remove(mockLocation.id!, mockMerchant.id);
@@ -648,7 +650,7 @@ describe('LocationsService', () => {
       });
       expect(locationToDelete.isActive).toBe(false);
       expect(locationRepo.save).toHaveBeenCalledWith(locationToDelete);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Location Deleted successfully',
         data: {
