@@ -2,8 +2,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
 import { User } from './entities/user.entity';
+import { createPasswordResetToken, hashToken } from './auth-tokens.util';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { Company } from '../companies/entities/company.entity';
@@ -214,7 +214,7 @@ export class UsersService {
   }
 
   async findByRefreshToken(token: string): Promise<User | null> {
-    return this.userRepo.findOne({ where: { refreshToken: token } });
+    return this.userRepo.findOne({ where: { refreshToken: hashToken(token) } });
   }
 
   async saveResetToken(userId: number, token: string): Promise<void> {
@@ -222,18 +222,22 @@ export class UsersService {
   }
 
   async updatePassword(userId: number, hashedPassword: string): Promise<void> {
+    // a new password ends every open session (refresh token) and any pending reset link
     await this.userRepo.update(userId, {
       password: hashedPassword,
       resetToken: null,
+      refreshToken: null,
     });
   }
 
   async saveRefreshToken(userId: number, refreshToken: string): Promise<void> {
-    await this.userRepo.update(userId, { refreshToken });
+    await this.userRepo.update(userId, {
+      refreshToken: hashToken(refreshToken),
+    });
   }
 
   async updateRefreshToken(userId: number, token: string) {
-    await this.userRepo.update(userId, { refreshToken: token });
+    await this.userRepo.update(userId, { refreshToken: hashToken(token) });
   }
 
   async update(
@@ -259,6 +263,8 @@ export class UsersService {
 
     if (dto.password) {
       dto.password = await bcrypt.hash(dto.password, 10);
+      // a new password ends every open session
+      user.refreshToken = null;
     }
 
     try {
@@ -337,8 +343,8 @@ export class UsersService {
 
     this.assertCanManageUser(user, currentUser);
 
-    const resetToken = uuidv4();
-    await this.saveResetToken(user.id, resetToken);
+    const { token: resetToken, hash } = createPasswordResetToken();
+    await this.saveResetToken(user.id, hash);
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 

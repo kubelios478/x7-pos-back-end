@@ -1,9 +1,9 @@
 // src/auth/dto/reset-password.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsString, MinLength } from 'class-validator';
 export class ResetPasswordDto {
   @ApiProperty({
-    example: 'uuid-token',
+    example: '1792860000.9f2c…',
     description: 'Token to be sent to user email address',
   })
   @IsString()
@@ -14,5 +14,6 @@ export class ResetPasswordDto {
     description: 'New user password to set for the user',
   })
   @IsString()
+  @MinLength(8)
   newPassword: string;
 }

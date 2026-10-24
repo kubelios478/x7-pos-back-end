@@ -1,3 +1,8 @@
+import {
+  createPasswordResetToken,
+  hashToken,
+  isPasswordResetTokenLive,
+} from 'src/platform-saas/users/auth-tokens.util';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -381,15 +386,17 @@ describe('AuthService', () => {
       const result = await service.sendResetLink(email);
 
       expect(usersService.findByEmail).toHaveBeenCalledWith(email);
+      // the link carries the token; only its hash is stored
+      const mail = (mailService.sendMail as jest.Mock).mock.calls[0][0];
+      const sentToken = /token=([^"&\s]+)/.exec(mail.text)![1];
+      expect(isPasswordResetTokenLive(sentToken)).toBe(true);
       expect(usersService.saveResetToken).toHaveBeenCalledWith(
         mockUser.id,
-        'test-uuid-123',
+        hashToken(sentToken),
       );
-      expect(mailService.sendMail).toHaveBeenCalledWith({
+      expect(mail).toMatchObject({
         to: mockUser.email,
         subject: 'Reset Password',
-        text: expect.stringContaining('test-uuid-123'),
-        html: expect.stringContaining('test-uuid-123'),
       });
       expect(result).toEqual({
         message:
@@ -432,8 +439,24 @@ describe('AuthService', () => {
     });
   });
 
+  describe('sendResetLink for a deactivated account', () => {
+    it('sends nothing and answers with the same neutral message', async () => {
+      jest
+        .spyOn(usersService, 'findByEmail')
+        .mockResolvedValue({ data: { ...mockUser, isActive: false } } as any);
+      const sendMail = jest.spyOn(mailService, 'sendMail');
+
+      const result = await service.sendResetLink(mockUser.email);
+
+      expect(sendMail).not.toHaveBeenCalled();
+      expect(result.message).toContain(
+        'If the email matches an active account',
+      );
+    });
+  });
+
   describe('resetPassword', () => {
-    const token = 'reset-token-123';
+    const token = createPasswordResetToken().token;
     const newPassword = 'newPassword456';
     const hashedPassword = 'hashedNewPassword789';
 
@@ -448,7 +471,9 @@ describe('AuthService', () => {
 
       const result = await service.resetPassword(token, newPassword);
 
-      expect(usersService.findByResetToken).toHaveBeenCalledWith(token);
+      expect(usersService.findByResetToken).toHaveBeenCalledWith(
+        hashToken(token),
+      );
       expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 10);
       expect(usersService.updatePassword).toHaveBeenCalledWith(
         mockUser.id,
@@ -466,6 +491,17 @@ describe('AuthService', () => {
       await expect(service.resetPassword(token, newPassword)).rejects.toThrow(
         'Invalid or expired token',
       );
+    });
+
+    it('should refuse an expired link without querying the database', async () => {
+      const expired = createPasswordResetToken(
+        new Date(Date.now() - 31 * 60 * 1000),
+      ).token;
+
+      await expect(service.resetPassword(expired, newPassword)).rejects.toThrow(
+        'Invalid or expired token',
+      );
+      expect(usersService.findByResetToken).not.toHaveBeenCalled();
     });
 
     it('should handle password hashing errors', async () => {
@@ -505,7 +541,10 @@ describe('AuthService', () => {
 
     it('should refresh token successfully with valid refresh token', async () => {
       const payload = { sub: mockUser.id, email: mockUser.email };
-      const userWithRefreshToken = { ...mockUser, refreshToken };
+      const userWithRefreshToken = {
+        ...mockUser,
+        refreshToken: hashToken(refreshToken),
+      };
 
       jest.spyOn(jwtService, 'verify').mockReturnValue(payload as any);
       jest
