@@ -1386,8 +1386,8 @@ export class OrdersService {
   }
 
   /** Emits after DB commit when the order first becomes fully paid. */
-  emitOrderFullyPaid(orderId: number, shiftId?: number | null): void {
-    this.eventEmitter.emit(ORDER_FULLY_PAID_EVENT, { orderId, shiftId });
+  emitOrderFullyPaid(orderId: number): void {
+    this.eventEmitter.emit(ORDER_FULLY_PAID_EVENT, { orderId });
   }
 
   /** Emits after DB commit when loyalty points must be reversed (cancel/refund). */

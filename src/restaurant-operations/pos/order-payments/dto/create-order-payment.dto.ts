@@ -77,7 +77,8 @@ export class CreateOrderPaymentDto {
 
   @ApiPropertyOptional({
     example: 12,
-    description: 'Optional POS shift id for inventory kardex linkage',
+    description:
+      'Cash shift (cash_shifts.id) the payment is recorded in; defaults to the active cash shift. It must belong to your merchant.',
   })
   @IsOptional()
   @IsNumber()
