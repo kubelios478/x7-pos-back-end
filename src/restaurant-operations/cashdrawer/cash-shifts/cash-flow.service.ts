@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { CashTransaction } from '../cash-transactions/entities/cash-transaction.entity';
+import { CashDrawer } from '../cash-drawers/entities/cash-drawer.entity';
 import { CashTransactionType } from '../cash-transactions/constants/cash-transaction-type.enum';
 import { CashTransactionStatus } from '../cash-transactions/constants/cash-transaction-status.enum';
 import { CashShiftMovementType } from './constants/cash-shift-movement-type.enum';
@@ -15,7 +16,8 @@ import { CashShiftMovementType } from './constants/cash-shift-movement-type.enum
 @Injectable()
 export class CashFlowService {
   /**
-   * Registers a movement in the cash_transactions table linked to a shiftId.
+   * Registers a movement in the cash_transactions table linked to a shiftId and applies it
+   * to the drawer's current_balance, which is what closing the drawer is checked against.
    *
    * @param shiftId       ID of the active cash shift.
    * @param amount        Amount of the movement (always positive).
@@ -51,6 +53,27 @@ export class CashFlowService {
       notes,
     });
 
-    return manager.getRepository(CashTransaction).save(transaction);
+    const saved = await manager
+      .getRepository(CashTransaction)
+      .save(transaction);
+
+    // Atomic UPDATE ... SET current_balance = current_balance ± amount, so concurrent
+    // payments on the same drawer don't overwrite each other.
+    const drawerRepo = manager.getRepository(CashDrawer);
+    if (movementType === CashShiftMovementType.IN) {
+      await drawerRepo.increment(
+        { id: cashDrawerId },
+        'current_balance',
+        amount,
+      );
+    } else {
+      await drawerRepo.decrement(
+        { id: cashDrawerId },
+        'current_balance',
+        amount,
+      );
+    }
+
+    return saved;
   }
 }

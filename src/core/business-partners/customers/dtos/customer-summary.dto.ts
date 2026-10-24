@@ -24,10 +24,11 @@ export class CustomerSummaryDto {
   phone?: string;
 
   @ApiProperty({
-    example: '1234567890',
-    description: 'RUT of the customer',
+    example: 'D123-4567-8901',
+    description: 'Identification document of the customer, if any',
+    nullable: true,
   })
-  rut: string;
+  document_id: string | null;
 
   @ApiProperty({
     example: '123 Main St',

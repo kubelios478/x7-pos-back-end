@@ -78,6 +78,7 @@ export class MerchantSubscriptionService {
   }
   async findAll(
     query: QueryMerchantSubscriptionDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedMerchantSubscriptionResponseDto> {
     const {
       status,
@@ -103,6 +104,10 @@ export class MerchantSubscriptionService {
         'merchant.id',
         'merchant.name',
       ]);
+
+    if (scopedMerchantId != null) {
+      qb.andWhere('merchant.id = :scopedMerchantId', { scopedMerchantId });
+    }
 
     if (status) {
       qb.andWhere('merchantSubscription.status = :status', { status });
@@ -134,7 +139,10 @@ export class MerchantSubscriptionService {
       },
     };
   }
-  async findOne(id: number): Promise<OneMerchantSubscriptionSummaryDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneMerchantSubscriptionSummaryDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId(
         'Merchant Subscription ID must be a positive integer',
@@ -142,7 +150,13 @@ export class MerchantSubscriptionService {
     }
     const merchantSubscription =
       await this.merchantSubscriptionRepository.findOne({
-        where: { id, status: In(['active', 'inactive']) },
+        where: {
+          id,
+          status: In(['active', 'inactive']),
+          ...(scopedMerchantId != null && {
+            merchant: { id: scopedMerchantId },
+          }),
+        },
         relations: ['merchant', 'plan'],
         select: {
           merchant: {

@@ -52,7 +52,7 @@ describe('CustomersController', () => {
     name: 'John Doe',
     email: 'john@example.com',
     phone: '+1234567890',
-    rut: '12345678-9',
+    document_id: 'D123-4567-8901',
     address: '123 Main St',
     city: 'New York',
     state: 'NY',
@@ -94,7 +94,7 @@ describe('CustomersController', () => {
       name: 'John Doe',
       email: 'john@example.com',
       phone: '+1234567890',
-      rut: '12345678-9',
+      document_id: 'D123-4567-8901',
       address: '123 Main St',
       city: 'New York',
       state: 'NY',
@@ -123,7 +123,7 @@ describe('CustomersController', () => {
           name: 'Test Company',
           email: 'test@company.com',
           phone: '1234567890',
-          rut: '12345678-9',
+          document_id: 'D123-4567-8901',
           address: '123 Test St',
           city: 'Test City',
           state: 'Test State',
@@ -176,9 +176,9 @@ describe('CustomersController', () => {
     it('should return all customers', async () => {
       jest.spyOn(service, 'findAll').mockResolvedValue(mockCustomers as any);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll(mockRequest as any);
 
-      expect(service.findAll).toHaveBeenCalled();
+      expect(service.findAll).toHaveBeenCalledWith(mockRequestUser.merchant.id);
       expect(result).toEqual(mockCustomers);
       expect(result).toHaveLength(2);
     });
@@ -186,7 +186,7 @@ describe('CustomersController', () => {
     it('should return empty array when no customers exist', async () => {
       jest.spyOn(service, 'findAll').mockResolvedValue([]);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll(mockRequest as any);
 
       expect(service.findAll).toHaveBeenCalled();
       expect(result).toEqual([]);
@@ -196,7 +196,7 @@ describe('CustomersController', () => {
       const error = new Error('Database connection failed');
       jest.spyOn(service, 'findAll').mockRejectedValue(error);
 
-      await expect(controller.findAll()).rejects.toThrow(
+      await expect(controller.findAll(mockRequest as any)).rejects.toThrow(
         'Database connection failed',
       );
       expect(service.findAll).toHaveBeenCalled();

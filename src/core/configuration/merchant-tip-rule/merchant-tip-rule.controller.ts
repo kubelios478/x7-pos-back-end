@@ -507,7 +507,8 @@ export class MerchantTipRuleController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.remove(id);
+    return this.merchantTipRuleService.remove(id, user);
   }
 }

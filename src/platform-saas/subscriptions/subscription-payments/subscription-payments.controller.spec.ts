@@ -1,5 +1,6 @@
 //src/subscriptions/subscription-payments/subscription-payments.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { SubscriptionPaymentsController } from './subscription-payments.controller';
 import { SubscriptionPaymentsService } from './subscription-payments.service';
 import { CreateSubscriptionPaymentDto } from './dto/create-subscription-payments.dto';
@@ -82,6 +83,8 @@ describe('SubscriptionPaymentController', () => {
           provide: SubscriptionPaymentsService,
           useValue: mockSubscriptionPaymentService,
         },
+        // Needed by the webhook signature guard.
+        { provide: ConfigService, useValue: { get: jest.fn() } },
       ],
     }).compile();
 

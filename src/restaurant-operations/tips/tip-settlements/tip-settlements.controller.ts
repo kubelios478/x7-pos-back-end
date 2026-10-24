@@ -6,7 +6,6 @@ import {
   Patch,
   Param,
   Put,
-  Req,
   Delete,
   ParseIntPipe,
   UseGuards,
@@ -261,9 +260,9 @@ export class TipSettlementsController {
   })
   getSettlementReport(
     @Query() query: QueryTipSettlementReportDto,
-    @Req() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.tipSettlementsService.getSettlementReport(query, req);
+    return this.tipSettlementsService.getSettlementReport(query, user);
   }
 
   @Get(':id')
@@ -470,9 +469,9 @@ export class TipSettlementsController {
   })
   async liquidatedTipSettlements(
     @Body() dto: LiquidatedTipSettlementsDto,
-    @Req() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.tipSettlementsService.liquidatedTipSettlements(dto, req);
+    return this.tipSettlementsService.liquidatedTipSettlements(dto, user);
   }
 
   @Post('cash-shifts/:shiftId/payout')

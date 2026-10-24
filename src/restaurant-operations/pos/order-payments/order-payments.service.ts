@@ -147,6 +147,16 @@ export class OrderPaymentsService {
       if (dto.source !== undefined) {
         row.source = dto.source;
       }
+      if (dto.shiftId != null && dto.shiftId !== shift.id) {
+        const ownsCashShift = await queryRunner.manager.exists(CashShift, {
+          where: { id: dto.shiftId, merchantId: authenticatedUserMerchantId },
+        });
+        if (!ownsCashShift) {
+          throw new BadRequestException(
+            'shiftId must be a cash shift of your merchant',
+          );
+        }
+      }
       row.shift_id = dto.shiftId ?? activeShiftId;
 
       saved = await queryRunner.manager.save(OrderPayment, row);
@@ -200,7 +210,7 @@ export class OrderPaymentsService {
 
     // Events must run after commit (avoid side-effects inside the transaction)
     if (becameFullyPaid) {
-      this.ordersService.emitOrderFullyPaid(dto.orderId, dto.shiftId);
+      this.ordersService.emitOrderFullyPaid(dto.orderId);
     }
     if (becameUnpaid) {
       this.ordersService.emitOrderLoyaltyReversal(dto.orderId);

@@ -365,17 +365,27 @@ export class MerchantTaxRuleService implements OnModuleInit {
     };
   }
 
-  async remove(id: number): Promise<OneMerchantTaxRuleResponseDto> {
+  async remove(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantTaxRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
     const merchantTaxRule = await this.merchantTaxRuleRepository.findOne({
       where: { id },
+      relations: ['company'],
     });
     if (!merchantTaxRule) {
       ErrorHandler.merchantTaxRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantTaxRule.company.id,
+    );
 
     merchantTaxRule.status = 'deleted';
     const deletedMerchantTaxRule =

@@ -349,7 +349,7 @@ export class ErrorHandler {
           this.duplicateResource('Resource', 'name', 'provided value');
         }
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-        if (error?.detail?.includes('rut')) {
+        if (error?.detail?.includes('tax_id')) {
           this.rutExists();
         }
         throw new ConflictException('Duplicate entry detected');

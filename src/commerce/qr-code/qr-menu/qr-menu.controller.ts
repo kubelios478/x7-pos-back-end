@@ -45,6 +45,9 @@ import {
 import { PaginatedQRMenuResponseDto } from './dto/paginated-qr-menu-response.dto';
 import { QueryQRMenuDto } from './dto/query-qr-menu.dto';
 import { UpdateQRMenuDto } from './dto/update-qr-menu.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Commerce - QR-Code - QR Menu')
 @ApiBearerAuth()
@@ -128,8 +131,11 @@ export class QrMenuController {
       },
     },
   })
-  async create(@Body() dto: CreateQRMenuDto): Promise<OneQRMenuResponseDto> {
-    return this.qrMenuService.create(dto);
+  async create(
+    @Body() dto: CreateQRMenuDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<OneQRMenuResponseDto> {
+    return this.qrMenuService.create(dto, merchantScopeOf(user));
   }
   @Get()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -181,8 +187,9 @@ export class QrMenuController {
   })
   async findAll(
     @Query() query: QueryQRMenuDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedQRMenuResponseDto> {
-    return this.qrMenuService.findAll(query);
+    return this.qrMenuService.findAll(query, merchantScopeOf(user));
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -271,11 +278,12 @@ export class QrMenuController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuResponseDto> {
     if (id <= 0) {
       throw new BadRequestException('Invalid ID. Must be a positive number.');
     }
-    const qrMenu = await this.qrMenuService.findOne(id);
+    const qrMenu = await this.qrMenuService.findOne(id, merchantScopeOf(user));
     return qrMenu;
   }
 
@@ -374,8 +382,9 @@ export class QrMenuController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateQRMenuDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuResponseDto> {
-    return this.qrMenuService.update(id, dto);
+    return this.qrMenuService.update(id, dto, merchantScopeOf(user));
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -464,7 +473,8 @@ export class QrMenuController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuResponseDto> {
-    return this.qrMenuService.remove(id);
+    return this.qrMenuService.remove(id, merchantScopeOf(user));
   }
 }

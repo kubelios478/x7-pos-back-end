@@ -40,7 +40,7 @@ export class SupplierCreditNote {
   credit_note_number: string;
 
   @ApiProperty({ example: '2026-03-03' })
-  @Column({ type: 'date', name: 'issue_date' })
+  @Column({ type: 'date', utc: true, name: 'issue_date' })
   issue_date: Date;
 
   @ApiProperty({ example: 120.0 })

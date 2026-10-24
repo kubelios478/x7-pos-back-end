@@ -2,7 +2,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LegacyRutSubscriber } from './platform-saas/companies/legacy-rut.subscriber';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import './database/pg-date-parser';
 
 // Core & Platform Modules
 import { AuthModule } from './auth/auth.module';
@@ -18,8 +20,6 @@ import { GrowthModule } from './growth/growth.module';
 import { FinanceHrModule } from './finance-hr/finance-hr.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { RestaurantOperationsModule } from './restaurant-operations/restaurant-operations.module';
-
-import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-system/kitchen-analytics/kitchen-analytics.module';
 
 @Module({
   imports: [
@@ -45,8 +45,12 @@ import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-
 
           // Automatic loading of all entities declared in each submodule (forFeature)
           autoLoadEntities: true,
+          subscribers: [LegacyRutSubscriber],
 
           synchronize: false,
+          // El esquema se cambia con migraciones (npm run migration:run), nunca al arrancar.
+          migrations: [__dirname + '/database/migrations/*.js'],
+          migrationsRun: false,
           ssl: useSSL ? { rejectUnauthorized: false } : false,
           extra: {
             ...(useSSL ? { ssl: { rejectUnauthorized: false } } : {}),
@@ -71,7 +75,6 @@ import { KitchenAnalyticsModule } from './restaurant-operations/kitchen-display-
     GrowthModule,
     FinanceHrModule,
     RealtimeModule,
-    KitchenAnalyticsModule,
   ],
 })
 export class AppModule {}

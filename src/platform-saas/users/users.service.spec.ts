@@ -9,6 +9,8 @@ import { Company } from '../companies/entities/company.entity';
 import { Merchant } from '../merchants/entities/merchant.entity';
 import { UserRole } from './constants/role.enum';
 import { Scope } from './constants/scope.enum';
+import { NotFoundException } from '@nestjs/common';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -254,6 +256,55 @@ describe('UsersService', () => {
     it('should call merchantRepository when needed', () => {
       expect(merchantRepository).toBeDefined();
       expect(typeof merchantRepository.findOne).toBe('function');
+    });
+  });
+
+  describe('lookups by id or email for API callers', () => {
+    const otherMerchantAdmin = {
+      id: 99,
+      email: 'admin@other.dev',
+      role: UserRole.MERCHANT_ADMIN,
+      scope: Scope.MERCHANT_WEB,
+      merchant: { id: 2 },
+    } as AuthenticatedUser;
+    const sameMerchantAdmin = { ...otherMerchantAdmin, merchant: { id: 1 } };
+    const portalAdmin = {
+      ...otherMerchantAdmin,
+      role: UserRole.PORTAL_ADMIN,
+    } as AuthenticatedUser;
+
+    beforeEach(() => {
+      userRepository.findOne.mockResolvedValue(mockUser as User);
+    });
+
+    it.each([
+      ['findOne', 1],
+      ['findByEmail', 'test@example.com'],
+    ] as const)(
+      '%s hides users of another merchant (404, not 403)',
+      async (method, arg) => {
+        await expect(
+          (
+            service[method] as (
+              a: unknown,
+              u: AuthenticatedUser,
+            ) => Promise<unknown>
+          )(arg, otherMerchantAdmin),
+        ).rejects.toThrow(NotFoundException);
+      },
+    );
+
+    it.each([sameMerchantAdmin, portalAdmin])(
+      'returns the user to its merchant admin or a portal admin',
+      async (currentUser) => {
+        const result = await service.findOne(1, currentUser);
+        expect(result.data.id).toBe(1);
+      },
+    );
+
+    it('keeps internal email lookups unrestricted', async () => {
+      const result = await service.findByEmail('test@example.com');
+      expect(result.data.id).toBe(1);
     });
   });
 });

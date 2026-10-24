@@ -34,10 +34,6 @@ describe('CashDrawersController', () => {
     },
   };
 
-  const mockRequest = {
-    user: mockUser,
-  };
-
   const mockCashDrawerResponseData: CashDrawerResponseDto = {
     id: 1,
     openingBalance: 100.0,
@@ -152,7 +148,7 @@ describe('CashDrawersController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll(query, mockRequest as any);
+      const result = await controller.findAll(query, mockUser as any);
 
       expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
       expect(result).toEqual(mockPaginatedResponse);
@@ -166,7 +162,7 @@ describe('CashDrawersController', () => {
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.findAll(query, mockRequest as any),
+        controller.findAll(query, mockUser as any),
       ).rejects.toThrow(errorMessage);
       expect(findAllSpy).toHaveBeenCalledWith(query, mockUser.merchant.id);
     });
@@ -186,7 +182,7 @@ describe('CashDrawersController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      await controller.findAll(queryWithFilters, mockRequest as any);
+      await controller.findAll(queryWithFilters, mockUser as any);
 
       expect(findAllSpy).toHaveBeenCalledWith(
         queryWithFilters,
@@ -225,7 +221,7 @@ describe('CashDrawersController', () => {
       };
       findOneSpy.mockResolvedValue(response);
 
-      const result = await controller.findOne(1, mockRequest as any);
+      const result = await controller.findOne(1, mockUser as any);
 
       expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
       expect(result).toEqual(response);
@@ -238,7 +234,7 @@ describe('CashDrawersController', () => {
       const findOneSpy = jest.spyOn(service, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(1, mockRequest as any)).rejects.toThrow(
+      await expect(controller.findOne(1, mockUser as any)).rejects.toThrow(
         errorMessage,
       );
       expect(findOneSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
@@ -253,7 +249,7 @@ describe('CashDrawersController', () => {
       };
       findOneSpy.mockResolvedValue(response);
 
-      await controller.findOne(123, mockRequest as any);
+      await controller.findOne(123, mockUser as any);
 
       expect(findOneSpy).toHaveBeenCalledWith(123, mockUser.merchant.id);
     });
@@ -350,7 +346,7 @@ describe('CashDrawersController', () => {
       };
       removeSpy.mockResolvedValue(deletedResponse);
 
-      const result = await controller.remove(1, mockRequest as any);
+      const result = await controller.remove(1, mockUser as any);
 
       expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
       expect(result).toEqual(deletedResponse);
@@ -363,7 +359,7 @@ describe('CashDrawersController', () => {
       const removeSpy = jest.spyOn(service, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(1, mockRequest as any)).rejects.toThrow(
+      await expect(controller.remove(1, mockUser as any)).rejects.toThrow(
         errorMessage,
       );
       expect(removeSpy).toHaveBeenCalledWith(1, mockUser.merchant.id);
@@ -378,7 +374,7 @@ describe('CashDrawersController', () => {
       };
       removeSpy.mockResolvedValue(deletedResponse);
 
-      await controller.remove(456, mockRequest as any);
+      await controller.remove(456, mockUser as any);
 
       expect(removeSpy).toHaveBeenCalledWith(456, mockUser.merchant.id);
     });

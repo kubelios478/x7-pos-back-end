@@ -103,8 +103,11 @@ export class UsersController {
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  findById(@Param('id', ParseIntPipe) id: number): Promise<OneUserResponseDto> {
-    return this.usersService.findOne(id);
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ): Promise<OneUserResponseDto> {
+    return this.usersService.findOne(id, req.user);
   }
 
   @Get('merchant/:merchantId')
@@ -149,10 +152,9 @@ export class UsersController {
   @ApiNotFoundResponse({ description: 'User not found' })
   findByEmail(
     @Param('email') email: string,
-    // @Req() req: Request & { user: AuthenticatedUser },
+    @Req() req: Request & { user: AuthenticatedUser },
   ) {
-    // const currentUser = req.user;
-    return this.usersService.findByEmail(email);
+    return this.usersService.findByEmail(email, req.user);
   }
 
   @Put(':id')

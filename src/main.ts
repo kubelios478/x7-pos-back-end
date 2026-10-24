@@ -31,8 +31,8 @@ async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    // Conserva además el cuerpo crudo en `req.rawBody` (el JSON se sigue parseando igual):
-    // los webhooks de reparto verifican la firma HMAC sobre los bytes exactos recibidos.
+    // It also preserves the raw body in `req.rawBody` (the JSON is still parsed the same):
+    // The distribution webhooks verify the HMAC signature on the exact bytes received.
     rawBody: true,
     logger: isProduction
       ? ['error', 'warn']
@@ -84,7 +84,10 @@ async function bootstrap() {
             if (err.children && err.children.length > 0) {
               res.push(...extractErrors(err.children));
             }
-            if (!err.constraints && (!err.children || err.children.length === 0)) {
+            if (
+              !err.constraints &&
+              (!err.children || err.children.length === 0)
+            ) {
               res.push(`${err.property} has invalid value`);
             }
           }
@@ -92,7 +95,8 @@ async function bootstrap() {
         };
         const messages = extractErrors(errors);
         return new BadRequestException({
-          message: messages.length > 1 ? messages : (messages[0] || 'Validation error'),
+          message:
+            messages.length > 1 ? messages : messages[0] || 'Validation error',
           errors: messages,
         });
       },

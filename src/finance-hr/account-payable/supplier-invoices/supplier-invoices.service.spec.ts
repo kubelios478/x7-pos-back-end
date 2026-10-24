@@ -127,4 +127,52 @@ describe('SupplierInvoicesService', () => {
       ).rejects.toThrow('Company with ID 999 not found');
     });
   });
+
+  describe('company scope', () => {
+    afterEach(() => jest.clearAllMocks());
+
+    it.each(['findOne', 'remove'] as const)(
+      '%s looks the invoice up within the company',
+      async (method) => {
+        mockInvoiceRepo.findOne.mockResolvedValue(null);
+
+        await expect(service[method](5, 3)).rejects.toThrow(
+          'Supplier invoice with ID 5 not found',
+        );
+        expect(mockInvoiceRepo.findOne).toHaveBeenCalledWith({
+          where: expect.objectContaining({ id: 5, company_id: 3 }),
+        });
+      },
+    );
+
+    it('rejects moving an invoice to another company', async () => {
+      mockInvoiceRepo.findOne.mockResolvedValue({ id: 5, company_id: 3 });
+
+      await expect(service.update(5, { company_id: 9 }, 3)).rejects.toThrow(
+        'You can only manage supplier invoices of your company',
+      );
+      expect(mockInvoiceRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('looks up the new supplier within the company', async () => {
+      mockInvoiceRepo.findOne.mockResolvedValue({ id: 5, company_id: 3 });
+      mockSupplierRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.update(5, { supplier_id: 8 }, 3)).rejects.toThrow(
+        'Supplier with ID 8 not found',
+      );
+      expect(mockSupplierRepo.findOne).toHaveBeenCalledWith({
+        where: { id: 8, company_id: 3 },
+      });
+    });
+
+    it('does not restrict portal users', async () => {
+      mockInvoiceRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.findOne(5)).rejects.toThrow();
+      expect(mockInvoiceRepo.findOne).toHaveBeenCalledWith({
+        where: expect.not.objectContaining({ company_id: expect.anything() }),
+      });
+    });
+  });
 });

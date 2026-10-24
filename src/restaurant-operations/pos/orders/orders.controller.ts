@@ -6,7 +6,6 @@ import {
   Param,
   Delete,
   Patch,
-  Req,
   UseGuards,
   Query,
   Request,
@@ -50,6 +49,7 @@ import {
 import { GetOrdersQueryDto, OrderSortBy } from './dto/get-orders-query.dto';
 import { ErrorResponse } from '../../../common/dtos/error-response.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { ProcessPaymentDto } from '../order-payments/dto/process-payment.dto';
 import { CompletePurchaseDto } from './dto/complete-purchase.dto';
 import { RefundOrderDto } from './dto/refund-order.dto';
@@ -756,9 +756,9 @@ export class OrdersController {
   async completePurchase(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CompletePurchaseDto,
-    @Req() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.ordersService.completePurchase(id, dto, req);
+    return this.ordersService.completePurchase(id, dto, user);
   }
 
   @Post('payment')
@@ -919,9 +919,9 @@ export class OrdersController {
   })
   async processPayment(
     @Body() dto: ProcessPaymentDto,
-    @Req() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.ordersService.processPayment(dto, req.merchant.id, req);
+    return this.ordersService.processPayment(dto, user.merchant.id, user);
   }
 
   @Post('refund')
@@ -1055,8 +1055,8 @@ export class OrdersController {
   })
   async refundOrder(
     @Body() dto: RefundOrderDto,
-    @Req() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.ordersService.refundOrder(dto, req.merchant?.id, req);
+    return this.ordersService.refundOrder(dto, user.merchant?.id, user);
   }
 }

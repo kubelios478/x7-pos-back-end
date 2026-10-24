@@ -266,7 +266,10 @@ export class MerchantOvertimeRuleService {
     };
   }
 
-  async remove(id: number): Promise<OneMerchantOvertimeRuleResponseDto> {
+  async remove(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantOvertimeRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
@@ -274,10 +277,17 @@ export class MerchantOvertimeRuleService {
     const merchantOvertimeRule =
       await this.merchantOvertimeRuleRepository.findOne({
         where: { id },
+        relations: ['company'],
       });
     if (!merchantOvertimeRule) {
       ErrorHandler.merchantOvertimeRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantOvertimeRule.company.id,
+    );
 
     merchantOvertimeRule.status = 'deleted';
     const deletedMerchantOvertimeRule =

@@ -6,8 +6,17 @@ import { QROrderItem } from './entity/qr-order-item.entity';
 import { QROrder } from '../qr-order/entity/qr-order.entity';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('QROrderItemController', () => {
+  const merchantUser = {
+    id: 1,
+    email: 'admin@merchant.dev',
+    role: UserRole.MERCHANT_ADMIN,
+    merchant: { id: 7, companyId: 3 },
+  } as AuthenticatedUser;
+
   let controller: QROrderItemController;
   let service: QROrderItemService;
 
@@ -126,9 +135,12 @@ describe('QROrderItemController', () => {
         .mockResolvedValue(expectedResponse);
       createSpy.mockResolvedValue(expectedResponse);
 
-      const result = await controller.create(mockCreateQROrderItemDto);
+      const result = await controller.create(
+        mockCreateQROrderItemDto,
+        merchantUser,
+      );
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateQROrderItemDto);
+      expect(createSpy).toHaveBeenCalledWith(mockCreateQROrderItemDto, 7);
       expect(result).toEqual(expectedResponse);
     });
 
@@ -139,11 +151,11 @@ describe('QROrderItemController', () => {
         .mockRejectedValue(new Error(errorMessage));
       createSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.create(mockCreateQROrderItemDto)).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.create(mockCreateQROrderItemDto, merchantUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateQROrderItemDto);
+      expect(createSpy).toHaveBeenCalledWith(mockCreateQROrderItemDto, 7);
     });
   });
   //--------------------------------------------------------------
@@ -156,9 +168,12 @@ describe('QROrderItemController', () => {
         .mockResolvedValue(mockPaginatedResponse);
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        merchantUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 7);
       expect(result).toEqual(mockPaginatedResponse);
     });
 
@@ -180,9 +195,12 @@ describe('QROrderItemController', () => {
         .mockResolvedValue(emptyPaginatedResponse);
       findAllSpy.mockResolvedValue(emptyPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        merchantUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 7);
       expect(result).toEqual(emptyPaginatedResponse);
     });
 
@@ -193,11 +211,11 @@ describe('QROrderItemController', () => {
         .mockRejectedValue(new Error(errorMessage));
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.findAll({ page: 1, limit: 10 }, merchantUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 7);
     });
   });
   //--------------------------------------------------------------
@@ -210,9 +228,9 @@ describe('QROrderItemController', () => {
         .mockResolvedValue(mockOneQROrderItemResponse);
       findOneSpy.mockResolvedValue(mockOneQROrderItemResponse);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, merchantUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, 7);
       expect(result).toEqual(mockOneQROrderItemResponse);
     });
 
@@ -223,9 +241,11 @@ describe('QROrderItemController', () => {
         .mockRejectedValue(new Error(errorMessage));
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(1)).rejects.toThrow(errorMessage);
+      await expect(controller.findOne(1, merchantUser)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, 7);
     });
   });
   //--------------------------------------------------------------
@@ -243,9 +263,13 @@ describe('QROrderItemController', () => {
         .mockResolvedValue(updatedResponse);
       updateSpy.mockResolvedValue(updatedResponse);
 
-      const result = await controller.update(1, mockUpdateQROrderItemDto);
+      const result = await controller.update(
+        1,
+        mockUpdateQROrderItemDto,
+        merchantUser,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateQROrderItemDto);
+      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateQROrderItemDto, 7);
       expect(result).toEqual(updatedResponse);
     });
 
@@ -257,10 +281,10 @@ describe('QROrderItemController', () => {
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
       await expect(
-        controller.update(1, mockUpdateQROrderItemDto),
+        controller.update(1, mockUpdateQROrderItemDto, merchantUser),
       ).rejects.toThrow(errorMessage);
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateQROrderItemDto);
+      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateQROrderItemDto, 7);
     });
   });
   //--------------------------------------------------------------
@@ -278,9 +302,9 @@ describe('QROrderItemController', () => {
         .mockResolvedValue(deleteResponse);
       removeSpy.mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(1);
+      const result = await controller.remove(1, merchantUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, 7);
       expect(result).toEqual(deleteResponse);
     });
 
@@ -291,9 +315,11 @@ describe('QROrderItemController', () => {
         .mockRejectedValue(new Error(errorMessage));
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(1)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(1, merchantUser)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, 7);
     });
   });
 });

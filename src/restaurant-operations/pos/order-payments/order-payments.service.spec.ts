@@ -6,6 +6,7 @@ import { DataSource, Repository, type DeleteResult } from 'typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { OrderPaymentsService } from './order-payments.service';
 import { OrderPayment } from './entities/order-payment.entity';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { Order } from '../orders/entities/order.entity';
 import { OrdersService } from '../orders/orders.service';
 import { OrderStatus } from '../orders/constants/order-status.enum';
@@ -54,6 +55,7 @@ describe('OrderPaymentsService', () => {
         .fn()
         .mockResolvedValue({ id: 1, cashDrawerId: 1, status: 'OPEN' }),
       save: jest.fn().mockResolvedValue({ id: 1, amount: 50, tip_amount: 0 }),
+      exists: jest.fn(),
     },
   };
 
@@ -153,6 +155,22 @@ describe('OrderPaymentsService', () => {
       expect(
         mockOrdersService.syncOnlineOrderFromPosOrder,
       ).toHaveBeenCalledWith(1);
+    });
+
+    it('rejects a shiftId that is not a cash shift of the merchant', async () => {
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as unknown as Order);
+      mockQueryRunner.manager.exists.mockResolvedValue(false);
+
+      await expect(
+        service.create({ ...dto, shiftId: 2 }, 1, 1, 1),
+      ).rejects.toThrow('shiftId must be a cash shift of your merchant');
+      expect(mockQueryRunner.manager.exists).toHaveBeenCalledWith(CashShift, {
+        where: { id: 2, merchantId: 1 },
+      });
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+      expect(mockOrdersService.emitOrderFullyPaid).not.toHaveBeenCalled();
     });
 
     it('should throw if no merchant', async () => {

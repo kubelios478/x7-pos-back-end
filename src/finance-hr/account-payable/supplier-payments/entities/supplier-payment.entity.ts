@@ -34,7 +34,7 @@ export class SupplierPayment {
   payment_number: string;
 
   @ApiProperty({ example: '2026-03-03' })
-  @Column({ type: 'date', name: 'payment_date' })
+  @Column({ type: 'date', utc: true, name: 'payment_date' })
   payment_date: Date;
 
   @ApiProperty({ example: 'bank_transfer' })

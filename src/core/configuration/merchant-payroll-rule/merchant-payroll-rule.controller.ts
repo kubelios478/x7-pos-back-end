@@ -508,7 +508,8 @@ export class MerchantPayrollRuleController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantPayrollRuleResponseDto> {
-    return this.merchantPayrollRuleService.remove(id);
+    return this.merchantPayrollRuleService.remove(id, user);
   }
 }

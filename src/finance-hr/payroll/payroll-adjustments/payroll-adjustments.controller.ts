@@ -43,6 +43,9 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { AdjustmentType } from './constants/adjustment-type.enum';
 import { PayrollAdjustmentSortBy } from './dto/get-payroll-adjustments-query.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Finance & HR - Payroll - Payroll adjustments')
 @ApiBearerAuth()
@@ -79,8 +82,9 @@ export class PayrollAdjustmentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async create(
     @Body() dto: CreatePayrollAdjustmentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollAdjustmentResponseDto> {
-    return this.payrollAdjustmentsService.create(dto);
+    return this.payrollAdjustmentsService.create(dto, merchantScopeOf(user));
   }
 
   @Get()
@@ -107,8 +111,9 @@ export class PayrollAdjustmentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findAll(
     @Query() query: GetPayrollAdjustmentsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedPayrollAdjustmentsResponseDto> {
-    return this.payrollAdjustmentsService.findAll(query);
+    return this.payrollAdjustmentsService.findAll(query, merchantScopeOf(user));
   }
 
   @Get(':id')
@@ -132,8 +137,9 @@ export class PayrollAdjustmentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollAdjustmentResponseDto> {
-    return this.payrollAdjustmentsService.findOne(id);
+    return this.payrollAdjustmentsService.findOne(id, merchantScopeOf(user));
   }
 
   @Put(':id')
@@ -161,8 +167,13 @@ export class PayrollAdjustmentsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdatePayrollAdjustmentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollAdjustmentResponseDto> {
-    return this.payrollAdjustmentsService.update(id, dto);
+    return this.payrollAdjustmentsService.update(
+      id,
+      dto,
+      merchantScopeOf(user),
+    );
   }
 
   @Delete(':id')
@@ -186,7 +197,8 @@ export class PayrollAdjustmentsController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OnePayrollAdjustmentResponseDto> {
-    return this.payrollAdjustmentsService.remove(id);
+    return this.payrollAdjustmentsService.remove(id, merchantScopeOf(user));
   }
 }

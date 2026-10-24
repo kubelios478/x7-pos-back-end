@@ -11,6 +11,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
+import { IsTaxId } from 'src/common/decorators/validation.decorators';
 import { MerchantStatus } from '../constants/merchant-status.enum';
 
 export class CreateCompanyMerchantDto {
@@ -19,21 +20,34 @@ export class CreateCompanyMerchantDto {
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)
-  @Matches(/^[a-zA-Z0-9\s\-.&()]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’()]+$/u, {
     message:
       'Merchant name can only contain letters, numbers, spaces, and common punctuation',
   })
   name: string;
 
-  @ApiProperty({ example: '12-3456789' })
+  @ApiProperty({
+    example: '12-3456789',
+    description: 'Tax ID of the merchant (e.g. US EIN 12-3456789)',
+    required: true,
+  })
+  @ValidateIf((o: CreateCompanyMerchantDto) => o.rut === undefined)
   @IsString()
   @IsNotEmpty()
   @MinLength(5)
   @MaxLength(20)
-  @Matches(/^[A-Za-z0-9-]+$/, {
-    message: 'Tax ID must contain only letters, numbers, and hyphens',
+  @IsTaxId()
+  tax_id?: string;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use tax_id. Accepted as an alias.',
+    deprecated: true,
   })
-  rut: string;
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
+  rut?: string;
 
   @ApiPropertyOptional({ example: 'contact@store.com' })
   @ValidateIf((dto: CreateCompanyMerchantDto) => Boolean(dto.email?.trim()))

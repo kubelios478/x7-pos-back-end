@@ -37,11 +37,11 @@ export class PayrollRun {
   merchant: Merchant;
 
   @ApiProperty({ example: '2024-01-01', description: 'Period start date' })
-  @Column({ type: 'date', name: 'period_start' })
+  @Column({ type: 'date', utc: true, name: 'period_start' })
   period_start: Date;
 
   @ApiProperty({ example: '2024-01-15', description: 'Period end date' })
-  @Column({ type: 'date', name: 'period_end' })
+  @Column({ type: 'date', utc: true, name: 'period_end' })
   period_end: Date;
 
   @ApiProperty({

@@ -1,5 +1,5 @@
 // src/merchants/dtos/create-merchant.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNumber,
@@ -13,7 +13,7 @@ import {
 } from 'class-validator';
 import {
   IsBusinessEmail,
-  IsValidRUT,
+  IsTaxId,
 } from '../../../common/decorators/validation.decorators';
 import { MerchantStatus } from '../constants/merchant-status.enum';
 
@@ -22,9 +22,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'Merchant name is required' })
   @MinLength(2, { message: 'Merchant name must be at least 2 characters long' })
   @MaxLength(100, { message: 'Merchant name cannot exceed 100 characters' })
-  @Matches(/^[a-zA-Z0-9\s\-.&]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’]+$/u, {
     message:
-      'Merchant name can only contain letters, numbers, spaces, hyphens, dots, and ampersands',
+      'Merchant name can only contain letters, numbers, spaces, hyphens, dots, apostrophes, and ampersands',
   })
   @ApiProperty({
     example: 'Merchant Solutions Corp',
@@ -62,17 +62,24 @@ export class CreateMerchantDto {
   })
   phone?: string;
 
-  @IsOptional()
-  @IsString({ message: 'RUT must be a string' })
-  @IsValidRUT({
-    message: 'Please provide a valid Chilean RUT (format: 12345678-9)',
-  })
   @ApiProperty({
-    example: '12345678-9',
-    description: 'Chilean RUT of the Merchant',
+    example: '12-3456789',
+    description: 'Tax ID of the merchant (e.g. US EIN 12-3456789)',
     required: false,
-    pattern: '^[0-9]{7,8}-[0-9kK]$',
   })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
+  tax_id?: string;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use tax_id. Accepted as an alias.',
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
   rut?: string;
 
   @IsString({ message: 'Address must be a string' })
@@ -91,8 +98,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'City is required' })
   @MinLength(2, { message: 'City must be at least 2 characters long' })
   @MaxLength(50, { message: 'City cannot exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'City can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'City can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Santiago',
@@ -106,8 +114,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'State is required' })
   @MinLength(2, { message: 'State must be at least 2 characters long' })
   @MaxLength(50, { message: 'State cannot exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'State can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'State can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Metropolitan Region ',
@@ -121,8 +130,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'Country is required' })
   @MinLength(2, { message: 'Country must be at least 2 characters long' })
   @MaxLength(50, { message: 'Country cannot exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'Country can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'Country can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Chile',

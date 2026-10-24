@@ -27,7 +27,30 @@ export class FloorPlanService {
     private readonly merchantRepository: Repository<Merchant>,
   ) {}
 
-  async create(dto: CreateFloorPlanDto): Promise<OneFloorPlanResponseDto> {
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { merchant: { id: scopedMerchantId } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { merchant?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.merchant != null && dto.merchant !== scopedMerchantId) {
+      ErrorHandler.differentMerchant();
+    }
+    dto.merchant = scopedMerchantId;
+  }
+
+  async create(
+    dto: CreateFloorPlanDto,
+    scopedMerchantId?: number,
+  ): Promise<OneFloorPlanResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
     if (!Number.isInteger(dto.merchant)) {
       ErrorHandler.invalidId('Merchant ID must be a positive integer');
     }
@@ -64,6 +87,7 @@ export class FloorPlanService {
 
   async findAll(
     query: QueryFloorPlanDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedFloorPlanResponseDto> {
     const {
       status,
@@ -81,6 +105,10 @@ export class FloorPlanService {
       .createQueryBuilder('floorPlan')
       .leftJoin('floorPlan.merchant', 'merchant')
       .select(['floorPlan', 'merchant.id', 'merchant.name']);
+    if (scopedMerchantId != null) {
+      qb.andWhere('merchant.id = :scopedMerchantId', { scopedMerchantId });
+    }
+
     if (status) {
       qb.andWhere('floorPlan.status = :status', { status });
     } else {
@@ -111,13 +139,20 @@ export class FloorPlanService {
     };
   }
 
-  async findOne(id: number): Promise<OneFloorPlanResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneFloorPlanResponseDto> {
     if (!Number.isInteger(id) || id < 1) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
     const floorPlan = await this.floorPlanRepository.findOne({
-      where: { id, status: In(VISIBLE_STATUSES) },
+      where: {
+        ...this.ownedBy(scopedMerchantId),
+        id,
+        status: In(VISIBLE_STATUSES),
+      },
       relations: ['merchant'],
     });
     if (!floorPlan) {
@@ -133,12 +168,17 @@ export class FloorPlanService {
   async update(
     id: number,
     dto: UpdateFloorPlanDto,
+    scopedMerchantId?: number,
   ): Promise<OneFloorPlanResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
     const floorPlan = await this.floorPlanRepository.findOne({
-      where: { id, status: In(VISIBLE_STATUSES) },
+      where: {
+        ...this.ownedBy(scopedMerchantId),
+        id,
+        status: In(VISIBLE_STATUSES),
+      },
       relations: ['merchant'],
     });
     if (!floorPlan) {
@@ -148,6 +188,8 @@ export class FloorPlanService {
     // El PATCH es parcial: solo se copian las claves presentes en el dto, así que enviar únicamente
     // `outline` conserva width/height. Un `outline: null` explícito sí llega (class-validator deja
     // pasar null con @IsOptional) y devuelve el plano al rectángulo completo.
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+
     Object.assign(floorPlan, dto);
 
     const updatedFloorPlan = await this.floorPlanRepository.save(floorPlan);
@@ -158,13 +200,16 @@ export class FloorPlanService {
     };
   }
 
-  async remove(id: number): Promise<OneFloorPlanResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneFloorPlanResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
     const floorPlan = await this.floorPlanRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
     });
     if (!floorPlan) {
       ErrorHandler.floorPlanNotFound();

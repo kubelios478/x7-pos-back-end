@@ -12,9 +12,12 @@ import {
   Delete,
   Query,
   Request,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiHeader,
+  ApiServiceUnavailableResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiInternalServerErrorResponse,
@@ -42,6 +45,8 @@ import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { SubscriptionPaymentWebhookDto } from './dto/subscription-payment-webhook.dto';
 import { Request as ExpressRequest } from 'express';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { GENERIC_SIGNATURE_HEADER } from 'src/common/utils/webhook-signature.util';
+import { SubscriptionWebhookSignatureGuard } from './guards/subscription-webhook-signature.guard';
 
 @ApiTags('Platform SaaS - Subscriptions - Subscription Payments')
 @Controller('subscription-payments')
@@ -76,17 +81,24 @@ export class SubscriptionPaymentsController {
   }
 
   @Post('webhook')
+  @HttpCode(200)
+  @UseGuards(SubscriptionWebhookSignatureGuard)
   @ApiOperation({
-    summary: 'Payment webhook (gateway-agnostic)',
+    summary: 'Payment webhook (gateway-agnostic, HMAC-signed)',
     description:
-      'Processes a payment confirmation event and activates/extents the company subscription when paid.',
+      'Processes a payment confirmation event and activates/extends the company subscription when paid. Public endpoint: the only authentication is `x-signature: sha256=<hex HMAC-SHA256 of the raw body>` with SUBSCRIPTION_WEBHOOK_SECRET (generic placeholder format until a real gateway is integrated). Only pending payments are processed; repeated events are acknowledged with 200 and ignored.',
+  })
+  @ApiHeader({ name: GENERIC_SIGNATURE_HEADER, required: true })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid signature' })
+  @ApiServiceUnavailableResponse({
+    description: 'SUBSCRIPTION_WEBHOOK_SECRET is not configured',
   })
   async webhook(@Body() dto: SubscriptionPaymentWebhookDto) {
     return this.subscriptionPaymentService.handleWebhook(dto);
   }
 
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -150,7 +162,7 @@ export class SubscriptionPaymentsController {
     return this.subscriptionPaymentService.create(dto);
   }
   @Get()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -203,7 +215,7 @@ export class SubscriptionPaymentsController {
     return this.subscriptionPaymentService.findAll(query);
   }
   @Get(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -287,7 +299,7 @@ export class SubscriptionPaymentsController {
     return this.subscriptionPaymentService.findOne(id);
   }
   @Patch(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -367,7 +379,7 @@ export class SubscriptionPaymentsController {
     return this.subscriptionPaymentService.update(id, dto);
   }
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,

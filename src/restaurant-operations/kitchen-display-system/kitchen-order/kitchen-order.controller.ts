@@ -87,7 +87,8 @@ export class KitchenOrderController {
   })
   async resetTestData(
     @Request() req: AuthenticatedRequest,
-    @Body() body?: {
+    @Body()
+    body?: {
       mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy';
     },
   ) {
@@ -495,7 +496,8 @@ export class KitchenOrderController {
         value: {
           reason: 'CUSTOMER_CANCELLED',
           stockAction: 'RESTOCK',
-          notes: 'Customer requested cancellation before food preparation started',
+          notes:
+            'Customer requested cancellation before food preparation started',
         },
       },
     },
@@ -520,13 +522,14 @@ export class KitchenOrderController {
           cancelledAt: '2026-09-30T14:25:00.000Z',
           cancellationReason: 'CUSTOMER_CANCELLED',
           cancelledByUserId: 5,
-          notes: 'Customer requested cancellation before food preparation started',
+          notes:
+            'Customer requested cancellation before food preparation started',
           status: 'ACTIVE',
           createdAt: '2026-09-30T13:55:00.000Z',
           updatedAt: '2026-09-30T14:25:00.000Z',
           merchant: {
             id: 10,
-            name: 'Restaurante Central',
+            name: 'Central Restaurant',
           },
           order: {
             id: 101,
@@ -535,7 +538,7 @@ export class KitchenOrderController {
           onlineOrder: null,
           station: {
             id: 2,
-            name: 'Cocina Principal',
+            name: 'Main Kitchen',
           },
         },
       },
@@ -607,7 +610,7 @@ export class KitchenOrderController {
   )
   @ApiOperation({
     summary:
-      'Recall a bumped/completed kitchen order back to active status (Historia X7P-4209)',
+      'Recall a bumped/completed kitchen order back to active status (Story X7P-4209)',
     description:
       'Reverts a completed order back to started status, preserving original started_at timestamp, resetting items to in_preparation, and logging an audit event.',
   })
@@ -634,4 +637,3 @@ export class KitchenOrderController {
     );
   }
 }
-

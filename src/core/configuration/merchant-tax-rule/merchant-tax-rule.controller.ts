@@ -499,7 +499,8 @@ export class MerchantTaxRuleController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTaxRuleResponseDto> {
-    return this.merchantTaxRuleService.remove(id);
+    return this.merchantTaxRuleService.remove(id, user);
   }
 }

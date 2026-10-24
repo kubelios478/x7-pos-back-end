@@ -10,6 +10,7 @@ import {
   Min,
   IsString,
   IsArray,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -29,14 +30,19 @@ export class CreateOrderDto {
   @IsPositive()
   merchantId: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 1,
-    description: 'Identifier of the Table associated with the Order',
+    nullable: true,
+    description:
+      'Identifier of the Table associated with the Order. Required for dine_in; optional for take_out and delivery.',
   })
+  @ValidateIf(
+    (o: CreateOrderDto) => o.type === OrderType.DINE_IN || o.tableId != null,
+  )
   @IsNumber()
   @IsNotEmpty()
   @IsPositive()
-  tableId: number;
+  tableId?: number | null;
 
   @ApiProperty({
     example: 1,

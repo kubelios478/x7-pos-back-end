@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 import { SaleInventoryDeductionService } from './sale-inventory-deduction.service';
 import { StockLevelMonitorService } from '../stock-alerts/stock-level-monitor.service';
+import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 
 describe('SaleInventoryDeductionService', () => {
   let service: SaleInventoryDeductionService;
@@ -64,5 +65,70 @@ describe('SaleInventoryDeductionService', () => {
     expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
     expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
     expect(mockDataSource.manager.update).not.toHaveBeenCalled();
+  });
+
+  describe('resolveWorkShiftId', () => {
+    const cashSaleQb = {
+      innerJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn(),
+    };
+    const manager = {
+      exists: jest.fn(),
+      createQueryBuilder: jest.fn(() => cashSaleQb),
+    };
+    const resolve = (order: {
+      id: number;
+      merchant_id: number;
+      shift_id: number | null;
+    }) =>
+      service['resolveWorkShiftId'](
+        manager as unknown as EntityManager,
+        order as never,
+      );
+
+    beforeEach(() => {
+      manager.exists.mockReset();
+      cashSaleQb.getRawOne.mockReset();
+      cashSaleQb.andWhere.mockClear();
+    });
+
+    it("uses the work shift the order was taken in when it is the merchant's", async () => {
+      manager.exists.mockResolvedValue(true);
+
+      await expect(
+        resolve({ id: 6, merchant_id: 5, shift_id: 15 }),
+      ).resolves.toBe(15);
+      expect(manager.exists).toHaveBeenCalledWith(Shift, {
+        where: { id: 15, merchantId: 5 },
+      });
+      expect(manager.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the cash sale drawer's shift of the same merchant", async () => {
+      manager.exists.mockResolvedValue(false);
+      cashSaleQb.getRawOne.mockResolvedValue({ shiftId: 15 });
+
+      await expect(
+        resolve({ id: 6, merchant_id: 5, shift_id: 2 }),
+      ).resolves.toBe(15);
+      expect(cashSaleQb.andWhere).toHaveBeenCalledWith(
+        'cd.merchant_id = :merchantId',
+        { merchantId: 5 },
+      );
+    });
+
+    it('returns null when no work shift of the merchant can be resolved', async () => {
+      cashSaleQb.getRawOne.mockResolvedValue(undefined);
+
+      await expect(
+        resolve({ id: 6, merchant_id: 5, shift_id: null }),
+      ).resolves.toBeNull();
+      expect(manager.exists).not.toHaveBeenCalled();
+    });
   });
 });
