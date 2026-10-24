@@ -53,14 +53,16 @@ export class CreateOrderDto {
   @IsPositive()
   collaboratorId: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 1,
-    description: 'Identifier of the Subscription associated with the Order',
+    deprecated: true,
+    description:
+      'Deprecated merchant subscription link, kept for older clients. Not required: access comes from the company subscription.',
   })
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
   @IsPositive()
-  subscriptionId: number;
+  subscriptionId?: number;
 
   @ApiPropertyOptional({
     example: OrderBusinessStatus.PENDING,

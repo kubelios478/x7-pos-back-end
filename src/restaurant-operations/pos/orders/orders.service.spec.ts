@@ -464,6 +464,45 @@ describe('OrdersService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('createOrderForOnlineAcceptance', () => {
+    it('does not require a merchant subscription', async () => {
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      // the old lookup went through createQueryBuilder, which this mock lacks
+      const subscriptionQuery = jest.fn();
+      Object.assign(subscriptionRepository, {
+        createQueryBuilder: subscriptionQuery,
+      });
+      jest
+        .spyOn(
+          service as unknown as {
+            nextOrderNumberWithManager: () => Promise<string>;
+          },
+          'nextOrderNumberWithManager',
+        )
+        .mockResolvedValue('000001');
+      jest
+        .spyOn(orderRepository, 'save')
+        .mockImplementation((o) => Promise.resolve(o as Order));
+
+      const order = await service.createOrderForOnlineAcceptance({
+        merchantId: 1,
+        customerId: 1,
+        orderType: OrderType.DELIVERY,
+        deliveryAddress: 'Main St 1',
+        deliveryFee: 2,
+      });
+
+      expect(subscriptionQuery).not.toHaveBeenCalled();
+      expect(order.merchant_id).toBe(1);
+      expect(order.order_number).toBe('000001');
+    });
+  });
+
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
       merchantId: 1,
@@ -518,6 +557,39 @@ describe('OrdersService', () => {
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Order created successfully');
       expect(result.data.id).toBe(1);
+    });
+
+    it('creates an order without a merchant subscription (company subscription gates access)', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      const subscriptionLookup = jest.spyOn(subscriptionRepository, 'findOne');
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      const save = jest
+        .spyOn(orderRepository, 'save')
+        .mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+
+      const result = await service.create(
+        { ...createOrderDto, subscriptionId: undefined },
+        1,
+      );
+
+      expect(result.statusCode).toBe(201);
+      expect(subscriptionLookup).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ subscription_id: null }),
+      );
     });
 
     it('rejects a dine_in order without a table', async () => {

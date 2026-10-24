@@ -190,19 +190,22 @@ export class OrdersService {
       );
     }
 
-    // Validate subscription exists and belongs to user merchant
-    const subscription = await this.subscriptionRepo.findOne({
-      where: { id: dto.subscriptionId },
-    });
-    if (!subscription) {
-      throw new NotFoundException(
-        `Subscription with ID ${dto.subscriptionId} not found`,
-      );
-    }
-    if (subscription.merchant.id !== authenticatedUserMerchantId) {
-      throw new ForbiddenException(
-        'Subscription does not belong to your merchant',
-      );
+    // merchant_subscription is deprecated: access comes from the company subscription,
+    // which FeatureAccessGuard already checks. The link stays optional for older clients.
+    if (dto.subscriptionId != null) {
+      const subscription = await this.subscriptionRepo.findOne({
+        where: { id: dto.subscriptionId },
+      });
+      if (!subscription) {
+        throw new NotFoundException(
+          `Subscription with ID ${dto.subscriptionId} not found`,
+        );
+      }
+      if (subscription.merchant.id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException(
+          'Subscription does not belong to your merchant',
+        );
+      }
     }
 
     // Validate customer exists and belongs to user merchant
@@ -272,7 +275,7 @@ export class OrdersService {
     order.merchant_id = dto.merchantId;
     order.table_id = dto.tableId ?? null;
     order.collaborator_id = dto.collaboratorId;
-    order.subscription_id = dto.subscriptionId;
+    order.subscription_id = dto.subscriptionId ?? null;
     order.type = dto.type;
     order.customer_id = dto.customerId;
     order.closed_at = closedAt;
@@ -1487,7 +1490,7 @@ export class OrdersService {
   }
 
   /**
-   *POS order created upon accepting an online order (merchant minimum table/collaborator/subscription).
+   *POS order created upon accepting an online order (merchant minimum table/collaborator).
    */
   async createOrderForOnlineAcceptance(params: {
     merchantId: number;
@@ -1514,18 +1517,6 @@ export class OrdersService {
         'No collaborator found for merchant; create at least one collaborator to accept online orders',
       );
     }
-    const subscription = await this.subscriptionRepo
-      .createQueryBuilder('sub')
-      .leftJoin('sub.merchant', 'm')
-      .where('m.id = :mid', { mid: params.merchantId })
-      .orderBy('sub.id', 'ASC')
-      .getOne();
-    if (!subscription) {
-      throw new BadRequestException(
-        'No merchant subscription found; cannot create POS order for online acceptance',
-      );
-    }
-
     const order = new Order();
     order.merchant_id = params.merchantId;
     order.table_id = table.id;
@@ -1591,19 +1582,6 @@ export class OrdersService {
         'No collaborator found for merchant; create at least one collaborator to accept online orders',
       );
     }
-    const subscription = await manager
-      .getRepository(MerchantSubscription)
-      .createQueryBuilder('sub')
-      .leftJoin('sub.merchant', 'm')
-      .where('m.id = :mid', { mid: params.merchantId })
-      .orderBy('sub.id', 'ASC')
-      .getOne();
-    if (!subscription) {
-      throw new BadRequestException(
-        'No merchant subscription found; cannot create POS order for online acceptance',
-      );
-    }
-
     const order = new Order();
     order.merchant_id = params.merchantId;
     order.table_id = table.id;
