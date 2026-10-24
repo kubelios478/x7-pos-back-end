@@ -530,6 +530,21 @@ describe('TableAssignmentsService', () => {
       expect(result.paginationMeta.limit).toBe(10);
     });
 
+    it("scopes the query to the user's merchant instead of rejecting other merchants' rows", async () => {
+      jest
+        .spyOn(tableAssignmentRepository, 'findAndCount')
+        .mockResolvedValue([[mockTableAssignment] as any, 1]);
+
+      const result = await service.findAll(query, 5);
+
+      expect(tableAssignmentRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ shift: { merchantId: 5 } }),
+        }),
+      );
+      expect(result.data).toHaveLength(1);
+    });
+
     it('should throw ForbiddenException when user has no merchant_id', async () => {
       await expect(service.findAll(query, undefined as any)).rejects.toThrow(
         ForbiddenException,

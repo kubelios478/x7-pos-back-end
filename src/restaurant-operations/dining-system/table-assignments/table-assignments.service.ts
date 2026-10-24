@@ -280,8 +280,11 @@ export class TableAssignmentsService {
       }
     }
 
-    // 5. Build where conditions
-    const whereConditions: any = {};
+    // 5. Build where conditions. Assignments belong to the merchant of their shift (create
+    // checks that shift, table and collaborator share it), so scope the query by it.
+    const whereConditions: any = {
+      shift: { merchantId: authenticatedUserMerchantId },
+    };
 
     if (query.shiftId) {
       whereConditions.shiftId = query.shiftId;
@@ -333,28 +336,8 @@ export class TableAssignmentsService {
       take: limit,
     });
 
-    // 9. Seguridad (tu lógica actual)
-    const filteredAssignments = assignments.filter((assignment) => {
-      const shiftBelongs =
-        assignment.shift?.merchantId === authenticatedUserMerchantId;
-
-      const tableBelongs =
-        assignment.table?.merchant_id === authenticatedUserMerchantId;
-
-      const collaboratorBelongs =
-        assignment.collaborator?.merchant_id === authenticatedUserMerchantId;
-
-      if (!(shiftBelongs && tableBelongs && collaboratorBelongs)) {
-        throw new ForbiddenException(
-          'Cannot access table assignments from different merchants',
-        );
-      }
-
-      return true;
-    });
-
-    // 10. Format response
-    const formattedAssignments = filteredAssignments.map((assignment) =>
+    // 9. Format response
+    const formattedAssignments = assignments.map((assignment) =>
       this.formatTableAssignmentResponse(
         assignment,
         assignment.shift,
