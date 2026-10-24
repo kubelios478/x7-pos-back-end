@@ -16,6 +16,26 @@ import { CashShiftMovementType } from './constants/cash-shift-movement-type.enum
 @Injectable()
 export class CashFlowService {
   /**
+   * Only cash tied to an order is a sale or a refund. A manual IN (e.g. change added to the
+   * till) is an adjustment and a manual OUT a withdrawal: same effect on the balance, but
+   * they must not show up as sales or refunds.
+   */
+  static transactionTypeFor(
+    movementType: CashShiftMovementType,
+    orderId: number | null,
+  ): CashTransactionType {
+    const fromOrder = orderId !== null;
+    if (movementType === CashShiftMovementType.IN) {
+      return fromOrder
+        ? CashTransactionType.SALE
+        : CashTransactionType.ADJUSTMENT_UP;
+    }
+    return fromOrder
+      ? CashTransactionType.REFUND
+      : CashTransactionType.WITHDRAWAL;
+  }
+
+  /**
    * Registers a movement in the cash_transactions table linked to a shiftId and applies it
    * to the drawer's current_balance, which is what closing the drawer is checked against.
    *
@@ -37,10 +57,10 @@ export class CashFlowService {
     manager: EntityManager,
     notes: string | null = null,
   ): Promise<CashTransaction> {
-    const transactionType =
-      movementType === CashShiftMovementType.IN
-        ? CashTransactionType.SALE
-        : CashTransactionType.WITHDRAWAL;
+    const transactionType = CashFlowService.transactionTypeFor(
+      movementType,
+      orderId,
+    );
 
     const transaction = manager.getRepository(CashTransaction).create({
       shift_id: shiftId,
