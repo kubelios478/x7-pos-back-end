@@ -482,6 +482,28 @@ describe('SubscriptionPaymentsService', () => {
   });
 
   describe('Payment intent & webhook', () => {
+    const pendingPayment = {
+      id: 1,
+      company_id: 10,
+      plan_id: 3,
+      status: 'pending',
+      currency: 'CLP',
+      amount: 100,
+      paymentMethod: 'dummy_gateway',
+    };
+    const monthlyPlan = {
+      id: 3,
+      price: 100,
+      billingCycle: 'monthly',
+    } as SubscriptionPlan;
+    const paidEvent = {
+      paymentId: 1,
+      externalTransactionId: 'ext_9',
+      status: 'paid' as const,
+      amount: 100,
+      currency: 'CLP',
+    };
+
     it('should create a pending payment intent for the authenticated company', async () => {
       mockQueryRunner.manager.findOne
         .mockResolvedValueOnce({
@@ -543,9 +565,103 @@ describe('SubscriptionPaymentsService', () => {
           amount: 99,
           currency: 'CLP',
         }),
-      ).rejects.toThrow('Paid amount does not match plan price');
+      ).rejects.toThrow(
+        'Paid amount or currency does not match the payment intent',
+      );
 
-      expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        SubscriptionPayment,
+        expect.objectContaining({ status: 'rejected' }),
+      );
+      // The rejection is committed, not rolled back with the error.
+      expect(mockQueryRunner.commitTransaction).toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should reject webhook when currency does not match the intent', async () => {
+      mockPaymentLockQueryBuilder.getOne.mockResolvedValue({
+        ...pendingPayment,
+      } as unknown as SubscriptionPayment);
+      mockQueryRunner.manager.findOne.mockResolvedValue(monthlyPlan);
+
+      await expect(
+        service.handleWebhook({ ...paidEvent, currency: 'USD' }),
+      ).rejects.toThrow(
+        'Paid amount or currency does not match the payment intent',
+      );
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalledWith(
+        CompanySubscription,
+        expect.anything(),
+      );
+    });
+
+    it.each(['paid', 'rejected'])(
+      'should ignore a repeated event for a %s payment',
+      async (status) => {
+        mockPaymentLockQueryBuilder.getOne.mockResolvedValue({
+          ...pendingPayment,
+          status,
+        } as unknown as SubscriptionPayment);
+
+        const result = await service.handleWebhook(paidEvent);
+
+        expect(result).toEqual({
+          statusCode: 200,
+          message: 'Payment already processed',
+        });
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      },
+    );
+
+    it('should extend from the current end date when renewing before expiry', async () => {
+      mockPaymentLockQueryBuilder.getOne.mockResolvedValue({
+        ...pendingPayment,
+      } as unknown as SubscriptionPayment);
+      mockQueryRunner.manager.findOne
+        .mockResolvedValueOnce(monthlyPlan)
+        .mockResolvedValueOnce({
+          id: 7,
+          startDate: '2026-01-15',
+          endDate: '2999-03-31',
+        } as unknown as CompanySubscription);
+
+      await service.handleWebhook(paidEvent);
+
+      expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+        CompanySubscription,
+        expect.objectContaining({
+          id: 7,
+          startDate: '2026-01-15',
+          endDate: '2999-04-30',
+          renewalDate: '2999-04-30',
+          status: 'active',
+        }),
+      );
+    });
+
+    it('should start the new cycle today when the subscription already expired', async () => {
+      jest.useFakeTimers().setSystemTime(new Date('2026-10-24T15:00:00Z'));
+      try {
+        mockPaymentLockQueryBuilder.getOne.mockResolvedValue({
+          ...pendingPayment,
+        } as unknown as SubscriptionPayment);
+        mockQueryRunner.manager.findOne
+          .mockResolvedValueOnce({ ...monthlyPlan, billingCycle: 'yearly' })
+          .mockResolvedValueOnce({
+            id: 7,
+            startDate: '2025-01-15',
+            endDate: '2026-02-15',
+          } as unknown as CompanySubscription);
+
+        await service.handleWebhook(paidEvent);
+
+        expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+          CompanySubscription,
+          expect.objectContaining({ endDate: '2027-10-24' }),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it('should activate/extend company subscription on successful webhook', async () => {
