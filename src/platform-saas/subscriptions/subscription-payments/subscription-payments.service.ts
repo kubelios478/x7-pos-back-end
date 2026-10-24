@@ -24,9 +24,9 @@ import { CompanySubscription } from '../company-subscriptions/entities/company-s
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { SubscriptionPaymentWebhookDto } from './dto/subscription-payment-webhook.dto';
 
-/** Currency every plan price is expressed in (SUBSCRIPTION_CURRENCY, CLP by default). */
+/** Currency every plan price is expressed in (SUBSCRIPTION_CURRENCY, USD by default). */
 function subscriptionCurrency(): string {
-  return (process.env.SUBSCRIPTION_CURRENCY || 'CLP').toUpperCase();
+  return (process.env.SUBSCRIPTION_CURRENCY || 'USD').toUpperCase();
 }
 
 function webhookPayloadRecord(

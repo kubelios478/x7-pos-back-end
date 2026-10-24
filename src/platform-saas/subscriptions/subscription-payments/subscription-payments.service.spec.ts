@@ -519,7 +519,7 @@ describe('SubscriptionPaymentsService', () => {
           provider: 'dummy',
           planId: 3,
           amount: 100,
-          currency: 'CLP',
+          currency: 'USD',
         },
       });
       expect(mockQueryRunner.manager.findOne).toHaveBeenCalledWith(

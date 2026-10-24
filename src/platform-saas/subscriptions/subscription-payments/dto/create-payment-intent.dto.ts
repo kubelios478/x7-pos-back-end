@@ -8,7 +8,7 @@ export class CreatePaymentIntentDto {
   planId: number;
 
   @ApiProperty({
-    example: 'CLP',
+    example: 'USD',
     required: false,
     description:
       'Optional; must match SUBSCRIPTION_CURRENCY (the currency plan prices are in)',
