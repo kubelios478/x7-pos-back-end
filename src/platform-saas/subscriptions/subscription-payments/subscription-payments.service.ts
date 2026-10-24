@@ -24,6 +24,11 @@ import { CompanySubscription } from '../company-subscriptions/entities/company-s
 import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
 import { SubscriptionPaymentWebhookDto } from './dto/subscription-payment-webhook.dto';
 
+/** Currency every plan price is expressed in (SUBSCRIPTION_CURRENCY, CLP by default). */
+function subscriptionCurrency(): string {
+  return (process.env.SUBSCRIPTION_CURRENCY || 'CLP').toUpperCase();
+}
+
 function webhookPayloadRecord(
   dto: SubscriptionPaymentWebhookDto,
 ): Record<string, unknown> {
@@ -62,7 +67,13 @@ export class SubscriptionPaymentsService {
   ): Promise<{
     statusCode: 201;
     message: string;
-    data: { paymentId: number; provider: 'dummy' };
+    data: {
+      paymentId: number;
+      provider: 'dummy';
+      planId: number;
+      amount: number;
+      currency: string;
+    };
   }> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -81,15 +92,27 @@ export class SubscriptionPaymentsService {
       }
 
       const plan = await queryRunner.manager.findOne(SubscriptionPlan, {
-        where: { id: dto.planId },
+        where: { id: dto.planId, status: 'active' },
       });
       if (!plan) {
         throw new NotFoundException(
-          `Subscription plan ${dto.planId} not found`,
+          `Subscription plan ${dto.planId} not found or not available`,
+        );
+      }
+      if (plan.isCustomPricing || plan.price == null) {
+        throw new BadRequestException(
+          'This plan has custom pricing and cannot be purchased online',
         );
       }
 
-      const currency = dto.currency ?? 'CLP';
+      // Plan prices are in a single platform currency. The client may not choose another
+      // one: the gateway would charge the same number in a cheaper currency.
+      const currency = subscriptionCurrency();
+      if (dto.currency && dto.currency.toUpperCase() !== currency) {
+        throw new BadRequestException(
+          `Subscription plans are priced in ${currency}`,
+        );
+      }
       const paymentMethod = dto.paymentMethod ?? 'dummy_gateway';
 
       const payment = queryRunner.manager.create(SubscriptionPayment, {
@@ -114,7 +137,13 @@ export class SubscriptionPaymentsService {
     return {
       statusCode: 201,
       message: 'Payment intent created successfully',
-      data: { paymentId: Number(saved.id), provider: 'dummy' },
+      data: {
+        paymentId: Number(saved.id),
+        provider: 'dummy',
+        planId: dto.planId,
+        amount: Number(saved.amount),
+        currency: saved.currency,
+      },
     };
   }
 

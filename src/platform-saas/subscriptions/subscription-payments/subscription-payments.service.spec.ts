@@ -514,9 +514,79 @@ describe('SubscriptionPaymentsService', () => {
       expect(result).toEqual({
         statusCode: 201,
         message: 'Payment intent created successfully',
-        data: { paymentId: 1, provider: 'dummy' },
+        data: {
+          paymentId: 1,
+          provider: 'dummy',
+          planId: 3,
+          amount: 100,
+          currency: 'CLP',
+        },
       });
+      expect(mockQueryRunner.manager.findOne).toHaveBeenCalledWith(
+        SubscriptionPlan,
+        { where: { id: 3, status: 'active' } },
+      );
       expect(mockQueryRunner.manager.save).toHaveBeenCalled();
+    });
+
+    describe('intent validation', () => {
+      const originalCurrency = process.env.SUBSCRIPTION_CURRENCY;
+      afterEach(() => {
+        if (originalCurrency === undefined) {
+          delete process.env.SUBSCRIPTION_CURRENCY;
+        } else {
+          process.env.SUBSCRIPTION_CURRENCY = originalCurrency;
+        }
+      });
+
+      const withPlan = (plan: Partial<SubscriptionPlan> | null) =>
+        mockQueryRunner.manager.findOne
+          .mockResolvedValueOnce({ id: 1, companyId: 10 } as Merchant)
+          .mockResolvedValueOnce(plan);
+
+      it('rejects a plan that is missing or not active', async () => {
+        withPlan(null);
+        await expect(service.createIntent(1, { planId: 9 })).rejects.toThrow(
+          'Subscription plan 9 not found or not available',
+        );
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      });
+
+      it.each([
+        ['custom pricing', { isCustomPricing: true, price: 100 }],
+        ['no price', { isCustomPricing: false, price: null }],
+      ])('rejects a plan with %s', async (_label, fields) => {
+        withPlan({ id: 3, status: 'active', ...fields });
+        await expect(service.createIntent(1, { planId: 3 })).rejects.toThrow(
+          'This plan has custom pricing and cannot be purchased online',
+        );
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      });
+
+      it('rejects a currency other than the one plans are priced in', async () => {
+        process.env.SUBSCRIPTION_CURRENCY = 'usd';
+        withPlan({ id: 3, status: 'active', price: 100 });
+        await expect(
+          service.createIntent(1, { planId: 3, currency: 'CLP' }),
+        ).rejects.toThrow('Subscription plans are priced in USD');
+        expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      });
+
+      it('creates the intent in the configured currency', async () => {
+        process.env.SUBSCRIPTION_CURRENCY = 'USD';
+        withPlan({ id: 3, status: 'active', price: 100 });
+
+        const result = await service.createIntent(1, {
+          planId: 3,
+          currency: 'usd',
+        });
+
+        expect(result.data.currency).toBe('USD');
+        expect(mockQueryRunner.manager.save).toHaveBeenCalledWith(
+          SubscriptionPayment,
+          expect.objectContaining({ currency: 'USD', amount: 100 }),
+        );
+      });
     });
 
     it('should reject webhook when amount does not match plan price', async () => {
