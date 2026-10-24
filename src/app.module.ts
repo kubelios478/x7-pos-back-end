@@ -45,6 +45,9 @@ import { RestaurantOperationsModule } from './restaurant-operations/restaurant-o
           autoLoadEntities: true,
 
           synchronize: false,
+          // El esquema se cambia con migraciones (npm run migration:run), nunca al arrancar.
+          migrations: [__dirname + '/database/migrations/*.js'],
+          migrationsRun: false,
           ssl: useSSL ? { rejectUnauthorized: false } : false,
           extra: {
             ...(useSSL ? { ssl: { rejectUnauthorized: false } } : {}),
