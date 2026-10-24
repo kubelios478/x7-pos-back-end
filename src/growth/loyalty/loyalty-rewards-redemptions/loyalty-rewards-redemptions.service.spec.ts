@@ -83,6 +83,8 @@ describe('LoyaltyRewardsRedemptionsService', () => {
       startTransaction: jest.fn(),
       commitTransaction: jest.fn(),
       rollbackTransaction: jest.fn(),
+      // the service only rolls back while the transaction is still open
+      isTransactionActive: true,
       release: jest.fn(),
       manager: {
         create: jest.fn(),
