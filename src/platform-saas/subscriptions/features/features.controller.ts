@@ -48,7 +48,7 @@ export class FeaturesController {
   constructor(private readonly featuresService: FeaturesService) {}
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -269,7 +269,7 @@ export class FeaturesController {
     return feature;
   }
   @Patch(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -366,7 +366,7 @@ export class FeaturesController {
     return this.featuresService.update(id, dto);
   }
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,

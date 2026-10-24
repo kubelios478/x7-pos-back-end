@@ -45,7 +45,7 @@ export class SubscriptionApplicationController {
     private readonly subscriptionApplicationService: SubscriptionApplicationService,
   ) {}
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -109,7 +109,7 @@ export class SubscriptionApplicationController {
     return this.subscriptionApplicationService.create(dto);
   }
   @Get()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -163,7 +163,7 @@ export class SubscriptionApplicationController {
     return this.subscriptionApplicationService.findAll(query);
   }
   @Get(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -247,7 +247,7 @@ export class SubscriptionApplicationController {
     return this.subscriptionApplicationService.findOne(id);
   }
   @Patch(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -328,7 +328,7 @@ export class SubscriptionApplicationController {
     return this.subscriptionApplicationService.update(id, dto);
   }
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,

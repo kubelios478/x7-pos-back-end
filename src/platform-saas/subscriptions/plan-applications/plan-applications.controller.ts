@@ -45,7 +45,7 @@ import { QueryPlanApplicationDto } from './dto/query-plan-application.dto';
 export class PlanApplicationsController {
   constructor(private readonly planAppService: PlanApplicationsService) {}
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -246,7 +246,7 @@ export class PlanApplicationsController {
     return this.planAppService.findOne(id);
   }
   @Patch(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -330,7 +330,7 @@ export class PlanApplicationsController {
     return this.planAppService.update(id, dto);
   }
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,

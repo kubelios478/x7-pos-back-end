@@ -238,6 +238,34 @@ describe('MerchantSubscriptionService', () => {
         },
       });
     });
+
+    it('should only list subscriptions of the scoped merchant', async () => {
+      const qb = repository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantSubscription>
+      >;
+      jest.spyOn(qb, 'getManyAndCount').mockResolvedValue([[], 0]);
+
+      await service.findAll({ page: 1, limit: 10 }, 7);
+
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'merchant.id = :scopedMerchantId',
+        { scopedMerchantId: 7 },
+      );
+    });
+
+    it('should not filter by merchant without a scope', async () => {
+      const qb = repository.createQueryBuilder() as Partial<
+        SelectQueryBuilder<MerchantSubscription>
+      >;
+      jest.spyOn(qb, 'getManyAndCount').mockResolvedValue([[], 0]);
+
+      await service.findAll({ page: 1, limit: 10 });
+
+      expect(qb.andWhere).not.toHaveBeenCalledWith(
+        'merchant.id = :scopedMerchantId',
+        expect.anything(),
+      );
+    });
   });
 
   describe('Find One Merchant Subscription', () => {
@@ -273,6 +301,25 @@ describe('MerchantSubscriptionService', () => {
           plan: { id: true, name: true },
         },
       });
+    });
+
+    it('should hide subscriptions of another merchant', async () => {
+      const findOneSpy = jest.spyOn(repository, 'findOne');
+      findOneSpy.mockResolvedValue(null);
+
+      await expect(service.findOne(1, 7)).rejects.toThrow(
+        'Merchant Subscription not found',
+      );
+
+      expect(findOneSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: 1,
+            status: In(['active', 'inactive']),
+            merchant: { id: 7 },
+          },
+        }),
+      );
     });
 
     it('should return a merchant subscription when found', async () => {
