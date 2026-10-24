@@ -1,5 +1,6 @@
 // src/app.module.ts
 import { Module } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LegacyRutSubscriber } from './platform-saas/companies/legacy-rut.subscriber';
@@ -24,6 +25,9 @@ import { RestaurantOperationsModule } from './restaurant-operations/restaurant-o
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Limits only apply where a handler opts in with ThrottlerGuard (public auth routes):
+    // a global limit would throttle a whole restaurant sharing one IP.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
     EventEmitterModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

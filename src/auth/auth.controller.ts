@@ -7,6 +7,7 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
@@ -24,6 +25,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register-onboarding')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60 * 60_000 } }) // new accounts per IP per hour
   @ApiOperation({
     summary:
       'Public onboarding: create company, first merchant outlet, admin user, and starter company subscription',
@@ -33,6 +36,8 @@ export class AuthController {
   }
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } }) // login attempts per IP per minute
   @ApiOperation({
     summary: 'Login with credentials to get access and refresh tokens',
   })
@@ -49,6 +54,8 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } }) // reset emails per IP per 15 minutes
   @ApiOperation({ summary: 'Request a password reset link' })
   requestReset(@Body() dto: RequestResetPasswordDto) {
     console.log('Request Reset DTO:', dto);
@@ -56,6 +63,8 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 15 * 60_000 } }) // reset attempts per IP per 15 minutes
   @ApiOperation({ summary: 'Reset password using recovery token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     console.log('Reset Password DTO:', dto);
@@ -64,6 +73,8 @@ export class AuthController {
 
   // @ApiBody({ schema: { example: { refreshToken: '...' } } })
   @Post('refresh-token')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } }) // refreshes per IP per minute
   @ApiOperation({
     summary: 'Refresh access token using a valid refresh token',
   })

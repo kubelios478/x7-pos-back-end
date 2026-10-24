@@ -1,3 +1,4 @@
+import { ThrottlerModule } from '@nestjs/throttler';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -30,6 +31,8 @@ describe('AuthController', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      // the public routes carry ThrottlerGuard
+      imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }])],
       controllers: [AuthController],
       providers: [
         {
