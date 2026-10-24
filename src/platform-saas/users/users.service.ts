@@ -299,6 +299,10 @@ export class UsersService {
     this.assertCanManageUser(user, currentUser);
 
     user.isActive = isActive;
+    if (!isActive) {
+      // the session cannot be renewed either
+      user.refreshToken = null;
+    }
     const updatedUser = await this.userRepo.save(user);
 
     return {

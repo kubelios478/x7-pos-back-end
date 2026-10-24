@@ -48,7 +48,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       relations: ['merchant'],
     });
 
-    if (!user) {
+    // A deactivated account loses access on its next request, not when its token expires.
+    if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid token');
     }
     if (!user.merchant) {

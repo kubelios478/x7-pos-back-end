@@ -63,6 +63,7 @@ describe('RealtimeAuthService', () => {
       role: UserRole.MERCHANT_ADMIN,
       scope: Scope.MERCHANT_WEB,
       merchant: { id: 77, companyId: 55 },
+      isActive: true,
     });
 
     mockSubscriptionAccessService.getSubscriptionAccessForCompany.mockResolvedValueOnce(

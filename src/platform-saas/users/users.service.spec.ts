@@ -247,6 +247,29 @@ describe('UsersService', () => {
     });
   });
 
+  describe('setActiveStatus', () => {
+    it('deactivating a user also drops its refresh token', async () => {
+      userRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        isActive: true,
+        refreshToken: 'live-refresh-token',
+      } as User);
+      userRepository.save.mockImplementation((u) => Promise.resolve(u as User));
+
+      await service.setActiveStatus(1, false, {
+        id: 99,
+        email: 'portal@test.com',
+        role: UserRole.PORTAL_ADMIN,
+        scope: Scope.ADMIN_PORTAL,
+        merchant: { id: 1 },
+      } as AuthenticatedUser);
+
+      expect(userRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ isActive: false, refreshToken: null }),
+      );
+    });
+  });
+
   describe('Entity Relationships', () => {
     it('should call companyRepository when needed', () => {
       expect(companyRepository).toBeDefined();

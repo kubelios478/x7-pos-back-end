@@ -76,6 +76,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid Credentials');
     }
 
+    // Checked after the password, so it reveals nothing to someone guessing emails.
+    if (!user.isActive) {
+      throw new UnauthorizedException('This account has been deactivated');
+    }
+
     if (!user.merchant) {
       throw new UnauthorizedException(
         'User does not have an associated company',
@@ -214,7 +219,7 @@ export class AuthService {
       });
 
       const user = await this.usersService.findById(payload.sub);
-      if (!user || user.refreshToken !== refreshToken) {
+      if (!user || !user.isActive || user.refreshToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 

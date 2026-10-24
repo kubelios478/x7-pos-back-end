@@ -23,6 +23,7 @@ describe('JwtStrategy', () => {
     role: UserRole.MERCHANT_ADMIN,
     scope: Scope.MERCHANT_WEB,
     merchant: { id: 99, companyId: 5 },
+    isActive: true,
   };
 
   beforeEach(async () => {
@@ -82,6 +83,22 @@ describe('JwtStrategy', () => {
     ).toHaveBeenCalledWith(5);
   });
 
+  it('validate rejects a deactivated account on its next request', async () => {
+    userRepository.findOne.mockResolvedValue({
+      ...mockUser,
+      isActive: false,
+    } as User);
+
+    await expect(
+      strategy.validate({
+        sub: '1',
+        email: 'u@test.com',
+        role: UserRole.MERCHANT_ADMIN,
+        scope: Scope.MERCHANT_WEB,
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
   it('validate throws when user missing', async () => {
     userRepository.findOne.mockResolvedValue(null);
 
@@ -118,6 +135,7 @@ describe('JwtStrategy', () => {
       role: UserRole.PORTAL_ADMIN,
       scope: Scope.ADMIN_PORTAL,
       merchant: { id: 99 },
+      isActive: true,
     };
     const catalog = getAllSubscriptionFeatureIds();
     userRepository.findOne.mockResolvedValue(portalUser as User);
