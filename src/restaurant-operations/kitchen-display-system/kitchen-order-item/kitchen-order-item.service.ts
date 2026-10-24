@@ -961,7 +961,13 @@ export class KitchenOrderItemService {
     const previousStatus = getPreviousPreparationStatus(
       existingKitchenOrderItem.preparation_status,
     );
-    if (previousStatus === null) {
+    // HELD comes before PENDING, but only holdItem() should enter it: it sets hold_until,
+    // and auto-pacing only releases held items that have one. Reverting into HELD would
+    // park the item with no timer, off the line until someone fires it by hand.
+    if (
+      previousStatus === null ||
+      previousStatus === KitchenOrderItemPreparationStatus.HELD
+    ) {
       throw new ConflictException(
         'Kitchen order item is already at the initial preparation status',
       );
@@ -985,10 +991,7 @@ export class KitchenOrderItemService {
     if (wasReady) {
       await this.removeItemReadyEvent(updatedKitchenOrderItem.id);
     }
-    if (
-      previousStatus === KitchenOrderItemPreparationStatus.PENDING ||
-      previousStatus === KitchenOrderItemPreparationStatus.HELD
-    ) {
+    if (previousStatus === KitchenOrderItemPreparationStatus.PENDING) {
       await this.removeItemAllEvents(updatedKitchenOrderItem.id);
     }
 
