@@ -4,6 +4,7 @@ import { MailService } from 'src/mail/mail.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from './users.service';
+import { hashToken } from './auth-tokens.util';
 import { User } from './entities/user.entity';
 import { Company } from '../companies/entities/company.entity';
 import { Merchant } from '../merchants/entities/merchant.entity';
@@ -192,7 +193,7 @@ describe('UsersService', () => {
       const result = await service.findByRefreshToken('refresh-token');
 
       expect(findOneSpy).toHaveBeenCalledWith({
-        where: { refreshToken: 'refresh-token' },
+        where: { refreshToken: hashToken('refresh-token') },
       });
       expect(result).toEqual(mockUser);
     });
@@ -219,6 +220,8 @@ describe('UsersService', () => {
       expect(updateSpy).toHaveBeenCalledWith(1, {
         password: 'newHashedPassword',
         resetToken: null,
+        // a new password ends every open session
+        refreshToken: null,
       });
     });
 
@@ -230,7 +233,8 @@ describe('UsersService', () => {
       await service.saveRefreshToken(1, 'refresh-token-abc');
 
       expect(updateSpy).toHaveBeenCalledWith(1, {
-        refreshToken: 'refresh-token-abc',
+        // only the token's hash is stored
+        refreshToken: hashToken('refresh-token-abc'),
       });
     });
 
@@ -242,7 +246,7 @@ describe('UsersService', () => {
       await service.updateRefreshToken(1, 'new-refresh-token');
 
       expect(updateSpy).toHaveBeenCalledWith(1, {
-        refreshToken: 'new-refresh-token',
+        refreshToken: hashToken('new-refresh-token'),
       });
     });
   });

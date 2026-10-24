@@ -156,7 +156,7 @@ export class OnboardingRegisterDto {
     minLength: 6,
   })
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   password: string;
 
   @ApiPropertyOptional({
