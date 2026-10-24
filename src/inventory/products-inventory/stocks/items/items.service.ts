@@ -619,32 +619,21 @@ export class ItemsService {
     }
 
     const oldQty = Number(item.currentQty) || 0;
-    let newQty = oldQty;
-    let diff = 0;
+    const diff = type === 'absolute' ? value - oldQty : value;
 
-    if (type === 'absolute') {
-      newQty = value;
-      diff = newQty - oldQty;
-    } else {
-      newQty = oldQty + value;
-      diff = value;
-    }
-
-    item.currentQty = newQty;
-    const savedItem = await this.itemRepository.save(item);
-
+    // The movement applies the change to the stock (and re-evaluates stock alerts):
+    // saving the new quantity here as well counted every adjustment twice.
     if (diff !== 0) {
       await this.movementsService.create(merchantId, {
         stockItemId: item.id,
         quantity: Math.abs(diff),
         type: diff > 0 ? MovementsStatus.IN : MovementsStatus.OUT,
+        movementType: MovementsStatus.ADJUSTMENT,
         reference: 'Manual Stock Correction',
         reason: reason || 'Manual adjustment by administrator',
       });
     }
 
-    await this.stockLevelMonitor.evaluateStockItems(merchantId, [savedItem.id]);
-
-    return this.findOne(savedItem.id, merchantId, 'Updated');
+    return this.findOne(item.id, merchantId, 'Updated');
   }
 }

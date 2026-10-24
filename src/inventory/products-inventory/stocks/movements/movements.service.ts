@@ -161,7 +161,7 @@ export class MovementsService {
     // 3. Mutación de existencias según tipo de movimiento
     const isEntry =
       type === MovementsStatus.IN ||
-      (type as any) === 'IN' ||
+      type === MovementsStatus.RETURN ||
       ['PURCHASE_RECEIPT', 'RETURN'].includes(movementType || '');
     const isTransfer =
       movementType === 'TRANSFER' &&

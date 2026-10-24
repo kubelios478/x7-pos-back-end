@@ -1,6 +1,5 @@
 import { Supply } from 'src/inventory/supplies/entities/supply.entity';
 import { StockLevelMonitorService } from '../../stock-alerts/stock-level-monitor.service';
-import { MovementsService } from '../stocks/movements/movements.service';
 import { Movement } from '../stocks/movements/entities/movement.entity';
 import { Location } from '../stocks/locations/entities/location.entity';
 import { Item } from '../stocks/items/entities/item.entity';
@@ -17,12 +16,14 @@ import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { GetPurchaseOrdersQueryDto } from './dto/get-purchase-orders-query.dto';
 import { PurchaseOrderStatus } from './constants/purchase-order-status.enum';
+import { MovementsStatus } from '../stocks/movements/constants/movements-status';
 import { Product } from '../products/entities/product.entity';
 import { Variant } from '../variants/entities/variant.entity';
 import { Category } from '../category/entities/category.entity';
 
 describe('PurchaseOrderService', () => {
   let service: PurchaseOrderService;
+  let testingModule: TestingModule;
   let purchaseOrderRepo: jest.Mocked<Repository<PurchaseOrder>>;
   let supplierRepo: jest.Mocked<Repository<Supplier>>;
   let purchaseOrderItemRepo: jest.Mocked<Repository<PurchaseOrderItem>>;
@@ -284,12 +285,6 @@ describe('PurchaseOrderService', () => {
           },
         },
         {
-          provide: MovementsService,
-          useValue: {
-            create: jest.fn().mockResolvedValue(undefined),
-          },
-        },
-        {
           provide: StockLevelMonitorService,
           useValue: {
             evaluateStockItems: jest.fn().mockResolvedValue(undefined),
@@ -299,6 +294,7 @@ describe('PurchaseOrderService', () => {
     }).compile();
 
     service = module.get<PurchaseOrderService>(PurchaseOrderService);
+    testingModule = module;
     purchaseOrderRepo = module.get(getRepositoryToken(PurchaseOrder));
     supplierRepo = module.get(getRepositoryToken(Supplier));
     purchaseOrderItemRepo = module.get(getRepositoryToken(PurchaseOrderItem));
@@ -926,6 +922,56 @@ describe('PurchaseOrderService', () => {
           totalAmount: 200,
         }),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('Receiving a whole order (RECEIVED / COMPLETED)', () => {
+    it('adds the pending quantity to the stock once, with one kardex line', async () => {
+      const itemRepo = testingModule.get(getRepositoryToken(Item));
+      const movementRepo = testingModule.get(getRepositoryToken(Movement));
+      purchaseOrderItemRepo.find.mockResolvedValueOnce([
+        {
+          id: 3,
+          purchaseOrderId: 1,
+          productId: 1,
+          variantId: 1,
+          quantityOrdered: 5,
+          receivedQuantity: 0,
+          unitCost: 2,
+          locationId: 7,
+          isActive: true,
+        } as unknown as PurchaseOrderItem,
+      ]);
+      itemRepo.findOne.mockResolvedValueOnce({
+        id: 9,
+        currentQty: 10,
+        weightedAverageUnitCost: '1.0000',
+      });
+
+      await (
+        service as unknown as {
+          increaseStockForOrder: (
+            id: number,
+            merchantId: number,
+            status: PurchaseOrderStatus,
+          ) => Promise<void>;
+        }
+      ).increaseStockForOrder(1, mockMerchant.id, PurchaseOrderStatus.RECEIVED);
+
+      expect(itemRepo.save).toHaveBeenCalledTimes(1);
+      expect(itemRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 9, currentQty: 15 }),
+      );
+      expect(movementRepo.save).toHaveBeenCalledTimes(1);
+      expect(movementRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stockItemId: 9,
+          quantity: 5,
+          type: MovementsStatus.IN,
+          movementType: 'PURCHASE_RECEIPT',
+          destinationLocationId: 7,
+        }),
+      );
     });
   });
 
