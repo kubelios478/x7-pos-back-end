@@ -19,7 +19,7 @@ export class CreateCompanyMerchantDto {
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)
-  @Matches(/^[a-zA-Z0-9\s\-.&()]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’()]+$/u, {
     message:
       'Merchant name can only contain letters, numbers, spaces, and common punctuation',
   })

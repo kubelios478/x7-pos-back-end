@@ -22,9 +22,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'Merchant name is required' })
   @MinLength(2, { message: 'Merchant name must be at least 2 characters long' })
   @MaxLength(100, { message: 'Merchant name cannot exceed 100 characters' })
-  @Matches(/^[a-zA-Z0-9\s\-.&]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’]+$/u, {
     message:
-      'Merchant name can only contain letters, numbers, spaces, hyphens, dots, and ampersands',
+      'Merchant name can only contain letters, numbers, spaces, hyphens, dots, apostrophes, and ampersands',
   })
   @ApiProperty({
     example: 'Merchant Solutions Corp',
@@ -91,8 +91,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'City is required' })
   @MinLength(2, { message: 'City must be at least 2 characters long' })
   @MaxLength(50, { message: 'City cannot exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'City can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'City can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Santiago',
@@ -106,8 +107,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'State is required' })
   @MinLength(2, { message: 'State must be at least 2 characters long' })
   @MaxLength(50, { message: 'State cannot exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'State can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'State can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Metropolitan Region ',
@@ -121,8 +123,9 @@ export class CreateMerchantDto {
   @IsNotEmpty({ message: 'Country is required' })
   @MinLength(2, { message: 'Country must be at least 2 characters long' })
   @MaxLength(50, { message: 'Country cannot exceed 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'Country can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'Country can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Chile',

@@ -22,9 +22,9 @@ export class OnboardingRegisterDto {
   @IsString()
   @IsNotEmpty()
   @Length(2, 100)
-  @Matches(/^[a-zA-Z0-9\s\-.&]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’]+$/u, {
     message:
-      'Company name can only contain letters, numbers, spaces, hyphens, dots, and ampersands',
+      'Company name can only contain letters, numbers, spaces, hyphens, dots, apostrophes, and ampersands',
   })
   companyName: string;
 
@@ -73,8 +73,9 @@ export class OnboardingRegisterDto {
   @IsString()
   @IsNotEmpty()
   @Length(2, 50)
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'City can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'City can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   city: string;
 
@@ -85,8 +86,9 @@ export class OnboardingRegisterDto {
   @IsString()
   @IsNotEmpty()
   @Length(2, 50)
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'State can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'State can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   state: string;
 
@@ -94,8 +96,9 @@ export class OnboardingRegisterDto {
   @IsString()
   @IsNotEmpty()
   @Length(2, 50)
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'Country can only contain letters, spaces, hyphens, and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'Country can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   country: string;
 
@@ -108,9 +111,9 @@ export class OnboardingRegisterDto {
   @IsNotEmpty()
   @MinLength(2)
   @MaxLength(100)
-  @Matches(/^[a-zA-Z0-9\s\-.&]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’]+$/u, {
     message:
-      'Branch name can only contain letters, numbers, spaces, hyphens, dots, and ampersands',
+      'Branch name can only contain letters, numbers, spaces, hyphens, dots, apostrophes, and ampersands',
   })
   branchName: string;
 
