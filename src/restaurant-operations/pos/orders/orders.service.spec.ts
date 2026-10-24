@@ -37,6 +37,8 @@ import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OrderType } from './constants/order-type.enum';
 import { OrderItem } from '../order-item/entities/order-item.entity';
 import { OrderPayment } from '../order-payments/entities/order-payment.entity';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import type { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { OrderTax } from '../order-taxes/entities/order-tax.entity';
 import { OrderItemModifier } from '../order-item-modifiers/entities/order-item-modifier.entity';
 import { OrderItemStatus } from '../order-item/constants/order-item-status.enum';
@@ -1930,6 +1932,101 @@ describe('OrdersService', () => {
       await service.update(1, dto, 1);
 
       expect(syncSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('refundOrder', () => {
+    const admin = {
+      id: 7,
+      role: UserRole.MERCHANT_ADMIN,
+    } as unknown as AuthenticatedUser;
+    const paidOrder = {
+      id: 1,
+      merchant: { id: 1 },
+      status: OrderBusinessStatus.PAID,
+      total: 100,
+      subtotal: 100,
+      orderItems: [],
+      order_number: '000001',
+    };
+    let manager: {
+      findOne: jest.Mock;
+      find: jest.Mock;
+      save: jest.Mock;
+    };
+
+    beforeEach(() => {
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue({ ...paidOrder } as unknown as Order);
+      manager = {
+        findOne: jest.fn((entity: unknown) =>
+          Promise.resolve(entity === Order ? { ...paidOrder } : null),
+        ),
+        find: jest.fn((entity: unknown) =>
+          Promise.resolve(
+            entity === OrderPayment
+              ? [{ amount: '100.00', method: 'cash' }]
+              : [],
+          ),
+        ),
+        save: jest.fn((a: unknown, b?: unknown) => Promise.resolve(b ?? a)),
+      };
+      const queryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager,
+      };
+      (
+        service['dataSource'] as unknown as { createQueryRunner: jest.Mock }
+      ).createQueryRunner.mockReturnValue(queryRunner);
+      jest
+        .spyOn(service, 'syncOrderAggregatesWithManager')
+        .mockResolvedValue({ becameFullyPaid: false, becameUnpaid: true });
+    });
+
+    it('locks the order, stores the refund as a positive amount and syncs the totals', async () => {
+      await service.refundOrder(
+        { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+        1,
+        admin,
+      );
+
+      expect(manager.findOne).toHaveBeenCalledWith(Order, {
+        where: { id: 1 },
+        lock: { mode: 'pessimistic_write' },
+      });
+      // is_refund is what subtracts it from paid_total; a negative amount added it back
+      expect(manager.save).toHaveBeenCalledWith(
+        OrderPayment,
+        expect.objectContaining({ amount: 100, is_refund: true }),
+      );
+      expect(service.syncOrderAggregatesWithManager).toHaveBeenCalledWith(
+        manager,
+        1,
+      );
+    });
+
+    it('does not refund twice when another refund got the lock first', async () => {
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Order
+            ? { ...paidOrder, status: OrderBusinessStatus.CANCELLED }
+            : null,
+        ),
+      );
+
+      await expect(
+        service.refundOrder(
+          { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+          1,
+          admin,
+        ),
+      ).rejects.toThrow('Only paid orders can be refunded');
+      expect(manager.save).not.toHaveBeenCalled();
     });
   });
 });

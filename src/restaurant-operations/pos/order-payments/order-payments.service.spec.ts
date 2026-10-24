@@ -51,9 +51,15 @@ describe('OrderPaymentsService', () => {
     rollbackTransaction: jest.fn().mockResolvedValue(undefined),
     release: jest.fn().mockResolvedValue(undefined),
     manager: {
-      findOne: jest
-        .fn()
-        .mockResolvedValue({ id: 1, cashDrawerId: 1, status: 'OPEN' }),
+      // the cash shift, or the order (both are locked inside the transaction)
+      findOne: jest.fn((entity: unknown) =>
+        Promise.resolve(
+          entity === Order
+            ? mockOrder
+            : { id: 1, cashDrawerId: 1, status: 'OPEN' },
+        ),
+      ),
+      find: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockResolvedValue({ id: 1, amount: 50, tip_amount: 0 }),
       exists: jest.fn(),
     },
@@ -171,6 +177,58 @@ describe('OrderPaymentsService', () => {
       });
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
       expect(mockOrdersService.emitOrderFullyPaid).not.toHaveBeenCalled();
+    });
+
+    it('locks the order row, so concurrent payments on it run one after the other', async () => {
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as unknown as Order);
+      jest
+        .spyOn(orderPaymentRepository, 'findOne')
+        .mockResolvedValue(mockPaymentRow as unknown as OrderPayment);
+
+      await service.create(dto, 1, 1, 1);
+
+      expect(mockQueryRunner.manager.findOne).toHaveBeenCalledWith(Order, {
+        where: { id: 1, merchant_id: 1 },
+        lock: { mode: 'pessimistic_write' },
+      });
+    });
+
+    it('rejects a refund larger than what the order has paid', async () => {
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as unknown as Order);
+      mockQueryRunner.manager.find.mockResolvedValueOnce([
+        { amount: '30.00', tip_amount: '0', is_refund: false },
+      ]);
+
+      await expect(
+        service.create({ ...dto, amount: 50, isRefund: true }, 1, 1, 1),
+      ).rejects.toThrow('Cannot refund 50: the order has 30 paid.');
+      expect(mockQueryRunner.manager.save).not.toHaveBeenCalled();
+      expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+    });
+
+    it('accepts a refund within what was paid', async () => {
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as unknown as Order);
+      jest
+        .spyOn(orderPaymentRepository, 'findOne')
+        .mockResolvedValue(mockPaymentRow as unknown as OrderPayment);
+      mockQueryRunner.manager.find.mockResolvedValueOnce([
+        { amount: '30.00', tip_amount: '0', is_refund: false },
+      ]);
+
+      const result = await service.create(
+        { ...dto, amount: 20, isRefund: true },
+        1,
+        1,
+        1,
+      );
+
+      expect(result.statusCode).toBe(201);
     });
 
     it('should throw if no merchant', async () => {

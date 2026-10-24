@@ -1903,6 +1903,16 @@ export class OrdersService {
     await queryRunner.startTransaction();
 
     try {
+      // Lock the order and check its status again: two refunds sent at once both passed
+      // the check above and refunded the order twice.
+      const lockedOrder = await queryRunner.manager.findOne(Order, {
+        where: { id: order.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (lockedOrder?.status !== OrderBusinessStatus.PAID) {
+        throw new BadRequestException('Only paid orders can be refunded');
+      }
+
       // 1. Payments refund
       const payments = await queryRunner.manager.find(OrderPayment, {
         where: { order_id: order.id, is_refund: false },
@@ -1912,9 +1922,11 @@ export class OrdersService {
         const proportion = Number(payment.amount) / Number(order.total);
         const refundPart = roundMoney(refundAmount * proportion);
 
+        // Positive amount: is_refund is what makes it subtract from paid_total (a
+        // negative amount here was subtracted twice, i.e. added to what was paid).
         await queryRunner.manager.save(OrderPayment, {
           order_id: order.id,
-          amount: -refundPart,
+          amount: refundPart,
           method: payment.method,
           tip_amount: 0,
           is_refund: true,
@@ -2006,16 +2018,21 @@ export class OrdersService {
         });
       }
 
-      // 5. Order update (last status)
-      order.refund_reason = dto.reason;
-      order.refunded_by_user_id = user.id;
+      // 5. Order update (last status), on the locked row: saving the copy read before the
+      // transaction would write back its stale totals.
+      lockedOrder.refund_reason = dto.reason;
+      lockedOrder.refunded_by_user_id = user.id;
 
-      order.status =
+      lockedOrder.status =
         dto.fullRefund || isFullRefundByItems
           ? OrderBusinessStatus.CANCELLED
           : OrderBusinessStatus.PARTIALLY_REFUNDED;
 
-      await queryRunner.manager.save(order);
+      await queryRunner.manager.save(lockedOrder);
+      order.status = lockedOrder.status;
+
+      // paid_total / balance_due now include the refund payments
+      await this.syncOrderAggregatesWithManager(queryRunner.manager, order.id);
 
       await queryRunner.commitTransaction();
 
