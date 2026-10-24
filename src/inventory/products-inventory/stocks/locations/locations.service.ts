@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { GetLocationsQueryDto } from './dto/get-locations-query.dto';
@@ -56,23 +56,64 @@ export class LocationsService {
     }
   }
 
+  /**
+   * Runs a write on the merchant's locations with the merchant row locked, so concurrent
+   * creates/updates/removes cannot each see "no main location" (or "this is the only
+   * one") and leave two main locations, or none.
+   */
+  private withMerchantLocationsLocked<T>(
+    merchantId: number,
+    work: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.locationRepository.manager.transaction(async (manager) => {
+      await manager.findOne(Merchant, {
+        where: { id: merchantId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      return work(manager);
+    });
+  }
+
+  /** After a main location is deactivated, the next active one becomes the main one. */
+  private async handOverMainStorage(
+    manager: EntityManager,
+    merchantId: number,
+  ): Promise<void> {
+    const locations = manager.getRepository(Location);
+    const hasActiveMain = await locations.exists({
+      where: { merchantId, isActive: true, isMainStorage: true },
+    });
+    if (hasActiveMain) return;
+    const nextActive = await locations.findOne({
+      where: { merchantId, isActive: true },
+      order: { id: 'ASC' },
+    });
+    if (nextActive) {
+      nextActive.isMainStorage = true;
+      await locations.save(nextActive);
+    }
+  }
+
   private async initializeRawMaterialStockForNewLocation(
+    manager: EntityManager,
     locationId: number,
     merchantId: number,
   ) {
-    const merchant = await this.merchantRepo.findOne({
+    const merchant = await manager.findOne(Merchant, {
       where: { id: merchantId },
     });
     const companyId = merchant?.companyId;
     if (!companyId) return;
 
+    const items = manager.getRepository(Item);
+
     // Buscar todas las materias primas (supplies) activas de esta empresa
-    const supplies = await this.itemRepository.manager.find(Supply, {
+    const supplies = await manager.find(Supply, {
       where: { company_id: companyId, isActive: true },
     });
 
     for (const supply of supplies) {
-      const existing = await this.itemRepository.findOne({
+      const existing = await items.findOne({
         where: {
           supplyId: supply.id,
           locationId: locationId,
@@ -80,7 +121,7 @@ export class LocationsService {
       });
 
       if (!existing) {
-        const newStockItem = this.itemRepository.create({
+        const newStockItem = items.create({
           currentQty: 0,
           minimumQty: 5,
           supplyId: supply.id,
@@ -88,7 +129,7 @@ export class LocationsService {
           isActive: true,
           weightedAverageUnitCost: String(supply.cost_per_unit || 0),
         });
-        await this.itemRepository.save(newStockItem);
+        await items.save(newStockItem);
       }
     }
   }
@@ -99,82 +140,89 @@ export class LocationsService {
   ): Promise<OneLocationResponse> {
     const { name, code, address, isMainStorage, isActive } = createLocationDto;
 
-    const existingLocation = await this.locationRepository.findOne({
-      where: [
-        {
-          name,
-          merchantId: merchant_id,
-          isActive: true,
-        },
-        ...(address
-          ? [
+    let locationId: number;
+    try {
+      locationId = await this.withMerchantLocationsLocked(
+        merchant_id,
+        async (manager) => {
+          const locations = manager.getRepository(Location);
+
+          const existingLocation = await locations.findOne({
+            where: [
               {
-                address,
+                name,
                 merchantId: merchant_id,
                 isActive: true,
               },
-            ]
-          : []),
-      ],
-    });
+              ...(address
+                ? [
+                    {
+                      address,
+                      merchantId: merchant_id,
+                      isActive: true,
+                    },
+                  ]
+                : []),
+            ],
+          });
 
-    if (existingLocation) {
-      if (existingLocation.name === name) {
-        ErrorHandler.exists(ErrorMessage.LOCATION_NAME_EXISTS);
-      }
-      if (address && existingLocation.address === address) {
-        ErrorHandler.exists(ErrorMessage.LOCATION_ADDRESS_EXISTS);
-      }
-    }
+          if (existingLocation) {
+            if (existingLocation.name === name) {
+              ErrorHandler.exists(ErrorMessage.LOCATION_NAME_EXISTS);
+            }
+            if (address && existingLocation.address === address) {
+              ErrorHandler.exists(ErrorMessage.LOCATION_ADDRESS_EXISTS);
+            }
+          }
 
-    const count = await this.locationRepository.count({
-      where: { merchantId: merchant_id },
-    });
-    const forceMain = isMainStorage || count === 0;
+          const count = await locations.count({
+            where: { merchantId: merchant_id },
+          });
+          const forceMain = isMainStorage || count === 0;
 
-    if (forceMain) {
-      await this.locationRepository.update(
-        { merchantId: merchant_id },
-        { isMainStorage: false },
+          if (forceMain) {
+            await locations.update(
+              { merchantId: merchant_id },
+              { isMainStorage: false },
+            );
+          }
+
+          const existingButIsNotActive = await locations.findOne({
+            where: { name, merchantId: merchant_id, isActive: false },
+          });
+
+          let saved: Location;
+          if (existingButIsNotActive) {
+            existingButIsNotActive.isActive =
+              isActive !== undefined ? isActive : true;
+            if (code !== undefined) existingButIsNotActive.code = code;
+            if (address !== undefined) existingButIsNotActive.address = address;
+            existingButIsNotActive.isMainStorage = forceMain;
+            saved = await locations.save(existingButIsNotActive);
+          } else {
+            saved = await locations.save(
+              locations.create({
+                name,
+                code,
+                address,
+                isMainStorage: forceMain,
+                isActive: isActive !== undefined ? isActive : true,
+                merchantId: merchant_id,
+              }),
+            );
+          }
+          await this.initializeRawMaterialStockForNewLocation(
+            manager,
+            saved.id,
+            merchant_id,
+          );
+          return saved.id;
+        },
       );
-    }
-
-    try {
-      const existingButIsNotActive = await this.locationRepository.findOne({
-        where: { name, merchantId: merchant_id, isActive: false },
-      });
-
-      if (existingButIsNotActive) {
-        existingButIsNotActive.isActive =
-          isActive !== undefined ? isActive : true;
-        if (code !== undefined) existingButIsNotActive.code = code;
-        if (address !== undefined) existingButIsNotActive.address = address;
-        existingButIsNotActive.isMainStorage = forceMain;
-        await this.locationRepository.save(existingButIsNotActive);
-        await this.initializeRawMaterialStockForNewLocation(
-          existingButIsNotActive.id,
-          merchant_id,
-        );
-        return this.findOne(existingButIsNotActive.id, merchant_id, 'Created');
-      } else {
-        const newLocation = this.locationRepository.create({
-          name,
-          code,
-          address,
-          isMainStorage: forceMain,
-          isActive: isActive !== undefined ? isActive : true,
-          merchantId: merchant_id,
-        });
-        const savedLocation = await this.locationRepository.save(newLocation);
-        await this.initializeRawMaterialStockForNewLocation(
-          savedLocation.id,
-          merchant_id,
-        );
-        return this.findOne(savedLocation.id, merchant_id, 'Created');
-      }
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
+    return this.findOne(locationId, merchant_id, 'Created');
   }
 
   async findAll(
@@ -214,15 +262,9 @@ export class LocationsService {
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
 
-    // Asegurar que siempre exista al menos una ubicación principal
-    const hasMainStorage = locations.some((l) => l.isMainStorage);
-    if (!hasMainStorage && locations.length > 0) {
-      locations[0].isMainStorage = true;
-      await this.locationRepository.update(
-        { id: locations[0].id },
-        { isMainStorage: true },
-      );
-    }
+    // A read never writes: the main location is kept by create/update/remove. (This used
+    // to promote the first location of the current page when the page had no main one, so
+    // listing page 2 or filtering by name created a second main location.)
 
     // 7. Map to LocationResponseDto
     const data: LocationResponseDto[] = await Promise.all(
@@ -379,37 +421,46 @@ export class LocationsService {
       await this.checkActiveStock(id);
     }
 
-    let finalIsMainStorage = isMainStorage;
-    if (isMainStorage === true) {
-      await this.locationRepository.update(
-        { merchantId: merchant_id },
-        { isMainStorage: false },
-      );
-    } else if (isMainStorage === false) {
-      const otherMain = await this.locationRepository.findOne({
-        where: { merchantId: merchant_id, isMainStorage: true },
-      });
-      if (!otherMain || otherMain.id === id) {
-        finalIsMainStorage = true;
-      }
-    }
-
-    const updatePayload: any = {};
-    if (name !== undefined) updatePayload.name = name;
-    if (code !== undefined) updatePayload.code = code;
-    if (address !== undefined) updatePayload.address = address;
-    if (finalIsMainStorage !== undefined)
-      updatePayload.isMainStorage = finalIsMainStorage;
-    if (isActive !== undefined) updatePayload.isActive = isActive;
-
-    Object.assign(location, updatePayload);
-
     try {
-      await this.locationRepository.save(location);
-      return this.findOne(id, merchant_id, 'Updated');
+      await this.withMerchantLocationsLocked(merchant_id, async (manager) => {
+        const locations = manager.getRepository(Location);
+
+        let finalIsMainStorage = isMainStorage;
+        if (isMainStorage === true) {
+          await locations.update(
+            { merchantId: merchant_id },
+            { isMainStorage: false },
+          );
+        } else if (isMainStorage === false) {
+          const otherMain = await locations.findOne({
+            where: { merchantId: merchant_id, isMainStorage: true },
+          });
+          if (!otherMain || otherMain.id === id) {
+            finalIsMainStorage = true;
+          }
+        }
+
+        const updatePayload: any = {};
+        if (name !== undefined) updatePayload.name = name;
+        if (code !== undefined) updatePayload.code = code;
+        if (address !== undefined) updatePayload.address = address;
+        if (finalIsMainStorage !== undefined)
+          updatePayload.isMainStorage = finalIsMainStorage;
+        if (isActive !== undefined) updatePayload.isActive = isActive;
+
+        Object.assign(location, updatePayload);
+
+        // A deactivated location cannot stay the main one
+        if (location.isActive === false && location.isMainStorage) {
+          location.isMainStorage = false;
+        }
+        await locations.save(location);
+        await this.handOverMainStorage(manager, merchant_id);
+      });
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
+    return this.findOne(id, merchant_id, 'Updated');
   }
 
   async remove(id: number, merchant_id: number): Promise<OneLocationResponse> {
@@ -426,25 +477,16 @@ export class LocationsService {
     await this.checkActiveStock(id);
 
     location.isActive = false;
-    const wasMain = location.isMainStorage;
     location.isMainStorage = false;
 
     try {
-      await this.locationRepository.save(location);
-
-      if (wasMain) {
-        const nextActive = await this.locationRepository.findOne({
-          where: { merchantId: merchant_id, isActive: true },
-        });
-        if (nextActive) {
-          nextActive.isMainStorage = true;
-          await this.locationRepository.save(nextActive);
-        }
-      }
-
-      return this.findOne(id, merchant_id, 'Deleted');
+      await this.withMerchantLocationsLocked(merchant_id, async (manager) => {
+        await manager.getRepository(Location).save(location);
+        await this.handOverMainStorage(manager, merchant_id);
+      });
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
+    return this.findOne(id, merchant_id, 'Deleted');
   }
 }
