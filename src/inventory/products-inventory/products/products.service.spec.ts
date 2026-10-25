@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
+import { Item } from '../stocks/items/entities/item.entity';
 import { StockAvailabilityService } from 'src/inventory/stock-alerts/stock-availability.service';
 import { PurchaseOrderItemService } from 'src/inventory/products-inventory/purchase-order-item/purchase-order-item.service';
 import { ItemsService } from 'src/inventory/products-inventory/stocks/items/items.service';
@@ -19,6 +20,7 @@ import { Category } from '../category/entities/category.entity';
 import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier.entity';
 
 describe('ProductsService', () => {
+  let stockRowsRepo: { find: jest.Mock };
   let service: ProductsService;
   let productRepo: jest.Mocked<Repository<Product>>;
   let categoryRepo: jest.Mocked<Repository<Category>>;
@@ -130,7 +132,17 @@ describe('ProductsService', () => {
       delete: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // deactivation runs in a transaction: products through this same mock, stock rows
+      // through stockRowsRepo (no stock on hand unless a test says so)
+      manager: {
+        transaction: (work: (manager: unknown) => unknown) =>
+          work({
+            getRepository: (entity: unknown) =>
+              entity === Item ? stockRowsRepo : mockProductRepo,
+          }),
+      },
     };
+    stockRowsRepo = { find: jest.fn(() => Promise.resolve([])) };
 
     mockQueryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -815,6 +827,41 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('Deactivating a product with stock', () => {
+    it('refuses to delete it while it has stock, and changes nothing', async () => {
+      productRepo.findOneBy.mockResolvedValueOnce({
+        ...mockProduct,
+        isActive: true,
+      } as Product);
+      stockRowsRepo.find.mockResolvedValueOnce([
+        { currentQty: 5, locationId: 1, location: { name: 'Main Warehouse' } },
+      ]);
+
+      await expect(
+        service.remove(mockProduct.id!, mockMerchant.id),
+      ).rejects.toThrow(
+        'still has stock (Main Warehouse: 5). Adjust it to 0 before deactivating the product.',
+      );
+      expect(modifiersService.softRemoveByProductId).not.toHaveBeenCalled();
+      expect(productRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses PATCH isActive:false the same way', async () => {
+      productRepo.findOneBy.mockResolvedValueOnce({
+        ...mockProduct,
+        isActive: true,
+      } as Product);
+      stockRowsRepo.find.mockResolvedValueOnce([
+        { currentQty: 2, locationId: 7, location: null },
+      ]);
+
+      await expect(
+        service.update(mockProduct.id!, mockMerchant.id, { isActive: false }),
+      ).rejects.toThrow('still has stock (location 7: 2)');
+      expect(productRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Remove', () => {
     it('should remove a Product successfully', async () => {
       const productToDelete = { ...mockProduct, isActive: true } as Product;
@@ -921,13 +968,16 @@ describe('ProductsService', () => {
 
       await service.remove(mockProduct.id!, mockMerchant.id);
 
+      // inside the deactivation transaction
       expect(modifiersService.softRemoveByProductId).toHaveBeenCalledWith(
         mockProduct.id!,
         mockMerchant.id,
+        expect.anything(),
       );
       expect(variantsService.softRemoveByProductId).toHaveBeenCalledWith(
         mockProduct.id!,
         mockMerchant.id,
+        expect.anything(),
       );
       expect(productToDelete.isActive).toBe(false);
       expect(productRepo.save).toHaveBeenCalledWith(productToDelete);

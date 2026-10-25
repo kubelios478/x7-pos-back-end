@@ -68,6 +68,11 @@ describe('CategoryService', () => {
       delete: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // writes run in a transaction whose manager reads and writes through this same mock
+      manager: {
+        transaction: (work: (manager: unknown) => unknown) =>
+          work({ getRepository: () => mockCategoryRepo }),
+      },
     };
 
     mockQueryBuilder = {
@@ -711,13 +716,25 @@ describe('CategoryService', () => {
 
       // Verifications for find for subcategories
       expect(categoryRepo.find).toHaveBeenNthCalledWith(1, {
-        where: { parentId: parentCategory.id, isActive: true },
+        where: {
+          parentId: parentCategory.id,
+          merchantId: mockMerchant.id,
+          isActive: true,
+        },
       });
       expect(categoryRepo.find).toHaveBeenNthCalledWith(2, {
-        where: { parentId: childCategory.id, isActive: true },
+        where: {
+          parentId: childCategory.id,
+          merchantId: mockMerchant.id,
+          isActive: true,
+        },
       });
       expect(categoryRepo.find).toHaveBeenNthCalledWith(3, {
-        where: { parentId: grandChildCategory.id, isActive: true },
+        where: {
+          parentId: grandChildCategory.id,
+          merchantId: mockMerchant.id,
+          isActive: true,
+        },
       });
 
       // Verifications for save for each category

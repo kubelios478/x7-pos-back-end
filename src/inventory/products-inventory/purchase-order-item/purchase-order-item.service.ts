@@ -1,9 +1,10 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CreatePurchaseOrderItemDto } from './dto/create-purchase-order-item.dto';
 import { UpdatePurchaseOrderItemDto } from './dto/update-purchase-order-item.dto';
 import { PurchaseOrderItem } from './entities/purchase-order-item.entity';
+import { PurchaseOrderStatus } from '../purchase-order/constants/purchase-order-status.enum';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { PurchaseOrder } from '../purchase-order/entities/purchase-order.entity';
@@ -376,23 +377,40 @@ export class PurchaseOrderItemService {
     }
   }
 
+  /**
+   * Drops the product's lines from purchase orders that have not received anything yet.
+   * Lines of orders that already received goods (or are closed) are history: deactivating
+   * them made those orders' totals stop matching their lines.
+   */
   async softRemoveByProductId(
     productId: number,
     merchantId: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const items = await this.purchaseOrderItemRepository
+    const repository =
+      manager?.getRepository(PurchaseOrderItem) ??
+      this.purchaseOrderItemRepository;
+    const items = await repository
       .createQueryBuilder('purchaseOrderItem')
       .leftJoinAndSelect('purchaseOrderItem.purchaseOrder', 'purchaseOrder')
       .where('purchaseOrderItem.productId = :productId', { productId })
       .andWhere('purchaseOrderItem.isActive = :isActive', { isActive: true })
       .andWhere('purchaseOrder.merchantId = :merchantId', { merchantId })
+      .andWhere('purchaseOrder.status IN (:...openStatuses)', {
+        openStatuses: [
+          PurchaseOrderStatus.DRAFT,
+          PurchaseOrderStatus.SENT,
+          PurchaseOrderStatus.PENDING,
+        ],
+      })
+      .andWhere('COALESCE(purchaseOrderItem.receivedQuantity, 0) = 0')
       .getMany();
 
     if (items.length > 0) {
       for (const item of items) {
         item.isActive = false;
       }
-      await this.purchaseOrderItemRepository.save(items);
+      await repository.save(items);
     }
   }
 
