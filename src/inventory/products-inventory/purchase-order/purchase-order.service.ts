@@ -18,7 +18,6 @@ import { PurchaseOrderItem } from '../purchase-order-item/entities/purchase-orde
 import { Location } from '../stocks/locations/entities/location.entity';
 import { Item } from '../stocks/items/entities/item.entity';
 import { PurchaseOrderStatus } from './constants/purchase-order-status.enum';
-import { MovementsService } from '../stocks/movements/movements.service';
 import { MovementsStatus } from '../stocks/movements/constants/movements-status';
 import { Supply } from 'src/inventory/supplies/entities/supply.entity';
 import { Movement } from '../stocks/movements/entities/movement.entity';
@@ -45,7 +44,6 @@ export class PurchaseOrderService {
     private readonly supplyRepository: Repository<Supply>,
     @InjectRepository(Movement)
     private readonly movementRepository: Repository<Movement>,
-    private readonly movementsService: MovementsService,
     private readonly stockLevelMonitor: StockLevelMonitorService,
   ) {}
 
@@ -748,6 +746,8 @@ export class PurchaseOrderService {
       where: { purchaseOrderId, isActive: true },
     });
 
+    const evaluatedStockIds = new Set<number>();
+
     if (orderItems.length > 0) {
       let defaultLocation = await this.locationRepository.findOne({
         where: { merchantId, isActive: true },
@@ -815,15 +815,6 @@ export class PurchaseOrderService {
             stockItem.weightedAverageUnitCost = newWacc.toFixed(4);
             stockItem.isActive = true;
             await this.itemRepository.save(stockItem);
-
-            await this.movementsService.create(merchantId, {
-              stockItemId: stockItem.id,
-              quantity: diff,
-              type: MovementsStatus.IN,
-              reference: `PO-${purchaseOrderId}`,
-              reason: `Fulfillment of Purchase Order #${purchaseOrderId}`,
-              movementType: 'PURCHASE_RECEIPT',
-            });
           } else {
             const createData: DeepPartial<Item> = {
               locationId: targetLocationId,
@@ -839,18 +830,29 @@ export class PurchaseOrderService {
                 createData.variantId = item.variantId;
               }
             }
-            const newStockItem = this.itemRepository.create(createData);
-            const savedStockItem = await this.itemRepository.save(newStockItem);
+            stockItem = await this.itemRepository.save(
+              this.itemRepository.create(createData),
+            );
+          }
 
-            await this.movementsService.create(merchantId, {
-              stockItemId: savedStockItem.id,
+          // The stock is already updated above: the kardex line is written directly, because
+          // MovementsService.create() would apply the quantity a second time.
+          await this.movementRepository.save(
+            this.movementRepository.create({
+              stockItemId: stockItem.id,
               quantity: diff,
               type: MovementsStatus.IN,
               reference: `PO-${purchaseOrderId}`,
               reason: `Fulfillment of Purchase Order #${purchaseOrderId}`,
+              merchantId,
+              isActive: true,
+              sourceLocationId: null,
+              destinationLocationId: targetLocationId,
               movementType: 'PURCHASE_RECEIPT',
-            });
-          }
+              unitCost: purchaseCost.toFixed(4),
+            }),
+          );
+          evaluatedStockIds.add(stockItem.id);
 
           if (item.rawMaterialId) {
             const supply = await this.supplyRepository.findOneBy({
@@ -863,6 +865,13 @@ export class PurchaseOrderService {
           }
         }
       }
+    }
+
+    if (evaluatedStockIds.size > 0) {
+      await this.stockLevelMonitor.evaluateStockItems(
+        merchantId,
+        Array.from(evaluatedStockIds),
+      );
     }
   }
 

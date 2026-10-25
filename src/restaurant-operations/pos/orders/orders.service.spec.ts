@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { MerchantLockScope } from 'src/common/utils/merchant-lock.util';
 import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
 import { ReceiptsService } from 'src/core/billing-transactions/receipts/receipts.service';
@@ -37,6 +38,8 @@ import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OrderType } from './constants/order-type.enum';
 import { OrderItem } from '../order-item/entities/order-item.entity';
 import { OrderPayment } from '../order-payments/entities/order-payment.entity';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import type { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { OrderTax } from '../order-taxes/entities/order-tax.entity';
 import { OrderItemModifier } from '../order-item-modifiers/entities/order-item-modifier.entity';
 import { OrderItemStatus } from '../order-item/constants/order-item-status.enum';
@@ -83,11 +86,16 @@ describe('OrdersService', () => {
     findAndCount: jest.fn(),
     update: jest.fn(),
     manager: {
+      // new orders are numbered and inserted in a transaction holding an advisory lock
+      transaction: (work: (manager: unknown) => unknown) =>
+        work(mockOrderRepository.manager),
+      query: jest.fn().mockResolvedValue([]),
       getRepository: jest.fn((entity: unknown) => {
         if (entity === Order) {
           return {
             findOne: (opts: unknown) => mockOrderRepository.findOne(opts),
             save: (opts: unknown) => mockOrderRepository.save(opts),
+            count: (opts: unknown) => mockOrderRepository.count(opts),
             createQueryBuilder: jest.fn(() => mockOrderQbForOrderNumber),
           };
         }
@@ -464,6 +472,45 @@ describe('OrdersService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('createOrderForOnlineAcceptance', () => {
+    it('does not require a merchant subscription', async () => {
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      // the old lookup went through createQueryBuilder, which this mock lacks
+      const subscriptionQuery = jest.fn();
+      Object.assign(subscriptionRepository, {
+        createQueryBuilder: subscriptionQuery,
+      });
+      jest
+        .spyOn(
+          service as unknown as {
+            nextOrderNumberWithManager: () => Promise<string>;
+          },
+          'nextOrderNumberWithManager',
+        )
+        .mockResolvedValue('000001');
+      jest
+        .spyOn(orderRepository, 'save')
+        .mockImplementation((o) => Promise.resolve(o as Order));
+
+      const order = await service.createOrderForOnlineAcceptance({
+        merchantId: 1,
+        customerId: 1,
+        orderType: OrderType.DELIVERY,
+        deliveryAddress: 'Main St 1',
+        deliveryFee: 2,
+      });
+
+      expect(subscriptionQuery).not.toHaveBeenCalled();
+      expect(order.merchant_id).toBe(1);
+      expect(order.order_number).toBe('000001');
+    });
+  });
+
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
       merchantId: 1,
@@ -474,6 +521,46 @@ describe('OrdersService', () => {
       type: OrderType.DINE_IN,
       customerId: 1,
     };
+
+    it('numbers the order under the merchant order-numbering lock', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      jest
+        .spyOn(subscriptionRepository, 'findOne')
+        .mockResolvedValue(mockSubscription as MerchantSubscription);
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      jest.spyOn(orderRepository, 'save').mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+      mockOrderRepository.manager.query.mockClear();
+      mockOrderRepository.count.mockClear();
+
+      await service.create(createOrderDto, 1);
+
+      expect(mockOrderRepository.manager.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock($1, $2)',
+        [MerchantLockScope.ORDER_NUMBERS, 1],
+      );
+      // lock first, then the daily ticket COUNT, then the insert
+      const lockedAt =
+        mockOrderRepository.manager.query.mock.invocationCallOrder[0];
+      expect(lockedAt).toBeLessThan(
+        mockOrderRepository.count.mock.invocationCallOrder[0],
+      );
+      expect(lockedAt).toBeLessThan(
+        (orderRepository.save as jest.Mock).mock.invocationCallOrder[0],
+      );
+    });
 
     it('should create an order successfully', async () => {
       jest
@@ -518,6 +605,39 @@ describe('OrdersService', () => {
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Order created successfully');
       expect(result.data.id).toBe(1);
+    });
+
+    it('creates an order without a merchant subscription (company subscription gates access)', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      const subscriptionLookup = jest.spyOn(subscriptionRepository, 'findOne');
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      const save = jest
+        .spyOn(orderRepository, 'save')
+        .mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+
+      const result = await service.create(
+        { ...createOrderDto, subscriptionId: undefined },
+        1,
+      );
+
+      expect(result.statusCode).toBe(201);
+      expect(subscriptionLookup).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ subscription_id: null }),
+      );
     });
 
     it('rejects a dine_in order without a table', async () => {
@@ -1930,6 +2050,101 @@ describe('OrdersService', () => {
       await service.update(1, dto, 1);
 
       expect(syncSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('refundOrder', () => {
+    const admin = {
+      id: 7,
+      role: UserRole.MERCHANT_ADMIN,
+    } as unknown as AuthenticatedUser;
+    const paidOrder = {
+      id: 1,
+      merchant: { id: 1 },
+      status: OrderBusinessStatus.PAID,
+      total: 100,
+      subtotal: 100,
+      orderItems: [],
+      order_number: '000001',
+    };
+    let manager: {
+      findOne: jest.Mock;
+      find: jest.Mock;
+      save: jest.Mock;
+    };
+
+    beforeEach(() => {
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue({ ...paidOrder } as unknown as Order);
+      manager = {
+        findOne: jest.fn((entity: unknown) =>
+          Promise.resolve(entity === Order ? { ...paidOrder } : null),
+        ),
+        find: jest.fn((entity: unknown) =>
+          Promise.resolve(
+            entity === OrderPayment
+              ? [{ amount: '100.00', method: 'cash' }]
+              : [],
+          ),
+        ),
+        save: jest.fn((a: unknown, b?: unknown) => Promise.resolve(b ?? a)),
+      };
+      const queryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager,
+      };
+      (
+        service['dataSource'] as unknown as { createQueryRunner: jest.Mock }
+      ).createQueryRunner.mockReturnValue(queryRunner);
+      jest
+        .spyOn(service, 'syncOrderAggregatesWithManager')
+        .mockResolvedValue({ becameFullyPaid: false, becameUnpaid: true });
+    });
+
+    it('locks the order, stores the refund as a positive amount and syncs the totals', async () => {
+      await service.refundOrder(
+        { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+        1,
+        admin,
+      );
+
+      expect(manager.findOne).toHaveBeenCalledWith(Order, {
+        where: { id: 1 },
+        lock: { mode: 'pessimistic_write' },
+      });
+      // is_refund is what subtracts it from paid_total; a negative amount added it back
+      expect(manager.save).toHaveBeenCalledWith(
+        OrderPayment,
+        expect.objectContaining({ amount: 100, is_refund: true }),
+      );
+      expect(service.syncOrderAggregatesWithManager).toHaveBeenCalledWith(
+        manager,
+        1,
+      );
+    });
+
+    it('does not refund twice when another refund got the lock first', async () => {
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Order
+            ? { ...paidOrder, status: OrderBusinessStatus.CANCELLED }
+            : null,
+        ),
+      );
+
+      await expect(
+        service.refundOrder(
+          { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+          1,
+          admin,
+        ),
+      ).rejects.toThrow('Only paid orders can be refunded');
+      expect(manager.save).not.toHaveBeenCalled();
     });
   });
 });

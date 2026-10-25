@@ -23,8 +23,8 @@ export class OrderResponseDto {
   @ApiProperty({ example: 1 })
   collaboratorId: number;
 
-  @ApiProperty({ example: 1 })
-  subscriptionId: number;
+  @ApiProperty({ example: null, nullable: true })
+  subscriptionId: number | null;
 
   @ApiProperty({
     example: OrderBusinessStatus.PENDING,

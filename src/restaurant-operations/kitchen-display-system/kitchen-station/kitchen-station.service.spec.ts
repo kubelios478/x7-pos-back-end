@@ -1,4 +1,5 @@
 import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
+import { MerchantLockScope } from 'src/common/utils/merchant-lock.util';
 import { KitchenEventLog } from '../kitchen-event-log/entities/kitchen-event-log.entity';
 import { KitchenDisplayDevice } from '../kitchen-display-device/entities/kitchen-display-device.entity';
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -51,6 +52,15 @@ describe('KitchenStationService', () => {
     update: jest.fn(),
     find: jest.fn().mockResolvedValue([]),
     createQueryBuilder: jest.fn(() => mockStationQueryBuilder),
+    // station writes run in a transaction holding the merchant's station lock
+    manager: {
+      transaction: (work: (manager: unknown) => unknown) =>
+        work(mockStationTransactionManager),
+    },
+  };
+  const mockStationTransactionManager = {
+    query: jest.fn().mockResolvedValue([]),
+    getRepository: () => mockKitchenStationRepository,
   };
 
   const mockMerchantRepository = {
@@ -172,6 +182,37 @@ describe('KitchenStationService', () => {
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Kitchen station created successfully');
       expect(result.data.name).toBe('Hot Station 1');
+    });
+
+    it('takes the merchant station lock before computing the station number', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(kitchenStationRepository, 'save')
+        .mockResolvedValue(mockKitchenStation as unknown as KitchenStation);
+      jest
+        .spyOn(kitchenStationRepository, 'findOne')
+        .mockResolvedValueOnce(mockKitchenStation as unknown as KitchenStation);
+      mockStationTransactionManager.query.mockClear();
+
+      await service.create(createKitchenStationDto, 1);
+
+      expect(mockStationTransactionManager.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock($1, $2)',
+        [MerchantLockScope.KITCHEN_STATIONS, 1],
+      );
+      // the lock comes before the MAX(station_number) query and the insert
+      const lockedAt =
+        mockStationTransactionManager.query.mock.invocationCallOrder[0];
+      expect(lockedAt).toBeLessThan(
+        mockKitchenStationRepository.createQueryBuilder.mock
+          .invocationCallOrder[0],
+      );
+      expect(lockedAt).toBeLessThan(
+        (kitchenStationRepository.save as jest.Mock).mock
+          .invocationCallOrder[0],
+      );
     });
 
     it('should throw ForbiddenException when user has no merchant_id', async () => {

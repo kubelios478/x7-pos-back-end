@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Item } from './entities/item.entity';
 import { Location } from '../locations/entities/location.entity';
 import { MovementsService } from '../movements/movements.service';
+import { MovementsStatus } from '../movements/constants/movements-status';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { GetItemsQueryDto } from './dto/get-items-query.dto';
@@ -104,6 +105,8 @@ describe('ItemsService', () => {
       findOne: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // update() checks the kardex history through the manager
+      manager: { exists: jest.fn().mockResolvedValue(false) },
     };
     const mockProductRepo = {
       findOneBy: jest.fn(),
@@ -725,10 +728,12 @@ describe('ItemsService', () => {
         ...updatedItem,
         location: newMockLocation,
       });
+      // adjust() re-reads the item: the save above left its quantity untouched
       mockQueryBuilder.getOne.mockResolvedValueOnce({
-        ...updatedItem,
+        ...mockItem,
         location: newMockLocation,
-      } as Item); // For findOne call inside update
+      } as Item);
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
 
       await service.update(mockItem.id!, mockMerchant.id, mockUpdateItemDto);
 
@@ -762,14 +767,51 @@ describe('ItemsService', () => {
           merchantId: mockMerchant.id,
         },
       });
+      // the quantity is not written straight onto the item...
       expect(itemRepo.save).toHaveBeenCalledWith({
         ...mockItem,
-        currentQty: mockUpdateItemDto.currentQty,
         product: mockProduct,
         location: newMockLocation,
         variant: mockVariant,
       });
-      expect(movementsService.create).toHaveBeenCalledTimes(2); // Two movements: OUT and IN
+      // ...but through the kardex: OUT and IN for the new location, then the adjustment
+      expect(movementsService.create).toHaveBeenCalledTimes(3);
+      expect(movementsService.create).toHaveBeenLastCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({
+          quantity: 5,
+          type: MovementsStatus.IN,
+          movementType: MovementsStatus.ADJUSTMENT,
+        }),
+      );
+    });
+
+    it('refuses to re-point a stock item with stock to another product', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 10,
+      } as Item);
+
+      await expect(
+        service.update(mockItem.id!, mockMerchant.id, {
+          productId: 2,
+          variantId: 2,
+        }),
+      ).rejects.toThrow('cannot change its product or raw material');
+      expect(itemRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses to re-point an empty stock item that has kardex history', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 0,
+      } as Item);
+      (itemRepo.manager.exists as jest.Mock).mockResolvedValueOnce(true);
+
+      await expect(
+        service.update(mockItem.id!, mockMerchant.id, { supplyId: 5 }),
+      ).rejects.toThrow('cannot change its product or raw material');
+      expect(itemRepo.save).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if Item to update is not found', async () => {
@@ -946,6 +988,55 @@ describe('ItemsService', () => {
       await expect(async () =>
         service.remove(null as any, mockMerchant.id),
       ).rejects.toThrow('Item ID is incorrect');
+    });
+  });
+
+  describe('Adjust', () => {
+    beforeEach(() => {
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockItem,
+        currentQty: 10,
+      });
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+    });
+
+    it('applies an absolute adjustment once, through a single ADJUSTMENT movement', async () => {
+      await service.adjust(1, mockMerchant.id, {
+        value: 15,
+        type: 'absolute',
+      });
+
+      // the movement updates the stock; saving the item here too counted it twice
+      expect(itemRepo.save).not.toHaveBeenCalled();
+      expect(movementsService.create).toHaveBeenCalledTimes(1);
+      expect(movementsService.create).toHaveBeenCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({
+          stockItemId: 1,
+          quantity: 5,
+          type: MovementsStatus.IN,
+          movementType: MovementsStatus.ADJUSTMENT,
+        }),
+      );
+    });
+
+    it('turns a negative relative adjustment into an OUT movement', async () => {
+      await service.adjust(1, mockMerchant.id, { value: -3, type: 'relative' });
+
+      expect(movementsService.create).toHaveBeenCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({ quantity: 3, type: MovementsStatus.OUT }),
+      );
+    });
+
+    it('does nothing when the quantity does not change', async () => {
+      await service.adjust(1, mockMerchant.id, {
+        value: 10,
+        type: 'absolute',
+      });
+
+      expect(movementsService.create).not.toHaveBeenCalled();
+      expect(itemRepo.save).not.toHaveBeenCalled();
     });
   });
 

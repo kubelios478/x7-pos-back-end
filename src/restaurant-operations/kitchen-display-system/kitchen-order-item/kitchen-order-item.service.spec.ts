@@ -886,6 +886,24 @@ describe('KitchenOrderItemService', () => {
       );
     });
 
+    it('should not revert a PENDING item into HELD (no hold timer would release it)', async () => {
+      jest
+        .spyOn(kitchenOrderItemRepository, 'createQueryBuilder')
+        .mockReturnValue(
+          mockQueryBuilder as unknown as SelectQueryBuilder<KitchenOrderItem>,
+        );
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockKitchenOrderItem,
+        preparation_status: KitchenOrderItemPreparationStatus.PENDING,
+      } as unknown as KitchenOrderItem);
+      const saveSpy = jest.spyOn(kitchenOrderItemRepository, 'save');
+
+      await expect(service.revertPreparationStatus(1, 1)).rejects.toThrow(
+        'Kitchen order item is already at the initial preparation status',
+      );
+      expect(saveSpy).not.toHaveBeenCalled();
+    });
+
     it('should throw BadRequestException when id is invalid', async () => {
       await expect(service.revertPreparationStatus(0, 1)).rejects.toThrow(
         BadRequestException,

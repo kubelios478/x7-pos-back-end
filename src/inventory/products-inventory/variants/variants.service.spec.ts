@@ -32,6 +32,7 @@ describe('VariantsService', () => {
     take: jest.Mock;
     getMany: jest.Mock;
     getOne: jest.Mock;
+    getExists: jest.Mock;
   };
   let mockQueryBuilder: MockQueryBuilder;
 
@@ -131,6 +132,8 @@ describe('VariantsService', () => {
       getCount: jest.fn(),
       getMany: jest.fn(),
       getOne: jest.fn(),
+      // name uniqueness within the product: no clash unless a test says so
+      getExists: jest.fn().mockResolvedValue(false),
     };
 
     mockVariantRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
@@ -584,14 +587,12 @@ describe('VariantsService', () => {
         'product.merchantId = :merchantId',
         { merchantId },
       );
+      // the new name is checked within the variant's product
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'LOWER(variant.name) = LOWER(:name)',
+        { name: mockUpdateVariantDto.name },
+      );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
-        where: {
-          name: mockUpdateVariantDto.name,
-          product: { merchantId: merchantId },
-          isActive: true,
-        },
-      });
-      expect(variantRepository.findOne).toHaveBeenNthCalledWith(2, {
         where: {
           sku: mockUpdateVariantDto.sku,
           product: { merchantId: merchantId },
@@ -631,37 +632,43 @@ describe('VariantsService', () => {
     });
 
     it('should throw BadRequestException if new variant name already exists for product', async () => {
-      const existingVariantWithNewName = {
-        ...mockVariant,
-        id: 2,
-        name: 'Existing Variant Name',
-      } as Variant;
-      const dtoWithExistingName = {
-        ...mockUpdateVariantDto,
-        name: 'Existing Variant Name',
-      };
-
       mockQueryBuilder.getOne.mockResolvedValueOnce(mockVariant as Variant);
-      //variantRepository.findOne.mockResolvedValueOnce(null);
-      variantRepository.findOne.mockResolvedValueOnce(
-        existingVariantWithNewName,
-      ); // Variant with same name found
+      mockQueryBuilder.getExists.mockResolvedValueOnce(true); // same name in the product
 
       await expect(
-        async () =>
-          await service.update(variantId, merchantId, dtoWithExistingName),
+        service.update(variantId, merchantId, {
+          ...mockUpdateVariantDto,
+          name: 'Existing Variant Name',
+        }),
       ).rejects.toThrow('Variant name already exists');
 
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('variant.id = :id', {
-        id: variantId,
-      });
-      expect(variantRepository.findOne).toHaveBeenCalledWith({
-        where: {
-          name: dtoWithExistingName.name,
-          product: { merchantId: merchantId },
-          isActive: true,
-        },
-      });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'variant.productId = :productId',
+        { productId: mockVariant.productId },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'variant.id != :exceptVariantId',
+        { exceptVariantId: variantId },
+      );
+      expect(variantRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects creating a variant whose name already exists in the product (any case)', async () => {
+      jest.spyOn(productsService, 'findOne').mockResolvedValueOnce({
+        data: { id: mockVariant.productId },
+      } as never);
+      mockQueryBuilder.getExists.mockResolvedValueOnce(true);
+
+      await expect(
+        service.create(merchantId, {
+          ...mockCreateVariantDto,
+          name: 'small',
+        }),
+      ).rejects.toThrow('Variant name already exists');
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'LOWER(variant.name) = LOWER(:name)',
+        { name: 'small' },
+      );
       expect(variantRepository.save).not.toHaveBeenCalled();
     });
 
