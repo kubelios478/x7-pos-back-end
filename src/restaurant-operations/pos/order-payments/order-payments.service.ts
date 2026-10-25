@@ -27,7 +27,10 @@ import {
 import { PaginatedOrderPaymentResponseDto } from './dto/paginated-order-payment-response.dto';
 import { OrderStatus } from '../orders/constants/order-status.enum';
 import { OrdersService } from '../orders/orders.service';
-import { roundMoney } from '../orders/order-aggregation.util';
+import {
+  computePaidTotalFromPayments,
+  roundMoney,
+} from '../orders/order-aggregation.util';
 import {
   LoyaltyPointsRedemptionService,
   PAYMENT_METHOD_LOYALTY,
@@ -133,6 +136,30 @@ export class OrderPaymentsService {
         throw new BadRequestException(
           'The active cash shift has been closed. Operation cancelled.',
         );
+      }
+
+      // Lock the order too: two terminals charging the same order (split bill) on
+      // different cash shifts would otherwise each recompute paid_total without the
+      // other's payment, and the last write would drop one of them.
+      const lockedOrder = await queryRunner.manager.findOne(Order, {
+        where: { id: dto.orderId, merchant_id: authenticatedUserMerchantId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!lockedOrder || lockedOrder.logical_status !== OrderStatus.ACTIVE) {
+        throw new BadRequestException('Cannot add payments to a deleted order');
+      }
+
+      if (dto.isRefund) {
+        const payments = await queryRunner.manager.find(OrderPayment, {
+          where: { order_id: dto.orderId },
+        });
+        const paidSoFar = computePaidTotalFromPayments(payments);
+        const refund = roundMoney(dto.amount + tip);
+        if (refund > paidSoFar) {
+          throw new BadRequestException(
+            `Cannot refund ${refund}: the order has ${paidSoFar} paid.`,
+          );
+        }
       }
 
       // Step B: Register the payment
