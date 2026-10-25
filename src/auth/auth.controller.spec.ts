@@ -485,4 +485,21 @@ describe('AuthController', () => {
       expect(resetResponse).toEqual(resetResult);
     });
   });
+
+  describe('password reset logging', () => {
+    it('does not log the reset request (email) nor the new password and token', async () => {
+      const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+      mockAuthService.sendResetLink.mockResolvedValue({ message: 'ok' });
+      mockAuthService.resetPassword.mockResolvedValue({ message: 'ok' });
+
+      await controller.requestReset({ email: 'someone@example.com' });
+      await controller.resetPassword({
+        token: 'live-reset-token',
+        newPassword: 'N3w-Secret!',
+      } as ResetPasswordDto);
+
+      expect(log).not.toHaveBeenCalled();
+      log.mockRestore();
+    });
+  });
 });

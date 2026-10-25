@@ -6,8 +6,5 @@ export function CompositeUnique(
   fields: string[],
   ignoreIdField?: string,
 ) {
-  console.log('entity', entity);
-  console.log('fields', fields);
-  console.log('ignoreIdField', ignoreIdField);
   return Validate(IsUnique, [{ entity, fields, ignoreIdField }]);
 }

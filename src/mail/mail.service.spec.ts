@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { MailService } from './mail.service';
 
@@ -334,6 +335,44 @@ describe('MailService', () => {
         from: '"Test App" <no-reply@test.com>',
         ...welcomeEmail,
       });
+    });
+  });
+
+  describe('undelivered email body', () => {
+    const resetEmail = {
+      to: 'someone@example.com',
+      subject: 'Reset Password',
+      text: 'Click https://app/reset-password?token=live-reset-token',
+    };
+
+    it('is not logged in production: it can carry a live reset token', async () => {
+      process.env.NODE_ENV = 'production';
+      mockSendMail.mockRejectedValueOnce(new Error('SMTP down'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+
+      await expect(service.sendMail(resetEmail)).resolves.toBe(false);
+
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('live-reset-token'),
+      );
+    });
+
+    it('is logged outside production, to test flows without SMTP', async () => {
+      process.env.NODE_ENV = 'development';
+      mockSendMail.mockRejectedValueOnce(new Error('SMTP down'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+
+      await service.sendMail(resetEmail);
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('live-reset-token'),
+      );
     });
   });
 });
