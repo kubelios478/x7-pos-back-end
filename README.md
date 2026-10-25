@@ -70,6 +70,9 @@ Review a generated migration before committing it. TypeORM always reports
 `collaborator_contracts.overtime_multiplier`'s default as changed (numeric default
 comparison); drop that statement if it appears.
 
+How the schema is created, the rules for changing it, reference data and what is
+pending before production: [docs/database.md](docs/database.md).
+
 ## Run tests
 
 ```bash
