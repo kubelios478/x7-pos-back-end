@@ -29,6 +29,10 @@ import { AuthenticatedUser } from '../../../auth/interfaces/authenticated-user.i
 import { UserRole } from '../../../platform-saas/users/constants/role.enum';
 import { CashMovement } from '../cash-movements/entities/cash-movement.entity';
 import { CashMovementType } from '../cash-movements/constants/cash-movement-type.enum';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import { paginationMeta } from 'src/common/utils/pagination.util';
+
+export const CASH_SHIFTS_DEFAULT_LIMIT = 50;
 
 @Injectable()
 export class CashShiftsService {
@@ -471,20 +475,30 @@ export class CashShiftsService {
     };
   }
 
-  /** Lists all cash shifts for the merchant. */
-  async findAll(merchantId: number): Promise<AllCashShiftsResponseDto> {
+  /**
+   * Lists the merchant's cash shifts, newest first, 50 per page by default: each shift
+   * carries all its movements, so the whole history in one response grows without bound.
+   */
+  async findAll(
+    merchantId: number,
+    query: PaginationQueryDto = {},
+  ): Promise<AllCashShiftsResponseDto> {
     if (!merchantId) {
       throw new ForbiddenException('User must belong to a merchant');
     }
 
-    const shifts = await this.cashShiftRepo.find({
+    const page = query.page ?? 1;
+    const limit = query.limit ?? CASH_SHIFTS_DEFAULT_LIMIT;
+    const [shifts, total] = await this.cashShiftRepo.findAndCount({
       where: { merchantId },
       relations: [
         'cashMovements',
         'openedByCollaborator',
         'closedByCollaborator',
       ],
-      order: { openedAt: 'DESC' },
+      order: { openedAt: 'DESC', id: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
     // Dynamically calculate the theoretical balance for open shifts
@@ -498,6 +512,7 @@ export class CashShiftsService {
       statusCode: 200,
       message: 'Cash shifts retrieved successfully',
       data: shifts.map((s) => this.format(s)),
+      ...paginationMeta(page, limit, total),
     };
   }
 

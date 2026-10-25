@@ -47,6 +47,7 @@ describe('CashShiftsService', () => {
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+    findAndCount: jest.fn(),
     getLiveBalance: jest.fn(),
     getSalesSummary: jest.fn(),
   };
@@ -189,6 +190,69 @@ describe('CashShiftsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  // Antes devolvía todos los turnos del comercio, cada uno con todos sus movimientos.
+  describe('findAll', () => {
+    const closedShift = {
+      id: 1,
+      merchantId: 1,
+      status: CashShiftStatus.CLOSED,
+      openingBalance: 0,
+      cashMovements: [],
+    };
+
+    it('returns the 50 most recent shifts by default', async () => {
+      mockCashShiftRepository.findAndCount.mockResolvedValueOnce([
+        [closedShift],
+        120,
+      ]);
+
+      const result = await service.findAll(1);
+
+      expect(mockCashShiftRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { merchantId: 1 },
+          order: { openedAt: 'DESC', id: 'DESC' },
+          skip: 0,
+          take: 50,
+        }),
+      );
+      expect(mockCashShiftRepository.find).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        page: 1,
+        limit: 50,
+        total: 120,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      });
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('honours page and limit', async () => {
+      mockCashShiftRepository.findAndCount.mockResolvedValueOnce([[], 120]);
+
+      const result = await service.findAll(1, { page: 3, limit: 50 });
+
+      expect(mockCashShiftRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 100, take: 50 }),
+      );
+      expect(result).toMatchObject({ page: 3, hasNext: false, hasPrev: true });
+    });
+
+    it('computes the live balance only for open shifts', async () => {
+      mockCashShiftRepository.findAndCount.mockResolvedValueOnce([
+        [closedShift, { ...closedShift, id: 2, status: CashShiftStatus.OPEN }],
+        2,
+      ]);
+      mockCashShiftRepository.getLiveBalance.mockResolvedValueOnce(80);
+
+      await service.findAll(1);
+
+      expect(mockCashShiftRepository.getLiveBalance).toHaveBeenCalledTimes(1);
+      expect(mockCashShiftRepository.getLiveBalance).toHaveBeenCalledWith(2);
+    });
   });
 
   describe('openShift', () => {

@@ -185,7 +185,7 @@ describe('MerchantsController', () => {
       const findAllSpy = jest.spyOn(merchantsService, 'findAll');
       findAllSpy.mockResolvedValue(mockAllMerchantsResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAllMerchantsResponse);
@@ -200,7 +200,7 @@ describe('MerchantsController', () => {
       const findAllSpy = jest.spyOn(merchantsService, 'findAll');
       findAllSpy.mockResolvedValue(emptyResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(emptyResponse);
@@ -212,7 +212,7 @@ describe('MerchantsController', () => {
       const findAllSpy = jest.spyOn(merchantsService, 'findAll');
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll()).rejects.toThrow(errorMessage);
+      await expect(controller.findAll({})).rejects.toThrow(errorMessage);
       expect(findAllSpy).toHaveBeenCalled();
     });
   });
@@ -427,7 +427,7 @@ describe('MerchantsController', () => {
       const removeSpy = jest.spyOn(merchantsService, 'remove');
 
       await controller.create(mockCreateMerchantDto);
-      await controller.findAll();
+      await controller.findAll({});
       await controller.findOne(1, mockUser);
       await controller.update(1, mockUpdateMerchantDto, mockUser);
       await controller.remove(1, mockUser);
@@ -470,7 +470,7 @@ describe('MerchantsController', () => {
 
       // Call all controller methods
       const createResult = await controller.create(mockCreateMerchantDto);
-      const findAllResult = await controller.findAll();
+      const findAllResult = await controller.findAll({});
       const findOneResult = await controller.findOne(1, mockUser);
       const updateResult = await controller.update(
         1,

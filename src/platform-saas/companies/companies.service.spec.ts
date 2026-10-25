@@ -23,7 +23,9 @@ describe('CompaniesService', () => {
   const companiesQuery = {
     loadRelationCountAndMap: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
-    getMany: jest.fn(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn(),
   };
   let service: CompaniesService;
   let companyRepository: jest.Mocked<Repository<Company>>;
@@ -199,10 +201,11 @@ describe('CompaniesService', () => {
   describe('findAll', () => {
     it('should return all companies with merchant and customer counts', async () => {
       const companies = [mockCompany as Company];
-      companiesQuery.getMany.mockResolvedValue(companies);
+      companiesQuery.getManyAndCount.mockResolvedValue([companies, 1]);
 
       const result = await service.findAll();
 
+      expect(companiesQuery.skip).not.toHaveBeenCalled();
       expect(companiesQuery.loadRelationCountAndMap).toHaveBeenCalledWith(
         'company.merchantsCount',
         'company.merchants',
@@ -219,13 +222,23 @@ describe('CompaniesService', () => {
     });
 
     it('should return empty array when no companies found', async () => {
-      companiesQuery.getMany.mockResolvedValue([]);
+      companiesQuery.getManyAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
       expect(result.data).toEqual([]);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Companies retrieved successfully');
+    });
+
+    it('pages and adds the pagination data when page or limit is sent', async () => {
+      companiesQuery.getManyAndCount.mockResolvedValue([[mockCompany], 12]);
+
+      const result = await service.findAll({ page: 2, limit: 10 });
+
+      expect(companiesQuery.skip).toHaveBeenCalledWith(10);
+      expect(companiesQuery.take).toHaveBeenCalledWith(10);
+      expect(result).toMatchObject({ page: 2, total: 12, hasPrev: true });
     });
   });
 

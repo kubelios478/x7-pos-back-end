@@ -27,6 +27,7 @@ describe('CustomersService', () => {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
+    findAndCount: jest.fn(),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     remove: jest.fn(),
@@ -314,15 +315,20 @@ describe('CustomersService', () => {
 
     it('should return all customers with formatted data', async () => {
       jest
-        .spyOn(customerRepository, 'find')
-        .mockResolvedValue(mockCustomers as any);
+        .spyOn(customerRepository, 'findAndCount')
+        .mockResolvedValue([mockCustomers as any, 2]);
 
-      const result = await service.findAll(mockCustomer.merchantId);
+      const { rows: result, paginated } = await service.findAll(
+        mockCustomer.merchantId,
+      );
 
-      expect(customerRepository.find).toHaveBeenCalledWith({
+      // Sin page ni limit: todos, como antes.
+      expect(customerRepository.findAndCount).toHaveBeenCalledWith({
         where: { merchantId: mockCustomer.merchantId },
         relations: ['merchant', 'company'],
+        order: { id: 'ASC' },
       });
+      expect(paginated).toBe(false);
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         id: mockCustomers[0].id,
@@ -353,13 +359,29 @@ describe('CustomersService', () => {
       ];
 
       jest
-        .spyOn(customerRepository, 'find')
-        .mockResolvedValue(customersWithoutRelations as any);
+        .spyOn(customerRepository, 'findAndCount')
+        .mockResolvedValue([customersWithoutRelations as any, 1]);
 
-      const result = await service.findAll(mockCustomer.merchantId);
+      const { rows: result } = await service.findAll(mockCustomer.merchantId);
 
       expect(result[0].merchant).toBeNull();
       expect(result[0].company).toBeNull();
+    });
+
+    it('pages in the database when page or limit is sent', async () => {
+      jest
+        .spyOn(customerRepository, 'findAndCount')
+        .mockResolvedValue([mockCustomers as any, 230]);
+
+      const result = await service.findAll(mockCustomer.merchantId, {
+        page: 3,
+        limit: 20,
+      });
+
+      expect(customerRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+      expect(result).toMatchObject({ total: 230, paginated: true });
     });
   });
 

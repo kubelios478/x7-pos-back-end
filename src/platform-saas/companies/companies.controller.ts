@@ -10,6 +10,7 @@ import {
   Delete,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -40,6 +41,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CompanyProfileResponseDto } from './dtos/company-profile.dto';
 import { CompanyConfigurationsResponseDto } from './dtos/company-configurations.dto';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
 
 @ApiTags('Platform SaaS - Companies')
 @ApiExtraModels(ErrorResponse)
@@ -102,8 +104,8 @@ export class CompaniesController {
       },
     },
   })
-  findAll(): Promise<AllCompanyResponseDto> {
-    return this.companiesService.findAll();
+  findAll(@Query() query: PaginationQueryDto): Promise<AllCompanyResponseDto> {
+    return this.companiesService.findAll(query);
   }
 
   @Get('company/profile')

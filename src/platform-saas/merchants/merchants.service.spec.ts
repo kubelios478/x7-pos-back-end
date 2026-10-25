@@ -101,6 +101,7 @@ describe('MerchantsService', () => {
       create: jest.fn(),
       save: jest.fn(),
       find: jest.fn(),
+      findAndCount: jest.fn(),
       findOne: jest.fn(),
       remove: jest.fn(),
       exists: jest.fn(),
@@ -297,25 +298,29 @@ describe('MerchantsService', () => {
   });
 
   describe('findAll', () => {
+    const merchantQuery = {
+      relations: ['company', 'users'],
+      select: {
+        users: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          scope: true,
+        },
+      },
+      order: { id: 'ASC' },
+    };
+
     it('should return all merchants successfully', async () => {
       const merchants = [mockMerchant as Merchant];
-      const findSpy = jest.spyOn(merchantRepository, 'find');
-      findSpy.mockResolvedValue(merchants);
+      const findSpy = jest.spyOn(merchantRepository, 'findAndCount');
+      findSpy.mockResolvedValue([merchants, 1]);
 
       const result = await service.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith({
-        relations: ['company', 'users'],
-        select: {
-          users: {
-            id: true,
-            username: true,
-            email: true,
-            role: true,
-            scope: true,
-          },
-        },
-      });
+      // Sin page ni limit: todos, y la respuesta sin datos de paginación.
+      expect(findSpy).toHaveBeenCalledWith(merchantQuery);
       expect(result).toEqual({
         statusCode: 200,
         message: 'Merchants retrieved successfully',
@@ -324,26 +329,26 @@ describe('MerchantsService', () => {
     });
 
     it('should return empty array when no merchants found', async () => {
-      const findSpy = jest.spyOn(merchantRepository, 'find');
-      findSpy.mockResolvedValue([]);
+      jest.spyOn(merchantRepository, 'findAndCount').mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith({
-        relations: ['company', 'users'],
-        select: {
-          users: {
-            id: true,
-            username: true,
-            email: true,
-            role: true,
-            scope: true,
-          },
-        },
-      });
       expect(result.data).toEqual([]);
       expect(result.statusCode).toBe(200);
-      expect(result.message).toBe('Merchants retrieved successfully');
+    });
+
+    it('pages and adds the pagination data when page or limit is sent', async () => {
+      const findSpy = jest.spyOn(merchantRepository, 'findAndCount');
+      findSpy.mockResolvedValue([[mockMerchant as Merchant], 5]);
+
+      const result = await service.findAll({ limit: 2 });
+
+      expect(findSpy).toHaveBeenCalledWith({
+        ...merchantQuery,
+        skip: 0,
+        take: 2,
+      });
+      expect(result).toMatchObject({ page: 1, total: 5, totalPages: 3 });
     });
   });
 

@@ -42,6 +42,7 @@ describe('UsersService', () => {
       create: jest.fn(),
       save: jest.fn(),
       find: jest.fn(),
+      findAndCount: jest.fn(),
       findOne: jest.fn(),
       findOneBy: jest.fn(),
       update: jest.fn(),
@@ -115,13 +116,15 @@ describe('UsersService', () => {
   describe('findAll', () => {
     it('should return all users successfully', async () => {
       const users = [mockUser as User];
-      const findSpy = jest.spyOn(userRepository, 'find');
-      findSpy.mockResolvedValue(users);
+      const findSpy = jest.spyOn(userRepository, 'findAndCount');
+      findSpy.mockResolvedValue([users, 1]);
 
       const result = await service.findAll();
 
+      // Sin page ni limit: todos, y la respuesta sin datos de paginación.
       expect(findSpy).toHaveBeenCalledWith({
         relations: ['merchant'],
+        order: { id: 'ASC' },
       });
       expect(result).toEqual({
         statusCode: 200,
@@ -141,13 +144,31 @@ describe('UsersService', () => {
     });
 
     it('should return empty array when no users found', async () => {
-      userRepository.find.mockResolvedValue([]);
+      userRepository.findAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
       expect(result.data).toEqual([]);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Users retrieved successfully');
+    });
+
+    it('pages and adds the pagination data when page or limit is sent', async () => {
+      userRepository.findAndCount.mockResolvedValue([[mockUser as User], 61]);
+
+      const result = await service.findAll({ page: 2, limit: 30 });
+
+      expect(userRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 30, take: 30 }),
+      );
+      expect(result).toMatchObject({
+        page: 2,
+        limit: 30,
+        total: 61,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: true,
+      });
     });
   });
 

@@ -138,7 +138,7 @@ describe('UsersController', () => {
       const findAllSpy = jest.spyOn(usersService, 'findAll');
       findAllSpy.mockResolvedValue(mockAllUsersResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAllUsersResponse);
@@ -153,7 +153,7 @@ describe('UsersController', () => {
       const findAllSpy = jest.spyOn(usersService, 'findAll');
       findAllSpy.mockResolvedValue(emptyResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(emptyResponse);
@@ -351,7 +351,7 @@ describe('UsersController', () => {
       const findOneSpy = jest.spyOn(usersService, 'findOne');
 
       await controller.create(mockCreateUserDto, authRequest);
-      await controller.findAll();
+      await controller.findAll({});
       await controller.findById(1, authRequest);
 
       expect(createSpy).toHaveBeenCalledTimes(1);
