@@ -72,9 +72,6 @@ export async function registerTenant(
       country: 'United States',
       branchName: `${key} Main`,
       adminEmail,
-      // Sin username, el onboarding usa la parte local del email ("admin"), que choca
-      // entre compañías.
-      username: `admin-${key}`,
       password,
       planId,
     })

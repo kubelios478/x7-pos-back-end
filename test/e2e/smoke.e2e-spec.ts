@@ -29,6 +29,15 @@ describe('Smoke (e2e)', () => {
     expect(res.body).toEqual({ status: 'ok', db: 'up' });
   });
 
+  // Los dos admins se llaman admin@...: antes el segundo onboarding respondía 409.
+  it('gives each onboarded admin a free username', async () => {
+    const rows = await e2e.dataSource.query<{ username: string }[]>(
+      `SELECT username FROM users WHERE id = ANY($1) ORDER BY id`,
+      [[tenantA.userId, tenantB.userId]],
+    );
+    expect(rows.map((r) => r.username)).toEqual(['admin', 'admin-2']);
+  });
+
   it('login rejects a wrong password with 401', async () => {
     await request(server)
       .post('/api/auth/login')

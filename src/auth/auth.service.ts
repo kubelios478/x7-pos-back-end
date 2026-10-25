@@ -35,6 +35,7 @@ import {
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { getAllSubscriptionFeatureIds } from 'src/common/subscription/subscription-feature-ids';
+import { availableUsername } from './utils/available-username.util';
 
 @Injectable()
 export class AuthService {
@@ -265,17 +266,20 @@ export class AuthService {
       throw new ConflictException('A company with this tax ID already exists');
     }
 
-    const resolvedUsername =
-      (dto.username?.trim() || dto.adminEmail.split('@')[0]) ?? '';
-
-    if (resolvedUsername.length > 0) {
+    // Un username elegido que ya existe es un error del cliente; uno derivado del email
+    // se hace único con un sufijo.
+    const chosenUsername = dto.username?.trim();
+    if (chosenUsername) {
       const usernameTaken = await this.userRepository.exists({
-        where: { username: resolvedUsername },
+        where: { username: chosenUsername },
       });
       if (usernameTaken) {
         throw new ConflictException('Username is already taken');
       }
     }
+    const resolvedUsername =
+      chosenUsername ||
+      (await availableUsername(this.userRepository, dto.adminEmail));
 
     // The company is created in this same transaction, so the outlet name cannot clash:
     // merchant names are unique per company, not globally.
