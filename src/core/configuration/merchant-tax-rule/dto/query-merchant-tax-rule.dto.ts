@@ -1,6 +1,13 @@
 //src/core/configuration/merchant-tax-rule/dto/query-merchant-tax-rule.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryMerchantTaxRuleDto {
@@ -25,6 +32,7 @@ export class QueryMerchantTaxRuleDto {
   page: number = 1;
 
   @ApiPropertyOptional({
+    maximum: 100,
     description: 'Items per page',
     example: 10,
   })
@@ -32,6 +40,7 @@ export class QueryMerchantTaxRuleDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit: number = 10;
 
   @ApiPropertyOptional({
