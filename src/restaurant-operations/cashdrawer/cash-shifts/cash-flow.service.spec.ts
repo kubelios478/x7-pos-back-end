@@ -52,7 +52,56 @@ describe('CashFlowService', () => {
     expect(result.id).toBe(99);
   });
 
-  it('records an outflow and subtracts it from the drawer balance', async () => {
+  it('records a manual inflow as an adjustment, not a sale', async () => {
+    await service.addMovement(
+      7,
+      20,
+      CashShiftMovementType.IN,
+      null,
+      3,
+      5,
+      manager,
+      'Change for the till',
+    );
+
+    expect(transactionRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order_id: null,
+        type: CashTransactionType.ADJUSTMENT_UP,
+      }),
+    );
+    expect(drawerRepo.increment).toHaveBeenCalledWith(
+      { id: 5 },
+      'current_balance',
+      20,
+    );
+  });
+
+  it('records a cash refund of an order as a refund', async () => {
+    await service.addMovement(
+      7,
+      15,
+      CashShiftMovementType.OUT,
+      2,
+      3,
+      5,
+      manager,
+    );
+
+    expect(transactionRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        order_id: 2,
+        type: CashTransactionType.REFUND,
+      }),
+    );
+    expect(drawerRepo.decrement).toHaveBeenCalledWith(
+      { id: 5 },
+      'current_balance',
+      15,
+    );
+  });
+
+  it('records a manual outflow and subtracts it from the drawer balance', async () => {
     await service.addMovement(
       7,
       10,
