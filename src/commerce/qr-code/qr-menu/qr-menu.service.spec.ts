@@ -232,9 +232,6 @@ describe('QRMenuService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['merchant'],
-        select: {
-          merchant: { id: true, name: true },
-        },
       });
     });
 
@@ -278,9 +275,6 @@ describe('QRMenuService', () => {
           id: 1,
         },
         relations: ['merchant'],
-        select: {
-          merchant: { id: true, name: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQRMenu);
       expect(result).toEqual({
@@ -304,9 +298,6 @@ describe('QRMenuService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['merchant'],
-        select: {
-          merchant: { id: true, name: true },
-        },
       });
     });
 
@@ -337,6 +328,7 @@ describe('QRMenuService', () => {
         where: {
           id: 1,
         },
+        relations: ['merchant'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -359,6 +351,7 @@ describe('QRMenuService', () => {
         where: {
           id: 999,
         },
+        relations: ['merchant'],
       });
     });
   });

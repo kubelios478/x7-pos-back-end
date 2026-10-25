@@ -208,20 +208,6 @@ export class QRMenuItemService {
         status: In(['active', 'inactive']),
       },
       relations: ['qrMenuSection', 'product', 'variant'],
-      select: {
-        qrMenuSection: {
-          id: true,
-          name: true,
-        },
-        product: {
-          id: true,
-          name: true,
-        },
-        variant: {
-          id: true,
-          name: true,
-        },
-      },
     });
     if (!qrMenuItem) {
       ErrorHandler.qrMenuItemNotFound();
@@ -243,20 +229,6 @@ export class QRMenuItemService {
     const qrMenuItem = await this.qrMenuItemRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['qrMenuSection', 'product', 'variant'],
-      select: {
-        qrMenuSection: {
-          id: true,
-          name: true,
-        },
-        product: {
-          id: true,
-          name: true,
-        },
-        variant: {
-          id: true,
-          name: true,
-        },
-      },
     });
     if (!qrMenuItem) {
       ErrorHandler.qrMenuItemNotFound();
@@ -284,6 +256,7 @@ export class QRMenuItemService {
 
     const qrMenuItem = await this.qrMenuItemRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['qrMenuSection', 'product', 'variant'],
     });
     if (!qrMenuItem) {
       ErrorHandler.qrMenuItemNotFound();

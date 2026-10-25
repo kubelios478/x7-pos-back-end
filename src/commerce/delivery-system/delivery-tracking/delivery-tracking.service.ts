@@ -151,6 +151,7 @@ export class DeliveryTrackingService {
         status: In([...TRACKING_STATUSES]),
         deliveryAssignment: { order: { merchant_id: merchantId } },
       },
+      relations: ['deliveryAssignment'],
     });
     if (!tracking) {
       ErrorHandler.deliveryTrackingNotFound();

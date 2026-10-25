@@ -25,7 +25,7 @@ export class QRLocation {
     example: 1,
     description: 'Identifier of the Merchant related',
   })
-  @ManyToOne(() => Merchant, { eager: true })
+  @ManyToOne(() => Merchant)
   @JoinColumn({ name: 'merchant_id' })
   merchant: Merchant;
 
@@ -33,7 +33,7 @@ export class QRLocation {
     example: 1,
     description: 'Identifier of the QR Menu related',
   })
-  @ManyToOne(() => QRMenu, { eager: true })
+  @ManyToOne(() => QRMenu)
   @JoinColumn({ name: 'qr_menu_id' })
   qrMenu: QRMenu;
 
@@ -41,7 +41,7 @@ export class QRLocation {
     example: 1,
     description: 'Identifier of the Table related (if applicable)',
   })
-  @ManyToOne(() => Table, { eager: true, nullable: true })
+  @ManyToOne(() => Table, { nullable: true })
   @JoinColumn({ name: 'table_id' })
   table: Table;
 

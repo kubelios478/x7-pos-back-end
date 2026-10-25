@@ -211,7 +211,12 @@ describe('vertexCount / readStoredGeometry', () => {
 });
 
 describe('circleZonePolygon', () => {
-  const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const haversineKm = (
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ) => {
     const r = (d: number) => (d * Math.PI) / 180;
     const a =
       Math.sin(r(lat2 - lat1) / 2) ** 2 +

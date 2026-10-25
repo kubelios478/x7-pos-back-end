@@ -202,19 +202,6 @@ export class QRLocationService {
         status: In(['active', 'inactive']),
       },
       relations: ['qrMenu', 'merchant', 'table'],
-      select: {
-        qrMenu: {
-          id: true,
-          name: true,
-        },
-        merchant: {
-          id: true,
-          name: true,
-        },
-        table: {
-          id: true,
-        },
-      },
     });
     if (!qrLocation) {
       ErrorHandler.qrLocationNotFound();
@@ -237,19 +224,6 @@ export class QRLocationService {
     const qrLocation = await this.qrLocationRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['qrMenu', 'merchant', 'table'],
-      select: {
-        qrMenu: {
-          id: true,
-          name: true,
-        },
-        merchant: {
-          id: true,
-          name: true,
-        },
-        table: {
-          id: true,
-        },
-      },
     });
     if (!qrLocation) {
       ErrorHandler.qrLocationNotFound();
@@ -277,6 +251,7 @@ export class QRLocationService {
 
     const qrLocation = await this.qrLocationRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['merchant', 'qrMenu', 'table'],
     });
     if (!qrLocation) {
       ErrorHandler.qrLocationNotFound();

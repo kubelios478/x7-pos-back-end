@@ -68,6 +68,7 @@ export class DeliveryDriverService {
         merchant: { id: merchantId },
         status: In([...LIVE_DRIVER_STATUSES]),
       },
+      relations: ['merchant'],
     });
     if (!driver) {
       ErrorHandler.deliveryDriverNotFound();
