@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashShiftMovementType } from '../../cashdrawer/cash-shifts/constants/cash-shift-movement-type.enum';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
 import { MerchantLockScope } from 'src/common/utils/merchant-lock.util';
 import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
@@ -58,6 +61,11 @@ describe('OrdersService', () => {
 
   const mockEventEmitter = {
     emit: jest.fn(),
+  };
+
+  // processPayment / refundOrder move cash through the drawer
+  const mockCashFlowService = {
+    addMovement: jest.fn().mockResolvedValue(undefined),
   };
 
   let service: OrdersService;
@@ -279,6 +287,7 @@ describe('OrdersService', () => {
           provide: EventEmitter2,
           useValue: mockEventEmitter,
         },
+        { provide: CashFlowService, useValue: mockCashFlowService },
 
         {
           // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
@@ -2086,7 +2095,9 @@ describe('OrdersService', () => {
           Promise.resolve(
             entity === OrderPayment
               ? [{ amount: '100.00', method: 'cash' }]
-              : [],
+              : entity === CashShift
+                ? [{ id: 3, cashDrawerId: 2, openedBy: 5 }] // the only open drawer
+                : [],
           ),
         ),
         save: jest.fn((a: unknown, b?: unknown) => Promise.resolve(b ?? a)),
@@ -2127,6 +2138,37 @@ describe('OrdersService', () => {
         manager,
         1,
       );
+      // the cash part leaves the open drawer as a refund linked to the order
+      expect(mockCashFlowService.addMovement).toHaveBeenCalledWith(
+        3,
+        100,
+        CashShiftMovementType.OUT,
+        1,
+        5,
+        2,
+        manager,
+        'Wrong dish',
+      );
+    });
+
+    it('refuses to pay cash out when several drawers are open and none is chosen', async () => {
+      manager.find.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === OrderPayment
+            ? [{ amount: '100.00', method: 'cash' }]
+            : entity === CashShift
+              ? [{ id: 3 }, { id: 4 }]
+              : [],
+        ),
+      );
+
+      await expect(
+        service.refundOrder(
+          { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+          1,
+          admin,
+        ),
+      ).rejects.toThrow('Several cash shifts are open: send cashShiftId');
     });
 
     it('does not refund twice when another refund got the lock first', async () => {

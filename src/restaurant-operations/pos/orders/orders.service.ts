@@ -43,6 +43,10 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { Table } from '../../../restaurant-operations/dining-system/tables/entities/table.entity';
 import { Collaborator } from '../../../finance-hr/hr/collaborators/entities/collaborator.entity';
 import { MerchantSubscription } from '../../../platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashShiftStatus } from '../../cashdrawer/cash-shifts/constants/cash-shift-status.enum';
+import { CashShiftMovementType } from '../../cashdrawer/cash-shifts/constants/cash-shift-movement-type.enum';
 import {
   lockMerchantScope,
   MerchantLockScope,
@@ -159,7 +163,66 @@ export class OrdersService {
     private readonly loyaltyCustomerRepo: Repository<LoyaltyCustomer>,
     @InjectRepository(LoyaltyPointTransaction)
     private readonly loyaltyPointTransactionRepo: Repository<LoyaltyPointTransaction>,
+    private readonly cashFlowService: CashFlowService,
   ) {}
+
+  /**
+   * Open cash shift that takes in (or pays out) the cash of a processPayment / refundOrder,
+   * locked like order-payments locks it: the one given, else the one the user opened, else
+   * the merchant's only open shift. With several open and none chosen it refuses rather
+   * than guess the drawer.
+   */
+  private async resolveCashShiftForCash(
+    manager: EntityManager,
+    merchantId: number,
+    userId: number,
+    cashShiftId?: number,
+  ): Promise<{ shift: CashShift; collaboratorId: number }> {
+    const lock = { mode: 'pessimistic_write' as const };
+    const collaborator = await manager.findOne(Collaborator, {
+      where: { user_id: userId, merchant_id: merchantId },
+    });
+
+    let shift: CashShift | null = null;
+    if (cashShiftId != null) {
+      shift = await manager.findOne(CashShift, {
+        where: { id: cashShiftId, merchantId, status: CashShiftStatus.OPEN },
+        lock,
+      });
+      if (!shift) {
+        throw new BadRequestException(
+          `Cash shift ${cashShiftId} is not an open cash shift of your merchant`,
+        );
+      }
+    } else {
+      if (collaborator) {
+        shift = await manager.findOne(CashShift, {
+          where: {
+            merchantId,
+            openedBy: collaborator.id,
+            status: CashShiftStatus.OPEN,
+          },
+          lock,
+        });
+      }
+      if (!shift) {
+        const open = await manager.find(CashShift, {
+          where: { merchantId, status: CashShiftStatus.OPEN },
+          lock,
+        });
+        if (open.length === 1) {
+          shift = open[0];
+        } else {
+          throw new BadRequestException(
+            open.length === 0
+              ? 'Cash moves through a cash drawer: open a cash shift first.'
+              : 'Several cash shifts are open: send cashShiftId to say which drawer takes the cash.',
+          );
+        }
+      }
+    }
+    return { shift, collaboratorId: collaborator?.id ?? shift.openedBy };
+  }
 
   async create(
     dto: CreateOrderDto,
@@ -678,6 +741,31 @@ export class OrdersService {
           shift_id: shift.id,
           source: dto.source,
         });
+      }
+
+      // Cash goes into a drawer, as with order-payments: before, it was recorded on the
+      // order but never reached the drawer, so closing showed it as missing.
+      const cashPayments = dto.payments.filter(
+        (p) => p.method.toLowerCase() === 'cash',
+      );
+      if (cashPayments.length > 0) {
+        const cash = await this.resolveCashShiftForCash(
+          queryRunner.manager,
+          merchantId,
+          user.id,
+          dto.cashShiftId,
+        );
+        for (const payment of cashPayments) {
+          await this.cashFlowService.addMovement(
+            cash.shift.id,
+            roundMoney(payment.amount + (payment.tipAmount || 0)),
+            CashShiftMovementType.IN,
+            order.id,
+            cash.collaboratorId,
+            cash.shift.cashDrawerId,
+            queryRunner.manager,
+          );
+        }
       }
 
       const merchantTipRule = dto.merchantTipRuleId
@@ -1958,9 +2046,31 @@ export class OrdersService {
         where: { order_id: order.id, is_refund: false },
       });
 
+      let cash: { shift: CashShift; collaboratorId: number } | null = null;
       for (const payment of payments) {
         const proportion = Number(payment.amount) / Number(order.total);
         const refundPart = roundMoney(refundAmount * proportion);
+
+        // The cash part goes out of a drawer (before, only the work shift's balance moved
+        // and the drawer closed with that cash as a surplus).
+        if (payment.method.toLowerCase() === 'cash' && refundPart > 0) {
+          cash ??= await this.resolveCashShiftForCash(
+            queryRunner.manager,
+            merchantId,
+            user.id,
+            dto.cashShiftId,
+          );
+          await this.cashFlowService.addMovement(
+            cash.shift.id,
+            refundPart,
+            CashShiftMovementType.OUT,
+            order.id,
+            cash.collaboratorId,
+            cash.shift.cashDrawerId,
+            queryRunner.manager,
+            dto.reason ?? null,
+          );
+        }
 
         // Positive amount: is_refund is what makes it subtract from paid_total (a
         // negative amount here was subtracted twice, i.e. added to what was paid).

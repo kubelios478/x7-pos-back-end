@@ -61,4 +61,13 @@ export class ProcessPaymentDto {
   @IsString()
   @Length(3, 3)
   currency: string;
+
+  @ApiPropertyOptional({
+    example: 3,
+    description:
+      "Open cash shift (drawer) that takes in the cash. Optional: by default the shift the user opened, or the merchant's only open shift.",
+  })
+  @IsOptional()
+  @IsInt()
+  cashShiftId?: number;
 }
