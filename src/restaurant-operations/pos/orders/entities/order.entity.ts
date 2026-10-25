@@ -85,7 +85,7 @@ export class Order {
   collaborator: Collaborator;
 
   @Column({ nullable: true })
-  subscription_id: number;
+  subscription_id: number | null;
 
   @ManyToOne(
     () => MerchantSubscription,
