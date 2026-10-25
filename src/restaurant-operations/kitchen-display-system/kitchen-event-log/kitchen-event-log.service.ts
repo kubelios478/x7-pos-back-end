@@ -75,7 +75,7 @@ export class KitchenEventLogService {
       const kitchenOrder = await this.kitchenOrderRepository.findOne({
         where: {
           id: createKitchenEventLogDto.kitchenOrderId,
-          merchant_id: authenticatedUserMerchantId || 2,
+          merchant_id: authenticatedUserMerchantId,
           status: KitchenOrderStatus.ACTIVE,
         },
       });
@@ -114,7 +114,7 @@ export class KitchenEventLogService {
       const station = await this.kitchenStationRepository.findOne({
         where: {
           id: createKitchenEventLogDto.stationId,
-          merchant_id: authenticatedUserMerchantId || 2,
+          merchant_id: authenticatedUserMerchantId,
           status: KitchenStationStatus.ACTIVE,
         },
       });
@@ -460,7 +460,7 @@ export class KitchenEventLogService {
         const kitchenOrder = await this.kitchenOrderRepository.findOne({
           where: {
             id: updateKitchenEventLogDto.kitchenOrderId,
-            merchant_id: authenticatedUserMerchantId || 2,
+            merchant_id: authenticatedUserMerchantId,
             status: KitchenOrderStatus.ACTIVE,
           },
         });
@@ -507,7 +507,7 @@ export class KitchenEventLogService {
         const station = await this.kitchenStationRepository.findOne({
           where: {
             id: updateKitchenEventLogDto.stationId,
-            merchant_id: authenticatedUserMerchantId || 2,
+            merchant_id: authenticatedUserMerchantId,
             status: KitchenStationStatus.ACTIVE,
           },
         });
@@ -695,6 +695,12 @@ export class KitchenEventLogService {
     authenticatedUserMerchantId: number,
     userId?: number,
   ) {
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to sync kitchen actions',
+      );
+    }
+
     const actions = syncDto.actions || [];
     // Sort in chronological order
     actions.sort((a, b) => {
@@ -736,7 +742,7 @@ export class KitchenEventLogService {
             const order = await this.kitchenOrderRepository.findOne({
               where: {
                 id: action.kitchenOrderId,
-                merchant_id: authenticatedUserMerchantId || 2,
+                merchant_id: authenticatedUserMerchantId,
               },
               relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
             });
@@ -862,7 +868,7 @@ export class KitchenEventLogService {
             const order = await this.kitchenOrderRepository.findOne({
               where: {
                 id: action.kitchenOrderId,
-                merchant_id: authenticatedUserMerchantId || 2,
+                merchant_id: authenticatedUserMerchantId,
               },
               relations: [
                 'station',

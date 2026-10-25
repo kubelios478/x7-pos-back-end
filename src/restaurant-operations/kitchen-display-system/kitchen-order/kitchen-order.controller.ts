@@ -13,6 +13,7 @@ import {
   UseGuards,
   Request,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
@@ -92,7 +93,12 @@ export class KitchenOrderController {
       mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy';
     },
   ) {
-    const merchantId = req.user?.merchant?.id || 2;
+    const merchantId = req.user?.merchant?.id;
+    if (!merchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to reset kitchen test data',
+      );
+    }
     return this.kitchenOrderService.resetTestData(
       merchantId,
       body?.mode || 'seed',

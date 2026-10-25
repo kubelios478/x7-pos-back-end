@@ -12,6 +12,7 @@ import {
   UseGuards,
   Request,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
@@ -52,6 +53,20 @@ import { KitchenEventLogEventType } from './constants/kitchen-event-log-event-ty
 import { KitchenEventLogStatus } from './constants/kitchen-event-log-status.enum';
 
 type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
+
+/**
+ * The authenticated user's merchant, or 403. These routes used to fall back to merchant 2
+ * when the user had none (a portal admin), acting on that merchant's kitchen.
+ */
+function merchantIdOf(req: AuthenticatedRequest): number {
+  const merchantId = req.user?.merchant?.id;
+  if (!merchantId) {
+    throw new ForbiddenException(
+      'You must be associated with a merchant to use the kitchen display',
+    );
+  }
+  return merchantId;
+}
 
 @ApiTags('Restaurant operations - Kitchen Display System - Event Logs')
 @ApiBearerAuth()
@@ -102,8 +117,7 @@ export class KitchenEventLogController {
     @Body() syncDto: SyncKitchenEventsDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    const authenticatedUserMerchantId =
-      req.user?.merchant?.id || (req.user as any)?.merchantId || 2;
+    const authenticatedUserMerchantId = merchantIdOf(req);
     const userId = req.user?.id;
     return this.kitchenEventLogService.syncOfflineActions(
       syncDto,
@@ -170,8 +184,7 @@ export class KitchenEventLogController {
     @Body() createKitchenEventLogDto: CreateKitchenEventLogDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    const authenticatedUserMerchantId =
-      req.user?.merchant?.id || (req.user as any)?.merchantId || 2;
+    const authenticatedUserMerchantId = merchantIdOf(req);
     return this.kitchenEventLogService.create(
       createKitchenEventLogDto,
       authenticatedUserMerchantId,
@@ -291,8 +304,7 @@ export class KitchenEventLogController {
     @Query() query: GetKitchenEventLogQueryDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    const authenticatedUserMerchantId =
-      req.user?.merchant?.id || (req.user as any)?.merchantId || 2;
+    const authenticatedUserMerchantId = merchantIdOf(req);
     return this.kitchenEventLogService.findAll(
       query,
       authenticatedUserMerchantId,
@@ -340,8 +352,7 @@ export class KitchenEventLogController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req: AuthenticatedRequest,
   ) {
-    const authenticatedUserMerchantId =
-      req.user?.merchant?.id || (req.user as any)?.merchantId || 2;
+    const authenticatedUserMerchantId = merchantIdOf(req);
     return this.kitchenEventLogService.findOne(id, authenticatedUserMerchantId);
   }
 
@@ -400,8 +411,7 @@ export class KitchenEventLogController {
     @Body() updateKitchenEventLogDto: UpdateKitchenEventLogDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    const authenticatedUserMerchantId =
-      req.user?.merchant?.id || (req.user as any)?.merchantId || 2;
+    const authenticatedUserMerchantId = merchantIdOf(req);
     return this.kitchenEventLogService.update(
       id,
       updateKitchenEventLogDto,
@@ -455,8 +465,7 @@ export class KitchenEventLogController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req: AuthenticatedRequest,
   ) {
-    const authenticatedUserMerchantId =
-      req.user?.merchant?.id || (req.user as any)?.merchantId || 2;
+    const authenticatedUserMerchantId = merchantIdOf(req);
     return this.kitchenEventLogService.remove(id, authenticatedUserMerchantId);
   }
 }
