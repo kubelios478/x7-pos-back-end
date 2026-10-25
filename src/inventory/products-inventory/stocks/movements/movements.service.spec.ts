@@ -11,9 +11,12 @@ import { Movement } from './entities/movement.entity';
 import { Item } from '../items/entities/item.entity';
 import { OneMovementResponse } from './dto/movement-response.dto';
 import { CreateMovementDto } from './dto/create-movement.dto';
-import { UpdateMovementDto } from './dto/update-movement.dto';
 import { GetMovementsQueryDto } from './dto/get-movements-query.dto';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { MovementsStatus } from './constants/movements-status';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { Product } from '../../products/entities/product.entity';
@@ -111,11 +114,6 @@ describe('MovementsService', () => {
     type: MovementsStatus.IN, // Corrected to MovementsStatus.IN
     reference: 'REF-001',
     reason: 'Initial stock',
-  };
-
-  const mockUpdateMovementDto: UpdateMovementDto = {
-    quantity: 10,
-    type: MovementsStatus.OUT, // Corrected to MovementsStatus.OUT
   };
 
   const mockQuery: GetMovementsQueryDto = {
@@ -603,466 +601,166 @@ describe('MovementsService', () => {
   });
 
   describe('Update', () => {
-    it('should update a Movement successfully', async () => {
-      const updatedMovement: Movement = {
-        ...mockMovement,
-        quantity: 10,
-        type: MovementsStatus.OUT,
-      };
-
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // 1. Find movement to update
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockItem); // Item exists if stockItemId is provided
-      movementRepo.save.mockResolvedValueOnce(updatedMovement);
-      const expectedOneMovementResponse: OneMovementResponse = {
-        statusCode: 201,
-        message: 'Movement Updated successfully',
-        data: {
-          sourceLocationId: null,
-          destinationLocationId: null,
-          createdBy: null,
-          movementType: null,
-          id: updatedMovement.id,
-          item: {
-            id: mockItem.id,
-            currentQty: mockItem.currentQty,
-          },
-          quantity: updatedMovement.quantity,
-          type: updatedMovement.type,
-          reference: mockMovement.reference,
-          reason: mockMovement.reason,
-          merchant: {
-            id: mockMerchant.id,
-            name: mockMerchant.name,
-          },
-          createdAt: mockMovement.createdAt,
-        },
-      };
-      jest
-        .spyOn(service, 'findOne')
-        .mockResolvedValueOnce(expectedOneMovementResponse); // Mocking the internal call to findOne
-
-      const result = await service.update(
-        mockMovement.id,
-        mockMerchant.id,
-        mockUpdateMovementDto,
+    it('only changes the descriptive fields of a movement', async () => {
+      const movement: Movement = { ...mockMovement };
+      mockQueryBuilder.getOne.mockResolvedValueOnce(movement);
+      movementRepo.save.mockImplementationOnce((m) =>
+        Promise.resolve(m as Movement),
       );
+      const findOne = jest
+        .spyOn(service, 'findOne')
+        .mockResolvedValue({} as never);
 
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('movement.id = :id', {
-        id: mockMovement.id,
+      await service.update(1, mockMerchant.id, {
+        reference: 'INV-77',
+        reason: 'Typo in the reference',
       });
+
+      expect(movementRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reference: 'INV-77',
+          reason: 'Typo in the reference',
+          quantity: mockMovement.quantity,
+          type: mockMovement.type,
+        }),
+      );
+      // the stock is not touched
+      expect(itemRepo.save).not.toHaveBeenCalled();
+      expect(findOne).toHaveBeenCalledWith(1, mockMerchant.id, 'Updated');
+    });
+
+    it('finds raw material movements through the company, like findOne', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({ ...mockMovement });
+      movementRepo.save.mockImplementationOnce((m) =>
+        Promise.resolve(m as Movement),
+      );
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+
+      await service.update(1, mockMerchant.id, { reason: 'x' });
+
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'movement.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
-      );
-      expect(movementRepo.save).toHaveBeenCalledWith({
-        ...mockMovement,
-        quantity: 10,
-        type: MovementsStatus.OUT,
-      });
-      expect(result).toEqual(expectedOneMovementResponse);
-      expect(service.findOne).toHaveBeenCalledWith(
-        updatedMovement.id,
-        mockMerchant.id,
-        'Updated',
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
     });
 
-    it('should update a Movement successfully with stockItemId', async () => {
-      const updatedMovement: Movement = {
-        ...mockMovement,
-        stockItemId: mockItem.id,
-        item: mockItem,
-      };
+    it('throws NotFoundException when the movement is not found', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce(null);
 
-      const updateDtoWithItem: UpdateMovementDto = {
-        stockItemId: mockItem.id,
-      };
-
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // 1. Find movement to update
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockItem); // Item exists if stockItemId is provided
-      movementRepo.save.mockResolvedValueOnce(updatedMovement);
-      const expectedOneMovementResponse: OneMovementResponse = {
-        statusCode: 201,
-        message: 'Movement Updated successfully',
-        data: {
-          sourceLocationId: null,
-          destinationLocationId: null,
-          createdBy: null,
-          movementType: null,
-          id: updatedMovement.id,
-          item: {
-            id: mockItem.id,
-            currentQty: mockItem.currentQty,
-          },
-          quantity: mockMovement.quantity,
-          type: mockMovement.type,
-          reference: mockMovement.reference,
-          reason: mockMovement.reason,
-          merchant: {
-            id: mockMerchant.id,
-            name: mockMerchant.name,
-          },
-          createdAt: mockMovement.createdAt,
-        },
-      };
-      jest
-        .spyOn(service, 'findOne')
-        .mockResolvedValueOnce(expectedOneMovementResponse); // Mocking the internal call to findOne
-
-      const result = await service.update(
-        mockMovement.id,
-        mockMerchant.id,
-        updateDtoWithItem,
-      );
-
-      expect(movementRepo.save).toHaveBeenCalledWith({
-        ...mockMovement,
-        item: mockItem,
-        stockItemId: mockItem.id,
-      });
-      expect(result).toEqual(expectedOneMovementResponse);
-      expect(service.findOne).toHaveBeenCalledWith(
-        updatedMovement.id,
-        mockMerchant.id,
-        'Updated',
-      );
-    });
-
-    it('should update a Movement successfully with only quantity', async () => {
-      const updatedMovement: Movement = {
-        ...mockMovement,
-        quantity: 15,
-      };
-      const updateDto: UpdateMovementDto = {
-        quantity: 15,
-      };
-
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // Movement found
-      movementRepo.save.mockResolvedValueOnce(updatedMovement);
-      const expectedOneMovementResponse: OneMovementResponse = {
-        statusCode: 201,
-        message: 'Movement Updated successfully',
-        data: {
-          sourceLocationId: null,
-          destinationLocationId: null,
-          createdBy: null,
-          movementType: null,
-          id: updatedMovement.id,
-          item: { id: mockItem.id, currentQty: mockItem.currentQty },
-          quantity: updatedMovement.quantity,
-          type: mockMovement.type,
-          reference: mockMovement.reference,
-          reason: mockMovement.reason,
-          merchant: { id: mockMerchant.id, name: mockMerchant.name },
-          createdAt: mockMovement.createdAt,
-        },
-      };
-      jest
-        .spyOn(service, 'findOne')
-        .mockResolvedValueOnce(expectedOneMovementResponse);
-
-      const result = await service.update(
-        mockMovement.id,
-        mockMerchant.id,
-        updateDto,
-      );
-
-      expect(movementRepo.save).toHaveBeenCalledWith({
-        ...mockMovement,
-        quantity: 15,
-      });
-      expect(result).toEqual(expectedOneMovementResponse);
-    });
-
-    it('should update a Movement successfully with only type', async () => {
-      const updatedMovement: Movement = {
-        ...mockMovement,
-        type: MovementsStatus.OUT,
-      };
-      const updateDto: UpdateMovementDto = {
-        type: MovementsStatus.OUT,
-      };
-
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // Movement found
-      movementRepo.save.mockResolvedValueOnce(updatedMovement);
-      const expectedOneMovementResponse: OneMovementResponse = {
-        statusCode: 201,
-        message: 'Movement Updated successfully',
-        data: {
-          sourceLocationId: null,
-          destinationLocationId: null,
-          createdBy: null,
-          movementType: null,
-          id: updatedMovement.id,
-          item: { id: mockItem.id, currentQty: mockItem.currentQty },
-          quantity: mockMovement.quantity,
-          type: updatedMovement.type,
-          reference: mockMovement.reference,
-          reason: mockMovement.reason,
-          merchant: { id: mockMerchant.id, name: mockMerchant.name },
-          createdAt: mockMovement.createdAt,
-        },
-      };
-      jest
-        .spyOn(service, 'findOne')
-        .mockResolvedValueOnce(expectedOneMovementResponse);
-
-      const result = await service.update(
-        mockMovement.id,
-        mockMerchant.id,
-        updateDto,
-      );
-
-      expect(movementRepo.save).toHaveBeenCalledWith({
-        ...mockMovement,
-        type: MovementsStatus.OUT,
-      });
-      expect(result).toEqual(expectedOneMovementResponse);
-    });
-
-    it('should update a Movement successfully with only reference', async () => {
-      const updatedMovement: Movement = {
-        ...mockMovement,
-        reference: 'NEW-REF-001',
-      };
-      const updateDto: UpdateMovementDto = {
-        reference: 'NEW-REF-001',
-      };
-
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // Movement found
-      movementRepo.save.mockResolvedValueOnce(updatedMovement);
-      const expectedOneMovementResponse: OneMovementResponse = {
-        statusCode: 201,
-        message: 'Movement Updated successfully',
-        data: {
-          sourceLocationId: null,
-          destinationLocationId: null,
-          createdBy: null,
-          movementType: null,
-          id: updatedMovement.id,
-          item: { id: mockItem.id, currentQty: mockItem.currentQty },
-          quantity: mockMovement.quantity,
-          type: mockMovement.type,
-          reference: updatedMovement.reference,
-          reason: mockMovement.reason,
-          merchant: { id: mockMerchant.id, name: mockMerchant.name },
-          createdAt: mockMovement.createdAt,
-        },
-      };
-      jest
-        .spyOn(service, 'findOne')
-        .mockResolvedValueOnce(expectedOneMovementResponse);
-
-      const result = await service.update(
-        mockMovement.id,
-        mockMerchant.id,
-        updateDto,
-      );
-
-      expect(movementRepo.save).toHaveBeenCalledWith({
-        ...mockMovement,
-        reference: 'NEW-REF-001',
-      });
-      expect(result).toEqual(expectedOneMovementResponse);
-    });
-
-    it('should update a Movement successfully with only reason', async () => {
-      const updatedMovement: Movement = {
-        ...mockMovement,
-        reason: 'New reason for movement',
-      };
-      const updateDto: UpdateMovementDto = {
-        reason: 'New reason for movement',
-      };
-
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // Movement found
-      movementRepo.save.mockResolvedValueOnce(updatedMovement);
-      const expectedOneMovementResponse: OneMovementResponse = {
-        statusCode: 201,
-        message: 'Movement Updated successfully',
-        data: {
-          sourceLocationId: null,
-          destinationLocationId: null,
-          createdBy: null,
-          movementType: null,
-          id: updatedMovement.id,
-          item: { id: mockItem.id, currentQty: mockItem.currentQty },
-          quantity: mockMovement.quantity,
-          type: mockMovement.type,
-          reference: mockMovement.reference,
-          reason: updatedMovement.reason,
-          merchant: { id: mockMerchant.id, name: mockMerchant.name },
-          createdAt: mockMovement.createdAt,
-        },
-      };
-      jest
-        .spyOn(service, 'findOne')
-        .mockResolvedValueOnce(expectedOneMovementResponse);
-
-      const result = await service.update(
-        mockMovement.id,
-        mockMerchant.id,
-        updateDto,
-      );
-
-      expect(movementRepo.save).toHaveBeenCalledWith({
-        ...mockMovement,
-        reason: 'New reason for movement',
-      });
-      expect(result).toEqual(expectedOneMovementResponse);
-    });
-
-    it('should throw NotFoundException if Movement to update is not found', async () => {
-      const idNotFound = 999;
-      mockQueryBuilder.getOne.mockResolvedValueOnce(null); // Movement not found
-
-      await expect(async () =>
-        service.update(idNotFound, mockMerchant.id, mockUpdateMovementDto),
+      await expect(
+        service.update(999, mockMerchant.id, { reason: 'x' }),
       ).rejects.toThrow('Movement not found');
-
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('movement.id = :id', {
-        id: idNotFound,
-      });
       expect(movementRepo.save).not.toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if stock item is not found during update', async () => {
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // Movement found
-      mockQueryBuilder.getOne.mockResolvedValueOnce(null); // Stock Item not found
-
-      const updateDtoWithItem: UpdateMovementDto = {
-        ...mockUpdateMovementDto,
-        stockItemId: 999,
-      };
-
-      await expect(async () =>
-        service.update(mockMovement.id, mockMerchant.id, updateDtoWithItem),
-      ).rejects.toThrow('Item not found');
-
-      expect(movementRepo.save).not.toHaveBeenCalled();
-    });
-
-    it('should throw an error if saving the updated movement fails', async () => {
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // Movement found
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockItem); // Item found
-      movementRepo.save.mockRejectedValueOnce(
-        new Error('Database operation failed'),
-      );
-
-      await expect(async () =>
-        service.update(mockMovement.id, mockMerchant.id, mockUpdateMovementDto),
-      ).rejects.toThrow('Database operation failed');
-
-      expect(movementRepo.save).toHaveBeenCalled();
-    });
-
-    it('should throw BadRequestException if Movement ID is invalid', async () => {
-      await expect(async () =>
-        service.update(0, mockMerchant.id, mockUpdateMovementDto),
-      ).rejects.toThrow('Movement ID is incorrect');
-
-      await expect(async () =>
-        service.update(-1, mockMerchant.id, mockUpdateMovementDto),
-      ).rejects.toThrow('Movement ID is incorrect');
-
-      await expect(async () =>
-        service.update(null as any, mockMerchant.id, mockUpdateMovementDto),
+    it('throws BadRequestException when the ID is invalid', async () => {
+      await expect(
+        service.update(0, mockMerchant.id, { reason: 'x' }),
       ).rejects.toThrow('Movement ID is incorrect');
     });
   });
 
-  describe('Remove', () => {
-    it('should remove a Movement successfully', async () => {
-      const movementToDelete: Movement = { ...mockMovement };
-      const inactiveMovement: Movement = {
-        ...movementToDelete,
-        isActive: false,
-      };
+  describe('Remove (reversal)', () => {
+    const reversed = {
+      statusCode: 201,
+      message: 'Movement Created successfully',
+      data: { id: 2 },
+    } as never;
 
-      mockQueryBuilder.getOne.mockResolvedValueOnce(movementToDelete); // Find movement to remove
-      movementRepo.save.mockResolvedValueOnce(inactiveMovement);
-      mockQueryBuilder.getOne.mockResolvedValueOnce(inactiveMovement); // For findOne call inside remove
+    beforeEach(() => {
+      (movementRepo as unknown as { exists: jest.Mock }).exists = jest
+        .fn()
+        .mockResolvedValue(false);
+    });
 
-      const result = await service.remove(mockMovement.id, mockMerchant.id);
+    it('records the opposite movement and keeps the original in the kardex', async () => {
+      const movement: Movement = { ...mockMovement };
+      mockQueryBuilder.getOne.mockResolvedValueOnce(movement);
+      const create = jest.spyOn(service, 'create').mockResolvedValue(reversed);
 
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('movement.id = :id', {
-        id: mockMovement.id,
+      const result = await service.remove(1, mockMerchant.id);
+
+      expect(create).toHaveBeenCalledWith(mockMerchant.id, {
+        stockItemId: mockItem.id,
+        quantity: mockMovement.quantity,
+        type: MovementsStatus.OUT,
+        movementType: 'REVERSAL',
+        reference: 'REV-1',
+        reason: 'Reversal of movement #1',
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'movement.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
-      );
-      expect(movementToDelete.isActive).toBe(false);
-      expect(movementRepo.save).toHaveBeenCalledWith(movementToDelete);
+      expect(movement.isActive).toBe(true);
+      expect(movementRepo.save).not.toHaveBeenCalled();
       expect(result).toMatchObject({
         statusCode: 200,
-        message: 'Movement Deleted successfully',
-        data: {
-          id: inactiveMovement.id,
-          item: {
-            id: inactiveMovement.item?.id,
-            currentQty: inactiveMovement.item?.currentQty,
-          },
-          quantity: inactiveMovement.quantity,
-          type: inactiveMovement.type,
-          reference: inactiveMovement.reference,
-          reason: inactiveMovement.reason,
-          merchant: {
-            id: mockMerchant.id,
-            name: mockMerchant.name,
-          },
-          createdAt: inactiveMovement.createdAt,
-        },
+        message: 'Movement #1 reversed successfully',
+        data: { id: 2 },
       });
     });
 
-    it('should throw NotFoundException if Movement to remove is not found', async () => {
-      const idNotFound = 999;
-      mockQueryBuilder.getOne.mockResolvedValueOnce(null); // Movement not found
-
-      await expect(async () =>
-        service.remove(idNotFound, mockMerchant.id),
-      ).rejects.toThrow('Movement not found');
-
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('movement.id = :id', {
-        id: idNotFound,
+    it('reverses an outflow with an inflow', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockMovement,
+        type: MovementsStatus.OUT,
+        movementType: 'WASTE',
       });
-      expect(movementRepo.save).not.toHaveBeenCalled();
-    });
+      const create = jest.spyOn(service, 'create').mockResolvedValue(reversed);
 
-    it('should throw BadRequestException if Movement ID is invalid', async () => {
-      await expect(async () =>
-        service.remove(0, mockMerchant.id),
-      ).rejects.toThrow('Movement ID is incorrect');
+      await service.remove(1, mockMerchant.id);
 
-      await expect(async () =>
-        service.remove(-1, mockMerchant.id),
-      ).rejects.toThrow('Movement ID is incorrect');
-
-      await expect(async () =>
-        service.remove(null as any, mockMerchant.id),
-      ).rejects.toThrow('Movement ID is incorrect');
-    });
-
-    it('should throw an error if saving the removed movement fails', async () => {
-      mockQueryBuilder.getOne.mockResolvedValueOnce(mockMovement); // Movement found
-      movementRepo.save.mockRejectedValueOnce(
-        new Error('Database operation failed'),
+      expect(create).toHaveBeenCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({ type: MovementsStatus.IN }),
       );
+    });
 
-      await expect(async () =>
-        service.remove(mockMovement.id, mockMerchant.id),
-      ).rejects.toThrow('Database operation failed');
+    it('does not reverse the same movement twice', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({ ...mockMovement });
+      (movementRepo as unknown as { exists: jest.Mock }).exists = jest
+        .fn()
+        .mockResolvedValue(true);
+      const create = jest.spyOn(service, 'create');
 
-      expect(movementRepo.save).toHaveBeenCalled();
+      await expect(service.remove(1, mockMerchant.id)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [{ orderId: 5 }, 'a sale'],
+      [{ type: MovementsStatus.OUT_FOR_SALE }, 'a sale'],
+      [{ supplierInvoiceId: 3 }, 'a supplier invoice'],
+      [{ reference: 'PO-12' }, 'a purchase order'],
+      [{ movementType: 'TRANSFER' }, 'a transfer'],
+      [{ reference: 'REV-9' }, 'a reversal'],
+    ])(
+      'refuses to reverse a movement generated by another document (%o)',
+      async (fields, source) => {
+        mockQueryBuilder.getOne.mockResolvedValueOnce({
+          ...mockMovement,
+          ...fields,
+        });
+        const create = jest.spyOn(service, 'create');
+
+        await expect(service.remove(1, mockMerchant.id)).rejects.toThrow(
+          `generated by ${source}`,
+        );
+        expect(create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('throws NotFoundException when the movement is not found', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce(null);
+
+      await expect(service.remove(999, mockMerchant.id)).rejects.toThrow(
+        'Movement not found',
+      );
+    });
+
+    it('throws BadRequestException when the ID is invalid', async () => {
+      await expect(service.remove(0, mockMerchant.id)).rejects.toThrow(
+        'Movement ID is incorrect',
+      );
     });
   });
 });

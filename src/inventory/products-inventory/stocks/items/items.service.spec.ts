@@ -726,10 +726,12 @@ describe('ItemsService', () => {
         ...updatedItem,
         location: newMockLocation,
       });
+      // adjust() re-reads the item: the save above left its quantity untouched
       mockQueryBuilder.getOne.mockResolvedValueOnce({
-        ...updatedItem,
+        ...mockItem,
         location: newMockLocation,
-      } as Item); // For findOne call inside update
+      } as Item);
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
 
       await service.update(mockItem.id!, mockMerchant.id, mockUpdateItemDto);
 
@@ -763,14 +765,23 @@ describe('ItemsService', () => {
           merchantId: mockMerchant.id,
         },
       });
+      // the quantity is not written straight onto the item...
       expect(itemRepo.save).toHaveBeenCalledWith({
         ...mockItem,
-        currentQty: mockUpdateItemDto.currentQty,
         product: mockProduct,
         location: newMockLocation,
         variant: mockVariant,
       });
-      expect(movementsService.create).toHaveBeenCalledTimes(2); // Two movements: OUT and IN
+      // ...but through the kardex: OUT and IN for the new location, then the adjustment
+      expect(movementsService.create).toHaveBeenCalledTimes(3);
+      expect(movementsService.create).toHaveBeenLastCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({
+          quantity: 5,
+          type: MovementsStatus.IN,
+          movementType: MovementsStatus.ADJUSTMENT,
+        }),
+      );
     });
 
     it('should throw NotFoundException if Item to update is not found', async () => {
