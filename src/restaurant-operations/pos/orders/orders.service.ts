@@ -43,6 +43,7 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { Table } from '../../../restaurant-operations/dining-system/tables/entities/table.entity';
 import { Collaborator } from '../../../finance-hr/hr/collaborators/entities/collaborator.entity';
 import { MerchantSubscription } from '../../../platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
+import { dayBoundsInTimeZone } from 'src/common/utils/time-zone.util';
 import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
 import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
 import { CashShiftStatus } from '../../cashdrawer/cash-shifts/constants/cash-shift-status.enum';
@@ -501,20 +502,29 @@ export class OrdersService {
     }
   }
 
+  /**
+   * Daily ticket number: today's orders of the merchant + 1, where "today" is the calendar
+   * day in the merchant's time zone (it used to reset at the server's midnight, UTC on
+   * Railway — 19:00 or 20:00 for a restaurant in New York).
+   */
   private async generateDailyTicketId(
     manager: EntityManager,
     merchantId: number,
   ): Promise<string> {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+    const merchant = await manager.findOne(Merchant, {
+      where: { id: merchantId },
+      select: ['id', 'timezone'],
+    });
+    const { start, end } = dayBoundsInTimeZone(
+      new Date(),
+      merchant?.timezone || 'UTC',
+    );
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
+    // counted under the merchant's order-numbering lock (see insertWithOrderNumbers)
     const count = await manager.getRepository(Order).count({
       where: {
         merchant_id: merchantId,
-        created_at: Between(startOfDay, endOfDay),
+        created_at: Between(start, new Date(end.getTime() - 1)),
       },
     });
 

@@ -86,6 +86,7 @@ describe('OrdersService', () => {
     getRawOne: jest.fn().mockResolvedValue({ maxn: null }),
   };
 
+  let merchantTimeZone = 'UTC';
   const mockOrderRepository = {
     create: jest.fn(),
     save: jest.fn(),
@@ -99,6 +100,12 @@ describe('OrdersService', () => {
       transaction: (work: (manager: unknown) => unknown) =>
         work(mockOrderRepository.manager),
       query: jest.fn().mockResolvedValue([]),
+      // the daily ticket reads the merchant's time zone
+      findOne: jest.fn((entity: unknown) =>
+        Promise.resolve(
+          entity === Merchant ? { id: 1, timezone: merchantTimeZone } : null,
+        ),
+      ),
       getRepository: jest.fn((entity: unknown) => {
         if (entity === Order) {
           return {
@@ -569,6 +576,47 @@ describe('OrdersService', () => {
       );
       expect(lockedAt).toBeLessThan(
         (orderRepository.save as jest.Mock).mock.invocationCallOrder[0],
+      );
+    });
+
+    it("numbers the daily ticket by the merchant's own day", async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      jest
+        .spyOn(subscriptionRepository, 'findOne')
+        .mockResolvedValue(mockSubscription as MerchantSubscription);
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      jest.spyOn(orderRepository, 'save').mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+      merchantTimeZone = 'America/New_York';
+      jest.useFakeTimers({ now: new Date('2026-10-25T03:30:00Z') }); // 23:30 on the 24th in NY
+      mockOrderRepository.count.mockClear();
+
+      try {
+        await service.create(createOrderDto, 1);
+      } finally {
+        jest.useRealTimers();
+        merchantTimeZone = 'UTC';
+      }
+
+      // the 24th in New York: 04:00 UTC on the 24th to 04:00 UTC on the 25th
+      const where = mockOrderRepository.count.mock.calls[0][0].where;
+      expect(where.created_at.value[0].toISOString()).toBe(
+        '2026-10-24T04:00:00.000Z',
+      );
+      expect(where.created_at.value[1].toISOString()).toBe(
+        '2026-10-25T03:59:59.999Z',
       );
     });
 

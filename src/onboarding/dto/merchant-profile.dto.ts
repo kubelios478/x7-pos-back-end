@@ -7,6 +7,8 @@ import {
   Length,
   Matches,
   ValidateIf,
+  IsOptional,
+  IsTimeZone,
 } from 'class-validator';
 
 export class MerchantProfileDto {
@@ -58,6 +60,17 @@ export class MerchantProfileDto {
   @IsNotEmpty()
   @Length(2, 80)
   country: string;
+
+  @ApiPropertyOptional({
+    example: 'America/New_York',
+    description:
+      "IANA time zone of the merchant (its business day starts at this zone's midnight). Defaults to UTC.",
+  })
+  @IsOptional()
+  @IsTimeZone({
+    message: 'timezone must be a valid IANA time zone, e.g. America/New_York',
+  })
+  timezone?: string;
 }
 
 export class MerchantProfileResponseDto {
@@ -81,4 +94,7 @@ export class MerchantProfileResponseDto {
 
   @ApiPropertyOptional()
   country?: string;
+
+  @ApiPropertyOptional({ example: 'America/New_York' })
+  timezone?: string;
 }

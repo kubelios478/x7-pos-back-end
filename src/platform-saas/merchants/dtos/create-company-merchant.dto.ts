@@ -10,6 +10,7 @@ import {
   MaxLength,
   MinLength,
   ValidateIf,
+  IsTimeZone,
 } from 'class-validator';
 import { IsTaxId } from 'src/common/decorators/validation.decorators';
 import { MerchantStatus } from '../constants/merchant-status.enum';
@@ -91,4 +92,15 @@ export class CreateCompanyMerchantDto {
   @IsOptional()
   @IsEnum(MerchantStatus)
   status?: MerchantStatus;
+
+  @ApiPropertyOptional({
+    example: 'America/New_York',
+    description:
+      "IANA time zone of the merchant (its business day starts at this zone's midnight). Defaults to UTC.",
+  })
+  @IsOptional()
+  @IsTimeZone({
+    message: 'timezone must be a valid IANA time zone, e.g. America/New_York',
+  })
+  timezone?: string;
 }

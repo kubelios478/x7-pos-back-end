@@ -77,6 +77,7 @@ export class MerchantsService {
         city: dto.city,
         state: dto.state,
         country: dto.country,
+        ...(dto.timezone ? { timezone: dto.timezone } : {}),
         companyId: dto.companyId,
         status: dto.status ?? MerchantStatus.ACTIVE,
       } as Partial<Merchant>);
@@ -123,6 +124,7 @@ export class MerchantsService {
         city: dto.city.trim(),
         state: dto.state.trim(),
         country: dto.country.trim(),
+        ...(dto.timezone ? { timezone: dto.timezone } : {}),
         companyId,
         status: dto.status ?? MerchantStatus.ACTIVE,
       } as Partial<Merchant>);
