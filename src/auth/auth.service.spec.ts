@@ -56,6 +56,7 @@ describe('AuthService', () => {
   const mockUserRepository = {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
+    find: jest.fn(),
     exists: jest.fn(),
     manager: { transaction: jest.fn() },
   };
@@ -526,13 +527,11 @@ describe('AuthService', () => {
       jest
         .spyOn(jwtService, 'verify')
         .mockReturnValue({ sub: mockUser.id, email: mockUser.email } as any);
-      jest
-        .spyOn(usersService, 'findById')
-        .mockResolvedValue({
-          ...mockUser,
-          refreshToken,
-          isActive: false,
-        } as any);
+      jest.spyOn(usersService, 'findById').mockResolvedValue({
+        ...mockUser,
+        refreshToken,
+        isActive: false,
+      } as any);
 
       await expect(service.refreshToken(refreshToken)).rejects.toThrow(
         UnauthorizedException,
@@ -645,6 +644,7 @@ describe('AuthService', () => {
 
     beforeEach(() => {
       mockUserRepository.exists.mockResolvedValue(false);
+      mockUserRepository.find.mockResolvedValue([]);
       mockCompanyRepository.exists.mockResolvedValue(false);
       mockMerchantRepository.exists.mockResolvedValue(false);
       mockSubscriptionPlanRepository.findOne.mockImplementation(
@@ -703,6 +703,35 @@ describe('AuthService', () => {
       ).toHaveBeenCalledWith(10);
       expect(result.user.planId).toBe(2);
       expect(result.user.authorizedFeatureIds).toEqual([1, 2]);
+    });
+
+    // Antes, el segundo admin@ de cualquier compañía recibía 409 "Username is already taken".
+    it('derives a free username from the email, with a suffix when taken', async () => {
+      mockUserRepository.find.mockResolvedValueOnce([
+        { username: 'admin' },
+        { username: 'admin-2' },
+      ]);
+
+      await service.registerOnboarding({ ...dto, planId: 2 });
+
+      const userSave = manager.save.mock.calls.find(
+        ([entity]) => entity === User,
+      );
+      expect(userSave![1]).toMatchObject({ username: 'admin-3' });
+      expect(mockUserRepository.exists).not.toHaveBeenCalledWith({
+        where: { username: 'admin' },
+      });
+    });
+
+    it('still rejects a chosen username that is taken', async () => {
+      mockUserRepository.exists.mockImplementation(
+        ({ where }: { where: { username?: string } }) =>
+          Promise.resolve(where.username === 'chef'),
+      );
+
+      await expect(
+        service.registerOnboarding({ ...dto, planId: 2, username: 'chef' }),
+      ).rejects.toThrow('Username is already taken');
     });
 
     it('falls back to ONBOARDING_DEFAULT_PLAN_ID when planId is omitted', async () => {
