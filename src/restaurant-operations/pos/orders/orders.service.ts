@@ -43,6 +43,10 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { Table } from '../../../restaurant-operations/dining-system/tables/entities/table.entity';
 import { Collaborator } from '../../../finance-hr/hr/collaborators/entities/collaborator.entity';
 import { MerchantSubscription } from '../../../platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
+import {
+  lockMerchantScope,
+  MerchantLockScope,
+} from 'src/common/utils/merchant-lock.util';
 import { Customer } from '../../../core/business-partners/customers/entities/customer.entity';
 import {
   OneOrderResponseDto,
@@ -260,8 +264,6 @@ export class OrdersService {
 
       orderItems.push(orderItem);
     }
-    // Generate displayId (daily ticket number)
-    const displayId = await this.generateDailyTicketId(merchant.id);
     // Find active shift for merchant
     const activeShift = await this.shiftService.findActiveShiftByMerchant(
       merchant.id,
@@ -280,13 +282,11 @@ export class OrdersService {
     order.customer_id = dto.customerId;
     order.closed_at = closedAt;
     order.logical_status = OrderStatus.ACTIVE;
-    order.displayId = displayId;
     order.shift = activeShift;
     order.shift_id = activeShift.id;
     order.status = dto.businessStatus ?? OrderBusinessStatus.PENDING;
     order.subtotal = subtotal;
 
-    order.order_number = await this.nextOrderNumber(dto.merchantId);
     order.source = dto.source ?? OrderSource.POS;
     order.guest_count = dto.guestCount ?? 1;
     order.delivery_address = dto.deliveryAddress ?? null;
@@ -326,8 +326,10 @@ export class OrdersService {
     order.preparing_at = null;
     order.cash_shift_id = activeShiftId ?? null;
 
-    // Save order to get an ID for the order items
-    const saved = await this.orderRepo.save(order);
+    // Save order to get an ID for the order items (numbers are handed out while saving)
+    const saved = await this.orderRepo.manager.transaction((manager) =>
+      this.insertWithOrderNumbers(manager, order, { dailyTicket: true }),
+    );
 
     // Now that we have the order ID, we can save the order items with the correct order_id
     const orderWithRelations = await this.orderRepo.findOne({
@@ -402,14 +404,17 @@ export class OrdersService {
     }
   }
 
-  private async generateDailyTicketId(merchantId: number): Promise<string> {
+  private async generateDailyTicketId(
+    manager: EntityManager,
+    merchantId: number,
+  ): Promise<string> {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    const count = await this.orderRepo.count({
+    const count = await manager.getRepository(Order).count({
       where: {
         merchant_id: merchantId,
         created_at: Between(startOfDay, endOfDay),
@@ -1526,10 +1531,6 @@ export class OrdersService {
     order.customer_id = params.customerId;
     order.closed_at = null;
     order.logical_status = OrderStatus.ACTIVE;
-    order.order_number = await this.nextOrderNumberWithManager(
-      this.orderRepo.manager,
-      params.merchantId,
-    );
     order.source = OrderSource.ONLINE;
     order.guest_count = 1;
     order.delivery_address = params.deliveryAddress;
@@ -1548,7 +1549,9 @@ export class OrdersService {
     order.ready_at = null;
     order.preparing_at = null;
 
-    return this.orderRepo.save(order);
+    return this.orderRepo.manager.transaction((manager) =>
+      this.insertWithOrderNumbers(manager, order, { dailyTicket: false }),
+    );
   }
 
   /**
@@ -1591,10 +1594,6 @@ export class OrdersService {
     order.customer_id = params.customerId;
     order.closed_at = null;
     order.logical_status = OrderStatus.ACTIVE;
-    order.order_number = await this.nextOrderNumberWithManager(
-      manager,
-      params.merchantId,
-    );
     order.source = OrderSource.ONLINE;
     order.guest_count = 1;
     order.delivery_address = params.deliveryAddress;
@@ -1613,7 +1612,7 @@ export class OrdersService {
     order.ready_at = null;
     order.preparing_at = null;
 
-    return manager.getRepository(Order).save(order);
+    return this.insertWithOrderNumbers(manager, order, { dailyTicket: false });
   }
 
   /** Per active order item: sum(modifier.price × item.quantity). */
@@ -1644,8 +1643,33 @@ export class OrdersService {
     return map;
   }
 
-  private async nextOrderNumber(merchantId: number): Promise<string> {
-    return this.nextOrderNumberWithManager(this.orderRepo.manager, merchantId);
+  /**
+   * Inserts a new order with its order number (and daily ticket number), computed under the
+   * merchant's order-numbering lock: two orders created at once used to read the same
+   * MAX/COUNT, so one failed on the unique (merchant_id, order_number) index and tickets
+   * were repeated. Must run inside a transaction.
+   */
+  private async insertWithOrderNumbers(
+    manager: EntityManager,
+    order: Order,
+    options: { dailyTicket: boolean },
+  ): Promise<Order> {
+    await lockMerchantScope(
+      manager,
+      MerchantLockScope.ORDER_NUMBERS,
+      order.merchant_id,
+    );
+    if (options.dailyTicket) {
+      order.displayId = await this.generateDailyTicketId(
+        manager,
+        order.merchant_id,
+      );
+    }
+    order.order_number = await this.nextOrderNumberWithManager(
+      manager,
+      order.merchant_id,
+    );
+    return manager.getRepository(Order).save(order);
   }
 
   private async nextOrderNumberWithManager(
