@@ -36,6 +36,13 @@ const EDITABLE_PURCHASE_ORDER_STATUSES: readonly PurchaseOrderStatus[] = [
   PurchaseOrderStatus.PENDING,
 ];
 
+/** States in which goods already entered the stock through the order. */
+const RECEIVED_PURCHASE_ORDER_STATUSES: readonly PurchaseOrderStatus[] = [
+  PurchaseOrderStatus.PARTIALLY_RECEIVED,
+  PurchaseOrderStatus.RECEIVED,
+  PurchaseOrderStatus.COMPLETED,
+];
+
 @Injectable()
 export class PurchaseOrderService {
   constructor(
@@ -518,7 +525,6 @@ export class PurchaseOrderService {
           'Cannot regress a PARTIALLY_RECEIVED purchase order back to DRAFT, SENT or PENDING.',
         );
       }
-      purchaseOrder.orderDate = new Date();
     }
 
     // Block updates to details and items if not in DRAFT or SENT state
@@ -888,27 +894,42 @@ export class PurchaseOrderService {
     if (!id || id <= 0) {
       ErrorHandler.invalidId('Purchase Order ID incorrect');
     }
-    const purchaseOrder = await this.purchaseOrderRepository.findOneBy({
-      id,
-      isActive: true,
-      merchantId: merchant_id,
-    });
-
-    if (!purchaseOrder)
-      ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
-
     try {
-      purchaseOrder.isActive = false;
-      await this.purchaseOrderRepository.save(purchaseOrder);
+      await this.purchaseOrderRepository.manager.transaction(
+        async (manager) => {
+          // Locked, so a receipt cannot land between the check and the deletion
+          const purchaseOrder = await manager.findOne(PurchaseOrder, {
+            where: { id, isActive: true, merchantId: merchant_id },
+            lock: { mode: 'pessimistic_write' },
+          });
+          if (!purchaseOrder)
+            ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
 
-      const purchaseOrderItems = await this.purchaseOrderItemRepository.find({
-        where: { purchaseOrderId: id, isActive: true },
-      });
+          const lines = await manager.find(PurchaseOrderItem, {
+            where: { purchaseOrderId: id, isActive: true },
+          });
 
-      for (const item of purchaseOrderItems) {
-        item.isActive = false;
-        await this.purchaseOrderItemRepository.save(item);
-      }
+          // Deleting it would leave the received stock in place with no document behind
+          // it; an order that received goods can only be cancelled.
+          const receivedSomething =
+            RECEIVED_PURCHASE_ORDER_STATUSES.includes(purchaseOrder.status) ||
+            lines.some((line) => Number(line.receivedQuantity) > 0);
+          if (receivedSomething) {
+            throw new BadRequestException(
+              `Purchase order #${id} already received goods, so it cannot be deleted. Cancel it instead.`,
+            );
+          }
+
+          purchaseOrder.isActive = false;
+          await manager.save(PurchaseOrder, purchaseOrder);
+          for (const line of lines) {
+            line.isActive = false;
+          }
+          if (lines.length > 0) {
+            await manager.save(PurchaseOrderItem, lines);
+          }
+        },
+      );
 
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
@@ -1139,7 +1160,7 @@ export class PurchaseOrderService {
       purchaseOrder.status = PurchaseOrderStatus.SENT;
     }
 
-    purchaseOrder.orderDate = new Date();
+    // orderDate stays the date the order was placed (it was overwritten on every receipt)
     await this.purchaseOrderRepository.save(purchaseOrder);
 
     if (evaluatedStockIds.size > 0) {

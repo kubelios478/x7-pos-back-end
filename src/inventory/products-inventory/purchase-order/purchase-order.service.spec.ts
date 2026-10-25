@@ -5,6 +5,7 @@ import { Location } from '../stocks/locations/entities/location.entity';
 import { Item } from '../stocks/items/entities/item.entity';
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-argument*/
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException } from '@nestjs/common';
 import { PurchaseOrderService } from './purchase-order.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -191,6 +192,20 @@ describe('PurchaseOrderService', () => {
       update: jest.fn(),
       delete: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // remove() runs in a transaction; its manager reads and writes through the same mocks
+      manager: {
+        transaction: (work: (manager: unknown) => unknown) =>
+          work({
+            findOne: (_entity: unknown, options: unknown) =>
+              mockPurchaseOrderRepo.findOne(options),
+            find: (_entity: unknown, options: unknown) =>
+              mockPurchaseOrderItemRepo.find(options),
+            save: (entity: unknown, value: unknown) =>
+              entity === PurchaseOrder
+                ? mockPurchaseOrderRepo.save(value)
+                : mockPurchaseOrderItemRepo.save(value),
+          }),
+      },
     };
 
     const mockMerchantRepo = {
@@ -1012,198 +1027,126 @@ describe('PurchaseOrderService', () => {
   });
 
   describe('Remove', () => {
-    it('should remove a PurchaseOrder successfully', async () => {
-      const purchaseOrderToDelete: PurchaseOrder = { ...mockPurchaseOrder };
-      const inactivePurchaseOrder: PurchaseOrder = {
-        ...purchaseOrderToDelete,
-        isActive: false,
-      };
-
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(purchaseOrderToDelete);
-      purchaseOrderRepo.save.mockResolvedValueOnce(inactivePurchaseOrder);
-      purchaseOrderRepo.findOne.mockResolvedValueOnce(inactivePurchaseOrder);
-      purchaseOrderItemRepo.find.mockResolvedValueOnce([]); // No purchase order items
-
-      const result = await service.remove(
-        mockPurchaseOrder.id,
-        mockMerchant.id,
-      );
-
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockPurchaseOrder.id,
-        isActive: true,
-        merchantId: mockMerchant.id,
-      });
-      expect(purchaseOrderToDelete.isActive).toBe(false);
-      expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
-        purchaseOrderToDelete,
-      );
-      expect(purchaseOrderItemRepo.find).toHaveBeenCalledWith({
-        where: { purchaseOrderId: mockPurchaseOrder.id, isActive: true },
-      });
-      expect(result).toEqual({
+    beforeEach(() => {
+      jest.spyOn(service, 'findOne').mockResolvedValue({
         statusCode: 200,
         message: 'Purchase Order Deleted successfully',
-        data: {
-          id: inactivePurchaseOrder.id,
-          status: inactivePurchaseOrder.status,
-          totalAmount: inactivePurchaseOrder.totalAmount,
-          orderDate: inactivePurchaseOrder.orderDate,
-          purchaseOrderItems: [],
-          merchant: { id: mockMerchant.id, name: mockMerchant.name },
-          supplier: {
-            id: mockSupplier.id,
-            name: mockSupplier.name,
-            tax_id: mockSupplier.tax_id,
-            email: mockSupplier.email,
-            company_id: mockSupplier.company_id,
-          },
-        },
-      });
+      } as never);
     });
 
-    it('should remove a PurchaseOrder and its active items successfully', async () => {
-      const purchaseOrderToDelete: PurchaseOrder = { ...mockPurchaseOrder };
-      const inactivePurchaseOrder: PurchaseOrder = {
-        ...purchaseOrderToDelete,
-        isActive: false,
+    it('deletes an order that has not received anything, with its lines, locking it first', async () => {
+      const order: PurchaseOrder = {
+        ...mockPurchaseOrder,
+        status: PurchaseOrderStatus.SENT,
       };
+      const line = {
+        id: 3,
+        purchaseOrderId: order.id,
+        receivedQuantity: 0,
+        isActive: true,
+      } as unknown as PurchaseOrderItem;
+      purchaseOrderRepo.findOne.mockResolvedValueOnce(order);
+      purchaseOrderItemRepo.find.mockResolvedValueOnce([line]);
 
-      const mockProductWithRelations: Product = {
-        ...mockProduct,
-        merchant: mockMerchant as Merchant,
-        category: mockCategory,
-        supplier: mockSupplier,
-      };
+      const result = await service.remove(order.id, mockMerchant.id);
 
-      const mockPurchaseOrderItem1WithRelations: PurchaseOrderItem = {
-        ...mockPurchaseOrderItem1,
-        purchaseOrder: purchaseOrderToDelete,
-        product: mockProductWithRelations,
-      };
-
-      const mockPurchaseOrderItem2WithRelations: PurchaseOrderItem = {
-        ...mockPurchaseOrderItem2,
-        purchaseOrder: purchaseOrderToDelete,
-        product: mockProductWithRelations,
-      };
-
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(purchaseOrderToDelete);
-      purchaseOrderRepo.save.mockResolvedValueOnce(inactivePurchaseOrder);
-      purchaseOrderRepo.findOne.mockResolvedValueOnce(inactivePurchaseOrder);
-      purchaseOrderItemRepo.find.mockResolvedValueOnce([
-        mockPurchaseOrderItem1WithRelations,
-        mockPurchaseOrderItem2WithRelations,
+      expect(purchaseOrderRepo.findOne).toHaveBeenCalledWith({
+        where: { id: order.id, isActive: true, merchantId: mockMerchant.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: order.id, isActive: false }),
+      );
+      expect(purchaseOrderItemRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 3, isActive: false }),
       ]);
-      purchaseOrderItemRepo.save
-        .mockResolvedValueOnce({
-          ...mockPurchaseOrderItem1WithRelations,
-          isActive: false,
-        })
-        .mockResolvedValueOnce({
-          ...mockPurchaseOrderItem2WithRelations,
-          isActive: false,
-        });
-
-      const result = await service.remove(
-        mockPurchaseOrder.id,
-        mockMerchant.id,
-      );
-
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockPurchaseOrder.id,
-        isActive: true,
-        merchantId: mockMerchant.id,
-      });
-      expect(purchaseOrderToDelete.isActive).toBe(false);
-      expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
-        purchaseOrderToDelete,
-      );
-      expect(purchaseOrderItemRepo.find).toHaveBeenCalledWith({
-        where: { purchaseOrderId: mockPurchaseOrder.id, isActive: true },
-      });
-      expect(mockPurchaseOrderItem1WithRelations.isActive).toBe(false);
-      expect(mockPurchaseOrderItem2WithRelations.isActive).toBe(false);
-      expect(purchaseOrderItemRepo.save).toHaveBeenNthCalledWith(
-        1,
-        mockPurchaseOrderItem1WithRelations,
-      );
-      expect(purchaseOrderItemRepo.save).toHaveBeenNthCalledWith(
-        2,
-        mockPurchaseOrderItem2WithRelations,
-      );
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Purchase Order Deleted successfully',
-        data: {
-          id: inactivePurchaseOrder.id,
-          status: inactivePurchaseOrder.status,
-          totalAmount: inactivePurchaseOrder.totalAmount,
-          orderDate: inactivePurchaseOrder.orderDate,
-          purchaseOrderItems: [],
-          merchant: { id: mockMerchant.id, name: mockMerchant.name },
-          supplier: {
-            id: mockSupplier.id,
-            name: mockSupplier.name,
-            tax_id: mockSupplier.tax_id,
-            email: mockSupplier.email,
-            company_id: mockSupplier.company_id,
-          },
-        },
-      });
+      expect(result.message).toBe('Purchase Order Deleted successfully');
     });
 
-    it('should throw NotFoundException if Purchase Order to remove is not found', async () => {
-      const idNotFound = 999;
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(null);
+    it.each([
+      PurchaseOrderStatus.PARTIALLY_RECEIVED,
+      PurchaseOrderStatus.RECEIVED,
+      PurchaseOrderStatus.COMPLETED,
+    ])('refuses to delete an order in %s', async (status) => {
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...mockPurchaseOrder,
+        status,
+      });
+      purchaseOrderItemRepo.find.mockResolvedValueOnce([]);
 
       await expect(
-        async () => await service.remove(idNotFound, mockMerchant.id),
-      ).rejects.toThrow('Purchase Order not found');
-
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: idNotFound,
-        isActive: true,
-        merchantId: mockMerchant.id,
-      });
+        service.remove(mockPurchaseOrder.id, mockMerchant.id),
+      ).rejects.toThrow('already received goods, so it cannot be deleted');
       expect(purchaseOrderRepo.save).not.toHaveBeenCalled();
-      expect(purchaseOrderItemRepo.find).not.toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException if Purchase Order ID is incorrect', async () => {
-      await expect(
-        async () => await service.remove(0, mockMerchant.id),
-      ).rejects.toThrow('Purchase Order ID incorrect');
-
-      await expect(
-        async () => await service.remove(-1, mockMerchant.id),
-      ).rejects.toThrow('Purchase Order ID incorrect');
-
-      await expect(
-        async () => await service.remove(null as any, mockMerchant.id),
-      ).rejects.toThrow('Purchase Order ID incorrect');
-    });
-
-    it('should throw an error if removing the purchase order fails', async () => {
-      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(mockPurchaseOrder);
-      purchaseOrderRepo.save.mockRejectedValueOnce(new Error('Database error'));
-
-      await expect(
-        async () => await service.remove(mockPurchaseOrder.id, mockMerchant.id),
-      ).rejects.toThrow('Database operation failed');
-
-      expect(purchaseOrderRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockPurchaseOrder.id,
-        isActive: true,
-        merchantId: mockMerchant.id,
+    it('refuses to delete when a line already received goods, whatever the status', async () => {
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...mockPurchaseOrder,
+        status: PurchaseOrderStatus.SENT,
       });
-      expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: mockPurchaseOrder.id,
+      purchaseOrderItemRepo.find.mockResolvedValueOnce([
+        { id: 3, receivedQuantity: 2, isActive: true } as never,
+      ]);
+
+      await expect(
+        service.remove(mockPurchaseOrder.id, mockMerchant.id),
+      ).rejects.toThrow(BadRequestException);
+      expect(purchaseOrderRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('is also what PATCH isActive:false does (how the backoffice deletes)', async () => {
+      purchaseOrderRepo.findOne
+        .mockResolvedValueOnce({ ...mockPurchaseOrder, isActive: true }) // update()
+        .mockResolvedValueOnce({
+          ...mockPurchaseOrder,
+          status: PurchaseOrderStatus.RECEIVED,
+        }); // remove(), locked
+      purchaseOrderItemRepo.find.mockResolvedValueOnce([]);
+
+      await expect(
+        service.update(mockPurchaseOrder.id, mockMerchant.id, {
           isActive: false,
         }),
+      ).rejects.toThrow('cannot be deleted');
+    });
+
+    it('throws NotFoundException when the order does not exist', async () => {
+      purchaseOrderRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(service.remove(999, mockMerchant.id)).rejects.toThrow(
+        'Purchase Order not found',
       );
-      expect(purchaseOrderItemRepo.find).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when the ID is invalid', async () => {
+      await expect(service.remove(0, mockMerchant.id)).rejects.toThrow(
+        'Purchase Order ID incorrect',
+      );
+    });
+  });
+
+  describe('orderDate', () => {
+    it('keeps the date the order was placed when goods are received', async () => {
+      const placedOn = new Date('2026-10-01T10:00:00Z');
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...mockPurchaseOrder,
+        status: PurchaseOrderStatus.SENT,
+        orderDate: placedOn,
+        purchaseOrderItems: [],
+      });
+      purchaseOrderRepo.save.mockImplementation((po) =>
+        Promise.resolve(po as PurchaseOrder),
+      );
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+
+      await service.receiveOrderItems(mockPurchaseOrder.id, mockMerchant.id, {
+        items: [],
+      });
+
+      expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ orderDate: placedOn }),
+      );
     });
   });
 });
