@@ -23,6 +23,7 @@ import { KitchenOrderStatus } from '../kitchen-order/constants/kitchen-order-sta
 import { OrderItemStatus } from '../../../restaurant-operations/pos/order-item/constants/order-item-status.enum';
 import { KitchenOrderSyncService } from '../kitchen-order/kitchen-order-sync.service';
 import { KitchenOrderItemPreparationStatus } from './constants/kitchen-order-item-preparation-status.enum';
+import { KitchenOrderBusinessStatus } from '../kitchen-order/constants/kitchen-order-business-status.enum';
 import { DataSource } from 'typeorm';
 import { OrdersService } from '../../pos/orders/orders.service';
 
@@ -493,6 +494,42 @@ describe('KitchenOrderItemService', () => {
       expect(result.paginationMeta.page).toBe(1);
       expect(result.paginationMeta.limit).toBe(10);
       expect(result.paginationMeta.total).toBe(1);
+    });
+
+    // Antes guardaba los ítems reparados de a uno.
+    it('heals the items of completed orders with a single save', async () => {
+      jest
+        .spyOn(kitchenOrderItemRepository, 'createQueryBuilder')
+        .mockReturnValue(
+          mockQueryBuilder as unknown as SelectQueryBuilder<KitchenOrderItem>,
+        );
+      const completedOrder = {
+        ...mockKitchenOrder,
+        business_status: KitchenOrderBusinessStatus.COMPLETED,
+      };
+      const stale = [1, 2, 3].map((id) => ({
+        ...mockKitchenOrderItem,
+        id,
+        kitchenOrder: completedOrder,
+      }));
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        stale as unknown as KitchenOrderItem[],
+        3,
+      ]);
+      const save = jest
+        .spyOn(kitchenOrderItemRepository, 'save')
+        .mockResolvedValue([] as never);
+
+      await service.findAll(query, 1);
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledWith(stale);
+      for (const item of stale) {
+        expect(item.preparation_status).toBe(
+          KitchenOrderItemPreparationStatus.READY,
+        );
+        expect(item.prepared_quantity).toBe(item.quantity);
+      }
     });
 
     it('should throw ForbiddenException when user has no merchant_id', async () => {

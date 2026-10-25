@@ -8,7 +8,7 @@ import { ItemsService } from 'src/inventory/products-inventory/stocks/items/item
 import { ProductsService } from './products.service';
 import { Product } from './entities/product.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ProductsInventoryService } from '../products-inventory.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { GetProductsQueryDto } from './dto/get-products-query.dto';
@@ -350,6 +350,39 @@ describe('ProductsService', () => {
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Products retrieved successfully');
       expect(result.total).toBe(0);
+    });
+  });
+
+  describe('findResponsesByIds', () => {
+    it('loads every product in one query, shaped like findOne', async () => {
+      const other = { ...mockProduct, id: 2, name: 'Other' } as Product;
+      productRepo.find.mockResolvedValueOnce([mockProduct as Product, other]);
+
+      const map = await service.findResponsesByIds([1, 2, 1]);
+
+      expect(productRepo.find).toHaveBeenCalledTimes(1);
+      expect(productRepo.find).toHaveBeenCalledWith({
+        where: { id: In([1, 2]) },
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
+      });
+
+      productRepo.findOne.mockResolvedValueOnce(mockProduct as Product);
+      const single = await service.findOne(mockProduct.id!);
+      expect(map.get(1)).toEqual(single.data);
+      expect(map.get(2)?.name).toBe('Other');
+    });
+
+    it('does not query for an empty page', async () => {
+      const map = await service.findResponsesByIds([]);
+      expect(map.size).toBe(0);
+      expect(productRepo.find).not.toHaveBeenCalled();
     });
   });
 

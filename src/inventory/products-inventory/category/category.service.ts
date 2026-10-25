@@ -123,24 +123,22 @@ export class CategoryService {
     const hasPrev = page > 1;
 
     // 7. Map to CategoryResponseDto (with parent categories)
-    const data: CategoryResponseDto[] = await Promise.all(
-      categories.map(async (category) => {
-        const result: CategoryResponseDto = {
-          id: category.id,
-          name: category.name,
-          isActive: category.isActive,
-          merchant: category.merchant
-            ? {
-                id: category.merchant.id,
-                name: category.merchant.name,
-              }
-            : null,
-        };
-        result.parents =
-          await this.productsInventoryService.findParentCategories(category.id);
-        return result;
-      }),
-    );
+    const parents =
+      await this.productsInventoryService.findParentCategoriesMany(
+        categories.map((category) => category.id),
+      );
+    const data: CategoryResponseDto[] = categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      isActive: category.isActive,
+      merchant: category.merchant
+        ? {
+            id: category.merchant.id,
+            name: category.merchant.name,
+          }
+        : null,
+      parents: parents.get(category.id) ?? [],
+    }));
 
     return {
       statusCode: 200,

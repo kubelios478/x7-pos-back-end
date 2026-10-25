@@ -73,23 +73,46 @@ export class ProductsInventoryService {
   public async findParentCategories(
     categoryId: number,
   ): Promise<{ id: number; parentName: string }[]> {
-    const categories: { id: number; parentName: string }[] = [];
-    let currentCategory = await this.categoryRepo.findOne({
-      where: { id: categoryId },
-      relations: ['parent'],
-    });
+    const parents = await this.findParentCategoriesMany([categoryId]);
+    return parents.get(categoryId) ?? [];
+  }
 
-    while (currentCategory && currentCategory.parent) {
-      categories.unshift({
-        id: currentCategory.parent.id,
-        parentName: currentCategory.parent.name,
-      });
-      currentCategory = await this.categoryRepo.findOne({
-        where: { id: currentCategory.parent.id },
-        relations: ['parent'],
-      });
+  /**
+   * Los ancestros de varias categorías en una sola consulta, de la raíz hacia abajo
+   * (antes, una consulta por categoría y por nivel). Una categoría sin padre no
+   * aparece en el mapa.
+   */
+  public async findParentCategoriesMany(
+    categoryIds: number[],
+  ): Promise<Map<number, { id: number; parentName: string }[]>> {
+    const result = new Map<number, { id: number; parentName: string }[]>();
+    if (categoryIds.length === 0) return result;
+
+    // depth < 50 corta un ciclo de padres, que de otro modo no terminaría.
+    const rows = await this.categoryRepo.query<
+      { start_id: number; id: number; name: string }[]
+    >(
+      `WITH RECURSIVE ancestors AS (
+         SELECT c.id AS start_id, p.id, p.name, p."parentId" AS parent_id, 1 AS depth
+         FROM category c
+         JOIN category p ON p.id = c."parentId"
+         WHERE c.id = ANY($1::int[])
+         UNION ALL
+         SELECT a.start_id, p.id, p.name, p."parentId", a.depth + 1
+         FROM ancestors a
+         JOIN category p ON p.id = a.parent_id
+         WHERE a.depth < 50
+       )
+       SELECT start_id, id, name FROM ancestors ORDER BY start_id, depth DESC`,
+      [categoryIds],
+    );
+
+    for (const row of rows) {
+      const startId = Number(row.start_id);
+      const chain = result.get(startId) ?? [];
+      chain.push({ id: Number(row.id), parentName: row.name });
+      result.set(startId, chain);
     }
-
-    return categories;
+    return result;
   }
 }
