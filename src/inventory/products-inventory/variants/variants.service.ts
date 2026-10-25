@@ -31,6 +31,29 @@ export class VariantsService {
     private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
 
+  /**
+   * Variant names are unique within their product (case-insensitive), on create and on
+   * update alike. Not across the merchant: two products may both have a "Small" variant.
+   */
+  private async assertNameFreeInProduct(
+    productId: number,
+    name: string | undefined,
+    exceptVariantId?: number,
+  ): Promise<void> {
+    if (!name) return;
+    const qb = this.variantRepository
+      .createQueryBuilder('variant')
+      .where('variant.productId = :productId', { productId })
+      .andWhere('LOWER(variant.name) = LOWER(:name)', { name: name.trim() })
+      .andWhere('variant.isActive = :isActive', { isActive: true });
+    if (exceptVariantId != null) {
+      qb.andWhere('variant.id != :exceptVariantId', { exceptVariantId });
+    }
+    if (await qb.getExists()) {
+      ErrorHandler.exists(ErrorMessage.VARIANT_NAME_EXISTS);
+    }
+  }
+
   async create(
     merchant_id: number,
     createVariantDto: CreateVariantDto,
@@ -43,6 +66,8 @@ export class VariantsService {
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
     }
+
+    await this.assertNameFreeInProduct(product.data.id, variantData.name);
 
     const existingVariantBySku = await this.variantRepository.findOne({
       where: [
@@ -284,17 +309,11 @@ export class VariantsService {
     }
 
     if (variantData.name && variantData.name !== variant.name) {
-      const existingVariantName = await this.variantRepository.findOne({
-        where: {
-          name: variantData.name,
-          isActive: true,
-          product: { merchantId: merchant_id },
-        },
-      });
-
-      if (existingVariantName && existingVariantName.id !== id) {
-        ErrorHandler.exists(ErrorMessage.VARIANT_NAME_EXISTS);
-      }
+      await this.assertNameFreeInProduct(
+        variant.productId,
+        variantData.name,
+        id,
+      );
     }
 
     if (variantData.sku && variantData.sku !== variant.sku) {
