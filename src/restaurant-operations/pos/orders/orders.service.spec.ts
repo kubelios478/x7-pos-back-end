@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { MerchantLockScope } from 'src/common/utils/merchant-lock.util';
 import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
 import { ReceiptsService } from 'src/core/billing-transactions/receipts/receipts.service';
@@ -83,11 +84,16 @@ describe('OrdersService', () => {
     findAndCount: jest.fn(),
     update: jest.fn(),
     manager: {
+      // new orders are numbered and inserted in a transaction holding an advisory lock
+      transaction: (work: (manager: unknown) => unknown) =>
+        work(mockOrderRepository.manager),
+      query: jest.fn().mockResolvedValue([]),
       getRepository: jest.fn((entity: unknown) => {
         if (entity === Order) {
           return {
             findOne: (opts: unknown) => mockOrderRepository.findOne(opts),
             save: (opts: unknown) => mockOrderRepository.save(opts),
+            count: (opts: unknown) => mockOrderRepository.count(opts),
             createQueryBuilder: jest.fn(() => mockOrderQbForOrderNumber),
           };
         }
@@ -474,6 +480,46 @@ describe('OrdersService', () => {
       type: OrderType.DINE_IN,
       customerId: 1,
     };
+
+    it('numbers the order under the merchant order-numbering lock', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      jest
+        .spyOn(subscriptionRepository, 'findOne')
+        .mockResolvedValue(mockSubscription as MerchantSubscription);
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      jest.spyOn(orderRepository, 'save').mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+      mockOrderRepository.manager.query.mockClear();
+      mockOrderRepository.count.mockClear();
+
+      await service.create(createOrderDto, 1);
+
+      expect(mockOrderRepository.manager.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock($1, $2)',
+        [MerchantLockScope.ORDER_NUMBERS, 1],
+      );
+      // lock first, then the daily ticket COUNT, then the insert
+      const lockedAt =
+        mockOrderRepository.manager.query.mock.invocationCallOrder[0];
+      expect(lockedAt).toBeLessThan(
+        mockOrderRepository.count.mock.invocationCallOrder[0],
+      );
+      expect(lockedAt).toBeLessThan(
+        (orderRepository.save as jest.Mock).mock.invocationCallOrder[0],
+      );
+    });
 
     it('should create an order successfully', async () => {
       jest
