@@ -1,3 +1,4 @@
+import { toInt } from 'src/common/transformers/query.transformers';
 import {
   IsOptional,
   IsEnum,
@@ -31,7 +32,7 @@ export class GetKitchenOrderItemQueryDto {
     description: 'Filter by kitchen order ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   kitchenOrderId?: number;
 
@@ -40,7 +41,7 @@ export class GetKitchenOrderItemQueryDto {
     description: 'Filter by kitchen station ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   stationId?: number;
 
@@ -49,7 +50,7 @@ export class GetKitchenOrderItemQueryDto {
     description: 'Filter by order item ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   orderItemId?: number;
 
@@ -58,7 +59,7 @@ export class GetKitchenOrderItemQueryDto {
     description: 'Filter by product ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   productId?: number;
 
@@ -67,7 +68,7 @@ export class GetKitchenOrderItemQueryDto {
     description: 'Filter by variant ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   variantId?: number;
 
@@ -103,7 +104,7 @@ export class GetKitchenOrderItemQueryDto {
     minimum: 1,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   @Min(1)
   page?: number = 1;
@@ -115,7 +116,7 @@ export class GetKitchenOrderItemQueryDto {
     maximum: 100,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   @Min(1)
   @Max(100)

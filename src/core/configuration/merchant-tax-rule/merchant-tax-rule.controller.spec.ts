@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 //src/core/configuration/merchant-tax-rule/merchant-tax-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { MerchantTaxRuleController } from './merchant-tax-rule.controller';
@@ -351,5 +352,11 @@ describe('MerchantTaxRuleController', () => {
 
       expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
+  });
+
+  it('answers 400, not 500, for a non-positive id', async () => {
+    await expect(controller.findOne(0, {} as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

@@ -137,7 +137,8 @@ export class KitchenOrderItem {
   @ApiProperty({
     example: KitchenCourse.MAIN_COURSE,
     enum: KitchenCourse,
-    description: 'Course category for sequencing and pacing (appetizer, main_course, dessert, beverage)',
+    description:
+      'Course category for sequencing and pacing (appetizer, main_course, dessert, beverage)',
     default: KitchenCourse.MAIN_COURSE,
   })
   @Column({
@@ -150,7 +151,8 @@ export class KitchenOrderItem {
 
   @ApiProperty({
     example: '2024-01-15T08:40:00Z',
-    description: 'Automated pacing target timestamp when held items should auto-fire',
+    description:
+      'Automated pacing target timestamp when held items should auto-fire',
     nullable: true,
   })
   @Column({ type: 'timestamp', name: 'hold_until', nullable: true })

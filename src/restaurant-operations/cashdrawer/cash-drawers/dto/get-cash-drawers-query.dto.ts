@@ -1,8 +1,8 @@
+import { toInt } from 'src/common/transformers/query.transformers';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
   IsNumber,
-  IsString,
   IsDateString,
   IsEnum,
   Min,
@@ -31,7 +31,7 @@ export class GetCashDrawersQueryDto {
     description: 'Filter by shift ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber({}, { message: 'Shift ID must be a valid number' })
   shiftId?: number;
 
@@ -40,7 +40,7 @@ export class GetCashDrawersQueryDto {
     description: 'Filter by collaborator who opened the drawer',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber({}, { message: 'Opened by must be a valid number' })
   openedBy?: number;
 
@@ -49,7 +49,7 @@ export class GetCashDrawersQueryDto {
     description: 'Filter by collaborator who closed the drawer',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber({}, { message: 'Closed by must be a valid number' })
   closedBy?: number;
 
@@ -81,7 +81,7 @@ export class GetCashDrawersQueryDto {
     minimum: 1,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber({}, { message: 'Page must be a valid number' })
   @Min(1, { message: 'Page must be at least 1' })
   page?: number = 1;
@@ -93,7 +93,7 @@ export class GetCashDrawersQueryDto {
     maximum: 100,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber({}, { message: 'Limit must be a valid number' })
   @Min(1, { message: 'Limit must be at least 1' })
   @Max(100, { message: 'Limit cannot exceed 100' })

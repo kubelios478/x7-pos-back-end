@@ -58,7 +58,6 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 15 * 60_000 } }) // reset emails per IP per 15 minutes
   @ApiOperation({ summary: 'Request a password reset link' })
   requestReset(@Body() dto: RequestResetPasswordDto) {
-    console.log('Request Reset DTO:', dto);
     return this.authService.sendResetLink(dto.email);
   }
 
@@ -67,7 +66,6 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 15 * 60_000 } }) // reset attempts per IP per 15 minutes
   @ApiOperation({ summary: 'Reset password using recovery token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
-    console.log('Reset Password DTO:', dto);
     return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 

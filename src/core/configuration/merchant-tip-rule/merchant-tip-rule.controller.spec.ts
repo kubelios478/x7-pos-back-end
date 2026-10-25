@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 //src/core/configuration/merchant-tip-rule/merchant-tip-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { MerchantTipRuleController } from './merchant-tip-rule.controller';
@@ -374,5 +375,11 @@ describe('MerchantTipRuleController', () => {
 
       expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
+  });
+
+  it('answers 400, not 500, for a non-positive id', async () => {
+    await expect(controller.findOne(0, {} as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

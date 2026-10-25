@@ -1,3 +1,4 @@
+import { toInt } from 'src/common/transformers/query.transformers';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsOptional,
@@ -17,7 +18,7 @@ export class GetTableAssignmentsQueryDto {
   })
   @IsOptional()
   @IsNumber()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   shiftId?: number;
 
   @ApiPropertyOptional({
@@ -26,7 +27,7 @@ export class GetTableAssignmentsQueryDto {
   })
   @IsOptional()
   @IsNumber()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   tableId?: number;
 
   @ApiPropertyOptional({
@@ -35,7 +36,7 @@ export class GetTableAssignmentsQueryDto {
   })
   @IsOptional()
   @IsNumber()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   collaboratorId?: number;
 
   @ApiPropertyOptional({
@@ -54,7 +55,7 @@ export class GetTableAssignmentsQueryDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   page?: number = 1;
 
   @ApiPropertyOptional({
@@ -67,7 +68,7 @@ export class GetTableAssignmentsQueryDto {
   @IsNumber()
   @Min(1)
   @Max(100)
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   limit?: number = 10;
 
   @ApiPropertyOptional({

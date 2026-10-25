@@ -696,4 +696,3 @@ export class CashShiftsController {
     );
   }
 }
-

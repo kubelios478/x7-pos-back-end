@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -428,7 +429,7 @@ export class MarketingCampaingAudienceService {
     }
 
     // Update audience entry
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<MarketingCampaignAudience> = {};
     if (updateMarketingCampaignAudienceDto.marketingCampaignId !== undefined) {
       updateData.marketing_campaign_id =
         updateMarketingCampaignAudienceDto.marketingCampaignId;

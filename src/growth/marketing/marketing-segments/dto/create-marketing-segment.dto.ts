@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsNotEmpty, IsEnum, MaxLength } from 'class-validator';
 import { MarketingSegmentType } from '../constants/marketing-segment-type.enum';
 

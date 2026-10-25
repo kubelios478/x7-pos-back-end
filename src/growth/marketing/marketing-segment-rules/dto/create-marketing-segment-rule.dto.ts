@@ -6,7 +6,7 @@ import {
   IsNumber,
   Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { MarketingSegmentRuleOperator } from '../constants/marketing-segment-rule-operator.enum';
 
 export class CreateMarketingSegmentRuleDto {

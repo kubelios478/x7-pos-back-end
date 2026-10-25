@@ -32,12 +32,18 @@ export class OfflineKitchenActionDto {
   @IsNumber()
   kitchenOrderId?: number;
 
-  @ApiPropertyOptional({ example: 12, description: 'Target Kitchen Order Item ID' })
+  @ApiPropertyOptional({
+    example: 12,
+    description: 'Target Kitchen Order Item ID',
+  })
   @IsOptional()
   @IsNumber()
   kitchenOrderItemId?: number;
 
-  @ApiPropertyOptional({ example: 'ready', description: 'Item preparation status' })
+  @ApiPropertyOptional({
+    example: 'ready',
+    description: 'Item preparation status',
+  })
   @IsOptional()
   @IsString()
   status?: string;
@@ -52,7 +58,10 @@ export class OfflineKitchenActionDto {
   @IsString()
   course?: string;
 
-  @ApiPropertyOptional({ example: 'Burger', description: 'Product name for batch bump' })
+  @ApiPropertyOptional({
+    example: 'Burger',
+    description: 'Product name for batch bump',
+  })
   @IsOptional()
   @IsString()
   productName?: string;
@@ -62,12 +71,18 @@ export class OfflineKitchenActionDto {
   @IsNumber()
   quantity?: number;
 
-  @ApiPropertyOptional({ example: 6, description: 'Station ID for station isolation' })
+  @ApiPropertyOptional({
+    example: 6,
+    description: 'Station ID for station isolation',
+  })
   @IsOptional()
   @IsNumber()
   stationId?: number;
 
-  @ApiPropertyOptional({ example: 'Con Queso Cheddar', description: 'Variant name' })
+  @ApiPropertyOptional({
+    example: 'Con Queso Cheddar',
+    description: 'Variant name',
+  })
   @IsOptional()
   @IsString()
   variantName?: string;
@@ -84,7 +99,8 @@ export class OfflineKitchenActionDto {
 export class SyncKitchenEventsDto {
   @ApiProperty({
     type: [OfflineKitchenActionDto],
-    description: 'List of offline queued kitchen actions in chronological order',
+    description:
+      'List of offline queued kitchen actions in chronological order',
   })
   @IsArray()
   @ValidateNested({ each: true })

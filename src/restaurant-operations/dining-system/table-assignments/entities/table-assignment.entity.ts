@@ -54,7 +54,7 @@ export class TableAssignment {
     required: false,
   })
   @Column({ type: 'timestamp', nullable: true })
-  releasedAt?: Date;
+  releasedAt?: Date | null;
 
   @ApiProperty({
     example: '2024-01-15T08:00:00Z',

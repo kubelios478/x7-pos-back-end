@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ReservationGuest } from '../entities/reservation-guest.entity';
 
 export class ReservationGuestResponseDto {
   @ApiProperty({ example: 1 })

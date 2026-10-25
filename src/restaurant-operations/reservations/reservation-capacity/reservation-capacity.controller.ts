@@ -116,7 +116,9 @@ export class ReservationCapacityController {
       },
     },
   })
-  @ApiUnauthorizedResponse({ schema: { example: { message: 'Unauthorized', statusCode: 401 } } })
+  @ApiUnauthorizedResponse({
+    schema: { example: { message: 'Unauthorized', statusCode: 401 } },
+  })
   availability(
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: AvailabilityQueryDto,
@@ -129,7 +131,9 @@ export class ReservationCapacityController {
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({ summary: 'Capacity, pacing and service shift settings' })
   @ApiOkResponse({ example: SETTINGS_EXAMPLE })
-  @ApiUnauthorizedResponse({ schema: { example: { message: 'Unauthorized', statusCode: 401 } } })
+  @ApiUnauthorizedResponse({
+    schema: { example: { message: 'Unauthorized', statusCode: 401 } },
+  })
   async getSettings(@CurrentUser() user: AuthenticatedUser) {
     return {
       statusCode: 200,
@@ -142,25 +146,36 @@ export class ReservationCapacityController {
   @Roles(UserRole.MERCHANT_ADMIN)
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({
-    summary: 'Update capacity, pacing and service shift settings (manager only)',
-    description: 'Omitted fields are left unchanged; null resets a field to its default.',
+    summary:
+      'Update capacity, pacing and service shift settings (manager only)',
+    description:
+      'Omitted fields are left unchanged; null resets a field to its default.',
   })
   @ApiOkResponse({
-    example: { ...SETTINGS_EXAMPLE, message: 'Reservation capacity settings updated successfully' },
+    example: {
+      ...SETTINGS_EXAMPLE,
+      message: 'Reservation capacity settings updated successfully',
+    },
   })
   @ApiBadRequestResponse({
     schema: {
       example: {
         statusCode: 400,
         message: 'Validation failed',
-        errors: ['slot_interval_minutes must be one of the following values: 15, 30'],
+        errors: [
+          'slot_interval_minutes must be one of the following values: 15, 30',
+        ],
         timestamp: '2026-04-16T20:55:00.000Z',
       },
     },
   })
   @ApiForbiddenResponse({
     schema: {
-      example: { message: 'Forbidden resource', error: 'Forbidden', statusCode: 403 },
+      example: {
+        message: 'Forbidden resource',
+        error: 'Forbidden',
+        statusCode: 403,
+      },
     },
   })
   async updateSettings(
@@ -170,7 +185,11 @@ export class ReservationCapacityController {
     return {
       statusCode: 200,
       message: 'Reservation capacity settings updated successfully',
-      data: await this.capacityService.updateSettings(user.merchant.id, dto, user.id),
+      data: await this.capacityService.updateSettings(
+        user.merchant.id,
+        dto,
+        user.id,
+      ),
     };
   }
 }

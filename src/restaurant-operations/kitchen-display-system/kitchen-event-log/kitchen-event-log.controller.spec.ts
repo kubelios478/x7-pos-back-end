@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { KitchenEventLogController } from './kitchen-event-log.controller';
 import { KitchenEventLogService } from './kitchen-event-log.service';
@@ -25,6 +26,7 @@ describe('KitchenEventLogController', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
+    syncOfflineActions: jest.fn(),
   };
 
   const mockUser = {
@@ -216,5 +218,28 @@ describe('KitchenEventLogController', () => {
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Kitchen event log deleted successfully');
     });
+  });
+
+  describe('a user without a merchant (portal admin)', () => {
+    const noMerchant = {
+      user: { ...mockUser, merchant: undefined },
+    } as unknown as AuthenticatedRequest;
+
+    it.each([
+      ['sync', () => controller.sync({ actions: [] } as never, noMerchant)],
+      ['create', () => controller.create({} as never, noMerchant)],
+      ['findAll', () => controller.findAll({} as never, noMerchant)],
+      ['findOne', () => controller.findOne(1, noMerchant)],
+      ['update', () => controller.update(1, {} as never, noMerchant)],
+      ['remove', () => controller.remove(1, noMerchant)],
+    ])(
+      '%s answers 403 instead of acting on merchant 2',
+      async (_name, call) => {
+        await expect(call()).rejects.toBeInstanceOf(ForbiddenException);
+        for (const fn of Object.values(mockKitchenEventLogService)) {
+          expect(fn).not.toHaveBeenCalled();
+        }
+      },
+    );
   });
 });
