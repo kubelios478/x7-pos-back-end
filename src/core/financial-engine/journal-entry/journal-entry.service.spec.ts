@@ -233,6 +233,24 @@ describe('JournalEntryService', () => {
     expect(service).toBeDefined();
   });
 
+  // Con la tabla vacía, el arranque creaba 8 asientos de ejemplo para la compañía 1.
+  it('does not seed journal entries on startup when the table is empty', async () => {
+    const jeRepo = service['journalEntryRepository'] as unknown as Record<
+      string,
+      jest.Mock
+    >;
+    const lineRepo = service['journalEntryLineRepository'] as unknown as Record<
+      string,
+      jest.Mock
+    >;
+    jeRepo.count = jest.fn().mockResolvedValue(0);
+
+    await (service as { onModuleInit?: () => Promise<void> }).onModuleInit?.();
+
+    expect(jeRepo.save).not.toHaveBeenCalled();
+    expect(lineRepo.save).not.toHaveBeenCalled();
+  });
+
   // ─── Create ────────────────────────────────────────────────────────────────
 
   describe('create', () => {
