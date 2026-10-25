@@ -91,6 +91,32 @@ import { LoyaltyPointsSource } from 'src/growth/loyalty/loyalty-points-transacti
 import { MoreThan } from 'typeorm';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+/**
+ * Business status once the payments are re-summed. Before, only processPayment set PAID: an
+ * order paid through order-payments stayed `pending` and refundOrder (which requires PAID)
+ * could not refund it.
+ * - fully paid → PAID, unless it was cancelled or already refunded;
+ * - a refund that leaves a balance due on a PAID order → PARTIALLY_REFUNDED.
+ */
+function nextBusinessStatusAfterPayments(
+  status: OrderBusinessStatus,
+  becameFullyPaid: boolean,
+  refundedBelowTotal: boolean,
+): OrderBusinessStatus {
+  const payable = [
+    OrderBusinessStatus.PENDING,
+    OrderBusinessStatus.IN_PROGRESS,
+    OrderBusinessStatus.COMPLETED,
+  ];
+  if (becameFullyPaid && payable.includes(status)) {
+    return OrderBusinessStatus.PAID;
+  }
+  if (refundedBelowTotal && status === OrderBusinessStatus.PAID) {
+    return OrderBusinessStatus.PARTIALLY_REFUNDED;
+  }
+  return status;
+}
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -955,6 +981,13 @@ export class OrdersService {
       }
       await queryRunner.commitTransaction();
 
+      // Same after-commit event as a payment through order-payments: it deducts the
+      // inventory, awards loyalty points and releases the table group (each listener
+      // claims the order, so it runs once). Orders paid here used to skip all three.
+      if (order.is_paid) {
+        this.emitOrderFullyPaid(order.id);
+      }
+
       return {
         success: true,
         message: 'Payment processed successfully',
@@ -1490,6 +1523,11 @@ export class OrdersService {
     applyPaidDerivedFields(order);
     const becameFullyPaid = !wasPaid && order.is_paid;
     const becameUnpaid = wasPaid && !order.is_paid;
+    order.status = nextBusinessStatusAfterPayments(
+      order.status,
+      becameFullyPaid,
+      becameUnpaid && payments.some((p) => p.is_refund),
+    );
     await manager.getRepository(Order).save(order);
     return { becameFullyPaid, becameUnpaid };
   }
