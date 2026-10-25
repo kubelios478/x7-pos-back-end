@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Item } from './entities/item.entity';
 import { Location } from '../locations/entities/location.entity';
 import { MovementsService } from '../movements/movements.service';
+import { MovementsStatus } from '../movements/constants/movements-status';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { GetItemsQueryDto } from './dto/get-items-query.dto';
@@ -946,6 +947,55 @@ describe('ItemsService', () => {
       await expect(async () =>
         service.remove(null as any, mockMerchant.id),
       ).rejects.toThrow('Item ID is incorrect');
+    });
+  });
+
+  describe('Adjust', () => {
+    beforeEach(() => {
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockItem,
+        currentQty: 10,
+      });
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+    });
+
+    it('applies an absolute adjustment once, through a single ADJUSTMENT movement', async () => {
+      await service.adjust(1, mockMerchant.id, {
+        value: 15,
+        type: 'absolute',
+      });
+
+      // the movement updates the stock; saving the item here too counted it twice
+      expect(itemRepo.save).not.toHaveBeenCalled();
+      expect(movementsService.create).toHaveBeenCalledTimes(1);
+      expect(movementsService.create).toHaveBeenCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({
+          stockItemId: 1,
+          quantity: 5,
+          type: MovementsStatus.IN,
+          movementType: MovementsStatus.ADJUSTMENT,
+        }),
+      );
+    });
+
+    it('turns a negative relative adjustment into an OUT movement', async () => {
+      await service.adjust(1, mockMerchant.id, { value: -3, type: 'relative' });
+
+      expect(movementsService.create).toHaveBeenCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({ quantity: 3, type: MovementsStatus.OUT }),
+      );
+    });
+
+    it('does nothing when the quantity does not change', async () => {
+      await service.adjust(1, mockMerchant.id, {
+        value: 10,
+        type: 'absolute',
+      });
+
+      expect(movementsService.create).not.toHaveBeenCalled();
+      expect(itemRepo.save).not.toHaveBeenCalled();
     });
   });
 

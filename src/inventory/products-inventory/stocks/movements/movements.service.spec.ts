@@ -24,6 +24,7 @@ import { ErrorHandler } from 'src/common/utils/error-handler.util';
 describe('MovementsService', () => {
   let service: MovementsService;
   let movementRepo: jest.Mocked<Repository<Movement>>;
+  let itemRepo: jest.Mocked<Repository<Item>>;
 
   type MockQueryBuilder = {
     leftJoinAndSelect: jest.Mock;
@@ -196,6 +197,7 @@ describe('MovementsService', () => {
 
     service = module.get<MovementsService>(MovementsService);
     movementRepo = module.get(getRepositoryToken(Movement));
+    itemRepo = module.get(getRepositoryToken(Item));
 
     jest.clearAllMocks();
 
@@ -321,6 +323,29 @@ describe('MovementsService', () => {
   });
 
   describe('Create', () => {
+    it('puts stock back for a RETURN (kitchen cancellation returned to inventory)', async () => {
+      mockQueryBuilder.getOne
+        .mockResolvedValueOnce({ ...mockItem, currentQty: 10 })
+        .mockResolvedValueOnce(mockMovement);
+      movementRepo.create.mockReturnValueOnce(mockMovement);
+      movementRepo.save.mockResolvedValueOnce(mockMovement);
+
+      await service.create(mockMerchant.id, {
+        stockItemId: 1,
+        quantity: 4,
+        type: MovementsStatus.RETURN,
+        reference: 'VOID-1',
+        reason: 'Kitchen cancellation',
+      });
+
+      expect(itemRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ currentQty: 14 }),
+      );
+      expect(movementRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: MovementsStatus.IN }),
+      );
+    });
+
     it('should throw BadRequestException for invalid quantity', async () => {
       const invalidCreateDto = { ...mockCreateMovementDto, quantity: 0 };
       await expect(async () =>
