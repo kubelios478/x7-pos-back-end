@@ -92,7 +92,9 @@ export class MailService {
         `Failed to send email to ${options.to}`,
         err instanceof Error ? err.stack : String(err),
       );
-      if (options.text) {
+      // The body can carry a password-reset link (a live token): only outside production,
+      // where it lets the flow be tested without an SMTP server.
+      if (options.text && process.env.NODE_ENV !== 'production') {
         this.logger.warn(`Undelivered email body:\n${options.text}`);
       }
       return false;

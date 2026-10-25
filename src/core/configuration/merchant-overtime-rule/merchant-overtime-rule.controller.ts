@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
@@ -299,7 +300,7 @@ export class MerchantOvertimeRuleController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantOvertimeRuleResponseDto> {
     if (id <= 0) {
-      throw new Error('ID must be a positive integer');
+      throw new BadRequestException('ID must be a positive integer');
     }
     const merchantOvertimeRule = await this.merchantOvertimeRuleService.findOne(
       id,

@@ -8,10 +8,13 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { ErrorMessage } from '../constants/error-messages';
 
 export class ErrorHandler {
+  private static readonly logger = new Logger('ErrorHandler');
+
   // 400 Bad Request Errors
   static invalidInput(message: string = ErrorMessage.INVALID_INPUT): never {
     throw new BadRequestException(message);
@@ -371,7 +374,12 @@ export class ErrorHandler {
         break;
 
       default:
-        console.error('Database error:', error);
+        // code, message and stack only: the driver error also carries the query and its
+        // parameters (emails, hashes…), which must not reach the logs
+        this.logger.error(
+          `Database error${error?.code ? ` ${error.code}` : ''}: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? error.stack : undefined,
+        );
         this.databaseError();
         break;
     }
