@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -186,6 +187,14 @@ describe('CustomersService', () => {
         expect(created).not.toHaveProperty('rut');
       },
     );
+
+    it("answers 401 (not 500) when the token's user no longer exists", async () => {
+      jest.spyOn(userRepository, 'findOneBy').mockResolvedValue(null);
+
+      await expect(
+        service.create(createCustomerDto, mockUser),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
 
     it('should create a customer successfully without company', async () => {
       jest

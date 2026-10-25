@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -31,7 +32,8 @@ export class CustomersService {
 
   async create(dto: CreateCustomerDto, user: AuthenticatedUser) {
     const userData = await this.userRepo.findOneBy({ id: user.id });
-    if (!userData) throw new Error('User not found');
+    // the token's user no longer exists: an authentication problem, not a server error
+    if (!userData) throw new UnauthorizedException('User not found');
 
     const merchant = await this.merchantRepo.findOneBy({
       id: user.merchant.id,

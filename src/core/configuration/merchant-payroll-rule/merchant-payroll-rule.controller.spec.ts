@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 //src/core/configuration/merchant-payroll-rule/merchant-payroll-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { MerchantPayrollRuleController } from './merchant-payroll-rule.controller';
@@ -304,5 +305,11 @@ describe('MerchantPayrollRuleController', () => {
         'not found',
       );
     });
+  });
+
+  it('answers 400, not 500, for a non-positive id', async () => {
+    await expect(controller.findOne(0, {} as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });
