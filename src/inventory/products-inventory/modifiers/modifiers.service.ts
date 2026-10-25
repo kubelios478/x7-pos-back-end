@@ -129,24 +129,24 @@ export class ModifiersService {
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
 
-    // 7. Map to ModifierResponseDto
-    const data: ModifierResponseDto[] = await Promise.all(
-      modifiers.map(async (modifier) => {
-        const result: ModifierResponseDto = {
-          id: modifier.id,
-          name: modifier.name,
-          priceDelta: modifier.priceDelta,
-          product: modifier.product
-            ? (await this.productsService.findOne(modifier.product.id)).data
-            : null,
-          parent: modifier.parent
-            ? { id: modifier.parent.id, name: modifier.parent.name }
-            : null,
-          isActive: modifier.isActive,
-        };
-        return result;
-      }),
+    // 7. Map to ModifierResponseDto (los productos de la página, en una sola consulta)
+    const products = await this.productsService.findResponsesByIds(
+      modifiers.flatMap((modifier) =>
+        modifier.product ? [modifier.product.id] : [],
+      ),
     );
+    const data: ModifierResponseDto[] = modifiers.map((modifier) => ({
+      id: modifier.id,
+      name: modifier.name,
+      priceDelta: modifier.priceDelta,
+      product: modifier.product
+        ? (products.get(modifier.product.id) ?? null)
+        : null,
+      parent: modifier.parent
+        ? { id: modifier.parent.id, name: modifier.parent.name }
+        : null,
+      isActive: modifier.isActive,
+    }));
 
     return {
       statusCode: 200,

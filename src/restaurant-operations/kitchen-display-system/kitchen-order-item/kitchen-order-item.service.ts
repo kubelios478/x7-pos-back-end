@@ -420,8 +420,8 @@ export class KitchenOrderItemService {
         item.prepared_quantity = item.quantity;
         if (!item.completed_at) item.completed_at = now;
         if (!item.started_at) item.started_at = now;
-        await this.kitchenOrderItemRepository.save(item);
       }
+      await this.kitchenOrderItemRepository.save(itemsToHeal);
     }
 
     return {

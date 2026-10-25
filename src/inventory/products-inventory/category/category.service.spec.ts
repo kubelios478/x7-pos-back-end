@@ -27,6 +27,10 @@ describe('CategoryService', () => {
     getMany: jest.Mock;
   };
   let mockQueryBuilder: MockQueryBuilder;
+  let mockProductsInventoryService: {
+    findParentCategories: jest.Mock;
+    findParentCategoriesMany: jest.Mock;
+  };
 
   const mockMerchant = {
     id: 1,
@@ -93,8 +97,9 @@ describe('CategoryService', () => {
       findOneBy: jest.fn(),
     };
 
-    const mockProductsInventoryService = {
+    mockProductsInventoryService = {
       findParentCategories: jest.fn().mockResolvedValue([]),
+      findParentCategoriesMany: jest.fn().mockResolvedValue(new Map()),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -341,6 +346,36 @@ describe('CategoryService', () => {
         hasNext: false,
         hasPrev: false,
       });
+    });
+
+    // Antes, una consulta por categoría y por nivel de padre.
+    it('loads the parents of the whole page in one call', async () => {
+      const categories = [1, 2, 3].map((id) => ({
+        ...mockCategory,
+        id,
+      })) as Category[];
+      mockQueryBuilder.getMany.mockResolvedValue(categories);
+      mockQueryBuilder.getCount.mockResolvedValue(categories.length);
+      mockProductsInventoryService.findParentCategoriesMany.mockResolvedValueOnce(
+        new Map([[3, [{ id: 1, parentName: 'Root' }]]]),
+      );
+
+      const result = await service.findAll(mockQuery, mockMerchant.id);
+
+      expect(
+        mockProductsInventoryService.findParentCategoriesMany,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockProductsInventoryService.findParentCategoriesMany,
+      ).toHaveBeenCalledWith([1, 2, 3]);
+      expect(
+        mockProductsInventoryService.findParentCategories,
+      ).not.toHaveBeenCalled();
+      expect(result.data.map((c) => c.parents)).toEqual([
+        [],
+        [],
+        [{ id: 1, parentName: 'Root' }],
+      ]);
     });
 
     it('should return empty array when no categories found', async () => {
