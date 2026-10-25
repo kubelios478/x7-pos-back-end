@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { ValidationPipe } from '@nestjs/common';
+import { UpdateOrderPaymentDto } from './dto/update-order-payment.dto';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository, type DeleteResult } from 'typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -246,19 +248,55 @@ describe('OrderPaymentsService', () => {
   });
 
   describe('remove', () => {
-    it('should delete and sync', async () => {
+    it('refuses to delete a payment (it is corrected with a refund)', async () => {
       jest
         .spyOn(orderPaymentRepository, 'findOne')
         .mockResolvedValue(mockPaymentRow as unknown as OrderPayment);
+      const deleteSpy = jest.spyOn(orderPaymentRepository, 'delete');
+
+      await expect(service.remove(1, 1)).rejects.toThrow(
+        'Order payments cannot be deleted: register a refund for the amount instead.',
+      );
+      expect(deleteSpy).not.toHaveBeenCalled();
+      expect(mockOrdersService.syncOrderAggregates).not.toHaveBeenCalled();
+    });
+
+    it('editing only changes the descriptive fields, not the money', async () => {
       jest
-        .spyOn(orderPaymentRepository, 'delete')
-        .mockResolvedValue({ raw: [], affected: 1 } as DeleteResult);
+        .spyOn(orderPaymentRepository, 'findOne')
+        .mockResolvedValue(mockPaymentRow as unknown as OrderPayment);
+      const updateSpy = jest
+        .spyOn(orderPaymentRepository, 'update')
+        .mockResolvedValue({ raw: [], affected: 1, generatedMaps: [] });
 
-      const result = await service.remove(1, 1);
+      await service.update(1, { reference: 'ch_2', provider: 'stripe' }, 1);
 
-      expect(result.statusCode).toBe(200);
-      expect(orderPaymentRepository.delete).toHaveBeenCalledWith(1);
-      expect(mockOrdersService.syncOrderAggregates).toHaveBeenCalledWith(1);
+      expect(updateSpy).toHaveBeenCalledWith(1, {
+        reference: 'ch_2',
+        provider: 'stripe',
+      });
+      expect(mockOrdersService.syncOrderAggregates).not.toHaveBeenCalled();
+    });
+
+    it('the DTO rejects amount, method, tip, refund flag and order', async () => {
+      const pipe = new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+      for (const body of [
+        { amount: 10 },
+        { method: 'card' },
+        { tipAmount: 1 },
+        { isRefund: true },
+        { orderId: 2 },
+      ]) {
+        await expect(
+          pipe.transform(body, {
+            type: 'body',
+            metatype: UpdateOrderPaymentDto,
+          }),
+        ).rejects.toThrow();
+      }
     });
   });
 });

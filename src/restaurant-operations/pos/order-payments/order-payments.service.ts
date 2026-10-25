@@ -442,63 +442,16 @@ export class OrderPaymentsService {
       );
     }
 
-    const previousOrderId = existing.order_id;
-
-    if (dto.orderId !== undefined) {
-      const order = await this.orderRepository.findOne({
-        where: { id: dto.orderId },
-        relations: ['merchant'],
-      });
-      if (!order) {
-        throw new NotFoundException('Order not found');
-      }
-      if (order.merchant_id !== authenticatedUserMerchantId) {
-        throw new ForbiddenException(
-          'You can only assign orders from your merchant',
-        );
-      }
-      if (order.logical_status !== OrderStatus.ACTIVE) {
-        throw new BadRequestException(
-          'Cannot move a payment to a deleted order',
-        );
-      }
-    }
-
+    // A payment is a fact of the till: amount, method, tip, refund flag and order are fixed
+    // (the DTO rejects them). Editing them changed paid totals without touching the cash
+    // drawer; a wrong payment is corrected with a refund.
     const patch: QueryDeepPartialEntity<OrderPayment> = {};
-    if (dto.orderId !== undefined) patch.order_id = dto.orderId;
-    if (dto.amount !== undefined) {
-      if (dto.amount < 0) {
-        throw new BadRequestException('Amount must be non-negative');
-      }
-      patch.amount = roundMoney(dto.amount);
-    }
-    if (dto.method !== undefined) patch.method = dto.method;
     if (dto.provider !== undefined) patch.provider = dto.provider ?? null;
     if (dto.reference !== undefined) patch.reference = dto.reference ?? null;
-    if (dto.source !== undefined) patch.source = dto.source ?? null;
-    if (dto.tipAmount !== undefined) {
-      if (dto.tipAmount < 0) {
-        throw new BadRequestException('Tip amount must be non-negative');
-      }
-      patch.tip_amount = roundMoney(dto.tipAmount);
-    }
-    if (dto.isRefund !== undefined) patch.is_refund = dto.isRefund;
 
-    const nextAmount =
-      patch.amount !== undefined ? patch.amount : Number(existing.amount);
-    const nextTip =
-      patch.tip_amount !== undefined
-        ? patch.tip_amount
-        : Number(existing.tip_amount);
-    const nextRefund =
-      patch.is_refund !== undefined ? patch.is_refund : existing.is_refund;
-    if (!nextRefund && nextAmount === 0 && nextTip === 0) {
-      throw new BadRequestException(
-        'Payment amount or tip must be greater than 0 unless it is a refund',
-      );
+    if (Object.keys(patch).length > 0) {
+      await this.orderPaymentRepository.update(id, patch);
     }
-
-    await this.orderPaymentRepository.update(id, patch);
 
     const updated = await this.orderPaymentRepository.findOne({
       where: { id },
@@ -506,11 +459,6 @@ export class OrderPaymentsService {
     });
     if (!updated) {
       throw new NotFoundException('Order payment not found after update');
-    }
-
-    await this.ordersService.syncOrderAggregates(updated.order_id);
-    if (previousOrderId !== updated.order_id) {
-      await this.ordersService.syncOrderAggregates(previousOrderId);
     }
 
     return {
@@ -548,17 +496,10 @@ export class OrderPaymentsService {
       );
     }
 
-    const orderId = existing.order_id;
-    const snapshot = this.format(existing);
-
-    await this.orderPaymentRepository.delete(id);
-    await this.ordersService.syncOrderAggregates(orderId);
-
-    return {
-      statusCode: 200,
-      message: 'Order payment deleted successfully',
-      data: snapshot,
-    };
+    // Deleting a payment removed money from the order without touching the cash drawer
+    throw new BadRequestException(
+      'Order payments cannot be deleted: register a refund for the amount instead.',
+    );
   }
 
   private format(row: OrderPayment): OrderPaymentResponseDto {
