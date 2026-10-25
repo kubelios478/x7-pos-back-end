@@ -70,7 +70,7 @@ export class OrderItemResponseDto {
     id: number;
     name: string;
     price: number;
-    sku: string;
+    sku: string | null;
   } | null;
 
   @ApiProperty({

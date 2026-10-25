@@ -69,32 +69,43 @@ export class VariantsService {
 
     await this.assertNameFreeInProduct(product.data.id, variantData.name);
 
-    const existingVariantBySku = await this.variantRepository.findOne({
-      where: [
-        {
-          sku: variantData.sku,
-          isActive: true,
-          product: { merchantId: merchant_id },
-        },
-      ],
-    });
+    // Sin SKU no hay duplicado que buscar ni variante inactiva que reactivar. Antes se
+    // buscaba igual, y con sku undefined TypeORM ignora la condición: respondía "SKU ya
+    // existe" si el comercio tenía cualquier variante activa, o sobrescribía cualquier
+    // variante inactiva del comercio, de otro producto incluso.
+    const sku = blankToNull(variantData.sku);
+
+    const existingVariantBySku = sku
+      ? await this.variantRepository.findOne({
+          where: [
+            {
+              sku,
+              isActive: true,
+              product: { merchantId: merchant_id },
+            },
+          ],
+        })
+      : null;
 
     if (existingVariantBySku) {
       ErrorHandler.exists(ErrorMessage.VARIANT_SKU_EXISTS);
     }
-    const existingButIsNotActive = await this.variantRepository.findOne({
-      where: [
-        {
-          sku: variantData.sku,
-          isActive: false,
-          product: { merchantId: merchant_id },
-        },
-      ],
-    });
+    const existingButIsNotActive = sku
+      ? await this.variantRepository.findOne({
+          where: [
+            {
+              sku,
+              isActive: false,
+              product: { merchantId: merchant_id },
+            },
+          ],
+        })
+      : null;
 
     if (existingButIsNotActive) {
       Object.assign(existingButIsNotActive, {
         ...variantData,
+        sku,
         productId: product.data.id,
         isActive: true,
       });
@@ -105,6 +116,7 @@ export class VariantsService {
     } else {
       const newVariant = this.variantRepository.create({
         ...variantData,
+        sku,
         productId: product.data.id,
       });
 
@@ -316,10 +328,13 @@ export class VariantsService {
       );
     }
 
-    if (variantData.sku && variantData.sku !== variant.sku) {
+    // Un SKU vacío lo borra; sólo uno con valor puede chocar con otra variante.
+    const sku =
+      variantData.sku === undefined ? undefined : blankToNull(variantData.sku);
+    if (sku && sku !== variant.sku) {
       const existingVariantSku = await this.variantRepository.findOne({
         where: {
-          sku: variantData.sku,
+          sku,
           isActive: true,
           product: { merchantId: merchant_id },
         },
@@ -330,7 +345,7 @@ export class VariantsService {
       }
     }
 
-    Object.assign(variant, variantData);
+    Object.assign(variant, variantData, sku === undefined ? {} : { sku });
     await this.variantRepository.save(variant);
 
     return this.findOne(id, merchant_id, 'Updated');
@@ -386,4 +401,10 @@ export class VariantsService {
       await repository.save(variants);
     }
   }
+}
+
+/** Un texto vacío o solo con espacios cuenta como ausente. */
+function blankToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }

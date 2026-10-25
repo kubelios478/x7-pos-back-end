@@ -13,7 +13,7 @@ export class VariantResponseDto {
   price: number;
 
   @ApiProperty({ example: 'Variant Sku', description: 'Variant SKU' })
-  sku: string;
+  sku: string | null;
 
   @ApiProperty({
     example: false,
