@@ -2246,6 +2246,70 @@ describe('OrdersService', () => {
       },
     );
 
+    it('a split bill under way (something paid, balance due) is PARTIALLY_PAID', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PENDING, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 20, tip_amount: 0, is_refund: false },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PARTIALLY_PAID }),
+      );
+    });
+
+    it('a PAID order that gets new items and owes again is PARTIALLY_PAID', async () => {
+      mockOrderItemRepository.find.mockResolvedValueOnce([
+        line,
+        { ...line, id: 2, total_price: 30, price: 30 },
+      ]);
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PAID, true),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PARTIALLY_PAID }),
+      );
+    });
+
+    it('an order with total 0 and nothing paid is not PAID (no items is not a payment)', async () => {
+      mockOrderItemRepository.find.mockResolvedValueOnce([]);
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PENDING, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PENDING }),
+      );
+    });
+
+    it('a PARTIALLY_PAID order whose payment is refunded back to 0 returns to PENDING', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PARTIALLY_PAID, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 20, tip_amount: 0, is_refund: false },
+        { amount: 20, tip_amount: 0, is_refund: true },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PENDING }),
+      );
+    });
+
     it('a cancelled order stays cancelled even if its payments add up', async () => {
       mockOrderRepository.findOne.mockResolvedValueOnce(
         order(OrderBusinessStatus.CANCELLED, false),
