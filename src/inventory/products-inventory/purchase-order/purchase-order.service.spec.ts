@@ -911,9 +911,8 @@ describe('PurchaseOrderService', () => {
       );
     });
 
-    // BUG (Fase 3): PENDING es el default de la entidad y del DTO y el backoffice lo trata
-    // como editable, pero update() solo admite DRAFT/SENT. Pasar a `it` cuando se corrija.
-    it.failing('should allow editing a PENDING purchase order', async () => {
+    // PENDING is the default status (entity and DTO) and the backoffice edits it
+    it('should allow editing a PENDING purchase order', async () => {
       purchaseOrderRepo.findOne.mockResolvedValueOnce({ ...mockPurchaseOrder });
       purchaseOrderRepo.findOne.mockResolvedValueOnce({ ...mockPurchaseOrder });
 
@@ -922,6 +921,43 @@ describe('PurchaseOrderService', () => {
           totalAmount: 200,
         }),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe('PENDING purchase orders', () => {
+    it('can receive goods (PENDING = sent to the supplier, awaiting delivery)', async () => {
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...mockPurchaseOrder,
+        status: PurchaseOrderStatus.PENDING,
+        purchaseOrderItems: [],
+      });
+      purchaseOrderRepo.save.mockImplementation((po) =>
+        Promise.resolve(po as PurchaseOrder),
+      );
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+
+      await expect(
+        service.receiveOrderItems(mockPurchaseOrder.id, mockMerchant.id, {
+          items: [],
+        }),
+      ).resolves.toBeDefined();
+      // nothing was received, so it stays PENDING instead of jumping to SENT
+      expect(purchaseOrderRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: PurchaseOrderStatus.PENDING }),
+      );
+    });
+
+    it('a PARTIALLY_RECEIVED order cannot regress to PENDING', async () => {
+      purchaseOrderRepo.findOne.mockResolvedValueOnce({
+        ...mockPurchaseOrder,
+        status: PurchaseOrderStatus.PARTIALLY_RECEIVED,
+      });
+
+      await expect(
+        service.update(mockPurchaseOrder.id, mockMerchant.id, {
+          status: PurchaseOrderStatus.PENDING,
+        }),
+      ).rejects.toThrow('Cannot regress a PARTIALLY_RECEIVED purchase order');
     });
   });
 
