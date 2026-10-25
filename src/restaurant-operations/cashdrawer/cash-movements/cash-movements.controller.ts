@@ -243,7 +243,8 @@ export class CashMovementsController {
 
   @ApiOperation({
     summary: 'Get cash drawer movements for the shift',
-    description: 'Detailed list of cash movements (expenses/withdrawals and inflows) recorded during the shift.',
+    description:
+      'Detailed list of cash movements (expenses/withdrawals and inflows) recorded during the shift.',
   })
   @ApiParam({
     name: 'shiftId',
@@ -309,7 +310,8 @@ export class CashMovementsController {
     schema: {
       example: {
         statusCode: 403,
-        message: 'You can only view movements for shifts belonging to your merchant',
+        message:
+          'You can only view movements for shifts belonging to your merchant',
         error: 'Forbidden',
       },
     },

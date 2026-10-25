@@ -78,6 +78,8 @@ export class CreateKitchenDisplayDeviceDto {
     required: false,
   })
   @IsOptional()
-  @IsEnum(KitchenDisplayDeviceStatus, { message: 'Status must be a valid KitchenDisplayDeviceStatus' })
+  @IsEnum(KitchenDisplayDeviceStatus, {
+    message: 'Status must be a valid KitchenDisplayDeviceStatus',
+  })
   status?: KitchenDisplayDeviceStatus;
 }

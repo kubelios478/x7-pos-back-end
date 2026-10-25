@@ -6,7 +6,6 @@ import {
   Max,
   IsString,
   IsEnum,
-  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { LoyaltyCouponStatus } from '../constants/loyalty-coupons-status.enum';

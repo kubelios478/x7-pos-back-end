@@ -1,3 +1,4 @@
+import { toInt } from 'src/common/transformers/query.transformers';
 import {
   IsOptional,
   IsEnum,
@@ -25,7 +26,7 @@ export class GetOnlineOrderItemQueryDto {
     description: 'Filter by online order ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   onlineOrderId?: number;
 
@@ -34,7 +35,7 @@ export class GetOnlineOrderItemQueryDto {
     description: 'Filter by product ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   productId?: number;
 
@@ -43,7 +44,7 @@ export class GetOnlineOrderItemQueryDto {
     description: 'Filter by variant ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   variantId?: number;
 
@@ -61,7 +62,7 @@ export class GetOnlineOrderItemQueryDto {
     minimum: 1,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   @Min(1)
   page?: number = 1;
@@ -73,7 +74,7 @@ export class GetOnlineOrderItemQueryDto {
     maximum: 100,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   @Min(1)
   @Max(100)

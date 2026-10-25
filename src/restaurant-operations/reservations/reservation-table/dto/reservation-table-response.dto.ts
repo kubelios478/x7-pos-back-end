@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ReservationTableResponseDto {
-  @ApiProperty({ example: 1, description: 'Assignment row id (needed to unassign)' })
+  @ApiProperty({
+    example: 1,
+    description: 'Assignment row id (needed to unassign)',
+  })
   id?: number;
 
   @ApiProperty({ example: 1 })
@@ -19,7 +22,11 @@ export class ReservationTableResponseDto {
   @ApiProperty({ example: 4, required: false })
   capacity?: number;
 
-  @ApiProperty({ example: 3, required: false, description: 'Floor zone of the table' })
+  @ApiProperty({
+    example: 3,
+    required: false,
+    description: 'Floor zone of the table',
+  })
   zone_id?: number | null;
 
   @ApiProperty({ example: 'Main Dining', required: false })

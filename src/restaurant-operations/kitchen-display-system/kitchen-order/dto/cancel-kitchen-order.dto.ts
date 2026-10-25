@@ -18,4 +18,3 @@ export class CancelKitchenOrderDto {
   @MaxLength(5000)
   notes?: string;
 }
-

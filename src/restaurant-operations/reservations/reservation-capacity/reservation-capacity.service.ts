@@ -91,7 +91,8 @@ export class ReservationCapacityService {
       seat_capacity: configured,
       effective_seat_capacity: configured ?? tableSeats,
       capacity_source: configured != null ? 'settings' : 'tables',
-      slot_interval_minutes: row?.slot_interval_minutes ?? DEFAULT_SLOT_INTERVAL_MINUTES,
+      slot_interval_minutes:
+        row?.slot_interval_minutes ?? DEFAULT_SLOT_INTERVAL_MINUTES,
       max_covers_per_slot: row?.max_covers_per_slot ?? null,
       shifts: row?.shifts?.length ? row.shifts : DEFAULT_SHIFTS,
       updated_at: row?.updated_at ?? null,
@@ -116,7 +117,12 @@ export class ReservationCapacityService {
       row.max_covers_per_slot = dto.max_covers_per_slot;
     }
     if (dto.shifts !== undefined) {
-      row.shifts = dto.shifts?.map((s) => ({ name: s.name.trim(), start: s.start, end: s.end })) ?? null;
+      row.shifts =
+        dto.shifts?.map((s) => ({
+          name: s.name.trim(),
+          start: s.start,
+          end: s.end,
+        })) ?? null;
     }
     row.updated_by = userId;
 
@@ -140,7 +146,9 @@ export class ReservationCapacityService {
       .map((s) => shiftWindow(day, s))
       .filter((w): w is { start: number; end: number } => w != null);
     const from = Math.min(...windows.map((w) => w.start), day.getTime());
-    const to = Math.max(...windows.map((w) => w.end), day.getTime()) + duration * MINUTE_MS;
+    const to =
+      Math.max(...windows.map((w) => w.end), day.getTime()) +
+      duration * MINUTE_MS;
 
     const bookings = await this.loadBookings(
       merchantId,
@@ -244,7 +252,11 @@ export class ReservationCapacityService {
       });
     }
 
-    const overrideBy = await this.verifyManagerOverride(merchantId, override, manager);
+    const overrideBy = await this.verifyManagerOverride(
+      merchantId,
+      override,
+      manager,
+    );
     return { evaluation, overrideBy };
   }
 
@@ -260,7 +272,9 @@ export class ReservationCapacityService {
   ): Promise<number> {
     const users = manager ? manager.getRepository(User) : this.userRepository;
     // Misma búsqueda que el login (correo exacto): si el login lo acepta, el override también.
-    const user = await users.findOne({ where: { email: override.email.trim() } });
+    const user = await users.findOne({
+      where: { email: override.email.trim() },
+    });
 
     const valid =
       !!user &&
@@ -287,10 +301,18 @@ export class ReservationCapacityService {
     };
   }
 
-  private async tableSeats(merchantId: number, manager?: EntityManager): Promise<number> {
-    const tables = manager ? manager.getRepository(Table) : this.tableRepository;
+  private async tableSeats(
+    merchantId: number,
+    manager?: EntityManager,
+  ): Promise<number> {
+    const tables = manager
+      ? manager.getRepository(Table)
+      : this.tableRepository;
     const rows = await tables.find({
-      where: { merchant_id: merchantId, status: Not(In(NON_SEATING_TABLE_STATUSES)) },
+      where: {
+        merchant_id: merchantId,
+        status: Not(In(NON_SEATING_TABLE_STATUSES)),
+      },
       select: ['id', 'capacity'],
     });
     return rows.reduce((sum, t) => sum + (Number(t.capacity) || 0), 0);
@@ -304,7 +326,9 @@ export class ReservationCapacityService {
     excludeReservationId?: number,
     manager?: EntityManager,
   ): Promise<CapacityBooking[]> {
-    const repo = manager ? manager.getRepository(Reservation) : this.reservationRepository;
+    const repo = manager
+      ? manager.getRepository(Reservation)
+      : this.reservationRepository;
     const query = repo
       .createQueryBuilder('reservation')
       .select([
@@ -315,14 +339,18 @@ export class ReservationCapacityService {
       ])
       .where('reservation.merchant_id = :merchantId', { merchantId })
       .andWhere('reservation.is_active = true')
-      .andWhere('reservation.status IN (:...statuses)', { statuses: SEAT_HOLDING_STATUSES })
+      .andWhere('reservation.status IN (:...statuses)', {
+        statuses: SEAT_HOLDING_STATUSES,
+      })
       .andWhere('reservation.reservation_date < :to', { to })
       .andWhere(
         "reservation.reservation_date + (reservation.duration_minutes * INTERVAL '1 minute') > :from",
         { from },
       );
     if (excludeReservationId) {
-      query.andWhere('reservation.id != :excludeId', { excludeId: excludeReservationId });
+      query.andWhere('reservation.id != :excludeId', {
+        excludeId: excludeReservationId,
+      });
     }
 
     const rows = await query.getMany();

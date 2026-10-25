@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JournalEntry } from './entities/journal-entry.entity';
@@ -24,6 +24,8 @@ import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 
 @Injectable()
 export class JournalEntryService implements OnModuleInit {
+  private readonly logger = new Logger(JournalEntryService.name);
+
   constructor(
     @InjectRepository(JournalEntry)
     private readonly journalEntryRepository: Repository<JournalEntry>,
@@ -56,10 +58,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 1250.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 89,
-        } as any);
-        const savedEntry1 = (await this.journalEntryRepository.save(
-          entry1 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry1 = await this.journalEntryRepository.save(entry1);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry1.id,
@@ -89,10 +89,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 345.5,
           reference_type: JournalEntryReferenceType.ORDER,
           reference_id: 1088,
-        } as any);
-        const savedEntry2 = (await this.journalEntryRepository.save(
-          entry2 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry2 = await this.journalEntryRepository.save(entry2);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry2.id,
@@ -122,10 +120,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 88.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 42,
-        } as any);
-        const savedEntry3 = (await this.journalEntryRepository.save(
-          entry3 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry3 = await this.journalEntryRepository.save(entry3);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry3.id,
@@ -155,10 +151,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 150.0,
           reference_type: JournalEntryReferenceType.ADJUSTMENT,
           reference_id: 15,
-        } as any);
-        const savedEntry4 = (await this.journalEntryRepository.save(
-          entry4 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry4 = await this.journalEntryRepository.save(entry4);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry4.id,
@@ -188,10 +182,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 450.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 95,
-        } as any);
-        const savedEntry5 = (await this.journalEntryRepository.save(
-          entry5 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry5 = await this.journalEntryRepository.save(entry5);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry5.id,
@@ -222,10 +214,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 620.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 99,
-        } as any);
-        const savedEntry6 = (await this.journalEntryRepository.save(
-          entry6 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry6 = await this.journalEntryRepository.save(entry6);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry6.id,
@@ -254,10 +244,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 980.0,
           reference_type: JournalEntryReferenceType.ADJUSTMENT,
           reference_id: 22,
-        } as any);
-        const savedEntry7 = (await this.journalEntryRepository.save(
-          entry7 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry7 = await this.journalEntryRepository.save(entry7);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry7.id,
@@ -286,10 +274,8 @@ export class JournalEntryService implements OnModuleInit {
           total_credit: 210.0,
           reference_type: JournalEntryReferenceType.INVENTORY,
           reference_id: 104,
-        } as any);
-        const savedEntry8 = (await this.journalEntryRepository.save(
-          entry8 as any,
-        )) as unknown as JournalEntry;
+        });
+        const savedEntry8 = await this.journalEntryRepository.save(entry8);
         await this.journalEntryLineRepository.save([
           {
             journal_entry_id: savedEntry8.id,
@@ -308,7 +294,7 @@ export class JournalEntryService implements OnModuleInit {
         ]);
       }
     } catch (err: any) {
-      console.log('JournalEntry DB seed check deferred:', err.message);
+      this.logger.warn(`DB seed check deferred: ${err.message}`);
     }
   }
 

@@ -13,9 +13,10 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import * as dotenv from 'dotenv';
-import { useContainer } from 'class-validator';
+import { useContainer, type ValidationError } from 'class-validator';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 import { RedisIoAdapter } from './realtime/adapters/redis-io.adapter';
+import { errorMessage, errorStack } from './common/utils/log-error.util';
 import * as fs from 'fs';
 
 dotenv.config();
@@ -24,13 +25,15 @@ const logger = new Logger('Bootstrap');
 
 // Safe handling of fatal exceptions to avoid spamming the Railway logger
 process.on('uncaughtException', (err: Error) => {
-  console.error('=== UNCAUGHT EXCEPTION FATAL ===', err.message);
+  logger.error(`Uncaught exception (fatal): ${err.message}`, err.stack);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
-  const err = reason as Error;
-  console.error('=== UNHANDLED REJECTION FATAL ===', err?.message || reason);
+  logger.error(
+    `Unhandled rejection: ${errorMessage(reason)}`,
+    errorStack(reason),
+  );
 });
 
 async function bootstrap() {
@@ -84,11 +87,11 @@ async function bootstrap() {
         enableImplicitConversion: true,
       },
       exceptionFactory: (errors) => {
-        const extractErrors = (errs: any[]): string[] => {
+        const extractErrors = (errs: ValidationError[]): string[] => {
           const res: string[] = [];
           for (const err of errs) {
             if (err.constraints) {
-              res.push(...(Object.values(err.constraints) as string[]));
+              res.push(...Object.values(err.constraints));
             }
             if (err.children && err.children.length > 0) {
               res.push(...extractErrors(err.children));

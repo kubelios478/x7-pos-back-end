@@ -1,7 +1,10 @@
+import { Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { LoyaltyTier } from './entities/loyalty-tier.entity';
 import { LoyaltyTierBenefit } from './constants/loyalty-tier-benefit.enum';
 import { LoyaltyCustomer } from '../loyalty-customer/entities/loyalty-customer.entity';
+
+const logger = new Logger('LoyaltyTier');
 
 interface TierSeed {
   name: string;
@@ -68,9 +71,10 @@ export async function recalculateProgramLevels(
     order: { min_points: 'DESC' },
   });
 
-  console.log(
-    `[Recalculate] Program ${loyaltyProgramId}: ${tiers.length} tier(s). Order:`,
-    tiers.map((t) => `${t.name}(${t.min_points}pts)`),
+  logger.debug(
+    `Recalculate program ${loyaltyProgramId}: ${tiers.length} tier(s), order ${tiers
+      .map((t) => `${t.name}(${t.min_points}pts)`)
+      .join(', ')}`,
   );
 
   let currentLevel = 0;
@@ -98,9 +102,8 @@ export async function evaluateTierUpgrade(
     (loyaltyCustomer.loyaltyProgram ? loyaltyCustomer.loyaltyProgram.id : null);
 
   if (!programId) {
-    console.error(
-      'Upgrade Error: No program ID found for customer',
-      loyaltyCustomer.id,
+    logger.error(
+      `Tier upgrade: no loyalty program found for customer ${loyaltyCustomer.id}`,
     );
     return null;
   }
@@ -114,7 +117,7 @@ export async function evaluateTierUpgrade(
     order: { min_points: 'DESC' },
   });
 
-  console.log(
+  logger.debug(
     `Evaluating upgrade for Customer ${loyaltyCustomer.id}. Points: ${loyaltyCustomer.lifetimePoints}. Current Tier ID: ${loyaltyCustomer.loyaltyTierId}. Found ${tiers.length} tiers in program ${programId}`,
   );
 
@@ -124,14 +127,13 @@ export async function evaluateTierUpgrade(
   );
 
   if (!eligibleTier) {
-    console.log(
-      'No eligible tier found for points',
-      loyaltyCustomer.lifetimePoints,
+    logger.debug(
+      `No eligible tier found for ${loyaltyCustomer.lifetimePoints} points`,
     );
     return null;
   }
 
-  console.log(
+  logger.debug(
     `Eligible tier found: ${eligibleTier.name} (ID: ${eligibleTier.id}, MinPoints: ${eligibleTier.min_points})`,
   );
 

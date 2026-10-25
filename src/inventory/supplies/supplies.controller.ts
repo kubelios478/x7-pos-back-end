@@ -48,7 +48,13 @@ import { SetSupplySuppliersDto } from './dto/set-supply-suppliers.dto';
 import { FilterRawMaterialDto } from './dto/filter-raw-material.dto';
 import { Supply } from './entities/supply.entity';
 
-@ApiExtraModels(ErrorResponse, Supply, CreateSupplyDto, UpdateSupplyDto, SetSupplySuppliersDto)
+@ApiExtraModels(
+  ErrorResponse,
+  Supply,
+  CreateSupplyDto,
+  UpdateSupplyDto,
+  SetSupplySuppliersDto,
+)
 @ApiTags('Inventory - Supplies - Raw Materials')
 @ApiBearerAuth()
 @Controller(['v1/inventory/raw-materials', 'v1/raw-materials', 'supplies'])
@@ -154,7 +160,12 @@ export class SuppliesController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'category_id', required: false, type: Number, example: 2 })
-  @ApiQuery({ name: 'status', required: false, type: String, example: 'ACTIVE' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    example: 'ACTIVE',
+  })
   @ApiQuery({ name: 'search', required: false, type: String, example: 'Flour' })
   @ApiOkResponse({
     description: 'Paginated list of raw materials retrieved successfully',
@@ -241,7 +252,12 @@ export class SuppliesController {
     description:
       'Retrieves raw material details by ID including category and supplier associations across legacy and v1 routes.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Raw material ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Raw material ID',
+    example: 1,
+  })
   @ApiOkResponse({
     description: 'Raw material details retrieved successfully',
     type: Supply,
@@ -337,9 +353,15 @@ export class SuppliesController {
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({
     summary: 'Update raw material metadata/units (PUT)',
-    description: 'Updates raw material metadata, purchase/consumption units, or cost per unit.',
+    description:
+      'Updates raw material metadata, purchase/consumption units, or cost per unit.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Raw material ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Raw material ID',
+    example: 1,
+  })
   @ApiBody({ type: UpdateSupplyDto })
   @ApiOkResponse({
     description: 'Raw material updated successfully',
@@ -370,9 +392,15 @@ export class SuppliesController {
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({
     summary: 'Update raw material metadata/units (PATCH)',
-    description: 'Updates partial raw material metadata, purchase/consumption units, or cost per unit.',
+    description:
+      'Updates partial raw material metadata, purchase/consumption units, or cost per unit.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Raw material ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Raw material ID',
+    example: 1,
+  })
   @ApiBody({ type: UpdateSupplyDto })
   @ApiOkResponse({
     description: 'Raw material updated successfully',
@@ -406,7 +434,12 @@ export class SuppliesController {
     description:
       'Soft-deletes a raw material by setting isActive to false. Fails if the material is currently referenced in active recipes or stock movements.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Raw material ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Raw material ID',
+    example: 1,
+  })
   @ApiOkResponse({
     description: 'Raw material soft-deleted successfully',
     schema: {
@@ -417,7 +450,8 @@ export class SuppliesController {
     },
   })
   @ApiBadRequestResponse({
-    description: 'Raw material is referenced in active recipes or stock movements',
+    description:
+      'Raw material is referenced in active recipes or stock movements',
     type: ErrorResponse,
     schema: {
       example: {
@@ -476,11 +510,25 @@ export class SuppliesController {
     summary: 'Replace raw material suppliers (company-scoped)',
     description: 'Replaces all supplier links associated with a raw material.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Raw material ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Raw material ID',
+    example: 1,
+  })
   @ApiBody({ type: SetSupplySuppliersDto })
-  @ApiOkResponse({ description: 'Suppliers updated successfully', type: Supply })
-  @ApiBadRequestResponse({ description: 'Invalid supplier IDs', type: ErrorResponse })
-  @ApiNotFoundResponse({ description: 'Raw material not found', type: ErrorResponse })
+  @ApiOkResponse({
+    description: 'Suppliers updated successfully',
+    type: Supply,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid supplier IDs',
+    type: ErrorResponse,
+  })
+  @ApiNotFoundResponse({
+    description: 'Raw material not found',
+    type: ErrorResponse,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized', type: ErrorResponse })
   @ApiForbiddenResponse({ description: 'Forbidden', type: ErrorResponse })
   async setSuppliers(
@@ -506,7 +554,12 @@ export class SuppliesController {
     description:
       'Checks whether a raw material is referenced across active recipes or recorded stock movements across legacy and v1 routes.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Raw material ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Raw material ID',
+    example: 1,
+  })
   @ApiOkResponse({
     description: 'Raw material usage details retrieved successfully',
     schema: {

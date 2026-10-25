@@ -54,7 +54,9 @@ export class OnlineStoresService {
       .replace(/^-+|-+$/g, '');
 
     if (!normalized || normalized.length === 0) {
-      throw new BadRequestException('Subdomain must contain valid alphanumeric characters');
+      throw new BadRequestException(
+        'Subdomain must contain valid alphanumeric characters',
+      );
     }
 
     if (normalized.length > 100) {

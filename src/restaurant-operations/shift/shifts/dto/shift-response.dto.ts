@@ -2,7 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ShiftRole } from '../constants/shift-role.enum';
 import { ShiftStatus } from '../constants/shift-status.enum';
 import { SuccessResponse } from '../../../../common/dtos/success-response.dto';
-import { Shift } from '../entities/shift.entity';
 
 export class BasicMerchantInfoDto {
   @ApiProperty({ example: 1, description: 'Merchant ID' })

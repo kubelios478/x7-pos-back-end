@@ -21,4 +21,3 @@ try {
 if (!globalThis.crypto) {
   globalThis.crypto = webcrypto as Crypto;
 }
-

@@ -141,7 +141,7 @@ export class KitchenStationService {
           .where('ks.merchant_id = :merchantId', {
             merchantId: authenticatedUserMerchantId,
           })
-          .getRawOne();
+          .getRawOne<{ max: string | null }>();
         const nextStationNumber =
           (maxNumberRow?.max ? parseInt(maxNumberRow.max, 10) : 0) + 1;
 

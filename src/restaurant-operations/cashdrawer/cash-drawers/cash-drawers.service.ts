@@ -4,9 +4,11 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
+import { errorMessage } from 'src/common/utils/log-error.util';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Like, IsNull } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { CashDrawer } from './entities/cash-drawer.entity';
 import { Shift } from '../../shift/shifts/entities/shift.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
@@ -16,7 +18,6 @@ import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';
 import {
   CashDrawerResponseDto,
   OneCashDrawerResponseDto,
-  AllCashDrawersResponseDto,
 } from './dto/cash-drawer-response.dto';
 import { PaginatedCashDrawersResponseDto } from './dto/paginated-cash-drawers-response.dto';
 import { CashDrawerStatus } from './constants/cash-drawer-status.enum';
@@ -26,6 +27,8 @@ import { CashDrawerHistoryService } from '../cash-drawer-history/cash-drawer-his
 
 @Injectable()
 export class CashDrawersService {
+  private readonly logger = new Logger(CashDrawersService.name);
+
   constructor(
     @InjectRepository(CashDrawer)
     private readonly cashDrawerRepository: Repository<CashDrawer>,
@@ -400,9 +403,8 @@ export class CashDrawersService {
       );
     } catch (err) {
       // Log warning if history snapshot creation encounters an issue, but complete the drawer update
-      console.warn(
-        `[CashDrawersService] Failed to persist history record for CD #${id}:`,
-        err,
+      this.logger.warn(
+        `Failed to persist history record for CD #${id}: ${errorMessage(err)}`,
       );
     }
 

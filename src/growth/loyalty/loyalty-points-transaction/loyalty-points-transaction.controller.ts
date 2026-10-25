@@ -400,7 +400,8 @@ export class LoyaltyPointsTransactionController {
   )
   @ApiOperation({
     summary: 'Update a Loyalty Points Transaction',
-    description: 'Updates points or description of a loyalty points transaction.',
+    description:
+      'Updates points or description of a loyalty points transaction.',
   })
   @ApiParam({
     name: 'id',
@@ -510,7 +511,8 @@ export class LoyaltyPointsTransactionController {
   @ApiParam({
     name: 'id',
     type: Number,
-    description: 'Unique identifier of the loyalty points transaction to soft-delete',
+    description:
+      'Unique identifier of the loyalty points transaction to soft-delete',
     example: 1,
   })
   @ApiOkResponse({

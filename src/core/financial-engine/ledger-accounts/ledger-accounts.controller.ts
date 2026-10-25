@@ -55,9 +55,7 @@ import {
 @RequireFeature(SUBSCRIPTION_FEATURE_IDS.LEDGER_ACCOUNTS)
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class LedgerAccountsController {
-  constructor(
-    private readonly ledgerAccountsService: LedgerAccountsService,
-  ) {}
+  constructor(private readonly ledgerAccountsService: LedgerAccountsService) {}
 
   @Post()
   @Roles(UserRole.MERCHANT_ADMIN)
@@ -321,8 +319,7 @@ export class LedgerAccountsController {
     },
   })
   @ApiForbiddenResponse({
-    description:
-      'Forbidden - Insufficient permissions or scope restricted',
+    description: 'Forbidden - Insufficient permissions or scope restricted',
     type: ErrorResponse,
     schema: {
       example: {
@@ -565,4 +562,3 @@ export class LedgerAccountsController {
     return this.ledgerAccountsService.remove(id, merchantId);
   }
 }
-

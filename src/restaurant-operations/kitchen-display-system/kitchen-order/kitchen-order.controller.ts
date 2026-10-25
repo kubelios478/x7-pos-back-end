@@ -71,34 +71,6 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 export class KitchenOrderController {
   constructor(private readonly kitchenOrderService: KitchenOrderService) {}
 
-  @Post('reset-test-data')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
-  @Scopes(
-    Scope.ADMIN_PORTAL,
-    Scope.MERCHANT_WEB,
-    Scope.MERCHANT_ANDROID,
-    Scope.MERCHANT_IOS,
-    Scope.MERCHANT_CLOVER,
-  )
-  @ApiOperation({
-    summary: 'Reset and re-seed KDS test data',
-    description:
-      'Clears and repopulates test kitchen orders and items for testing',
-  })
-  async resetTestData(
-    @Request() req: AuthenticatedRequest,
-    @Body()
-    body?: {
-      mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy';
-    },
-  ) {
-    const merchantId = req.user?.merchant?.id || 2;
-    return this.kitchenOrderService.resetTestData(
-      merchantId,
-      body?.mode || 'seed',
-    );
-  }
-
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
   @Scopes(

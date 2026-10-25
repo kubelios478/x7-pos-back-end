@@ -6,7 +6,6 @@ import {
   IsString,
   IsOptional,
   MaxLength,
-  Min,
   IsEnum,
 } from 'class-validator';
 import { ReceiptType } from '../constants/receipt-type.enum';

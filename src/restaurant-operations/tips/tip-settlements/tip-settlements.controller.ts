@@ -662,4 +662,3 @@ export class TipSettlementsController {
     );
   }
 }
-

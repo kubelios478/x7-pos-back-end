@@ -241,7 +241,11 @@ export class ReservationGuestService {
     reservationId: number,
   ): Promise<void> {
     const current = await manager.findOne(ReservationGuest, {
-      where: { reservation_id: reservationId, is_primary: true, is_active: true },
+      where: {
+        reservation_id: reservationId,
+        is_primary: true,
+        is_active: true,
+      },
     });
     if (current) return;
 
