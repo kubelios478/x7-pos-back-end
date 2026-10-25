@@ -127,10 +127,11 @@ export class RawMaterialStockController {
     if (!merchantId) throw new BadRequestException('User must have a merchant');
 
     return await this.itemsService.findAll(
+      // findAll reads this extra flag to list only raw-material stock rows
       {
         ...query,
         onlySupplies: true,
-      } as any,
+      } as GetItemsQueryDto,
       merchantId,
     );
   }

@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   BadRequestException,
@@ -326,7 +327,7 @@ export class ReceiptsService {
       );
     }
 
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<Receipt> = {};
     if (dto.orderId !== undefined) {
       if (dto.orderId <= 0) throw new BadRequestException('Invalid order ID');
       const newOrder = await this.orderRepo.findOne({

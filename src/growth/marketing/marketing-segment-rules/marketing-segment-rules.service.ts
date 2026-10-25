@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -369,7 +370,7 @@ export class MarketingSegmentRulesService {
     }
 
     // Update marketing segment rule
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<MarketingSegmentRule> = {};
     if (updateMarketingSegmentRuleDto.segmentId !== undefined)
       updateData.segment_id = updateMarketingSegmentRuleDto.segmentId;
     if (updateMarketingSegmentRuleDto.field !== undefined)

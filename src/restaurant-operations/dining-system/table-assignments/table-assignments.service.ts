@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -181,7 +182,7 @@ export class TableAssignmentsService {
 
     const savedAssignment =
       await this.tableAssignmentRepo.save(tableAssignment);
-    const assignment = Array.isArray(savedAssignment)
+    const assignment: TableAssignment = Array.isArray(savedAssignment)
       ? savedAssignment[0]
       : savedAssignment;
 
@@ -443,7 +444,7 @@ export class TableAssignmentsService {
     }
 
     // 5. Update the assignment
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<TableAssignment> = {};
 
     if (dto.releasedAt !== undefined) {
       updateData.releasedAt = dto.releasedAt ? new Date(dto.releasedAt) : null;

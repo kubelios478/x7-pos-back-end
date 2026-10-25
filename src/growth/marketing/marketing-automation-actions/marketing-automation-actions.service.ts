@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -365,7 +366,7 @@ export class MarketingAutomationActionsService {
     }
 
     // Update marketing automation action
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<MarketingAutomationAction> = {};
     if (updateMarketingAutomationActionDto.automationId !== undefined)
       updateData.automation_id =
         updateMarketingAutomationActionDto.automationId;

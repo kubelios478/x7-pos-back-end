@@ -13,7 +13,7 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import * as dotenv from 'dotenv';
-import { useContainer } from 'class-validator';
+import { useContainer, type ValidationError } from 'class-validator';
 import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
 import { RedisIoAdapter } from './realtime/adapters/redis-io.adapter';
 import { errorMessage, errorStack } from './common/utils/log-error.util';
@@ -87,11 +87,11 @@ async function bootstrap() {
         enableImplicitConversion: true,
       },
       exceptionFactory: (errors) => {
-        const extractErrors = (errs: any[]): string[] => {
+        const extractErrors = (errs: ValidationError[]): string[] => {
           const res: string[] = [];
           for (const err of errs) {
             if (err.constraints) {
-              res.push(...(Object.values(err.constraints) as string[]));
+              res.push(...Object.values(err.constraints));
             }
             if (err.children && err.children.length > 0) {
               res.push(...extractErrors(err.children));

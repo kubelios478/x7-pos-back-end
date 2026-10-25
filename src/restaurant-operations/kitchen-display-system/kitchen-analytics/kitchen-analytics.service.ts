@@ -188,7 +188,18 @@ export class KitchenAnalyticsService {
       qb.andWhere('ko.created_at <= :endDate', { endDate });
     }
 
-    const orders = await qb.getRawMany();
+    const orders = await qb.getRawMany<{
+      id: number;
+      businessStatus: string;
+      status: string;
+      stationId: number | null;
+      stationName: string | null;
+      createdAt: Date | string;
+      started_at: Date | string | null;
+      completed_at: Date | string | null;
+      cancelled_at: Date | string | null;
+      prepSeconds: string | number | null;
+    }>();
 
     const totalOrders = orders.length;
     const completedOrdersList = orders.filter(

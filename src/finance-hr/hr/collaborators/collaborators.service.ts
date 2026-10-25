@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -436,7 +437,7 @@ export class CollaboratorsService {
     }
 
     // 9. Preparar datos para actualizar
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<Collaborator> = {};
     if (dto.user_id !== undefined) updateData.user_id = dto.user_id;
     if (dto.name !== undefined) updateData.name = dto.name.trim();
     if (dto.role !== undefined) updateData.role = dto.role;
