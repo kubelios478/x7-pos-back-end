@@ -139,6 +139,7 @@ export class OnboardingService {
       merchantCity: dto.city.trim(),
       merchantState: dto.state.trim(),
       merchantCountry: dto.country.trim(),
+      merchantTimezone: dto.timezone ?? session.merchantTimezone ?? null,
       step: Math.max(session.step, 4),
       expiresAt: this.createExpiryDate(),
     });
@@ -217,6 +218,10 @@ export class OnboardingService {
         city: session.merchantCity!,
         state: session.merchantState!,
         country: session.merchantCountry!,
+        // without one, the column default (UTC) applies
+        ...(session.merchantTimezone
+          ? { timezone: session.merchantTimezone }
+          : {}),
         companyId: savedCompany.id,
         status: MerchantStatus.ACTIVE,
       });
@@ -313,6 +318,8 @@ export class OnboardingService {
         merchantCity: dto.merchantProfile.city ?? session.merchantCity,
         merchantState: dto.merchantProfile.state ?? session.merchantState,
         merchantCountry: dto.merchantProfile.country ?? session.merchantCountry,
+        merchantTimezone:
+          dto.merchantProfile.timezone ?? session.merchantTimezone,
       });
     }
 
@@ -480,6 +487,7 @@ export class OnboardingService {
       city: session.merchantCity ?? undefined,
       state: session.merchantState ?? undefined,
       country: session.merchantCountry ?? undefined,
+      timezone: session.merchantTimezone ?? undefined,
     };
   }
 

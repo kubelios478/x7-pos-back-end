@@ -94,6 +94,15 @@ export class Merchant {
   country: string;
 
   @ApiProperty({
+    example: 'America/New_York',
+    description:
+      "IANA time zone of the Merchant: its business day (e.g. the daily ticket number) starts at this zone's midnight",
+    default: 'UTC',
+  })
+  @Column({ type: 'varchar', length: 50, default: 'UTC' })
+  timezone: string;
+
+  @ApiProperty({
     example: MerchantStatus.ACTIVE,
     description: 'Operational status of the merchant branch',
     enum: MerchantStatus,

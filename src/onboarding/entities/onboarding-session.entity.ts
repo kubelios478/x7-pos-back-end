@@ -62,6 +62,9 @@ export class OnboardingSession {
   @Column({ type: 'varchar', length: 80, nullable: true })
   merchantCountry?: string | null;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  merchantTimezone?: string | null;
+
   @Column({ type: 'varchar', length: 80, nullable: true })
   firstName?: string | null;
 
