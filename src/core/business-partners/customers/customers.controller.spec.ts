@@ -173,20 +173,59 @@ describe('CustomersController', () => {
       },
     ];
 
+    const res = () => ({ setHeader: jest.fn() });
+
     it('should return all customers', async () => {
-      jest.spyOn(service, 'findAll').mockResolvedValue(mockCustomers as any);
+      jest.spyOn(service, 'findAll').mockResolvedValue({
+        rows: mockCustomers as any,
+        total: 2,
+        paginated: false,
+      });
+      const response = res();
 
-      const result = await controller.findAll(mockRequest as any);
+      const result = await controller.findAll(
+        mockRequest as any,
+        {},
+        response as any,
+      );
 
-      expect(service.findAll).toHaveBeenCalledWith(mockRequestUser.merchant.id);
+      expect(service.findAll).toHaveBeenCalledWith(
+        mockRequestUser.merchant.id,
+        {},
+      );
       expect(result).toEqual(mockCustomers);
       expect(result).toHaveLength(2);
+      expect(response.setHeader).not.toHaveBeenCalled();
+    });
+
+    it('sends the total in X-Total-Count when paginating', async () => {
+      jest.spyOn(service, 'findAll').mockResolvedValue({
+        rows: mockCustomers as any,
+        total: 230,
+        paginated: true,
+      });
+      const response = res();
+
+      const result = await controller.findAll(
+        mockRequest as any,
+        { page: 2, limit: 2 },
+        response as any,
+      );
+
+      expect(result).toEqual(mockCustomers);
+      expect(response.setHeader).toHaveBeenCalledWith('X-Total-Count', '230');
     });
 
     it('should return empty array when no customers exist', async () => {
-      jest.spyOn(service, 'findAll').mockResolvedValue([]);
+      jest
+        .spyOn(service, 'findAll')
+        .mockResolvedValue({ rows: [], total: 0, paginated: false });
 
-      const result = await controller.findAll(mockRequest as any);
+      const result = await controller.findAll(
+        mockRequest as any,
+        {},
+        res() as any,
+      );
 
       expect(service.findAll).toHaveBeenCalled();
       expect(result).toEqual([]);
@@ -196,9 +235,9 @@ describe('CustomersController', () => {
       const error = new Error('Database connection failed');
       jest.spyOn(service, 'findAll').mockRejectedValue(error);
 
-      await expect(controller.findAll(mockRequest as any)).rejects.toThrow(
-        'Database connection failed',
-      );
+      await expect(
+        controller.findAll(mockRequest as any, {}, res() as any),
+      ).rejects.toThrow('Database connection failed');
       expect(service.findAll).toHaveBeenCalled();
     });
   });

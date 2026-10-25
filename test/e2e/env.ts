@@ -16,6 +16,8 @@ Object.assign(process.env, {
   // Sin SMTP el servicio de correo no envía nada.
   SMTP_HOST: '',
   WS_REDIS_ENABLED: 'false',
+  // Origen fijo, para probar las cabeceras CORS sin depender de .env.
+  CORS_ORIGINS: 'http://frontend.e2e.test',
 });
 
 assertLocalDatabase({

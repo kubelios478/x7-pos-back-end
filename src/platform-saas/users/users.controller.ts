@@ -10,6 +10,7 @@ import {
   Put,
   Patch,
   Req,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -41,6 +42,7 @@ import {
   OneUserResponseDto,
   AllUsersResponseDto,
 } from './dtos/user-response.dto';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
 
 @Controller('users')
 @ApiTags('Platform SaaS - Users')
@@ -83,8 +85,8 @@ export class UsersController {
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'No users found' })
-  findAll(): Promise<AllUsersResponseDto> {
-    return this.usersService.findAll();
+  findAll(@Query() query: PaginationQueryDto): Promise<AllUsersResponseDto> {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')

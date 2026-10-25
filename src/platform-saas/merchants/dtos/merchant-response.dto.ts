@@ -3,6 +3,7 @@ import { IsNumber, IsOptional, IsString, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SuccessResponse } from '../../../common/dtos/success-response.dto';
 import { Merchant } from '../entities/merchant.entity';
+import { OptionalPaginatedResponse } from 'src/common/dtos/optional-paginated-response.dto';
 
 export class MerchantResponseDto {
   @IsNumber()
@@ -57,7 +58,7 @@ export class OneMerchantResponseDto extends SuccessResponse {
   data: Merchant;
 }
 
-export class AllMerchantsResponseDto extends SuccessResponse {
+export class AllMerchantsResponseDto extends OptionalPaginatedResponse {
   @ApiProperty()
   data: Merchant[];
 }

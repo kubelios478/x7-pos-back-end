@@ -45,6 +45,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { MerchantAdminSummaryResponseDto } from './dtos/merchant-admin-summary.dto';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
 
 @ApiTags('Platform SaaS - Merchants')
 @ApiExtraModels(ErrorResponse)
@@ -109,8 +110,10 @@ export class MerchantsController {
       },
     },
   })
-  findAll(): Promise<AllMerchantsResponseDto> {
-    return this.merchantsService.findAll();
+  findAll(
+    @Query() query: PaginationQueryDto,
+  ): Promise<AllMerchantsResponseDto> {
+    return this.merchantsService.findAll(query);
   }
 
   @Get('company/branches')

@@ -24,6 +24,11 @@ import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collabora
 import { MerchantAdminSummaryResponseDto } from './dtos/merchant-admin-summary.dto';
 import { CollaboratorStatus } from 'src/finance-hr/hr/collaborators/constants/collaborator-status.enum';
 import { normalizeTaxId } from 'src/common/utils/tax-id.util';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import {
+  paginationMeta,
+  requestedPage,
+} from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class MerchantsService {
@@ -141,8 +146,14 @@ export class MerchantsService {
     }
   }
 
-  async findAll(): Promise<AllMerchantsResponseDto> {
-    const merchants = await this.merchantRepo.find({
+  /** Sin page ni limit, todos los comercios, como antes. */
+  async findAll(
+    query: PaginationQueryDto = {},
+  ): Promise<AllMerchantsResponseDto> {
+    const pagination = requestedPage(query);
+    const [merchants, total] = await this.merchantRepo.findAndCount({
+      order: { id: 'ASC' },
+      ...(pagination ? { skip: pagination.skip, take: pagination.limit } : {}),
       relations: ['company', 'users'],
       select: {
         users: {
@@ -159,6 +170,9 @@ export class MerchantsService {
       statusCode: 200,
       message: 'Merchants retrieved successfully',
       data: merchants,
+      ...(pagination
+        ? paginationMeta(pagination.page, pagination.limit, total)
+        : {}),
     };
   }
 

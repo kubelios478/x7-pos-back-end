@@ -14,6 +14,8 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { CreateCustomerDto } from './dtos/create-customer.dto';
 import { UpdateCustomerDto } from './dtos/update-customer.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import { requestedPage } from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class CustomersService {
@@ -57,12 +59,16 @@ export class CustomersService {
     return this.customerRepo.save(customer);
   }
 
-  async findAll(merchantId: number) {
-    const customers = await this.customerRepo.find({
+  /** Sin page ni limit, todos los clientes del comercio, como antes. */
+  async findAll(merchantId: number, query: PaginationQueryDto = {}) {
+    const pagination = requestedPage(query);
+    const [customers, total] = await this.customerRepo.findAndCount({
       where: { merchantId },
       relations: ['merchant', 'company'],
+      order: { id: 'ASC' },
+      ...(pagination ? { skip: pagination.skip, take: pagination.limit } : {}),
     });
-    return customers.map((customer) => ({
+    const rows = customers.map((customer) => ({
       id: customer.id,
       name: customer.name,
       email: customer.email,
@@ -80,6 +86,7 @@ export class CustomersService {
         ? { id: customer.company.id, name: customer.company.name }
         : null,
     }));
+    return { rows, total, paginated: pagination !== undefined };
   }
 
   async findOne(id: number, user: AuthenticatedUser) {
