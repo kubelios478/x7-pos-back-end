@@ -13,7 +13,6 @@ import {
   UseGuards,
   Request,
   Query,
-  ForbiddenException,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
@@ -71,39 +70,6 @@ type AuthenticatedRequest = ExpressRequest & { user: AuthenticatedUser };
 @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
 export class KitchenOrderController {
   constructor(private readonly kitchenOrderService: KitchenOrderService) {}
-
-  @Post('reset-test-data')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN, UserRole.MERCHANT_USER)
-  @Scopes(
-    Scope.ADMIN_PORTAL,
-    Scope.MERCHANT_WEB,
-    Scope.MERCHANT_ANDROID,
-    Scope.MERCHANT_IOS,
-    Scope.MERCHANT_CLOVER,
-  )
-  @ApiOperation({
-    summary: 'Reset and re-seed KDS test data',
-    description:
-      'Clears and repopulates test kitchen orders and items for testing',
-  })
-  async resetTestData(
-    @Request() req: AuthenticatedRequest,
-    @Body()
-    body?: {
-      mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy';
-    },
-  ) {
-    const merchantId = req.user?.merchant?.id;
-    if (!merchantId) {
-      throw new ForbiddenException(
-        'You must be associated with a merchant to reset kitchen test data',
-      );
-    }
-    return this.kitchenOrderService.resetTestData(
-      merchantId,
-      body?.mode || 'seed',
-    );
-  }
 
   @Post()
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)

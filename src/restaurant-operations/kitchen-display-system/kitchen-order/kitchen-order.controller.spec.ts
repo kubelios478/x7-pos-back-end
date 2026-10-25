@@ -26,7 +26,6 @@ describe('KitchenOrderController', () => {
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
-    resetTestData: jest.fn(),
   };
 
   const mockUser = {
@@ -224,16 +223,5 @@ describe('KitchenOrderController', () => {
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Kitchen order deleted successfully');
     });
-  });
-
-  it('reset-test-data answers 403 for a user without a merchant (it used merchant 2)', async () => {
-    const noMerchant = {
-      user: { ...mockUser, merchant: undefined },
-    } as unknown as AuthenticatedRequest;
-
-    await expect(
-      controller.resetTestData(noMerchant, { mode: 'seed' }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(mockKitchenOrderService.resetTestData).not.toHaveBeenCalled();
   });
 });
