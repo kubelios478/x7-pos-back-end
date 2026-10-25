@@ -8,7 +8,9 @@ import { ReservationCapacityService } from './reservation-capacity.service';
 import { ReservationCapacityController } from './reservation-capacity.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ReservationSettings, Reservation, Table, User])],
+  imports: [
+    TypeOrmModule.forFeature([ReservationSettings, Reservation, Table, User]),
+  ],
   controllers: [ReservationCapacityController],
   providers: [ReservationCapacityService],
   exports: [ReservationCapacityService],

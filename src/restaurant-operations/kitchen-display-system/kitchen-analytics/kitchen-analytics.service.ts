@@ -31,9 +31,9 @@ export class KitchenAnalyticsService {
           .addSelect(
             'CASE ' +
               'WHEN ko.completed_at IS NOT NULL AND ko.started_at IS NOT NULL AND ko.started_at < ko.completed_at ' +
-                'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at)) ' +
+              'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at)) ' +
               'WHEN ko.completed_at IS NOT NULL AND ko.created_at IS NOT NULL ' +
-                'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.created_at)) ' +
+              'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.created_at)) ' +
               'ELSE NULL END',
             'prep_time_seconds',
           )
@@ -167,9 +167,9 @@ export class KitchenAnalyticsService {
       .addSelect(
         'CASE ' +
           'WHEN ko.completed_at IS NOT NULL AND ko.started_at IS NOT NULL AND ko.started_at < ko.completed_at ' +
-            'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at)) ' +
+          'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.started_at)) ' +
           'WHEN ko.completed_at IS NOT NULL AND ko.created_at IS NOT NULL ' +
-            'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.created_at)) ' +
+          'THEN EXTRACT(EPOCH FROM (ko.completed_at - ko.created_at)) ' +
           'ELSE NULL END',
         'prepSeconds',
       )
@@ -196,15 +196,23 @@ export class KitchenAnalyticsService {
       (o) => o.businessStatus === 'completed' || o.completed_at !== null,
     );
     const completedCount = completedOrdersList.length;
-    const startedCount = orders.filter((o) => o.businessStatus === 'started').length;
-    const pendingCount = orders.filter((o) => o.businessStatus === 'pending').length;
+    const startedCount = orders.filter(
+      (o) => o.businessStatus === 'started',
+    ).length;
+    const pendingCount = orders.filter(
+      (o) => o.businessStatus === 'pending',
+    ).length;
     const cancelledCount = orders.filter(
-      (o) => o.status === 'cancelled' || o.businessStatus === 'cancelled' || o.cancelled_at !== null,
+      (o) =>
+        o.status === 'cancelled' ||
+        o.businessStatus === 'cancelled' ||
+        o.cancelled_at !== null,
     );
     const cancelledCountNumber = cancelledCount.length;
 
     // Cancellation rate
-    const cancellationRate = totalOrders > 0 ? (cancelledCountNumber / totalOrders) * 100 : 0;
+    const cancellationRate =
+      totalOrders > 0 ? (cancelledCountNumber / totalOrders) * 100 : 0;
     const isHighCancellation = cancellationRate > 5.0;
 
     // Speed of service calculations (prepSeconds)
@@ -213,9 +221,14 @@ export class KitchenAnalyticsService {
       .filter((s): s is number => s !== null && !isNaN(s) && s >= 0);
 
     const sumPrepSeconds = validPrepTimes.reduce((acc, curr) => acc + curr, 0);
-    const avgPrepTimeSeconds = validPrepTimes.length > 0 ? Math.round(sumPrepSeconds / validPrepTimes.length) : 0;
-    const minPrepTimeSeconds = validPrepTimes.length > 0 ? Math.round(Math.min(...validPrepTimes)) : 0;
-    const maxPrepTimeSeconds = validPrepTimes.length > 0 ? Math.round(Math.max(...validPrepTimes)) : 0;
+    const avgPrepTimeSeconds =
+      validPrepTimes.length > 0
+        ? Math.round(sumPrepSeconds / validPrepTimes.length)
+        : 0;
+    const minPrepTimeSeconds =
+      validPrepTimes.length > 0 ? Math.round(Math.min(...validPrepTimes)) : 0;
+    const maxPrepTimeSeconds =
+      validPrepTimes.length > 0 ? Math.round(Math.max(...validPrepTimes)) : 0;
 
     // Formatter
     const formatSeconds = (sec: number) => {
@@ -227,17 +240,22 @@ export class KitchenAnalyticsService {
     const avgPrepTimeFormatted = formatSeconds(avgPrepTimeSeconds);
 
     // SLA Compliance: orders with prepSeconds <= targetSlaMinutes * 60
-    const compliantCount = validPrepTimes.filter((s) => s <= slaLimitSeconds).length;
-    const slaComplianceRate = validPrepTimes.length > 0
-      ? Number(((compliantCount / validPrepTimes.length) * 100).toFixed(1))
-      : 100.0;
+    const compliantCount = validPrepTimes.filter(
+      (s) => s <= slaLimitSeconds,
+    ).length;
+    const slaComplianceRate =
+      validPrepTimes.length > 0
+        ? Number(((compliantCount / validPrepTimes.length) * 100).toFixed(1))
+        : 100.0;
 
     // SLA Distribution (3 categories)
     // 1. Under target: < 8 mins (480s)
     // 2. Acceptable: 8-12 mins (480s - 720s)
     // 3. Over target / Delayed: > 12 mins (> 720s)
     const underTarget = validPrepTimes.filter((s) => s < 480).length;
-    const acceptable = validPrepTimes.filter((s) => s >= 480 && s <= 720).length;
+    const acceptable = validPrepTimes.filter(
+      (s) => s >= 480 && s <= 720,
+    ).length;
     const overTarget = validPrepTimes.filter((s) => s > 720).length;
     const totalValid = validPrepTimes.length || 1;
 
@@ -251,13 +269,18 @@ export class KitchenAnalyticsService {
     };
 
     // Hourly Heatmap (24 hours: 0..23)
-    const hourStatsMap: Record<number, { count: number; prepSum: number; validPrepCount: number }> = {};
+    const hourStatsMap: Record<
+      number,
+      { count: number; prepSum: number; validPrepCount: number }
+    > = {};
     for (let h = 0; h < 24; h++) {
       hourStatsMap[h] = { count: 0, prepSum: 0, validPrepCount: 0 };
     }
 
     orders.forEach((o) => {
-      const dateToUse = o.completed_at ? new Date(o.completed_at) : new Date(o.createdAt);
+      const dateToUse = o.completed_at
+        ? new Date(o.completed_at)
+        : new Date(o.createdAt);
       if (!isNaN(dateToUse.getTime())) {
         const hour = dateToUse.getHours();
         hourStatsMap[hour].count += 1;
@@ -272,7 +295,10 @@ export class KitchenAnalyticsService {
     });
 
     // Find maximum count for peak rush calculation
-    const maxHourCount = Math.max(...Object.values(hourStatsMap).map((m) => m.count), 0);
+    const maxHourCount = Math.max(
+      ...Object.values(hourStatsMap).map((m) => m.count),
+      0,
+    );
 
     const formatHourLabel = (h: number) => {
       if (h === 0) return '12 AM';
@@ -283,9 +309,10 @@ export class KitchenAnalyticsService {
 
     const hourlyHeatmap = Object.entries(hourStatsMap).map(([hStr, stats]) => {
       const h = Number(hStr);
-      const avgMinutes = stats.validPrepCount > 0
-        ? Number((stats.prepSum / stats.validPrepCount / 60).toFixed(1))
-        : 0;
+      const avgMinutes =
+        stats.validPrepCount > 0
+          ? Number((stats.prepSum / stats.validPrepCount / 60).toFixed(1))
+          : 0;
       const isPeakRush = maxHourCount > 0 && stats.count >= maxHourCount * 0.75;
       return {
         hour: h,
@@ -297,17 +324,22 @@ export class KitchenAnalyticsService {
     });
 
     // Station SOS Breakdown
-    const stationMap: Record<string, {
-      stationId: number;
-      stationName: string;
-      totalOrders: number;
-      completedOrders: number;
-      prepSecondsList: number[];
-    }> = {};
+    const stationMap: Record<
+      string,
+      {
+        stationId: number;
+        stationName: string;
+        totalOrders: number;
+        completedOrders: number;
+        prepSecondsList: number[];
+      }
+    > = {};
 
     orders.forEach((o) => {
       const stId = o.stationId ? Number(o.stationId) : 0;
-      const stName = o.stationName || (stId === 0 ? 'Unassigned / Global' : `Station #${stId}`);
+      const stName =
+        o.stationName ||
+        (stId === 0 ? 'Unassigned / Global' : `Station #${stId}`);
       const key = `${stId}_${stName}`;
 
       if (!stationMap[key]) {
@@ -334,13 +366,15 @@ export class KitchenAnalyticsService {
 
     const stationBreakdown = Object.values(stationMap).map((st) => {
       const prepList = st.prepSecondsList;
-      const avgSec = prepList.length > 0
-        ? Math.round(prepList.reduce((a, b) => a + b, 0) / prepList.length)
-        : 0;
+      const avgSec =
+        prepList.length > 0
+          ? Math.round(prepList.reduce((a, b) => a + b, 0) / prepList.length)
+          : 0;
       const compliantSt = prepList.filter((s) => s <= slaLimitSeconds).length;
-      const slaRate = prepList.length > 0
-        ? Number(((compliantSt / prepList.length) * 100).toFixed(1))
-        : 100.0;
+      const slaRate =
+        prepList.length > 0
+          ? Number(((compliantSt / prepList.length) * 100).toFixed(1))
+          : 100.0;
 
       return {
         stationId: st.stationId,
@@ -396,8 +430,14 @@ export class KitchenAnalyticsService {
       ipsParams.push(stationId);
     }
     itemsPerStationSql += ` GROUP BY ko.station_id`;
-    const stationItemStats = await this.dataSource.query(itemsPerStationSql, ipsParams);
-    const stationItemMap = new Map<number, { totalItems: number; avgPrep: number }>();
+    const stationItemStats = await this.dataSource.query(
+      itemsPerStationSql,
+      ipsParams,
+    );
+    const stationItemMap = new Map<
+      number,
+      { totalItems: number; avgPrep: number }
+    >();
     stationItemStats.forEach((r: any) => {
       stationItemMap.set(Number(r.stationId), {
         totalItems: Number(r.totalItemsPrepared) || 0,
@@ -426,34 +466,38 @@ export class KitchenAnalyticsService {
       queueMap.set(Number(q.stationId), Number(q.activeQueue) || 0);
     });
 
-    const stationEfficiencyMatrix: StationEfficiencyItem[] = stationEntities.map((se: any) => {
-      const sId = Number(se.id);
-      const itemStats = stationItemMap.get(sId) || { totalItems: 0, avgPrep: 0 };
-      const peakQueue = queueMap.get(sId) || 0;
-      const avgSec = itemStats.avgPrep;
+    const stationEfficiencyMatrix: StationEfficiencyItem[] =
+      stationEntities.map((se: any) => {
+        const sId = Number(se.id);
+        const itemStats = stationItemMap.get(sId) || {
+          totalItems: 0,
+          avgPrep: 0,
+        };
+        const peakQueue = queueMap.get(sId) || 0;
+        const avgSec = itemStats.avgPrep;
 
-      // Rating visual de eficiencia:
-      // Green = Optimal (< 10 mins)
-      // Amber = High Queue / Warning (10-15 mins o cola alta)
-      // Red = Critical Delay (> 15 mins o saturación crítica)
-      let rating: StationEfficiencyRating = 'optimal';
-      if (avgSec > 900 || peakQueue > 20) {
-        rating = 'critical';
-      } else if (avgSec > 600 || peakQueue > 8) {
-        rating = 'warning';
-      }
+        // Rating visual de eficiencia:
+        // Green = Optimal (< 10 mins)
+        // Amber = High Queue / Warning (10-15 mins o cola alta)
+        // Red = Critical Delay (> 15 mins o saturación crítica)
+        let rating: StationEfficiencyRating = 'optimal';
+        if (avgSec > 900 || peakQueue > 20) {
+          rating = 'critical';
+        } else if (avgSec > 600 || peakQueue > 8) {
+          rating = 'warning';
+        }
 
-      return {
-        stationId: sId,
-        stationName: se.name,
-        stationType: se.stationType || 'PREP',
-        totalItemsPrepared: itemStats.totalItems,
-        avgPrepTimeSeconds: avgSec,
-        avgPrepTimeFormatted: formatSeconds(avgSec),
-        peakQueueCapacity: peakQueue,
-        efficiencyRating: rating,
-      };
-    });
+        return {
+          stationId: sId,
+          stationName: se.name,
+          stationType: se.stationType || 'PREP',
+          totalItemsPrepared: itemStats.totalItems,
+          avgPrepTimeSeconds: avgSec,
+          avgPrepTimeFormatted: formatSeconds(avgSec),
+          peakQueueCapacity: peakQueue,
+          efficiencyRating: rating,
+        };
+      });
 
     // Slowest Prep Items & Bottleneck Ranking (Historia X7P-4205)
     let bottleneckSql = `
@@ -492,7 +536,10 @@ export class KitchenAnalyticsService {
       ORDER BY "avgPrepSeconds" DESC
       LIMIT 15
     `;
-    const bottleneckRows = await this.dataSource.query(bottleneckSql, bSqlParams);
+    const bottleneckRows = await this.dataSource.query(
+      bottleneckSql,
+      bSqlParams,
+    );
 
     const standardRecipeSeconds = 600; // SLA objetivo estándar: 10 minutos (600s)
     const bottlenecks: ItemBottleneckItem[] = bottleneckRows.map((r: any) => {
@@ -542,7 +589,12 @@ export class KitchenAnalyticsService {
     endDate?: string,
     stationId?: number,
   ): Promise<StationEfficiencyItem[]> {
-    const executive = await this.getExecutiveAnalytics(merchantId, startDate, endDate, stationId);
+    const executive = await this.getExecutiveAnalytics(
+      merchantId,
+      startDate,
+      endDate,
+      stationId,
+    );
     return executive.stationEfficiencyMatrix;
   }
 
@@ -552,7 +604,12 @@ export class KitchenAnalyticsService {
     endDate?: string,
     stationId?: number,
   ): Promise<ItemBottleneckItem[]> {
-    const executive = await this.getExecutiveAnalytics(merchantId, startDate, endDate, stationId);
+    const executive = await this.getExecutiveAnalytics(
+      merchantId,
+      startDate,
+      endDate,
+      stationId,
+    );
     return executive.bottlenecks;
   }
 }

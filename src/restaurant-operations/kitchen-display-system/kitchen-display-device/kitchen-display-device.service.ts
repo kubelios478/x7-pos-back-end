@@ -597,8 +597,14 @@ export class KitchenDisplayDeviceService {
         ? {
             id: kitchenDisplayDevice.station.id,
             name: kitchenDisplayDevice.station.name,
-            stationNumber: kitchenDisplayDevice.station.station_number ?? kitchenDisplayDevice.station.display_order ?? kitchenDisplayDevice.station.id,
-            station_number: kitchenDisplayDevice.station.station_number ?? kitchenDisplayDevice.station.display_order ?? kitchenDisplayDevice.station.id,
+            stationNumber:
+              kitchenDisplayDevice.station.station_number ??
+              kitchenDisplayDevice.station.display_order ??
+              kitchenDisplayDevice.station.id,
+            station_number:
+              kitchenDisplayDevice.station.station_number ??
+              kitchenDisplayDevice.station.display_order ??
+              kitchenDisplayDevice.station.id,
             displayOrder: kitchenDisplayDevice.station.display_order,
           }
         : null,

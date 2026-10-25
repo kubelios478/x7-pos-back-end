@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { lookup as dnsLookup } from 'dns';
 import type { LookupAddress, LookupOptions } from 'dns';
 // Usa require para nodemailer
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-require-imports
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const nodemailer = require('nodemailer');
 import type { Transporter } from 'nodemailer';
 
@@ -48,7 +48,6 @@ export class MailService {
     const secure =
       (process.env.SMTP_SECURE ?? '').toLowerCase() === 'true' || port === 465;
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port,

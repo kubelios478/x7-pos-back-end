@@ -204,11 +204,31 @@ export class CollaboratorTimeEntriesController {
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiQuery({ name: 'company_id', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'merchant_id', required: false, type: Number, example: 1 })
-  @ApiQuery({ name: 'collaborator_id', required: false, type: Number, example: 4 })
+  @ApiQuery({
+    name: 'collaborator_id',
+    required: false,
+    type: Number,
+    example: 4,
+  })
   @ApiQuery({ name: 'shift_id', required: false, type: Number, example: 7 })
-  @ApiQuery({ name: 'approved', required: false, type: Boolean, example: false })
-  @ApiQuery({ name: 'from_date', required: false, type: String, example: '2024-01-01' })
-  @ApiQuery({ name: 'to_date', required: false, type: String, example: '2024-01-31' })
+  @ApiQuery({
+    name: 'approved',
+    required: false,
+    type: Boolean,
+    example: false,
+  })
+  @ApiQuery({
+    name: 'from_date',
+    required: false,
+    type: String,
+    example: '2024-01-01',
+  })
+  @ApiQuery({
+    name: 'to_date',
+    required: false,
+    type: String,
+    example: '2024-01-31',
+  })
   @ApiOkResponse({
     description: 'Paginated time entries retrieved successfully',
     type: PaginatedTimeEntriesResponseDto,
@@ -319,7 +339,8 @@ export class CollaboratorTimeEntriesController {
             id: 1,
             time_entry_id: 1,
             edited_by_user_id: 7,
-            adjustment_reason: 'Supervisor corrected clock-out time due to missed punch',
+            adjustment_reason:
+              'Supervisor corrected clock-out time due to missed punch',
             previous_clock_in: '2024-01-15T08:00:00.000Z',
             previous_clock_out: '2024-01-15T16:00:00.000Z',
             previous_break_minutes: 30,
@@ -355,7 +376,8 @@ export class CollaboratorTimeEntriesController {
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden - User can only read time entries from their own merchant',
+    description:
+      'Forbidden - User can only read time entries from their own merchant',
     type: ErrorResponse,
     schema: {
       example: {
@@ -397,9 +419,15 @@ export class CollaboratorTimeEntriesController {
   )
   @ApiOperation({
     summary: 'Get time entry by ID',
-    description: 'Retrieves single collaborator time entry by its unique identifier.',
+    description:
+      'Retrieves single collaborator time entry by its unique identifier.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Time entry ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Time entry ID',
+    example: 1,
+  })
   @ApiOkResponse({
     description: 'Time entry found',
     type: OneTimeEntryResponseDto,
@@ -502,7 +530,12 @@ export class CollaboratorTimeEntriesController {
     description:
       'Updates clock-in/out timestamps or break minutes of a time entry. Creates a revision audit entry recording the previous and new punch details.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Time entry ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Time entry ID',
+    example: 1,
+  })
   @ApiBody({ type: UpdateTimeEntryDto })
   @ApiOkResponse({
     description: 'Time entry updated',
@@ -525,7 +558,8 @@ export class CollaboratorTimeEntriesController {
           approved: true,
           created_at: '2024-01-15T16:05:00.000Z',
           break_minutes: 45,
-          adjustment_reason: 'Supervisor corrected clock-out time due to missed punch',
+          adjustment_reason:
+            'Supervisor corrected clock-out time due to missed punch',
           is_edited: true,
           edited_by_user_id: 7,
           edited_at: '2024-01-15T17:05:00.000Z',
@@ -611,7 +645,12 @@ export class CollaboratorTimeEntriesController {
     summary: 'Delete time entry',
     description: 'Deletes a collaborator time entry by ID.',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Time entry ID', example: 1 })
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    description: 'Time entry ID',
+    example: 1,
+  })
   @ApiOkResponse({
     description: 'Time entry deleted',
     type: OneTimeEntryResponseDto,

@@ -321,8 +321,7 @@ export class JournalEntryController {
           id: 1,
           entry_number: 'JE-2026-004',
           entry_date: '2026-08-16T00:00:00.000Z',
-          description:
-            'Physical Inventory Audit Adjustment - Main Storage Hub',
+          description: 'Physical Inventory Audit Adjustment - Main Storage Hub',
           status: 'DRAFT',
           total_debit: 150.0,
           total_credit: 150.0,
@@ -656,8 +655,7 @@ export class JournalEntryController {
           id: 1,
           entry_number: 'JE-2026-004',
           entry_date: '2026-08-16T00:00:00.000Z',
-          description:
-            'Physical Inventory Audit Adjustment - Main Storage Hub',
+          description: 'Physical Inventory Audit Adjustment - Main Storage Hub',
           status: 'POSTED',
           total_debit: 150.0,
           total_credit: 150.0,
@@ -767,8 +765,7 @@ export class JournalEntryController {
           id: 1,
           entry_number: 'JE-2026-004',
           entry_date: '2026-08-16T00:00:00.000Z',
-          description:
-            'Physical Inventory Audit Adjustment - Main Storage Hub',
+          description: 'Physical Inventory Audit Adjustment - Main Storage Hub',
           status: 'VOIDED',
           total_debit: 150.0,
           total_credit: 150.0,
@@ -851,4 +848,3 @@ export class JournalEntryController {
     return this.journalEntryService.void(id, merchantId);
   }
 }
-

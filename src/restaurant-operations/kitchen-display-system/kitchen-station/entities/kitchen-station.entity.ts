@@ -93,7 +93,8 @@ export class KitchenStation {
 
   @ApiProperty({
     example: 10,
-    description: 'ID of the secondary backup station for offline or overload rerouting',
+    description:
+      'ID of the secondary backup station for offline or overload rerouting',
     nullable: true,
   })
   @Column({
@@ -109,7 +110,8 @@ export class KitchenStation {
 
   @ApiProperty({
     example: 15,
-    description: 'Maximum active ticket capacity threshold before triggering load balancing overflow',
+    description:
+      'Maximum active ticket capacity threshold before triggering load balancing overflow',
     default: 15,
   })
   @Column({
@@ -121,7 +123,8 @@ export class KitchenStation {
 
   @ApiProperty({
     example: true,
-    description: 'Automatically reroute orders when all station devices are offline > 60 seconds',
+    description:
+      'Automatically reroute orders when all station devices are offline > 60 seconds',
     default: true,
   })
   @Column({
@@ -133,7 +136,8 @@ export class KitchenStation {
 
   @ApiProperty({
     example: true,
-    description: 'Automatically balance load and reroute overflow orders when capacity limit is breached',
+    description:
+      'Automatically balance load and reroute overflow orders when capacity limit is breached',
     default: true,
   })
   @Column({

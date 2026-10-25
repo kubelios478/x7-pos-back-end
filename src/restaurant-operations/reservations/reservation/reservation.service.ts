@@ -67,7 +67,8 @@ export class ReservationService {
       merchantId,
       {
         start: new Date(reservation.reservation_date),
-        durationMinutes: reservation.duration_minutes || DEFAULT_DURATION_MINUTES,
+        durationMinutes:
+          reservation.duration_minutes || DEFAULT_DURATION_MINUTES,
         partySize: reservation.party_size,
         excludeReservationId,
       },
@@ -389,7 +390,8 @@ export class ReservationService {
         new Date(changes.reservation_date).getTime() !== previousStart) ||
       (changes.duration_minutes != null &&
         changes.duration_minutes !== reservation.duration_minutes) ||
-      (changes.party_size != null && changes.party_size !== reservation.party_size);
+      (changes.party_size != null &&
+        changes.party_size !== reservation.party_size);
     const nextStatus = changes.status ?? oldStatus;
     const enteringConfirmed =
       nextStatus === ReservationStatus.CONFIRMED &&

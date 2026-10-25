@@ -88,7 +88,8 @@ export class GetKitchenEventLogQueryDto {
 
   @ApiPropertyOptional({
     example: '2024-01-15T08:00:00.000Z',
-    description: 'Filter logs starting from this timestamp (event_time >= startTime)',
+    description:
+      'Filter logs starting from this timestamp (event_time >= startTime)',
   })
   @IsOptional()
   @IsString()

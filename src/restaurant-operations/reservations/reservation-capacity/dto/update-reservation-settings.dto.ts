@@ -73,7 +73,8 @@ export class UpdateReservationSettingsDto {
   @ApiPropertyOptional({
     type: [ServiceShiftDto],
     nullable: true,
-    description: 'Service shifts; null = default Lunch 12:00–16:00 and Dinner 19:00–23:00',
+    description:
+      'Service shifts; null = default Lunch 12:00–16:00 and Dinner 19:00–23:00',
   })
   @IsOptional()
   @ValidateIf((_, v) => v !== null)

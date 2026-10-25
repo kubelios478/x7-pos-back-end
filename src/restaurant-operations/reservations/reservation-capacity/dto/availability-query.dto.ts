@@ -1,9 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsPositive, Matches, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsPositive,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class AvailabilityQueryDto {
-  @ApiProperty({ example: '2026-04-16', description: 'Local service day (YYYY-MM-DD)' })
+  @ApiProperty({
+    example: '2026-04-16',
+    description: 'Local service day (YYYY-MM-DD)',
+  })
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date must be YYYY-MM-DD' })
   date: string;
 
@@ -26,7 +36,8 @@ export class AvailabilityQueryDto {
 
   @ApiPropertyOptional({
     example: 14,
-    description: 'Reservation being edited, so it does not count against itself',
+    description:
+      'Reservation being edited, so it does not count against itself',
   })
   @IsOptional()
   @Type(() => Number)

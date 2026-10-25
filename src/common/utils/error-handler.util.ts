@@ -336,22 +336,21 @@ export class ErrorHandler {
     if (error instanceof HttpException) throw error;
 
     // PostgreSQL error codes
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
     switch (error?.code) {
       case '23505': // unique_violation
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
         if (error?.detail?.includes('email')) {
           this.emailExists();
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+
         if (error?.detail?.includes('username')) {
           this.usernameExists();
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+
         if (error?.detail?.includes('name')) {
           this.duplicateResource('Resource', 'name', 'provided value');
         }
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+
         if (error?.detail?.includes('tax_id')) {
           this.rutExists();
         }
@@ -362,7 +361,6 @@ export class ErrorHandler {
 
       case '23502': // not_null_violation
         throw new BadRequestException(
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           `Required field '${error?.column}' cannot be null`,
         );
 

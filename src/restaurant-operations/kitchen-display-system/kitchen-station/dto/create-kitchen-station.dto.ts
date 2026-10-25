@@ -59,7 +59,8 @@ export class CreateKitchenStationDto {
 
   @ApiPropertyOptional({
     example: 10,
-    description: 'ID of the secondary backup station for offline or overload rerouting',
+    description:
+      'ID of the secondary backup station for offline or overload rerouting',
   })
   @IsOptional()
   @IsNumber()
@@ -67,7 +68,8 @@ export class CreateKitchenStationDto {
 
   @ApiPropertyOptional({
     example: 15,
-    description: 'Maximum active ticket capacity threshold before triggering load balancing overflow',
+    description:
+      'Maximum active ticket capacity threshold before triggering load balancing overflow',
   })
   @IsOptional()
   @IsNumber()
@@ -76,14 +78,16 @@ export class CreateKitchenStationDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Automatically reroute orders when all station devices are offline > 60s',
+    description:
+      'Automatically reroute orders when all station devices are offline > 60s',
   })
   @IsOptional()
   autoRerouteOnOffline?: boolean;
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Automatically balance load and reroute overflow orders when capacity limit is breached',
+    description:
+      'Automatically balance load and reroute overflow orders when capacity limit is breached',
   })
   @IsOptional()
   autoRerouteOnCapacity?: boolean;
