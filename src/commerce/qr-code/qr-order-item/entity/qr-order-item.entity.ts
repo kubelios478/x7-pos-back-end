@@ -53,8 +53,8 @@ export class QROrderItem {
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   total_price: number;
 
-  @Column({ type: 'text' })
-  notes: string;
+  @Column({ type: 'text', nullable: true })
+  notes: string | null;
 
   @ApiProperty({
     example: 'active',

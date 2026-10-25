@@ -331,6 +331,19 @@ describe('QR and delivery response contracts (e2e)', () => {
     },
   );
 
+  // La columna era NOT NULL aunque el DTO declaraba notes opcional: sin ellas, 500.
+  it('creates a QR order item without notes', async () => {
+    const created = (await post('qr-order-items', {
+      qrOrder: ids.qrOrder,
+      product: ids.product,
+      quantity: 2,
+      price: 9,
+      status: 'active',
+    })) as { data: { id: number; notes: string | null } };
+    expect(created.data.notes).toBeNull();
+    await call('delete', `qr-order-items/${created.data.id}`);
+  });
+
   it.each([...resources].reverse().map((r) => [r.name, r] as const))(
     '%s keeps its delete response shape',
     async (_name, r) => {

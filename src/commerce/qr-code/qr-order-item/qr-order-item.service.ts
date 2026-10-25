@@ -114,7 +114,7 @@ export class QROrderItemService {
       quantity: dto.quantity,
       price: dto.price,
       total_price: totalPrice,
-      notes: dto.notes,
+      notes: dto.notes ?? null,
       status: dto.status,
     } as Partial<QROrderItem>);
 
