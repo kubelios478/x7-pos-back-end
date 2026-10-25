@@ -22,7 +22,7 @@ export class QRMenuSection {
     example: 1,
     description: 'Identifier of the QR Menu related',
   })
-  @ManyToOne(() => QRMenu, { eager: true })
+  @ManyToOne(() => QRMenu)
   @JoinColumn({ name: 'qr_menu_id' })
   qrMenu: QRMenu;
 

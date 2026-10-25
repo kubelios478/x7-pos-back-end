@@ -200,11 +200,6 @@ export class QROrderItemService {
         status: In(['active', 'inactive']),
       },
       relations: ['qrOrder', 'product', 'variant'],
-      select: {
-        qrOrder: { id: true },
-        product: { id: true },
-        variant: { id: true },
-      },
     });
     if (!qrOrderItem) {
       ErrorHandler.qrOrderItemNotFound();
@@ -228,11 +223,6 @@ export class QROrderItemService {
     const qrOrderItem = await this.qrOrderItemRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['qrOrder', 'product', 'variant'],
-      select: {
-        qrOrder: { id: true },
-        product: { id: true },
-        variant: { id: true },
-      },
     });
     if (!qrOrderItem) {
       ErrorHandler.qrOrderItemNotFound();
@@ -262,6 +252,7 @@ export class QROrderItemService {
 
     const qrOrderItem = await this.qrOrderItemRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['qrOrder', 'product', 'variant'],
     });
     if (!qrOrderItem) {
       ErrorHandler.qrOrderItemNotFound();

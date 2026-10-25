@@ -145,12 +145,6 @@ export class QrMenuService {
         status: In(['active', 'inactive']),
       },
       relations: ['merchant'],
-      select: {
-        merchant: {
-          id: true,
-          name: true,
-        },
-      },
     });
     if (!qrMenu) {
       ErrorHandler.qrMenuNotFound();
@@ -172,12 +166,6 @@ export class QrMenuService {
     const qrMenu = await this.qrMenuRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['merchant'],
-      select: {
-        merchant: {
-          id: true,
-          name: true,
-        },
-      },
     });
     if (!qrMenu) {
       ErrorHandler.qrMenuNotFound();
@@ -205,6 +193,7 @@ export class QrMenuService {
 
     const qrMenu = await this.qrMenuRepository.findOne({
       where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['merchant'],
     });
     if (!qrMenu) {
       ErrorHandler.qrMenuNotFound();

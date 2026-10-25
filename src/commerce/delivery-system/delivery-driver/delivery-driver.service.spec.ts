@@ -69,7 +69,8 @@ describe('DeliveryDriverService', () => {
     service = module.get(DeliveryDriverService);
   });
 
-  it('keeps the eager ManyToOne to Merchant on merchant_id', () => {
+  // Sin eager: el comercio se carga solo donde la respuesta lo usa (findScoped).
+  it('keeps the ManyToOne to Merchant on merchant_id, not eager', () => {
     const relation = getMetadataArgsStorage().relations.find(
       (r) => r.target === DeliveryDriver && r.propertyName === 'merchant',
     );
@@ -77,7 +78,7 @@ describe('DeliveryDriverService', () => {
       (j) => j.target === DeliveryDriver && j.propertyName === 'merchant',
     );
     expect(relation?.relationType).toBe('many-to-one');
-    expect(relation?.options.eager).toBe(true);
+    expect(relation?.options.eager).toBeFalsy();
     expect(join?.name).toBe('merchant_id');
   });
 

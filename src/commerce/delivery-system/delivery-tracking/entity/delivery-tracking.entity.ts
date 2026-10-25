@@ -32,7 +32,7 @@ export class DeliveryTracking {
     example: 1,
     description: 'Identifier of the related Delivery Assignment',
   })
-  @ManyToOne(() => DeliveryAssignment, { eager: true })
+  @ManyToOne(() => DeliveryAssignment)
   @JoinColumn({ name: 'delivery_assignment_id' })
   deliveryAssignment: DeliveryAssignment;
 

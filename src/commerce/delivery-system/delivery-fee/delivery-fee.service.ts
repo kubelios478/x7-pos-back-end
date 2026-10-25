@@ -400,6 +400,7 @@ export class DeliveryFeeService {
     const zone = await this.findZone(dto.delivery_zone_id, merchantId);
     const fee = await this.deliveryFeeRepository.findOne({
       where: { deliveryZone: { id: zone.id }, status: 'active' },
+      relations: ['deliveryZone'],
       loadEagerRelations: false,
     });
 

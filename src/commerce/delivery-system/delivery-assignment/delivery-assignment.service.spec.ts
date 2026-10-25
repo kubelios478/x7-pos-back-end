@@ -276,6 +276,12 @@ describe('DeliveryAssignmentService', () => {
       expect(realtime.assignmentChanged).toHaveBeenCalledWith(
         expect.objectContaining({ merchantId: MERCHANT_ID }),
       );
+      // Sin eager, la relectura tiene que pedir el pedido: sin él, el estado del pedido
+      // dejaría de sincronizarse sin ningún error (if (full?.order)).
+      expect(manager.findOne).toHaveBeenCalledWith(DeliveryAssignment, {
+        where: { id: 1 },
+        relations: ['order', 'deliveryDriver'],
+      });
     });
   });
 
@@ -560,6 +566,11 @@ describe('DeliveryAssignmentService', () => {
       expect(res.data.status).toBe('deleted');
       expect(res.data.delivery_status).toBe(DeliveryStatus.CANCELLED);
       expect(driverUpdates()).toEqual(['active']);
+      // Sin eager, la relectura bajo bloqueo tiene que pedir pedido y repartidor.
+      expect(manager.findOne).toHaveBeenCalledWith(DeliveryAssignment, {
+        where: { id: 1 },
+        relations: ['order', 'deliveryDriver'],
+      });
     });
   });
 

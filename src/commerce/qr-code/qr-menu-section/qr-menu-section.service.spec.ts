@@ -230,9 +230,6 @@ describe('QrMenuSectionService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['qrMenu'],
-        select: {
-          qrMenu: { id: true, name: true },
-        },
       });
     });
 
@@ -276,9 +273,6 @@ describe('QrMenuSectionService', () => {
           id: 1,
         },
         relations: ['qrMenu'],
-        select: {
-          qrMenu: { id: true, name: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQRMenuSection);
       expect(result).toEqual({
@@ -304,9 +298,6 @@ describe('QrMenuSectionService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['qrMenu'],
-        select: {
-          qrMenu: { id: true, name: true },
-        },
       });
     });
 
@@ -337,6 +328,7 @@ describe('QrMenuSectionService', () => {
         where: {
           id: 1,
         },
+        relations: ['qrMenu'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -361,6 +353,7 @@ describe('QrMenuSectionService', () => {
         where: {
           id: 999,
         },
+        relations: ['qrMenu'],
       });
     });
   });

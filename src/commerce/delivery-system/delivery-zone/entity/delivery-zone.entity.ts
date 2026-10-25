@@ -26,7 +26,7 @@ export class DeliveryZone {
     example: 1,
     description: 'Identifier of the Merchant related',
   })
-  @ManyToOne(() => Merchant, { eager: true })
+  @ManyToOne(() => Merchant)
   @JoinColumn({ name: 'merchant_id' })
   merchant: Merchant;
 

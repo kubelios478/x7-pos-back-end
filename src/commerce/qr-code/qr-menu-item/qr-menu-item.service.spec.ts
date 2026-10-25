@@ -279,11 +279,6 @@ describe('QrMenuItemService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['qrMenuSection', 'product', 'variant'],
-        select: {
-          qrMenuSection: { id: true, name: true },
-          product: { id: true, name: true },
-          variant: { id: true, name: true },
-        },
       });
     });
 
@@ -332,11 +327,6 @@ describe('QrMenuItemService', () => {
           id: 1,
         },
         relations: ['qrMenuSection', 'product', 'variant'],
-        select: {
-          qrMenuSection: { id: true, name: true },
-          product: { id: true, name: true },
-          variant: { id: true, name: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQRMenuItem);
       expect(result).toEqual({
@@ -362,11 +352,6 @@ describe('QrMenuItemService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['qrMenuSection', 'product', 'variant'],
-        select: {
-          qrMenuSection: { id: true, name: true },
-          product: { id: true, name: true },
-          variant: { id: true, name: true },
-        },
       });
     });
 
@@ -397,6 +382,7 @@ describe('QrMenuItemService', () => {
         where: {
           id: 1,
         },
+        relations: ['qrMenuSection', 'product', 'variant'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -421,6 +407,7 @@ describe('QrMenuItemService', () => {
         where: {
           id: 999,
         },
+        relations: ['qrMenuSection', 'product', 'variant'],
       });
     });
   });

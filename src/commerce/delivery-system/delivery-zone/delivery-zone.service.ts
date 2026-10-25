@@ -262,6 +262,7 @@ export class DeliveryZoneService {
         merchant: { id: merchantId },
         status: In([...DELIVERY_ZONE_STATUSES]),
       },
+      relations: ['merchant'],
       select: ['id', 'name', 'status', 'geojson'],
       loadEagerRelations: false,
       order: { id: 'ASC' },

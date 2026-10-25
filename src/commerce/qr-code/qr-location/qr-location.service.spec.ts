@@ -280,11 +280,6 @@ describe('QRLocationService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['qrMenu', 'merchant', 'table'],
-        select: {
-          qrMenu: { id: true, name: true },
-          merchant: { id: true, name: true },
-          table: { id: true },
-        },
       });
     });
 
@@ -332,11 +327,6 @@ describe('QRLocationService', () => {
           id: 1,
         },
         relations: ['qrMenu', 'merchant', 'table'],
-        select: {
-          qrMenu: { id: true, name: true },
-          merchant: { id: true, name: true },
-          table: { id: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQRLocation);
       expect(result).toEqual({
@@ -362,11 +352,6 @@ describe('QRLocationService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['qrMenu', 'merchant', 'table'],
-        select: {
-          qrMenu: { id: true, name: true },
-          merchant: { id: true, name: true },
-          table: { id: true },
-        },
       });
     });
 
@@ -397,6 +382,7 @@ describe('QRLocationService', () => {
         where: {
           id: 1,
         },
+        relations: ['merchant', 'qrMenu', 'table'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -421,6 +407,7 @@ describe('QRLocationService', () => {
         where: {
           id: 999,
         },
+        relations: ['merchant', 'qrMenu', 'table'],
       });
     });
   });
