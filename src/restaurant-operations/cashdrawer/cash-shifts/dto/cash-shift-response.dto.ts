@@ -38,4 +38,10 @@ export class AllCashShiftsResponseDto {
   statusCode: number;
   message: string;
   data: CashShiftResponseDto[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }

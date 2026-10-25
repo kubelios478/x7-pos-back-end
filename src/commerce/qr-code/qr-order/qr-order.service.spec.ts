@@ -331,13 +331,6 @@ describe('QROrderService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-        select: {
-          merchant: { id: true },
-          qrLocation: { id: true },
-          customer: { id: true },
-          table: { id: true },
-          order: { id: true },
-        },
       });
     });
 
@@ -391,13 +384,6 @@ describe('QROrderService', () => {
           id: 1,
         },
         relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-        select: {
-          merchant: { id: true },
-          qrLocation: { id: true },
-          customer: { id: true },
-          table: { id: true },
-          order: { id: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQROrder);
       expect(result).toEqual({
@@ -421,13 +407,6 @@ describe('QROrderService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-        select: {
-          merchant: { id: true },
-          qrLocation: { id: true },
-          customer: { id: true },
-          table: { id: true },
-          order: { id: true },
-        },
       });
     });
 
@@ -458,6 +437,7 @@ describe('QROrderService', () => {
         where: {
           id: 1,
         },
+        relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -480,6 +460,7 @@ describe('QROrderService', () => {
         where: {
           id: 999,
         },
+        relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
       });
     });
   });

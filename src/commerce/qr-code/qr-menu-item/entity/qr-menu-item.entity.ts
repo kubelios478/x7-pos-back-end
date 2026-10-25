@@ -24,7 +24,7 @@ export class QRMenuItem {
     example: 1,
     description: 'Identifier of the QR Menu Section related',
   })
-  @ManyToOne(() => QRMenuSection, { eager: true })
+  @ManyToOne(() => QRMenuSection)
   @JoinColumn({ name: 'qr_menu_section_id' })
   qrMenuSection: QRMenuSection;
 
@@ -32,7 +32,7 @@ export class QRMenuItem {
     example: 1,
     description: 'Identifier of the Product related',
   })
-  @ManyToOne(() => Product, { eager: true })
+  @ManyToOne(() => Product)
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
@@ -40,7 +40,7 @@ export class QRMenuItem {
     example: 1,
     description: 'Identifier of the Variant related',
   })
-  @ManyToOne(() => Variant, { eager: true })
+  @ManyToOne(() => Variant)
   @JoinColumn({ name: 'variant_id' })
   variant: Variant;
 

@@ -22,6 +22,11 @@ import * as bcrypt from 'bcryptjs';
 import { ErrorHandler } from '../../common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { MailService } from '../../mail/mail.service';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import {
+  paginationMeta,
+  requestedPage,
+} from 'src/common/utils/pagination.util';
 
 function toSafeUser(user: User) {
   return {
@@ -133,15 +138,22 @@ export class UsersService {
     }
   }
 
-  async findAll(): Promise<AllUsersResponseDto> {
-    const users = await this.userRepo.find({
+  /** Sin page ni limit, todos los usuarios, como antes. */
+  async findAll(query: PaginationQueryDto = {}): Promise<AllUsersResponseDto> {
+    const pagination = requestedPage(query);
+    const [users, total] = await this.userRepo.findAndCount({
       relations: ['merchant'],
+      order: { id: 'ASC' },
+      ...(pagination ? { skip: pagination.skip, take: pagination.limit } : {}),
     });
 
     return {
       statusCode: 200,
       message: 'Users retrieved successfully',
       data: users.map(toSafeUser),
+      ...(pagination
+        ? paginationMeta(pagination.page, pagination.limit, total)
+        : {}),
     };
   }
 

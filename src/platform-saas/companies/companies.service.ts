@@ -30,6 +30,11 @@ import {
   CompanyConfigurationItemDto,
 } from './dtos/company-configurations.dto';
 import { normalizeTaxId } from 'src/common/utils/tax-id.util';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import {
+  paginationMeta,
+  requestedPage,
+} from 'src/common/utils/pagination.util';
 
 const CONFIGURATION_TYPE_LABELS: Record<string, string> = {
   merchant_tax_rule: 'Tax Rules',
@@ -92,18 +97,26 @@ export class CompaniesService {
     }
   }
 
-  async findAll(): Promise<AllCompanyResponseDto> {
-    const companies = await this.companyRepo
+  /** Sin page ni limit, todas las compañías, como antes. */
+  async findAll(
+    query: PaginationQueryDto = {},
+  ): Promise<AllCompanyResponseDto> {
+    const pagination = requestedPage(query);
+    const qb = this.companyRepo
       .createQueryBuilder('company')
       .loadRelationCountAndMap('company.merchantsCount', 'company.merchants')
       .loadRelationCountAndMap('company.customersCount', 'company.customers')
-      .orderBy('company.id', 'ASC')
-      .getMany();
+      .orderBy('company.id', 'ASC');
+    if (pagination) qb.skip(pagination.skip).take(pagination.limit);
+    const [companies, total] = await qb.getManyAndCount();
 
     return {
       statusCode: 200,
       message: 'Companies retrieved successfully',
       data: companies,
+      ...(pagination
+        ? paginationMeta(pagination.page, pagination.limit, total)
+        : {}),
     };
   }
 

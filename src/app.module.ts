@@ -15,6 +15,7 @@ import { PlatformSaasModule } from './platform-saas/platform-saas.module';
 import { MailModule } from './mail/mail.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { HealthModule } from './health/health.module';
 
 // Business & Operations Modules
 import { CommerceModule } from './commerce/commerce.module';
@@ -69,6 +70,7 @@ import { RestaurantOperationsModule } from './restaurant-operations/restaurant-o
       },
     }),
     // AccountPayableModule,
+    HealthModule,
     AuthModule,
     OnboardingModule,
     CoreModule,

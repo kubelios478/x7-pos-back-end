@@ -192,6 +192,7 @@ describe('DeliveryTrackingService', () => {
           status: In(['active', 'inactive']),
           deliveryAssignment: { order: { merchant_id: MERCHANT_ID } },
         },
+        relations: ['deliveryAssignment'],
       });
     });
 

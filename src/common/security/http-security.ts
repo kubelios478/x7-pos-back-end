@@ -4,6 +4,7 @@
 import { Logger } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
+import { TOTAL_COUNT_HEADER } from '../utils/pagination.util';
 
 /** `a.com, b.com` -> ['a.com', 'b.com']; empty or unset -> null (no list configured). */
 export function parseCorsOrigins(raw: string | undefined): string[] | null {
@@ -50,13 +51,15 @@ export function configureHttpSecurity(
     }),
   );
 
+  // X-Total-Count: el total de los listados sin envoltorio cuando se paginan.
+  const exposedHeaders = [TOTAL_COUNT_HEADER];
   const origins = parseCorsOrigins(process.env.CORS_ORIGINS);
   if (origins) {
-    app.enableCors({ origin: origins });
+    app.enableCors({ origin: origins, exposedHeaders });
   } else {
     logger.warn(
       'CORS_ORIGINS is not set: browsers on any origin may call this API. Set it to the comma-separated frontend origins.',
     );
-    app.enableCors();
+    app.enableCors({ exposedHeaders });
   }
 }

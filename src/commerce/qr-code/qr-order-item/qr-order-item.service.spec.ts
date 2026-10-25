@@ -353,11 +353,6 @@ describe('QROrderItemService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['qrOrder', 'product', 'variant'],
-        select: {
-          qrOrder: { id: true },
-          product: { id: true },
-          variant: { id: true },
-        },
       });
     });
 
@@ -410,12 +405,6 @@ describe('QROrderItemService', () => {
           id: 1,
         },
         relations: ['qrOrder', 'product', 'variant'],
-
-        select: {
-          qrOrder: { id: true },
-          product: { id: true },
-          variant: { id: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQROrderItem);
       expect(result).toEqual({
@@ -441,11 +430,6 @@ describe('QROrderItemService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['qrOrder', 'product', 'variant'],
-        select: {
-          qrOrder: { id: true },
-          product: { id: true },
-          variant: { id: true },
-        },
       });
     });
 
@@ -476,6 +460,7 @@ describe('QROrderItemService', () => {
         where: {
           id: 1,
         },
+        relations: ['qrOrder', 'product', 'variant'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -500,6 +485,7 @@ describe('QROrderItemService', () => {
         where: {
           id: 999,
         },
+        relations: ['qrOrder', 'product', 'variant'],
       });
     });
   });

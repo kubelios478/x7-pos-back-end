@@ -183,6 +183,23 @@ describe('MerchantTaxRuleService', () => {
     it('repository should be defined', () => {
       expect(merchantTaxRuleRepository).toBeDefined();
     });
+
+    // Con la tabla vacía, el arranque creaba impuestos de ejemplo activos para el
+    // comercio 1, y el checkout aplica todos los impuestos activos del comercio.
+    it('does not seed tax rules on startup when the table is empty', async () => {
+      const repo = merchantTaxRuleRepository as unknown as Record<
+        string,
+        jest.Mock
+      >;
+      repo.count = jest.fn().mockResolvedValue(0);
+
+      await (
+        service as { onModuleInit?: () => Promise<void> }
+      ).onModuleInit?.();
+
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(repo.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('Create Merchant Tax Rule', () => {
