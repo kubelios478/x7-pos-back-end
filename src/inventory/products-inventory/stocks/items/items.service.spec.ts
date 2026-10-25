@@ -37,6 +37,8 @@ describe('ItemsService', () => {
     addOrderBy: jest.Mock;
     skip: jest.Mock;
     take: jest.Mock;
+    offset: jest.Mock;
+    limit: jest.Mock;
     getMany: jest.Mock;
     getOne: jest.Mock;
   };
@@ -134,6 +136,8 @@ describe('ItemsService', () => {
       addOrderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
       getCount: jest.fn(),
       getMany: jest.fn(),
       getOne: jest.fn(),
@@ -503,8 +507,12 @@ describe('ItemsService', () => {
         '"itemName"',
         'ASC',
       );
-      // paginated in memory: the query itself is not limited
-      expect(mockQueryBuilder.skip).not.toHaveBeenCalled();
+      expect(mockQueryBuilder.addOrderBy).toHaveBeenCalledWith(
+        'item.id',
+        'ASC',
+      );
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(mockQuery.limit);
 
       expect(result).toMatchObject({
         statusCode: 200,
@@ -524,6 +532,29 @@ describe('ItemsService', () => {
         totalPages: Math.ceil(items.length / mockQuery.limit!),
         hasNext: false,
         hasPrev: false,
+      });
+    });
+
+    // Antes traía todos los ítems y cortaba la página en memoria.
+    it('asks the database only for the requested page', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([mockItem as Item]);
+      mockQueryBuilder.getCount.mockResolvedValue(21);
+
+      const result = await service.findAll(
+        { ...mockQuery, page: 3, limit: 10 },
+        mockMerchant.id,
+      );
+
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(20);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(10);
+      // La fila que devuelve la base es la página: no se vuelve a recortar.
+      expect(result.data).toHaveLength(1);
+      expect(result).toMatchObject({
+        page: 3,
+        total: 21,
+        totalPages: 3,
+        hasNext: false,
+        hasPrev: true,
       });
     });
 
@@ -557,8 +588,12 @@ describe('ItemsService', () => {
         '"itemName"',
         'ASC',
       );
-      // paginated in memory: the query itself is not limited
-      expect(mockQueryBuilder.skip).not.toHaveBeenCalled();
+      expect(mockQueryBuilder.addOrderBy).toHaveBeenCalledWith(
+        'item.id',
+        'ASC',
+      );
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(mockQuery.limit);
 
       expect(result.data).toMatchObject([]);
       expect(result.statusCode).toBe(200);
@@ -630,10 +665,13 @@ describe('ItemsService', () => {
         ...mockItem,
         id: i + 1,
       })) as Item[];
-      mockQueryBuilder.getMany.mockResolvedValue(items); // the whole list; the service slices the page
+      // The database returns only the requested page (offset 5, limit 5).
+      mockQueryBuilder.getMany.mockResolvedValue(items.slice(5, 10));
       mockQueryBuilder.getCount.mockResolvedValue(items.length);
 
       const result = await service.findAll(paginatedQuery, mockMerchant.id);
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(5);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(5);
       expect(result.data).toHaveLength(5);
       expect(result.data[0].id).toBe(items[5].id);
       expect(result.page).toBe(2);

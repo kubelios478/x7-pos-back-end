@@ -229,12 +229,16 @@ export class ItemsService {
 
     const total = await queryBuilder.getCount();
 
-    const allItems = await queryBuilder
+    // Los cuatro joins son muchos a uno, así que hay una fila por ítem y LIMIT/OFFSET
+    // paginan bien (skip/take armaría una subconsulta que acá no hace falta). item.id
+    // desempata nombres repetidos para que ninguno se repita ni se salte entre páginas.
+    const items = await queryBuilder
       .addSelect('COALESCE(product.name, supply.name)', 'itemName')
       .orderBy('"itemName"', 'ASC')
+      .addOrderBy('item.id', 'ASC')
+      .offset(skip)
+      .limit(limit)
       .getMany();
-
-    const items = allItems.slice(skip, skip + limit);
 
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
