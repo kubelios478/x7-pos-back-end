@@ -1095,4 +1095,26 @@ describe('PurchaseOrderItemService', () => {
       );
     });
   });
+
+  describe('softRemoveByProductId', () => {
+    it('only touches lines of orders that have not received anything', async () => {
+      mockQueryBuilder.getMany.mockResolvedValueOnce([]);
+
+      await service.softRemoveByProductId(1, 1);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'purchaseOrder.status IN (:...openStatuses)',
+        {
+          openStatuses: [
+            PurchaseOrderStatus.DRAFT,
+            PurchaseOrderStatus.SENT,
+            PurchaseOrderStatus.PENDING,
+          ],
+        },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'COALESCE(purchaseOrderItem.receivedQuantity, 0) = 0',
+      );
+    });
+  });
 });

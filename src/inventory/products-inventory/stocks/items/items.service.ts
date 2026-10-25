@@ -8,7 +8,7 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ItemResponseDto, OneItemResponse } from './dto/item-response.dto';
 import { GetItemsQueryDto } from './dto/get-items-query.dto';
 import { AllPaginatedItems } from './dto/all-paginated-items.dto';
@@ -596,8 +596,10 @@ export class ItemsService {
   async softRemoveByProductId(
     productId: number,
     merchantId: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const items = await this.itemRepository
+    const repository = manager?.getRepository(Item) ?? this.itemRepository;
+    const items = await repository
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.product', 'product')
       .where('item.productId = :productId', { productId })
@@ -606,11 +608,12 @@ export class ItemsService {
       .getMany();
 
     if (items.length > 0) {
+      // The quantity is kept: zeroing it here made stock vanish with no kardex line.
+      // ProductsService refuses to deactivate a product that still has stock.
       for (const item of items) {
         item.isActive = false;
-        item.currentQty = 0;
       }
-      await this.itemRepository.save(items);
+      await repository.save(items);
     }
   }
 

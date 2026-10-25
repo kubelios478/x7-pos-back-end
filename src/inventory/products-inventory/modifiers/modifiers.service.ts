@@ -9,7 +9,7 @@ import { GetModifiersQueryDto } from './dto/get-modifiers-query.dto';
 import { AllPaginatedModifiers } from './dto/all-paginated-modifiers.dto';
 import { Modifier } from './entities/modifier.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ProductsService } from '../products/products.service';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
@@ -339,8 +339,11 @@ export class ModifiersService {
   async softRemoveByProductId(
     productId: number,
     merchant_id: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const modifiers = await this.modifierRepository
+    const repository =
+      manager?.getRepository(Modifier) ?? this.modifierRepository;
+    const modifiers = await repository
       .createQueryBuilder('modifier')
       .leftJoinAndSelect('modifier.product', 'product')
       .where('modifier.productId = :productId', { productId })
@@ -352,7 +355,7 @@ export class ModifiersService {
       for (const modifier of modifiers) {
         modifier.isActive = false;
       }
-      await this.modifierRepository.save(modifiers);
+      await repository.save(modifiers);
     }
   }
 }
