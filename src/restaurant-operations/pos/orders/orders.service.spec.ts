@@ -16,6 +16,7 @@ import {
   UpdateResult,
   type DeepPartial,
   DataSource,
+  EntityManager,
 } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -2145,6 +2146,96 @@ describe('OrdersService', () => {
         ),
       ).rejects.toThrow('Only paid orders can be refunded');
       expect(manager.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('business status after payments', () => {
+    const line = {
+      id: 1,
+      status: OrderItemStatus.ACTIVE,
+      total_price: 50,
+      quantity: 1,
+      price: 50,
+      discount: 0,
+      kitchen_status: 'pending',
+    };
+    const order = (status: OrderBusinessStatus, isPaid: boolean) => ({
+      id: 1,
+      status,
+      is_paid: isPaid,
+      total: 50,
+      paid_total: isPaid ? 50 : 0,
+      balance_due: isPaid ? 0 : 50,
+      manual_tip_total: 0,
+      discount_total: 0,
+      delivery_fee: 0,
+    });
+    const sync = () =>
+      service.syncOrderAggregatesWithManager(
+        mockOrderRepository.manager as unknown as EntityManager,
+        1,
+      );
+
+    beforeEach(() => {
+      mockOrderItemRepository.find.mockResolvedValue([line]);
+      mockOrderRepository.save.mockImplementation((o: unknown) =>
+        Promise.resolve(o),
+      );
+    });
+
+    it.each([
+      OrderBusinessStatus.PENDING,
+      OrderBusinessStatus.IN_PROGRESS,
+      OrderBusinessStatus.COMPLETED,
+    ])(
+      'a %s order paid in full through order-payments becomes PAID',
+      async (status) => {
+        mockOrderRepository.findOne.mockResolvedValueOnce(order(status, false));
+        mockOrderPaymentRepository.find.mockResolvedValueOnce([
+          { amount: 50, tip_amount: 0, is_refund: false },
+        ]);
+
+        const result = await sync();
+
+        expect(result.becameFullyPaid).toBe(true);
+        expect(mockOrderRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ status: OrderBusinessStatus.PAID }),
+        );
+      },
+    );
+
+    it('a cancelled order stays cancelled even if its payments add up', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.CANCELLED, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.CANCELLED }),
+      );
+    });
+
+    it('a refund that leaves a balance due turns a PAID order PARTIALLY_REFUNDED', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PAID, true),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+        { amount: 20, tip_amount: 0, is_refund: true },
+      ]);
+
+      const result = await sync();
+
+      expect(result.becameUnpaid).toBe(true);
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: OrderBusinessStatus.PARTIALLY_REFUNDED,
+        }),
+      );
     });
   });
 });
