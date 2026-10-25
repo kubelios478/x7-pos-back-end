@@ -25,6 +25,24 @@ import { StockLevelMonitorService } from '../../stock-alerts/stock-level-monitor
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { ReceiveItemsDto } from './dto/receive-items.dto';
 
+/**
+ * States in which a purchase order's details and lines can still change. PENDING is the
+ * default status of a new order (entity and DTO) and the backoffice edits it, so it was
+ * stuck: neither editable nor receivable.
+ */
+const EDITABLE_PURCHASE_ORDER_STATUSES: readonly PurchaseOrderStatus[] = [
+  PurchaseOrderStatus.DRAFT,
+  PurchaseOrderStatus.SENT,
+  PurchaseOrderStatus.PENDING,
+];
+
+/** States in which goods already entered the stock through the order. */
+const RECEIVED_PURCHASE_ORDER_STATUSES: readonly PurchaseOrderStatus[] = [
+  PurchaseOrderStatus.PARTIALLY_RECEIVED,
+  PurchaseOrderStatus.RECEIVED,
+  PurchaseOrderStatus.COMPLETED,
+];
+
 @Injectable()
 export class PurchaseOrderService {
   constructor(
@@ -501,14 +519,12 @@ export class PurchaseOrderService {
       }
       if (
         oldStatus === PurchaseOrderStatus.PARTIALLY_RECEIVED &&
-        (updateData.status === PurchaseOrderStatus.DRAFT ||
-          updateData.status === PurchaseOrderStatus.SENT)
+        EDITABLE_PURCHASE_ORDER_STATUSES.includes(updateData.status)
       ) {
         throw new BadRequestException(
-          'Cannot regress a PARTIALLY_RECEIVED purchase order back to DRAFT or SENT.',
+          'Cannot regress a PARTIALLY_RECEIVED purchase order back to DRAFT, SENT or PENDING.',
         );
       }
-      purchaseOrder.orderDate = new Date();
     }
 
     // Block updates to details and items if not in DRAFT or SENT state
@@ -529,11 +545,10 @@ export class PurchaseOrderService {
 
     if (
       isChangingDetails &&
-      oldStatus !== PurchaseOrderStatus.DRAFT &&
-      oldStatus !== PurchaseOrderStatus.SENT
+      !EDITABLE_PURCHASE_ORDER_STATUSES.includes(oldStatus)
     ) {
       throw new BadRequestException(
-        'Updates to purchase order details or items are allowed only in DRAFT or SENT states.',
+        'Updates to purchase order details or items are allowed only in DRAFT, SENT or PENDING states.',
       );
     }
 
@@ -597,8 +612,7 @@ export class PurchaseOrderService {
         }
 
         const isDraftOrSent =
-          oldStatus === PurchaseOrderStatus.DRAFT ||
-          oldStatus === PurchaseOrderStatus.SENT;
+          EDITABLE_PURCHASE_ORDER_STATUSES.includes(oldStatus);
         const isFullGridUpdate = updateProductDto.items.some(
           (it) =>
             it.rawMaterialId !== undefined ||
@@ -780,8 +794,7 @@ export class PurchaseOrderService {
           await this.purchaseOrderItemRepository.save(item);
 
           const targetLocationId = item.locationId || defaultLocation.id;
-          const purchaseCost =
-            Number(item.unitCost || item.unitPrice) || 0;
+          const purchaseCost = Number(item.unitCost || item.unitPrice) || 0;
 
           const whereClause: any = {
             locationId: targetLocationId,
@@ -807,8 +820,7 @@ export class PurchaseOrderService {
             const newTotalQty = oldQty + diff;
             let newWacc = oldWacc;
             if (newTotalQty > 0 && purchaseCost > 0) {
-              newWacc =
-                (oldQty * oldWacc + diff * purchaseCost) / newTotalQty;
+              newWacc = (oldQty * oldWacc + diff * purchaseCost) / newTotalQty;
             }
 
             stockItem.currentQty = newTotalQty;
@@ -882,27 +894,42 @@ export class PurchaseOrderService {
     if (!id || id <= 0) {
       ErrorHandler.invalidId('Purchase Order ID incorrect');
     }
-    const purchaseOrder = await this.purchaseOrderRepository.findOneBy({
-      id,
-      isActive: true,
-      merchantId: merchant_id,
-    });
-
-    if (!purchaseOrder)
-      ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
-
     try {
-      purchaseOrder.isActive = false;
-      await this.purchaseOrderRepository.save(purchaseOrder);
+      await this.purchaseOrderRepository.manager.transaction(
+        async (manager) => {
+          // Locked, so a receipt cannot land between the check and the deletion
+          const purchaseOrder = await manager.findOne(PurchaseOrder, {
+            where: { id, isActive: true, merchantId: merchant_id },
+            lock: { mode: 'pessimistic_write' },
+          });
+          if (!purchaseOrder)
+            ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
 
-      const purchaseOrderItems = await this.purchaseOrderItemRepository.find({
-        where: { purchaseOrderId: id, isActive: true },
-      });
+          const lines = await manager.find(PurchaseOrderItem, {
+            where: { purchaseOrderId: id, isActive: true },
+          });
 
-      for (const item of purchaseOrderItems) {
-        item.isActive = false;
-        await this.purchaseOrderItemRepository.save(item);
-      }
+          // Deleting it would leave the received stock in place with no document behind
+          // it; an order that received goods can only be cancelled.
+          const receivedSomething =
+            RECEIVED_PURCHASE_ORDER_STATUSES.includes(purchaseOrder.status) ||
+            lines.some((line) => Number(line.receivedQuantity) > 0);
+          if (receivedSomething) {
+            throw new BadRequestException(
+              `Purchase order #${id} already received goods, so it cannot be deleted. Cancel it instead.`,
+            );
+          }
+
+          purchaseOrder.isActive = false;
+          await manager.save(PurchaseOrder, purchaseOrder);
+          for (const line of lines) {
+            line.isActive = false;
+          }
+          if (lines.length > 0) {
+            await manager.save(PurchaseOrderItem, lines);
+          }
+        },
+      );
 
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
@@ -925,8 +952,10 @@ export class PurchaseOrderService {
       throw new NotFoundException(`Purchase Order with ID ${id} not found`);
     }
 
+    // PENDING = sent to the supplier and awaiting delivery, so goods can be received
     const validStatuses = [
       PurchaseOrderStatus.SENT,
+      PurchaseOrderStatus.PENDING,
       PurchaseOrderStatus.PARTIALLY_RECEIVED,
       PurchaseOrderStatus.RECEIVED,
     ];
@@ -1041,8 +1070,7 @@ export class PurchaseOrderService {
         let newWacc = oldWacc;
         const newTotalQty = oldQty + delta;
         if (newTotalQty > 0) {
-          newWacc =
-            (oldQty * oldWacc + delta * purchaseCost) / newTotalQty;
+          newWacc = (oldQty * oldWacc + delta * purchaseCost) / newTotalQty;
         }
 
         // Update the physical stock
@@ -1121,15 +1149,18 @@ export class PurchaseOrderService {
       }
     }
 
-    if (allReceived) {
+    // "Everything received" needs something to have been received: with no active lines
+    // (or only zero quantities) the order was marked RECEIVED without any goods.
+    if (allReceived && anyReceived) {
       purchaseOrder.status = PurchaseOrderStatus.RECEIVED;
     } else if (anyReceived) {
       purchaseOrder.status = PurchaseOrderStatus.PARTIALLY_RECEIVED;
-    } else {
+    } else if (purchaseOrder.status !== PurchaseOrderStatus.PENDING) {
+      // nothing received (or every receipt corrected back to 0): awaiting delivery again
       purchaseOrder.status = PurchaseOrderStatus.SENT;
     }
 
-    purchaseOrder.orderDate = new Date();
+    // orderDate stays the date the order was placed (it was overwritten on every receipt)
     await this.purchaseOrderRepository.save(purchaseOrder);
 
     if (evaluatedStockIds.size > 0) {

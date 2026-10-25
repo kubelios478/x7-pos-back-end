@@ -8,7 +8,7 @@ import {
 import { GetVariantsQueryDto } from './dto/get-variants-query.dto';
 import { AllPaginatedVariants } from './dto/all-paginated-variants.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Variant } from './entities/variant.entity';
 import { ProductsService } from '../products/products.service';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
@@ -367,8 +367,11 @@ export class VariantsService {
   async softRemoveByProductId(
     productId: number,
     merchant_id: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const variants = await this.variantRepository
+    const repository =
+      manager?.getRepository(Variant) ?? this.variantRepository;
+    const variants = await repository
       .createQueryBuilder('variant')
       .leftJoinAndSelect('variant.product', 'product')
       .where('variant.productId = :productId', { productId })
@@ -380,7 +383,7 @@ export class VariantsService {
       for (const variant of variants) {
         variant.isActive = false;
       }
-      await this.variantRepository.save(variants);
+      await repository.save(variants);
     }
   }
 }

@@ -196,9 +196,7 @@ describe('OnlineMenuService', () => {
       );
     });
 
-    // BUG (Fase 3): 36355ca dejó de guardar la descripción al crear (el DTO la acepta y
-    // update() sí la guarda). Pasar a `it` cuando se corrija.
-    it.failing('should trim name and description when creating', async () => {
+    it('should trim name and description when creating', async () => {
       const dtoWithSpaces = {
         ...createOnlineMenuDto,
         name: '  Main Menu  ',
@@ -221,6 +219,24 @@ describe('OnlineMenuService', () => {
           name: 'Main Menu',
           description: 'Description',
         }),
+      );
+    });
+
+    it('stores a blank description as null when creating, like update()', async () => {
+      jest
+        .spyOn(onlineStoreRepository, 'findOne')
+        .mockResolvedValue(mockOnlineStore as unknown as OnlineStore);
+      jest
+        .spyOn(onlineMenuRepository, 'save')
+        .mockResolvedValue(mockOnlineMenu as unknown as OnlineMenu);
+      jest
+        .spyOn(onlineMenuRepository, 'findOne')
+        .mockResolvedValueOnce(mockOnlineMenu as unknown as OnlineMenu);
+
+      await service.create({ ...createOnlineMenuDto, description: '   ' }, 1);
+
+      expect(onlineMenuRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ description: null }),
       );
     });
 

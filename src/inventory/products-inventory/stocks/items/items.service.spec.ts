@@ -991,6 +991,19 @@ describe('ItemsService', () => {
     });
   });
 
+  describe('softRemoveByProductId', () => {
+    it('deactivates the stock rows without zeroing their quantity', async () => {
+      const row = { ...mockItem, currentQty: -3, isActive: true } as Item;
+      mockQueryBuilder.getMany.mockResolvedValueOnce([row]);
+
+      await service.softRemoveByProductId(1, mockMerchant.id);
+
+      expect(itemRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({ isActive: false, currentQty: -3 }),
+      ]);
+    });
+  });
+
   describe('Adjust', () => {
     beforeEach(() => {
       mockQueryBuilder.getOne.mockResolvedValue({

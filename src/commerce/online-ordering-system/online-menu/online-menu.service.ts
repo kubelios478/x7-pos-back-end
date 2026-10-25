@@ -76,6 +76,8 @@ export class OnlineMenuService {
     const onlineMenu = new OnlineMenu();
     onlineMenu.store_id = createOnlineMenuDto.storeId;
     onlineMenu.name = createOnlineMenuDto.name.trim();
+    // same rule as update(): trimmed, and an empty description is stored as null
+    onlineMenu.description = createOnlineMenuDto.description?.trim() || null;
     onlineMenu.is_active =
       createOnlineMenuDto.isActive !== undefined
         ? createOnlineMenuDto.isActive
@@ -306,7 +308,9 @@ export class OnlineMenuService {
     // Business rule validation: storeId re-assignment (Store Catalog Switcher)
     if (updateOnlineMenuDto.storeId !== undefined) {
       if (!updateOnlineMenuDto.storeId || updateOnlineMenuDto.storeId <= 0) {
-        throw new BadRequestException('Store ID must be a valid positive number');
+        throw new BadRequestException(
+          'Store ID must be a valid positive number',
+        );
       }
       const targetStore = await this.onlineStoreRepository.findOne({
         where: {

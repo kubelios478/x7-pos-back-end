@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashShiftMovementType } from '../../cashdrawer/cash-shifts/constants/cash-shift-movement-type.enum';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
 import { MerchantLockScope } from 'src/common/utils/merchant-lock.util';
 import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
@@ -16,6 +19,7 @@ import {
   UpdateResult,
   type DeepPartial,
   DataSource,
+  EntityManager,
 } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -57,6 +61,11 @@ describe('OrdersService', () => {
 
   const mockEventEmitter = {
     emit: jest.fn(),
+  };
+
+  // processPayment / refundOrder move cash through the drawer
+  const mockCashFlowService = {
+    addMovement: jest.fn().mockResolvedValue(undefined),
   };
 
   let service: OrdersService;
@@ -278,6 +287,7 @@ describe('OrdersService', () => {
           provide: EventEmitter2,
           useValue: mockEventEmitter,
         },
+        { provide: CashFlowService, useValue: mockCashFlowService },
 
         {
           // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
@@ -2085,7 +2095,9 @@ describe('OrdersService', () => {
           Promise.resolve(
             entity === OrderPayment
               ? [{ amount: '100.00', method: 'cash' }]
-              : [],
+              : entity === CashShift
+                ? [{ id: 3, cashDrawerId: 2, openedBy: 5 }] // the only open drawer
+                : [],
           ),
         ),
         save: jest.fn((a: unknown, b?: unknown) => Promise.resolve(b ?? a)),
@@ -2126,6 +2138,37 @@ describe('OrdersService', () => {
         manager,
         1,
       );
+      // the cash part leaves the open drawer as a refund linked to the order
+      expect(mockCashFlowService.addMovement).toHaveBeenCalledWith(
+        3,
+        100,
+        CashShiftMovementType.OUT,
+        1,
+        5,
+        2,
+        manager,
+        'Wrong dish',
+      );
+    });
+
+    it('refuses to pay cash out when several drawers are open and none is chosen', async () => {
+      manager.find.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === OrderPayment
+            ? [{ amount: '100.00', method: 'cash' }]
+            : entity === CashShift
+              ? [{ id: 3 }, { id: 4 }]
+              : [],
+        ),
+      );
+
+      await expect(
+        service.refundOrder(
+          { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+          1,
+          admin,
+        ),
+      ).rejects.toThrow('Several cash shifts are open: send cashShiftId');
     });
 
     it('does not refund twice when another refund got the lock first', async () => {
@@ -2145,6 +2188,96 @@ describe('OrdersService', () => {
         ),
       ).rejects.toThrow('Only paid orders can be refunded');
       expect(manager.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('business status after payments', () => {
+    const line = {
+      id: 1,
+      status: OrderItemStatus.ACTIVE,
+      total_price: 50,
+      quantity: 1,
+      price: 50,
+      discount: 0,
+      kitchen_status: 'pending',
+    };
+    const order = (status: OrderBusinessStatus, isPaid: boolean) => ({
+      id: 1,
+      status,
+      is_paid: isPaid,
+      total: 50,
+      paid_total: isPaid ? 50 : 0,
+      balance_due: isPaid ? 0 : 50,
+      manual_tip_total: 0,
+      discount_total: 0,
+      delivery_fee: 0,
+    });
+    const sync = () =>
+      service.syncOrderAggregatesWithManager(
+        mockOrderRepository.manager as unknown as EntityManager,
+        1,
+      );
+
+    beforeEach(() => {
+      mockOrderItemRepository.find.mockResolvedValue([line]);
+      mockOrderRepository.save.mockImplementation((o: unknown) =>
+        Promise.resolve(o),
+      );
+    });
+
+    it.each([
+      OrderBusinessStatus.PENDING,
+      OrderBusinessStatus.IN_PROGRESS,
+      OrderBusinessStatus.COMPLETED,
+    ])(
+      'a %s order paid in full through order-payments becomes PAID',
+      async (status) => {
+        mockOrderRepository.findOne.mockResolvedValueOnce(order(status, false));
+        mockOrderPaymentRepository.find.mockResolvedValueOnce([
+          { amount: 50, tip_amount: 0, is_refund: false },
+        ]);
+
+        const result = await sync();
+
+        expect(result.becameFullyPaid).toBe(true);
+        expect(mockOrderRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ status: OrderBusinessStatus.PAID }),
+        );
+      },
+    );
+
+    it('a cancelled order stays cancelled even if its payments add up', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.CANCELLED, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.CANCELLED }),
+      );
+    });
+
+    it('a refund that leaves a balance due turns a PAID order PARTIALLY_REFUNDED', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PAID, true),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+        { amount: 20, tip_amount: 0, is_refund: true },
+      ]);
+
+      const result = await sync();
+
+      expect(result.becameUnpaid).toBe(true);
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: OrderBusinessStatus.PARTIALLY_REFUNDED,
+        }),
+      );
     });
   });
 });
