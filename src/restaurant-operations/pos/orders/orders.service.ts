@@ -96,29 +96,37 @@ import { MoreThan } from 'typeorm';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 /**
- * Business status once the payments are re-summed. Before, only processPayment set PAID: an
- * order paid through order-payments stayed `pending` and refundOrder (which requires PAID)
- * could not refund it.
- * - fully paid → PAID, unless it was cancelled or already refunded;
- * - a refund that leaves a balance due on a PAID order → PARTIALLY_REFUNDED.
+ * Business status once the payments are re-summed (every payment path goes through it).
+ * - fully paid (with something actually paid) → PAID;
+ * - a refund that leaves a balance due on a PAID order → PARTIALLY_REFUNDED;
+ * - something paid but a balance due (a split bill under way, or items added to a paid
+ *   order) → PARTIALLY_PAID; nothing paid any more → back to PENDING;
+ * - cancelled and refunded orders keep their status.
  */
 function nextBusinessStatusAfterPayments(
   status: OrderBusinessStatus,
-  becameFullyPaid: boolean,
-  refundedBelowTotal: boolean,
+  payment: { isPaid: boolean; paidTotal: number; hasRefund: boolean },
 ): OrderBusinessStatus {
-  const payable = [
-    OrderBusinessStatus.PENDING,
-    OrderBusinessStatus.IN_PROGRESS,
-    OrderBusinessStatus.COMPLETED,
-  ];
-  if (becameFullyPaid && payable.includes(status)) {
+  if (
+    status === OrderBusinessStatus.CANCELLED ||
+    status === OrderBusinessStatus.PARTIALLY_REFUNDED
+  ) {
+    return status;
+  }
+  // is_paid is also true for an order whose total is 0 (no items yet, or all removed):
+  // that is not a payment
+  if (payment.isPaid && payment.paidTotal > 0) {
     return OrderBusinessStatus.PAID;
   }
-  if (refundedBelowTotal && status === OrderBusinessStatus.PAID) {
+  if (payment.hasRefund && status === OrderBusinessStatus.PAID) {
     return OrderBusinessStatus.PARTIALLY_REFUNDED;
   }
-  return status;
+  if (payment.paidTotal > 0) {
+    return OrderBusinessStatus.PARTIALLY_PAID;
+  }
+  return status === OrderBusinessStatus.PARTIALLY_PAID
+    ? OrderBusinessStatus.PENDING
+    : status;
 }
 
 @Injectable()
@@ -529,8 +537,14 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    if (order.status !== OrderBusinessStatus.PENDING) {
-      throw new BadRequestException('Order must be in pending state');
+    // a pending order can be completed even after a first partial payment
+    if (
+      order.status !== OrderBusinessStatus.PENDING &&
+      order.status !== OrderBusinessStatus.PARTIALLY_PAID
+    ) {
+      throw new BadRequestException(
+        'Order must be in pending or partially_paid state',
+      );
     }
 
     // Enforce discount limits based on user role
@@ -1611,11 +1625,11 @@ export class OrdersService {
     applyPaidDerivedFields(order);
     const becameFullyPaid = !wasPaid && order.is_paid;
     const becameUnpaid = wasPaid && !order.is_paid;
-    order.status = nextBusinessStatusAfterPayments(
-      order.status,
-      becameFullyPaid,
-      becameUnpaid && payments.some((p) => p.is_refund),
-    );
+    order.status = nextBusinessStatusAfterPayments(order.status, {
+      isPaid: order.is_paid,
+      paidTotal: Number(order.paid_total),
+      hasRefund: payments.some((p) => p.is_refund),
+    });
     await manager.getRepository(Order).save(order);
     return { becameFullyPaid, becameUnpaid };
   }
