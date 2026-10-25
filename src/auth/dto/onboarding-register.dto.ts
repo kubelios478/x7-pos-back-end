@@ -11,6 +11,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  IsTimeZone,
 } from 'class-validator';
 import { IsTaxId } from 'src/common/decorators/validation.decorators';
 import { IsBusinessEmail } from 'src/common/decorators/validation.decorators';
@@ -168,4 +169,15 @@ export class OnboardingRegisterDto {
   @IsNumber()
   @Min(1)
   planId?: number;
+
+  @ApiPropertyOptional({
+    example: 'America/New_York',
+    description:
+      "IANA time zone of the merchant (its business day starts at this zone's midnight). Defaults to UTC.",
+  })
+  @IsOptional()
+  @IsTimeZone({
+    message: 'timezone must be a valid IANA time zone, e.g. America/New_York',
+  })
+  timezone?: string;
 }

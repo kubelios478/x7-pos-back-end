@@ -314,6 +314,7 @@ export class AuthService {
         city: dto.city,
         state: dto.state,
         country: dto.country,
+        ...(dto.timezone ? { timezone: dto.timezone } : {}),
         companyId: savedCompany.id,
       });
       const savedMerchant = await queryRunner.manager.save(Merchant, merchant);
