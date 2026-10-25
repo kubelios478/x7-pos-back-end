@@ -71,7 +71,7 @@ export class MarketingAutomationActionsService {
     if (createMarketingAutomationActionDto.payload) {
       try {
         JSON.parse(createMarketingAutomationActionDto.payload);
-      } catch (error) {
+      } catch {
         throw new BadRequestException('Payload must be a valid JSON string');
       }
     }
@@ -359,7 +359,7 @@ export class MarketingAutomationActionsService {
     ) {
       try {
         JSON.parse(updateMarketingAutomationActionDto.payload);
-      } catch (error) {
+      } catch {
         throw new BadRequestException('Payload must be a valid JSON string');
       }
     }

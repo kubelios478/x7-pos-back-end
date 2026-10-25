@@ -68,7 +68,7 @@ export class KitchenOrderItemService {
   async create(
     createKitchenOrderItemDto: CreateKitchenOrderItemDto,
     authenticatedUserMerchantId: number,
-    userId?: number,
+    _userId?: number,
   ): Promise<OneKitchenOrderItemResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(

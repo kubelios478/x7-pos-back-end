@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { errorMessage } from 'src/common/utils/log-error.util';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Like, IsNull } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { CashDrawer } from './entities/cash-drawer.entity';
 import { Shift } from '../../shift/shifts/entities/shift.entity';
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
@@ -18,7 +18,6 @@ import { GetCashDrawersQueryDto } from './dto/get-cash-drawers-query.dto';
 import {
   CashDrawerResponseDto,
   OneCashDrawerResponseDto,
-  AllCashDrawersResponseDto,
 } from './dto/cash-drawer-response.dto';
 import { PaginatedCashDrawersResponseDto } from './dto/paginated-cash-drawers-response.dto';
 import { CashDrawerStatus } from './constants/cash-drawer-status.enum';

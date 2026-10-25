@@ -39,7 +39,6 @@ import { KitchenStationStatus } from '../kitchen-station/constants/kitchen-stati
 import {
   SyncKitchenEventsDto,
   OfflineActionType,
-  OfflineKitchenActionDto,
 } from './dto/sync-kitchen-events.dto';
 
 @Injectable()
@@ -696,8 +695,6 @@ export class KitchenEventLogService {
     authenticatedUserMerchantId: number,
     userId?: number,
   ) {
-    const effectiveMerchantId = authenticatedUserMerchantId || 2;
-
     const actions = syncDto.actions || [];
     // Sort in chronological order
     actions.sort((a, b) => {

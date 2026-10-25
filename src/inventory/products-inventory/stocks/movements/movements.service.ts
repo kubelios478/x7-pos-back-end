@@ -18,7 +18,6 @@ import {
 } from './dto/movement-response.dto';
 import { GetMovementsQueryDto } from './dto/get-movements-query.dto';
 import { AllPaginatedMovements } from './dto/all-paginated-movements.dto';
-import { ItemLittleResponseDto } from '../items/dto/item-response.dto';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { Item } from '../items/entities/item.entity';
