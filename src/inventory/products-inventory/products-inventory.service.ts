@@ -23,39 +23,19 @@ export class ProductsInventoryService {
   ) {}
 
   async returnToStock(productId: number, quantity: number, meta?: any) {
-    console.log('ENTER returnToStock', {
-      productId,
-      quantity,
-      meta,
-    });
-
     const product = await this.productRepo.findOne({
       where: { id: productId },
     });
-
-    console.log('PRODUCT FOUND', product);
-
     if (!product) return;
 
     const item = await this.itemRepo.findOne({
       where: { product: { id: productId } },
       relations: ['product'],
     });
-
-    console.log('ITEM FOUND', item);
-
-    if (!item) {
-      console.log('ITEM NOT FOUND');
-      return;
-    }
+    if (!item) return;
 
     product.stock = Number(product.stock || 0) + quantity;
-
-    console.log('NEW STOCK', product.stock);
-
-    const savedProduct = await this.productRepo.save(product);
-
-    console.log('PRODUCT SAVED', savedProduct);
+    await this.productRepo.save(product);
 
     await this.movementsService.create(product.merchantId, {
       stockItemId: item.id,
@@ -64,8 +44,6 @@ export class ProductsInventoryService {
       reference: `VOID-${meta?.referenceId}`,
       reason: meta?.reason || 'Kitchen cancellation',
     });
-
-    console.log('MOVEMENT CREATED');
   }
 
   async registerWaste(productId: number, quantity: number, meta?: any) {

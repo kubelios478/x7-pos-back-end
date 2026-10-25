@@ -4,7 +4,9 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
+import { errorStack } from 'src/common/utils/log-error.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull } from 'typeorm';
 import { KitchenOrderItem } from './entities/kitchen-order-item.entity';
@@ -45,6 +47,8 @@ import { KitchenEventLogStatus } from '../kitchen-event-log/constants/kitchen-ev
 
 @Injectable()
 export class KitchenOrderItemService {
+  private readonly logger = new Logger(KitchenOrderItemService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(KitchenOrderItem)
@@ -1259,7 +1263,7 @@ export class KitchenOrderItemService {
             );
           }
         } catch (err) {
-          console.error('Failed to log auto-bump event:', err);
+          this.logger.error('Failed to log auto-bump event', errorStack(err));
         }
 
         if (parentOrder.order_id) {
@@ -1291,7 +1295,10 @@ export class KitchenOrderItemService {
             event_type: KitchenEventLogEventType.SERVIDO,
           });
         } catch (err) {
-          console.error('Failed to remove SERVIDO event on reopen:', err);
+          this.logger.error(
+            'Failed to remove SERVIDO event on reopen',
+            errorStack(err),
+          );
         }
       }
 
@@ -1342,7 +1349,10 @@ export class KitchenOrderItemService {
             await eventLogRepo.save(existingOrderInicio);
           }
         } catch (err) {
-          console.error('Failed to log INICIO on order start/resume:', err);
+          this.logger.error(
+            'Failed to log INICIO on order start/resume',
+            errorStack(err),
+          );
         }
 
         if (parentOrder.order_id) {
@@ -1368,9 +1378,9 @@ export class KitchenOrderItemService {
               event_type: KitchenEventLogEventType.INICIO,
             });
           } catch (err) {
-            console.error(
-              'Failed to remove INICIO on order return to pending:',
-              err,
+            this.logger.error(
+              'Failed to remove INICIO on order return to pending',
+              errorStack(err),
             );
           }
 
@@ -1420,7 +1430,10 @@ export class KitchenOrderItemService {
         );
       }
     } catch (err) {
-      console.error(`Failed to log READY event for item #${item.id}:`, err);
+      this.logger.error(
+        `Failed to log READY event for item #${item.id}`,
+        errorStack(err),
+      );
     }
   }
 
@@ -1432,7 +1445,10 @@ export class KitchenOrderItemService {
         event_type: KitchenEventLogEventType.LISTO,
       });
     } catch (err) {
-      console.error(`Failed to remove READY event for item #${itemId}:`, err);
+      this.logger.error(
+        `Failed to remove READY event for item #${itemId}`,
+        errorStack(err),
+      );
     }
   }
 
@@ -1443,7 +1459,10 @@ export class KitchenOrderItemService {
         kitchen_order_item_id: itemId,
       });
     } catch (err) {
-      console.error(`Failed to remove events for item #${itemId}:`, err);
+      this.logger.error(
+        `Failed to remove events for item #${itemId}`,
+        errorStack(err),
+      );
     }
   }
 
@@ -1716,7 +1735,7 @@ export class KitchenOrderItemService {
           }),
         );
       } catch (err) {
-        console.error('Failed to log auto-pacing event:', err);
+        this.logger.error('Failed to log auto-pacing event', errorStack(err));
       }
 
       const reloaded = await this.reloadKitchenOrderItemAfterSaveAndSync(
@@ -1881,7 +1900,7 @@ export class KitchenOrderItemService {
           }),
         );
       } catch (err) {
-        console.error('Failed to log batch bump event:', err);
+        this.logger.error('Failed to log batch bump event', errorStack(err));
       }
 
       const reloaded = await this.reloadKitchenOrderItemAfterSaveAndSync(

@@ -3,7 +3,9 @@ import {
   BadRequestException,
   ConflictException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
+import { errorStack } from 'src/common/utils/log-error.util';
 import { CreateMovementDto } from './dto/create-movement.dto';
 import { UpdateMovementDto } from './dto/update-movement.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -56,6 +58,8 @@ const REVERSAL_MOVEMENT_TYPE = 'REVERSAL';
 
 @Injectable()
 export class MovementsService {
+  private readonly logger = new Logger(MovementsService.name);
+
   constructor(
     @InjectRepository(Movement)
     private readonly movementRepository: Repository<Movement>,
@@ -325,7 +329,10 @@ export class MovementsService {
         touchedItemIds,
       );
     } catch (e) {
-      console.error('Error evaluating stock levels post movement:', e);
+      this.logger.error(
+        'Error evaluating stock levels post movement',
+        errorStack(e),
+      );
     }
 
     return this.findOne(savedMovement.id, merchantId, 'Created');

@@ -7,7 +7,9 @@ import {
   Inject,
   Optional,
   forwardRef,
+  Logger,
 } from '@nestjs/common';
+import { errorMessage } from 'src/common/utils/log-error.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { KitchenEventLog } from './entities/kitchen-event-log.entity';
@@ -42,6 +44,8 @@ import {
 
 @Injectable()
 export class KitchenEventLogService {
+  private readonly logger = new Logger(KitchenEventLogService.name);
+
   constructor(
     @InjectRepository(KitchenEventLog)
     private readonly kitchenEventLogRepository: Repository<KitchenEventLog>,
@@ -658,8 +662,10 @@ export class KitchenEventLogService {
         ? {
             id: kitchenEventLog.kitchenOrderItem.id,
             quantity: kitchenEventLog.kitchenOrderItem.quantity,
-            preparedQuantity: kitchenEventLog.kitchenOrderItem.prepared_quantity,
-            preparationStatus: kitchenEventLog.kitchenOrderItem.preparation_status,
+            preparedQuantity:
+              kitchenEventLog.kitchenOrderItem.prepared_quantity,
+            preparationStatus:
+              kitchenEventLog.kitchenOrderItem.preparation_status,
             productName: kitchenEventLog.kitchenOrderItem.product?.name || null,
             variantName: kitchenEventLog.kitchenOrderItem.variant?.name || null,
           }
@@ -757,14 +763,16 @@ export class KitchenEventLogService {
             processedCount++;
 
             // Asegurar que la comanda tenga su evento INICIO si no existe
-            const hasOrderInicio = await this.kitchenEventLogRepository.findOne({
-              where: {
-                kitchen_order_id: order.id,
-                kitchen_order_item_id: IsNull(),
-                event_type: KitchenEventLogEventType.INICIO,
-                status: KitchenEventLogStatus.ACTIVE,
+            const hasOrderInicio = await this.kitchenEventLogRepository.findOne(
+              {
+                where: {
+                  kitchen_order_id: order.id,
+                  kitchen_order_item_id: IsNull(),
+                  event_type: KitchenEventLogEventType.INICIO,
+                  status: KitchenEventLogStatus.ACTIVE,
+                },
               },
-            });
+            );
 
             if (!hasOrderInicio) {
               const orderStartTime =
@@ -789,8 +797,7 @@ export class KitchenEventLogService {
             if (order.kitchenOrderItems && order.kitchenOrderItems.length > 0) {
               for (const it of order.kitchenOrderItems) {
                 if (it.status !== KitchenOrderItemStatus.ACTIVE) continue;
-                it.preparation_status =
-                  KitchenOrderItemPreparationStatus.READY;
+                it.preparation_status = KitchenOrderItemPreparationStatus.READY;
                 it.completed_at = it.completed_at || eventTime;
                 it.prepared_quantity = it.quantity;
                 await this.kitchenOrderItemRepository.save(it);
@@ -860,7 +867,11 @@ export class KitchenEventLogService {
                 id: action.kitchenOrderId,
                 merchant_id: authenticatedUserMerchantId || 2,
               },
-              relations: ['station', 'kitchenOrderItems', 'kitchenOrderItems.product'],
+              relations: [
+                'station',
+                'kitchenOrderItems',
+                'kitchenOrderItems.product',
+              ],
             });
 
             if (!order) {
@@ -874,7 +885,9 @@ export class KitchenEventLogService {
 
             const stationName =
               order.station?.name ||
-              (order.station_id ? `Station #${order.station_id}` : 'General Kitchen');
+              (order.station_id
+                ? `Station #${order.station_id}`
+                : 'General Kitchen');
 
             // 1. Revertir business_status: COMPLETED -> STARTED
             order.business_status = KitchenOrderBusinessStatus.STARTED;
@@ -1257,7 +1270,9 @@ export class KitchenEventLogService {
               .innerJoinAndSelect('koi.kitchenOrder', 'ko')
               .leftJoinAndSelect('koi.product', 'p')
               .leftJoinAndSelect('koi.variant', 'v')
-              .where('koi.status = :status', { status: KitchenOrderItemStatus.ACTIVE })
+              .where('koi.status = :status', {
+                status: KitchenOrderItemStatus.ACTIVE,
+              })
               .andWhere('koi.preparation_status IN (:...prepStatuses)', {
                 prepStatuses: [
                   KitchenOrderItemPreparationStatus.PENDING,
@@ -1276,7 +1291,9 @@ export class KitchenEventLogService {
               });
 
             if (action.stationId) {
-              qb.andWhere('ko.station_id = :stationId', { stationId: action.stationId });
+              qb.andWhere('ko.station_id = :stationId', {
+                stationId: action.stationId,
+              });
             }
 
             qb.andWhere('LOWER(TRIM(p.name)) = LOWER(TRIM(:productName))', {
@@ -1307,7 +1324,8 @@ export class KitchenEventLogService {
               actuallyBumped += toAdd;
 
               if (item.prepared_quantity >= item.quantity) {
-                item.preparation_status = KitchenOrderItemPreparationStatus.READY;
+                item.preparation_status =
+                  KitchenOrderItemPreparationStatus.READY;
                 item.completed_at = item.completed_at || eventTime;
               } else {
                 item.preparation_status =
@@ -1349,9 +1367,8 @@ export class KitchenEventLogService {
             posOrderId,
           );
         } catch (err) {
-          console.warn(
-            `Failed to sync POS order #${posOrderId} after offline flush:`,
-            err,
+          this.logger.warn(
+            `Failed to sync POS order #${posOrderId} after offline flush: ${errorMessage(err)}`,
           );
         }
       }

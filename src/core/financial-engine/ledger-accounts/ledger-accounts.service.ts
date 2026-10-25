@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LedgerAccount } from './entities/ledger-account.entity';
@@ -18,6 +18,8 @@ import { ErrorMessage } from 'src/common/constants/error-messages';
 
 @Injectable()
 export class LedgerAccountsService implements OnModuleInit {
+  private readonly logger = new Logger(LedgerAccountsService.name);
+
   constructor(
     @InjectRepository(LedgerAccount)
     private readonly ledgerAccountRepository: Repository<LedgerAccount>,
@@ -160,7 +162,7 @@ export class LedgerAccountsService implements OnModuleInit {
       //   await this.ledgerAccountRepository.save(seedAccounts as any);
       // }
     } catch (err: any) {
-      console.log('LedgerAccounts DB seed check deferred:', err.message);
+      this.logger.warn(`DB seed check deferred: ${err.message}`);
     }
   }
 

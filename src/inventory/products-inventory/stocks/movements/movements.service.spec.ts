@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { StockLevelMonitorService } from '../../../stock-alerts/stock-level-monitor.service';
 import { ProductRecipe } from '../../recipes/entities/product-recipe.entity';
 import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
@@ -389,6 +390,34 @@ describe('MovementsService', () => {
         Promise.resolve({ id: 50, ...m } as Movement),
       );
       jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+    });
+
+    it('a failed stock-alert evaluation is logged with Logger, not console', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 10,
+      });
+      (
+        service['stockLevelMonitor'] as unknown as {
+          evaluateStockItems: jest.Mock;
+        }
+      ).evaluateStockItems.mockRejectedValueOnce(new Error('alerts down'));
+      const logged = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => {});
+      const consoleError = jest.spyOn(console, 'error');
+
+      await service.create(mockMerchant.id, {
+        stockItemId: 1,
+        quantity: 2,
+        type: MovementsStatus.OUT,
+      });
+
+      expect(logged).toHaveBeenCalledWith(
+        'Error evaluating stock levels post movement',
+        expect.stringContaining('alerts down'),
+      );
+      expect(consoleError).not.toHaveBeenCalled();
     });
 
     it('locks the stock row inside a transaction', async () => {

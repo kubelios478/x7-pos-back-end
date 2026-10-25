@@ -4,7 +4,9 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
+import { errorMessage } from 'src/common/utils/log-error.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, Like, IsNull } from 'typeorm';
 import { CashDrawer } from './entities/cash-drawer.entity';
@@ -26,6 +28,8 @@ import { CashDrawerHistoryService } from '../cash-drawer-history/cash-drawer-his
 
 @Injectable()
 export class CashDrawersService {
+  private readonly logger = new Logger(CashDrawersService.name);
+
   constructor(
     @InjectRepository(CashDrawer)
     private readonly cashDrawerRepository: Repository<CashDrawer>,
@@ -400,9 +404,8 @@ export class CashDrawersService {
       );
     } catch (err) {
       // Log warning if history snapshot creation encounters an issue, but complete the drawer update
-      console.warn(
-        `[CashDrawersService] Failed to persist history record for CD #${id}:`,
-        err,
+      this.logger.warn(
+        `Failed to persist history record for CD #${id}: ${errorMessage(err)}`,
       );
     }
 

@@ -134,7 +134,6 @@ export class ProductsService {
       }
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
-      console.log(error);
     }
   }
 

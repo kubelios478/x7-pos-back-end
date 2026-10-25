@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JournalEntry } from './entities/journal-entry.entity';
@@ -24,6 +24,8 @@ import { SuccessResponse } from 'src/common/dtos/success-response.dto';
 
 @Injectable()
 export class JournalEntryService implements OnModuleInit {
+  private readonly logger = new Logger(JournalEntryService.name);
+
   constructor(
     @InjectRepository(JournalEntry)
     private readonly journalEntryRepository: Repository<JournalEntry>,
@@ -308,7 +310,7 @@ export class JournalEntryService implements OnModuleInit {
         ]);
       }
     } catch (err: any) {
-      console.log('JournalEntry DB seed check deferred:', err.message);
+      this.logger.warn(`DB seed check deferred: ${err.message}`);
     }
   }
 

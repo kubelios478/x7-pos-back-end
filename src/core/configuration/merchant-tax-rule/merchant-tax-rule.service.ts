@@ -1,5 +1,5 @@
 //src/core/configuration/merchant-tax-rule/merchant-tax-rule.service.ts
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
@@ -36,6 +36,8 @@ const TAX_RULE_SELECT_FIELDS = [
 
 @Injectable()
 export class MerchantTaxRuleService implements OnModuleInit {
+  private readonly logger = new Logger(MerchantTaxRuleService.name);
+
   constructor(
     @InjectRepository(MerchantTaxRule)
     private readonly merchantTaxRuleRepository: Repository<MerchantTaxRule>,
@@ -133,7 +135,7 @@ export class MerchantTaxRuleService implements OnModuleInit {
         await this.merchantTaxRuleRepository.save(seedRules as any);
       }
     } catch (err: any) {
-      console.log('MerchantTaxRule DB seed check deferred:', err.message);
+      this.logger.warn(`DB seed check deferred: ${err.message}`);
     }
   }
 
