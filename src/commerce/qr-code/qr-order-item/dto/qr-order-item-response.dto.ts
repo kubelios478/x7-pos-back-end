@@ -40,8 +40,9 @@ export class QROrderItemResponseDto {
   @ApiProperty({
     example: 'No onions, please',
     description: 'Additional notes or instructions for the order item',
+    nullable: true,
   })
-  notes?: string;
+  notes?: string | null;
 
   @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
   status: string;

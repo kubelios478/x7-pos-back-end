@@ -165,6 +165,31 @@ describe('QROrderItemService', () => {
       });
     });
 
+    // La columna era NOT NULL aunque el DTO declaraba notes opcional: sin ellas, 500.
+    it('stores null notes when they are not sent', async () => {
+      jest.spyOn(qrOrderRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as QROrder);
+      jest.spyOn(productRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as Product);
+      jest.spyOn(variantRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as Variant);
+      const createSpy = jest
+        .spyOn(qrOrderItemRepository, 'create')
+        .mockReturnValue(mockQROrderItem as QROrderItem);
+      jest
+        .spyOn(qrOrderItemRepository, 'save')
+        .mockResolvedValue(mockQROrderItem as QROrderItem);
+
+      await service.create({ ...mockCreateQROrderItemDto, notes: undefined });
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: null }),
+      );
+    });
+
     it('should handle database errors during creation', async () => {
       jest
         .spyOn(qrOrderItemRepository, 'findOne')

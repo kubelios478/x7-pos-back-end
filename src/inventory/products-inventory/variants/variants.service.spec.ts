@@ -556,6 +556,31 @@ describe('VariantsService', () => {
     });
   });
 
+  // Sin SKU, TypeORM ignoraba la condición sku: undefined. Respondía "SKU ya existe" si el
+  // comercio tenía cualquier variante activa, o sobrescribía cualquier variante inactiva.
+  describe('Create without SKU', () => {
+    const merchantId = mockMerchant.id;
+
+    it.each([
+      ['missing', undefined],
+      ['blank', '   '],
+    ])(
+      'with the SKU %s, does not look variants up by SKU and stores null',
+      async (_label, sku) => {
+        variantRepository.create.mockReturnValueOnce(mockVariant as Variant);
+        variantRepository.save.mockResolvedValueOnce(mockVariant as Variant);
+        mockQueryBuilder.getOne.mockResolvedValueOnce(mockVariant as Variant);
+
+        await service.create(merchantId, { ...mockCreateVariantDto, sku });
+
+        expect(variantRepository.findOne).not.toHaveBeenCalled();
+        expect(variantRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ sku: null, productId: mockProduct.id }),
+        );
+      },
+    );
+  });
+
   describe('Update', () => {
     const merchantId = mockMerchant.id;
     const variantId = mockVariant.id!;
@@ -720,6 +745,22 @@ describe('VariantsService', () => {
         async () =>
           await service.update(null as any, merchantId, mockUpdateVariantDto),
       ).rejects.toThrow('Variant ID is incorrect');
+    });
+  });
+
+  describe('Update the SKU', () => {
+    it('clears it with a blank value, without looking it up', async () => {
+      const variant = { ...mockVariant } as Variant;
+      mockQueryBuilder.getOne.mockResolvedValueOnce(variant);
+      variantRepository.save.mockResolvedValueOnce(variant);
+      mockQueryBuilder.getOne.mockResolvedValueOnce(variant);
+
+      await service.update(mockVariant.id!, mockMerchant.id, { sku: '' });
+
+      expect(variantRepository.findOne).not.toHaveBeenCalled();
+      expect(variantRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ sku: null }),
+      );
     });
   });
 

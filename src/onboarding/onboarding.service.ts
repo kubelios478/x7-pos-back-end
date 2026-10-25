@@ -31,6 +31,7 @@ import { BusinessProfileDto } from './dto/business-profile.dto';
 import { MerchantProfileDto } from './dto/merchant-profile.dto';
 import { ProvisionAccountDto } from './dto/provision-account.dto';
 import { SaveOnboardingDraftDto } from './dto/onboarding-draft.dto';
+import { availableUsername } from 'src/auth/utils/available-username.util';
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -189,7 +190,7 @@ export class OnboardingService {
     const merchantName = session.merchantName!;
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const username = workEmail.split('@')[0];
+    const username = await availableUsername(this.userRepository, workEmail);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
