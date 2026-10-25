@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LegacyRutSubscriber } from './platform-saas/companies/legacy-rut.subscriber';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import './database/pg-date-parser';
+import './database/pg-int8-parser';
 
 // Core & Platform Modules
 import { AuthModule } from './auth/auth.module';
