@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsPositive } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsPositive, Max } from 'class-validator';
 import { InventoryStockAlertStatus } from '../constants/inventory-stock-alert-status.enum';
 import { InventoryStockAlertType } from '../constants/inventory-stock-alert-type.enum';
 
@@ -12,11 +12,12 @@ export class GetInventoryStockAlertsQueryDto {
   @IsPositive()
   page?: number;
 
-  @ApiPropertyOptional({ example: 20 })
+  @ApiPropertyOptional({ example: 20, maximum: 100 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @IsPositive()
+  @Max(100)
   limit?: number;
 
   @ApiPropertyOptional({ description: 'Filter by supply category (CAT 2)' })

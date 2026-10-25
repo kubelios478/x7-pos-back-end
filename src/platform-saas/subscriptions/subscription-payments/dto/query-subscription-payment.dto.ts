@@ -1,6 +1,13 @@
 //src/subscriptions/subscription-payments/dto/query-subscription-payment.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QuerySubscriptionPaymentDto {
@@ -33,6 +40,7 @@ export class QuerySubscriptionPaymentDto {
   page: number = 1;
 
   @ApiPropertyOptional({
+    maximum: 100,
     description: 'Items per page',
     example: 10,
   })
@@ -40,6 +48,7 @@ export class QuerySubscriptionPaymentDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit: number = 10;
 
   @ApiPropertyOptional({
