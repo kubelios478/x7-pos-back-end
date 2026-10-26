@@ -360,7 +360,22 @@ describe('MailService', () => {
       );
     });
 
-    it('is logged outside production, to test flows without SMTP', async () => {
+    it('is not logged when NODE_ENV is unset (development must be explicit)', async () => {
+      delete process.env.NODE_ENV;
+      mockSendMail.mockRejectedValueOnce(new Error('SMTP down'));
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => {});
+      jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+
+      await expect(service.sendMail(resetEmail)).resolves.toBe(false);
+
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('live-reset-token'),
+      );
+    });
+
+    it('is logged in development, to test flows without SMTP', async () => {
       process.env.NODE_ENV = 'development';
       mockSendMail.mockRejectedValueOnce(new Error('SMTP down'));
       const warn = jest

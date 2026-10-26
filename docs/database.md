@@ -104,9 +104,11 @@ database. Generate it again after rebasing.
 - [ ] `migration:run` on the empty database, and before each deploy.
 - [ ] Reference data loaded with the fixed ids.
 - [ ] Environment: `NODE_ENV=production`, `DB_*` and `DB_SSL=true`, real
-      `JWT_SECRET` and `JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `TRUST_PROXY`,
-      `CONTRACT_DOCUMENT_SECRET`, SMTP. Secrets live in the platform's secret store,
-      never in the repository.
+      `JWT_SECRET` and `JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `FRONTEND_URL`,
+      `TRUST_PROXY`, `CONTRACT_DOCUMENT_SECRET`, SMTP. Secrets live in the platform's
+      secret store, never in the repository. The app refuses to start when a required
+      variable is missing or, in production, when a secret is shorter than 32
+      characters or still the `.env.example` value (`src/config/environment.ts`).
 - [ ] Health check: the platform probes `GET /api/health` (200 when the database
       answers, 503 otherwise).
 - [ ] Automatic backups enabled on the database.

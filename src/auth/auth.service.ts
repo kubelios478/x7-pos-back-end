@@ -36,6 +36,7 @@ import { UserRole } from 'src/platform-saas/users/constants/role.enum';
 import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { getAllSubscriptionFeatureIds } from 'src/common/subscription/subscription-feature-ids';
 import { availableUsername } from './utils/available-username.util';
+import { isDevelopmentEnv } from 'src/config/environment';
 
 @Injectable()
 export class AuthService {
@@ -198,7 +199,7 @@ export class AuthService {
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (isDevelopmentEnv()) {
       this.logger.warn(`Password reset link (dev): ${resetUrl}`);
     }
 

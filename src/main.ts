@@ -1,5 +1,7 @@
 // src/main.ts
 import './polyfill';
+// .env antes que AppModule: algunos módulos leen NODE_ENV al importarse (isDevelopmentEnv).
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { parseCorsOrigins } from './common/security/http-security';
@@ -10,12 +12,9 @@ import { Logger } from '@nestjs/common';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
-import * as dotenv from 'dotenv';
 import { RedisIoAdapter } from './realtime/adapters/redis-io.adapter';
 import { errorMessage, errorStack } from './common/utils/log-error.util';
 import * as fs from 'fs';
-
-dotenv.config();
 
 const logger = new Logger('Bootstrap');
 
