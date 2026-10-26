@@ -1,4 +1,4 @@
-import { isDevelopmentEnv, validateEnv } from './environment';
+import { isDevelopmentEnv, isSwaggerEnabled, validateEnv } from './environment';
 
 const LONG_SECRET = 'a'.repeat(32);
 const OTHER_LONG_SECRET = 'b'.repeat(32);
@@ -43,6 +43,25 @@ describe('isDevelopmentEnv', () => {
     } finally {
       process.env.NODE_ENV = previous;
     }
+  });
+});
+
+describe('isSwaggerEnabled', () => {
+  it.each(['development', 'test'])('is on in %s', (env) => {
+    expect(isSwaggerEnabled({ NODE_ENV: env })).toBe(true);
+  });
+
+  it('is off in production by default', () => {
+    expect(isSwaggerEnabled({ NODE_ENV: 'production' })).toBe(false);
+    expect(
+      isSwaggerEnabled({ NODE_ENV: 'production', SWAGGER_ENABLED: 'false' }),
+    ).toBe(false);
+  });
+
+  it('is on in production with SWAGGER_ENABLED=true', () => {
+    expect(
+      isSwaggerEnabled({ NODE_ENV: 'production', SWAGGER_ENABLED: 'TRUE' }),
+    ).toBe(true);
   });
 });
 

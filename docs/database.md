@@ -111,6 +111,8 @@ database. Generate it again after rebasing.
       characters or still the `.env.example` value (`src/config/environment.ts`).
 - [ ] Health check: the platform probes `GET /api/health` (200 when the database
       answers, 503 otherwise).
+- [ ] Swagger (`/api/docs`) is off in production; set `SWAGGER_ENABLED=true` only on
+      a staging environment.
 - [ ] Automatic backups enabled on the database.
 
 ## Applied migrations
