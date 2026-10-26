@@ -109,6 +109,7 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
+    "globalSetup": "<rootDir>/../test/jest.global-setup.ts",
     "setupFilesAfterEnv": [
       "<rootDir>/../test/jest.setup.ts"
     ],
