@@ -264,7 +264,7 @@ export class QROrderItemService {
 
     return {
       statusCode: 200,
-      message: 'QR Order Item retrieved successfully',
+      message: 'QR Order Items retrieved successfully',
       data,
       pagination: {
         total,
@@ -287,7 +287,7 @@ export class QROrderItemService {
         id,
         status: In(['active', 'inactive']),
       },
-      relations: ['qrOrder', 'product', 'variant'],
+      relations: ['qrOrder', 'product', 'variant', 'qrMenuItem'],
     });
     if (!qrOrderItem) {
       ErrorHandler.qrOrderItemNotFound();

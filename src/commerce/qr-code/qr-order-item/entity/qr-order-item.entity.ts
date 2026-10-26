@@ -18,17 +18,16 @@ export class QROrderItem {
     example: 1,
     description: 'Unique identifier of the QR Order Item',
   })
-    @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn()
   id: number;
 
   @ApiPropertyOptional({
     example: 1,
     description: 'Identifier of the QR Menu Item related',
   })
-  @ManyToOne(() => QRMenuItem, { eager: true, nullable: true })
+  @ManyToOne(() => QRMenuItem, { nullable: true })
   @JoinColumn({ name: 'qr_menu_item_id' })
   qrMenuItem: QRMenuItem;
-
 
   @ApiProperty({
     example: 1,

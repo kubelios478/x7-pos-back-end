@@ -10,6 +10,7 @@ import { CreateQROrderItemDto } from './dto/create-qr-order-item.dto';
 import { SelectQueryBuilder } from 'typeorm';
 import { Repository, In } from 'typeorm';
 import { UpdateQrOrderItemDto } from './dto/update-qr-order-item.dto';
+import { QRMenuItem } from '../qr-menu-item/entity/qr-menu-item.entity';
 
 describe('QROrderItemService', () => {
   let service: QROrderItemService;
@@ -17,6 +18,7 @@ describe('QROrderItemService', () => {
   let qrOrderRepository: Repository<QROrder>;
   let productRepository: Repository<Product>;
   let variantRepository: Repository<Variant>;
+  let qrMenuItemRepository: Repository<QRMenuItem>;
 
   //Mock data
   const mockQROrderItem: Partial<QROrderItem> = {
@@ -108,6 +110,17 @@ describe('QROrderItemService', () => {
             remove: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(QRMenuItem),
+          useValue: {
+            findOne: jest.fn(),
+            find: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            remove: jest.fn(),
+            exists: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -116,6 +129,7 @@ describe('QROrderItemService', () => {
     qrOrderRepository = module.get(getRepositoryToken(QROrder));
     productRepository = module.get(getRepositoryToken(Product));
     variantRepository = module.get(getRepositoryToken(Variant));
+    qrMenuItemRepository = module.get(getRepositoryToken(QRMenuItem));
     jest.clearAllMocks();
   });
 
@@ -377,7 +391,7 @@ describe('QROrderItemService', () => {
           id: 999,
           status: In(['active', 'inactive']),
         },
-        relations: ['qrOrder', 'product', 'variant'],
+        relations: ['qrOrder', 'product', 'variant', 'qrMenuItem'],
       });
     });
 
@@ -408,15 +422,14 @@ describe('QROrderItemService', () => {
 
   describe('Update QR Order Item', () => {
     it('should update and return a qr order item successfully', async () => {
-      const updatedQROrderItem: Partial<QROrderItem> = {
+      const updatedQROrderItem = {
         ...mockQROrderItem,
         ...mockUpdateQROrderItemDto,
         qrOrder: mockUpdateQROrderItemDto.qrOrder as unknown as QROrder,
         product: mockUpdateQROrderItemDto.product as unknown as Product,
         variant: mockUpdateQROrderItemDto.variant as unknown as Variant,
-        total_price:
-          mockUpdateQROrderItemDto.quantity * mockUpdateQROrderItemDto.price, // 3 * 15 = 45
-      };
+        qrMenuItem: undefined,
+      } as unknown as QROrderItem;
 
       const findOneSpy = jest.spyOn(qrOrderItemRepository, 'findOne');
       const saveSpy = jest.spyOn(qrOrderItemRepository, 'save');
@@ -490,7 +503,7 @@ describe('QROrderItemService', () => {
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
         statusCode: 200,
-        message: 'QR Order Item deleted successfully',
+        message: 'QR Order Item removed successfully',
         data: mockQROrderItem,
       });
     });

@@ -362,17 +362,9 @@ describe('QROrderService', () => {
 
   describe('Update QR Order', () => {
     it('should update and return a qr order successfully', async () => {
-      const updatedQROrder: Partial<QROrder> = {
+      const updatedQROrder = {
         ...mockQROrder,
-        merchant: { id: 1 } as Merchant,
-        qrLocation: { id: 1 } as QRLocation,
-        customer: { id: 1 } as Customer,
-        table: { id: 1 } as Table,
-        order: { id: 1 } as Order,
-        qr_order_status: mockUpdateQROrderDto.qr_order_status,
-        notes: mockUpdateQROrderDto.notes,
-        total_amount: mockUpdateQROrderDto.total_amount,
-        status: mockUpdateQROrderDto.status,
+        ...mockUpdateQROrderDto,
       };
 
       const findOneSpy = jest.spyOn(qrOrderRepository, 'findOne');
