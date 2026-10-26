@@ -80,8 +80,15 @@ database. Generate it again after rebasing.
 1. Create an empty Postgres database and set `DB_*` (and `DB_SSL=true` for a hosted
    database).
 2. `npm run migration:run`.
-3. Load the reference data.
-4. Development only: load demo data.
+3. `npm run seed:reference`: the reference data (below).
+4. `SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... npm run seed:admin`: the first
+   `portal_admin`, with its platform company and merchant (login needs a merchant). It
+   does nothing when a `portal_admin` already exists; create the other users from the
+   backoffice. The password needs 8 characters or more.
+5. Development only: load demo data.
+
+The npm scripts read `.env` when it exists and the environment otherwise (Railway), so
+they run the same locally and on the platform.
 
 ## Reference data and demo data
 
@@ -89,21 +96,24 @@ database. Generate it again after rebasing.
   subscription plans, features and applications. The code depends on their **fixed
   ids**: `SUBSCRIPTION_FEATURE_IDS` in
   `src/common/subscription/subscription-feature-ids.ts` hard-codes them (orders = 63),
-  so a database with different ids answers 403 on every feature-gated route. Today it
-  is loaded with `scripts/seed-subscriptions-reference-data.sql`; the plan is an
-  idempotent, versioned seed command.
+  so a database with different ids answers 403 on every feature-gated route. It lives in
+  `src/database/seeds/reference-data.sql` and is loaded with `npm run seed:reference`,
+  in one transaction. It is idempotent: run it after each deploy that changes it.
+  A new plan, application or feature is added there with its fixed id.
 - **Demo data** (merchants, products, orders) must never reach production. The app no
   longer inserts sample data on startup (removed on 2026-10-25: it created 4 active
   taxes for merchant 1). A demo-data command, if added, must refuse to run when
   `NODE_ENV=production`.
 - The other files in `scripts/` predate migrations. Their schema changes are already in
-  `InitialSchema`; do not run them on a migrated database.
+  `InitialSchema`; do not run them on a migrated database. The `seed-*.sql`
+  files are demo data.
 
 ## Production checklist
 
 - [ ] A new database, not the shared development database (it holds test data).
 - [ ] `migration:run` on the empty database, and before each deploy.
-- [ ] Reference data loaded with the fixed ids.
+- [ ] `npm run seed:reference`, then `npm run seed:admin` with the first admin's email
+      and a strong password (remove `SEED_ADMIN_PASSWORD` from the platform afterwards).
 - [ ] Environment: `NODE_ENV=production`, `DB_*` and `DB_SSL=true`, real
       `JWT_SECRET` and `JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `TRUST_PROXY`,
       `CONTRACT_DOCUMENT_SECRET`, SMTP. Secrets live in the platform's secret store,
