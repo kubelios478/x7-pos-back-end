@@ -15,9 +15,8 @@ import { ReservationStatus } from '../../reservation/constants/reservation.const
  * ReservationService en la misma transacción que cambia el estado) y se lee. No hay DTO de
  * escritura ni ruta de edición; el controlador responde 405 a PUT/PATCH/DELETE.
  *
- * El índice cubre la consulta del feed, que filtra por reserva y ordena por changed_at. Con
- * `synchronize: false` no lo crea TypeORM: se aplica con
- * scripts/add-reservation-status-history-index.sql (mismo nombre).
+ * El índice cubre la consulta del feed, que filtra por reserva y ordena por changed_at; lo
+ * crea la migración InitialSchema.
  */
 @Entity('reservation_status_history')
 @Index('IDX_reservation_status_history_reservation_changed_at', [
