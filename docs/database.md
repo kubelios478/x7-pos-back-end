@@ -16,16 +16,17 @@ first production deploy. Status as of 2026-10-25.
   and per supply/location. The entities declare them with
   `@Index(..., { synchronize: false })`, so neither `synchronize` nor
   `migration:generate` creates them.
-- The e2e tests (`npm run test:e2e`) still build their disposable database with
-  `synchronize`, so they run without those three indexes (pending).
+- The e2e tests (`npm run test:e2e`) build their disposable database with the
+  migrations, like a new production database. `test/e2e/schema.e2e-spec.ts` fails when
+  an entity changed without its migration (the same check as
+  `migration:generate --check`) or when one of the three indexes is missing.
 
 ## Rules
 
 1. Every schema change is a migration, committed together with the entity change.
-2. Never enable `synchronize` against a shared or production database. It drops and
-   re-adds a renamed column (losing its data), changes the schema without review or
-   rollback, and races when several instances start at once. Only the disposable e2e
-   database uses it.
+2. Never enable `synchronize`. It drops and re-adds a renamed column (losing its
+   data), changes the schema without review or rollback, and races when several
+   instances start at once.
 3. Never edit a migration that has run anywhere; write a new one.
 4. Deploy order: `npm run migration:run`, then start the new version of the app.
 5. A migration on the shared development database is run by one person, after the
