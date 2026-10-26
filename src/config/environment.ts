@@ -24,6 +24,19 @@ export function isDevelopmentEnv(
   return nodeEnv === 'development' || nodeEnv === 'test';
 }
 
+/**
+ * Swagger publica el mapa completo de la API: en producción solo con SWAGGER_ENABLED=true
+ * (p. ej. un entorno de staging).
+ */
+export function isSwaggerEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return (
+    isDevelopmentEnv(env.NODE_ENV) ||
+    (env.SWAGGER_ENABLED ?? '').toLowerCase() === 'true'
+  );
+}
+
 function isBlank(value: unknown): boolean {
   return typeof value !== 'string' || value.trim() === '';
 }
