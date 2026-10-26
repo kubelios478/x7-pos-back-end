@@ -16,16 +16,17 @@ first production deploy. Status as of 2026-10-25.
   and per supply/location. The entities declare them with
   `@Index(..., { synchronize: false })`, so neither `synchronize` nor
   `migration:generate` creates them.
-- The e2e tests (`npm run test:e2e`) still build their disposable database with
-  `synchronize`, so they run without those three indexes (pending).
+- The e2e tests (`npm run test:e2e`) build their disposable database with the
+  migrations, like a new production database. `test/e2e/schema.e2e-spec.ts` fails when
+  an entity changed without its migration (the same check as
+  `migration:generate --check`) or when one of the three indexes is missing.
 
 ## Rules
 
 1. Every schema change is a migration, committed together with the entity change.
-2. Never enable `synchronize` against a shared or production database. It drops and
-   re-adds a renamed column (losing its data), changes the schema without review or
-   rollback, and races when several instances start at once. Only the disposable e2e
-   database uses it.
+2. Never enable `synchronize`. It drops and re-adds a renamed column (losing its
+   data), changes the schema without review or rollback, and races when several
+   instances start at once.
 3. Never edit a migration that has run anywhere; write a new one.
 4. Deploy order: `npm run migration:run`, then start the new version of the app.
 5. A migration on the shared development database is run by one person, after the
@@ -79,8 +80,15 @@ database. Generate it again after rebasing.
 1. Create an empty Postgres database and set `DB_*` (and `DB_SSL=true` for a hosted
    database).
 2. `npm run migration:run`.
-3. Load the reference data.
-4. Development only: load demo data.
+3. `npm run seed:reference`: the reference data (below).
+4. `SEED_ADMIN_EMAIL=... SEED_ADMIN_PASSWORD=... npm run seed:admin`: the first
+   `portal_admin`, with its platform company and merchant (login needs a merchant). It
+   does nothing when a `portal_admin` already exists; create the other users from the
+   backoffice. The password needs 8 characters or more.
+5. Development only: load demo data.
+
+The npm scripts read `.env` when it exists and the environment otherwise (Railway), so
+they run the same locally and on the platform.
 
 ## Reference data and demo data
 
@@ -88,27 +96,34 @@ database. Generate it again after rebasing.
   subscription plans, features and applications. The code depends on their **fixed
   ids**: `SUBSCRIPTION_FEATURE_IDS` in
   `src/common/subscription/subscription-feature-ids.ts` hard-codes them (orders = 63),
-  so a database with different ids answers 403 on every feature-gated route. Today it
-  is loaded with `scripts/seed-subscriptions-reference-data.sql`; the plan is an
-  idempotent, versioned seed command.
+  so a database with different ids answers 403 on every feature-gated route. It lives in
+  `src/database/seeds/reference-data.sql` and is loaded with `npm run seed:reference`,
+  in one transaction. It is idempotent: run it after each deploy that changes it.
+  A new plan, application or feature is added there with its fixed id.
 - **Demo data** (merchants, products, orders) must never reach production. The app no
   longer inserts sample data on startup (removed on 2026-10-25: it created 4 active
   taxes for merchant 1). A demo-data command, if added, must refuse to run when
   `NODE_ENV=production`.
 - The other files in `scripts/` predate migrations. Their schema changes are already in
-  `InitialSchema`; do not run them on a migrated database.
+  `InitialSchema`; do not run them on a migrated database. The `seed-*.sql`
+  files are demo data.
 
 ## Production checklist
 
 - [ ] A new database, not the shared development database (it holds test data).
 - [ ] `migration:run` on the empty database, and before each deploy.
-- [ ] Reference data loaded with the fixed ids.
+- [ ] `npm run seed:reference`, then `npm run seed:admin` with the first admin's email
+      and a strong password (remove `SEED_ADMIN_PASSWORD` from the platform afterwards).
 - [ ] Environment: `NODE_ENV=production`, `DB_*` and `DB_SSL=true`, real
-      `JWT_SECRET` and `JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `TRUST_PROXY`,
-      `CONTRACT_DOCUMENT_SECRET`, SMTP. Secrets live in the platform's secret store,
-      never in the repository.
+      `JWT_SECRET` and `JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `FRONTEND_URL`,
+      `TRUST_PROXY`, `CONTRACT_DOCUMENT_SECRET`, SMTP. Secrets live in the platform's
+      secret store, never in the repository. The app refuses to start when a required
+      variable is missing or, in production, when a secret is shorter than 32
+      characters or still the `.env.example` value (`src/config/environment.ts`).
 - [ ] Health check: the platform probes `GET /api/health` (200 when the database
       answers, 503 otherwise).
+- [ ] Swagger (`/api/docs`) is off in production; set `SWAGGER_ENABLED=true` only on
+      a staging environment.
 - [ ] Automatic backups enabled on the database.
 
 ## Applied migrations
