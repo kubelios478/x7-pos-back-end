@@ -8,19 +8,16 @@ first production deploy. Status as of 2026-10-25.
 - The schema changes **only through TypeORM migrations** in `src/database/migrations`.
   `synchronize` is off in `app.module.ts` and `data-source.ts`, and the app never
   migrates on startup.
-- **An empty database cannot be built with migrations yet.** The migration history
-  starts with `AlignSharedSchema1761170000000`, which aligns a database that existed
-  before migrations. The 8 migrations create 1 of the 124 tables.
-- Three partial unique indexes exist **only in a migration**
-  (`UniqueOpenShiftAndStockRows1761400000000`): one open cash shift per drawer, and
-  one active stock row per product/variant/location and per supply/location. The
-  entities declare them with `@Index(..., { synchronize: false })`, so neither
-  `synchronize` nor `migration:generate` creates them.
-- The e2e tests (`npm run test:e2e`) build their disposable database with
-  `synchronize`, so they run without those three indexes.
-
-Fixing the second point is the main task before production: see
-[Before production: baseline migration](#before-production-baseline-migration).
+- **`InitialSchema1793031148222` creates the whole schema from an empty database**
+  (124 tables, enums, indexes and foreign keys). It replaced the 8 earlier migrations,
+  which assumed a database created before migrations existed.
+- Three partial unique indexes are written by hand at the end of `InitialSchema`: one
+  open cash shift per drawer, and one active stock row per product/variant/location
+  and per supply/location. The entities declare them with
+  `@Index(..., { synchronize: false })`, so neither `synchronize` nor
+  `migration:generate` creates them.
+- The e2e tests (`npm run test:e2e`) still build their disposable database with
+  `synchronize`, so they run without those three indexes (pending).
 
 ## Rules
 
@@ -51,52 +48,33 @@ npm run migration:revert
 - `migration:generate` compares the entities with the database in `.env`. Point
   `DB_*` at a database that is up to date, or the migration will include unrelated
   changes.
-- TypeORM always reports `collaborator_contracts.overtime_multiplier`'s default as
-  changed (numeric default comparison). Drop that statement if it appears.
 - Write a short comment at the top of each migration: what changes and why, and what
   `down()` does with existing data.
 - Partial or expression indexes are not generated: write them by hand in the
   migration and declare them on the entity with `synchronize: false`.
 
-## Before production: baseline migration
+## Existing databases: one-time step
 
-Goal: `npm run migration:run` on an **empty** database creates the whole schema. Do
-it on a branch, and only once.
+A database that already ran the 8 earlier migrations (the shared development database,
+any local one) has the full schema; it only needs `InitialSchema` recorded as applied,
+**without running it**:
 
-1. **Generate the baseline against an empty database.** Start a disposable Postgres
-   (for example `docker compose -f docker-compose.e2e.yml -p x7-baseline up -d --wait`),
-   point `DB_*` at it (`127.0.0.1:54329`, user, password and database `x7_e2e`), then:
+```bash
+npm run migration:show   # only InitialSchema1793031148222 may be pending
+npm run build && npm run typeorm -- migration:run --fake
+npm run migration:show   # nothing pending
+```
 
-   ```bash
-   npm run migration:generate -- src/database/migrations/InitialSchema
-   ```
+`--fake` inserts the row in the `migrations` table and changes nothing else. The rows
+of the 8 earlier migrations stay as history; TypeORM ignores executed migrations whose
+files no longer exist. A database that misses part of the schema must not use
+`--fake`: create it again from empty with `migration:run`.
 
-   Against an empty database the result creates every table, constraint and index the
-   entities declare.
-2. **Add the hand-written indexes** to `InitialSchema`: copy the three
-   `CREATE UNIQUE INDEX` statements from `UniqueOpenShiftAndStockRows1761400000000`.
-3. **Remove the 8 previous migrations.** Their changes are already part of the
-   baseline.
-4. **Check the baseline.** On a new empty database, `npm run migration:run` must
-   succeed. Then `npm run typeorm -- migration:generate --check src/database/migrations/Check`
-   against that database must report no changes. Compare it with the shared
-   development database the same way: run `--check` with `DB_*` pointing there.
-5. **Mark the baseline as applied in every existing database** (the shared
-   development database and any local one), without running it:
+Before rebasing a branch that adds a migration, check its timestamp: a migration
+generated before `1793031148222` would sort before `InitialSchema` and fail on a new
+database. Generate it again after rebasing.
 
-   ```bash
-   npm run build && npm run typeorm -- migration:run --fake
-   ```
-
-   `--fake` records the pending migrations as executed. Run `migration:show` before
-   and after: only `InitialSchema` may be pending before.
-6. **Build the e2e database with migrations** instead of `synchronize`, so the tests
-   also cover the three indexes.
-7. **Guard it in CI:** run the migrations on an empty database and then
-   `migration:generate --check`. The job fails when an entity changed without a
-   migration.
-
-## Creating a new database (once the baseline exists)
+## Creating a new database
 
 1. Create an empty Postgres database and set `DB_*` (and `DB_SSL=true` for a hosted
    database).
@@ -118,12 +96,12 @@ it on a branch, and only once.
   taxes for merchant 1). A demo-data command, if added, must refuse to run when
   `NODE_ENV=production`.
 - The other files in `scripts/` predate migrations. Their schema changes are already in
-  `AlignSharedSchema1761170000000`; do not run them on a migrated database.
+  `InitialSchema`; do not run them on a migrated database.
 
 ## Production checklist
 
 - [ ] A new database, not the shared development database (it holds test data).
-- [ ] Baseline migration done (see above); `migration:run` before each deploy.
+- [ ] `migration:run` on the empty database, and before each deploy.
 - [ ] Reference data loaded with the fixed ids.
 - [ ] Environment: `NODE_ENV=production`, `DB_*` and `DB_SSL=true`, real
       `JWT_SECRET` and `JWT_REFRESH_SECRET`, `CORS_ORIGINS`, `TRUST_PROXY`,
@@ -137,11 +115,10 @@ it on a branch, and only once.
 
 | Migration | Change |
 | --- | --- |
-| `AlignSharedSchema1761170000000` | Aligns a database created before migrations (KDS rerouting, reservation capacity, external delivery, indexes) |
-| `OrderTableOptional1761250000000` | `orders.table_id` accepts NULL (take-out and delivery orders) |
-| `CustomerDocumentId1761300000000` | `customer.rut` becomes `customer.document_id` |
-| `CompanyMerchantTaxId1761350000000` | `company.rut` and `merchant.rut` become `tax_id` |
-| `UniqueOpenShiftAndStockRows1761400000000` | The three partial unique indexes |
-| `MerchantTimezone1761450000000` | `merchant.timezone` (IANA, default UTC) |
-| `VariantSkuNullable1761500000000` | `variant.sku` accepts NULL |
-| `QrOrderItemNotesNullable1761510000000` | `qr_order_item.notes` accepts NULL |
+| `InitialSchema1793031148222` | The whole schema, including the three partial unique indexes |
+
+It replaced these, whose changes it contains: `AlignSharedSchema1761170000000`,
+`OrderTableOptional1761250000000`, `CustomerDocumentId1761300000000`,
+`CompanyMerchantTaxId1761350000000`, `UniqueOpenShiftAndStockRows1761400000000`,
+`MerchantTimezone1761450000000`, `VariantSkuNullable1761500000000` and
+`QrOrderItemNotesNullable1761510000000`.

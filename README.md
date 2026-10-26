@@ -66,9 +66,7 @@ $ npm run migration:revert
 $ npm run migration:generate -- src/database/migrations/DescribeTheChange
 ```
 
-Review a generated migration before committing it. TypeORM always reports
-`collaborator_contracts.overtime_multiplier`'s default as changed (numeric default
-comparison); drop that statement if it appears.
+Review a generated migration before committing it.
 
 How the schema is created, the rules for changing it, reference data and what is
 pending before production: [docs/database.md](docs/database.md).
