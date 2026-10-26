@@ -6,7 +6,7 @@ import { DataSource } from 'typeorm';
  *
  * Usa las mismas variables DB_* que app.module y trabaja sobre el código compilado en dist/:
  * los scripts de package.json compilan antes de invocar la CLI y cargan el .env con
- * `node --env-file`.
+ * `node -r dotenv/config` (si no hay .env, como en Railway, usan las variables del entorno).
  */
 export default new DataSource({
   type: 'postgres',

@@ -1,21 +1,21 @@
 // src/main.ts
 import './polyfill';
+// .env antes que AppModule: algunos módulos leen NODE_ENV al importarse (isDevelopmentEnv).
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { parseCorsOrigins } from './common/security/http-security';
 import { configureApp } from './app.setup';
+import { isSwaggerEnabled } from './config/environment';
 import { CorsIoAdapter } from './realtime/adapters/cors-io.adapter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from '@nestjs/common';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
-import * as dotenv from 'dotenv';
 import { RedisIoAdapter } from './realtime/adapters/redis-io.adapter';
 import { errorMessage, errorStack } from './common/utils/log-error.util';
 import * as fs from 'fs';
-
-dotenv.config();
 
 const logger = new Logger('Bootstrap');
 
@@ -46,26 +46,32 @@ async function bootstrap() {
 
   configureApp(app, logger);
 
-  // Swagger Configuration
-  const config = new DocumentBuilder()
-    .setTitle('X7-POS APIs')
-    .setDescription('Authentication and user management documentation')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  // SIGTERM (redeploy en Railway): Nest cierra HTTP, WebSockets y el pool de la base
+  // antes de salir, en lugar de cortarlos.
+  app.enableShutdownHooks();
 
-  SwaggerModule.setup(
-    'api/docs',
-    app,
-    SwaggerModule.createDocument(app, config),
-    {
-      swaggerOptions: {
-        tagsSorter: 'alpha', // Sort the tags alphabetically
-        operationsSorter: 'alpha', // Sort the endpoints alphabetically
-        docExpansion: 'none', // 'none' It collapses everything by default (tags and routes)
+  // Swagger: siempre en desarrollo; en producción solo con SWAGGER_ENABLED=true.
+  if (isSwaggerEnabled()) {
+    const config = new DocumentBuilder()
+      .setTitle('X7-POS APIs')
+      .setDescription('Authentication and user management documentation')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+
+    SwaggerModule.setup(
+      'api/docs',
+      app,
+      SwaggerModule.createDocument(app, config),
+      {
+        swaggerOptions: {
+          tagsSorter: 'alpha', // Sort the tags alphabetically
+          operationsSorter: 'alpha', // Sort the endpoints alphabetically
+          docExpansion: 'none', // 'none' It collapses everything by default (tags and routes)
+        },
       },
-    },
-  );
+    );
+  }
 
   // WebSockets: same allowed origins as HTTP unless WS_CORS_ORIGIN says otherwise
   const wsOrigins = parseCorsOrigins(

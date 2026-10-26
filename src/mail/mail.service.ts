@@ -5,6 +5,7 @@ import type { LookupAddress, LookupOptions } from 'dns';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const nodemailer = require('nodemailer');
 import type { Transporter } from 'nodemailer';
+import { isDevelopmentEnv } from 'src/config/environment';
 
 function smtpDnsLookup(
   hostname: string,
@@ -93,7 +94,7 @@ export class MailService {
       );
       // The body can carry a password-reset link (a live token): only outside production,
       // where it lets the flow be tested without an SMTP server.
-      if (options.text && process.env.NODE_ENV !== 'production') {
+      if (options.text && isDevelopmentEnv()) {
         this.logger.warn(`Undelivered email body:\n${options.text}`);
       }
       return false;

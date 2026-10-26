@@ -14,13 +14,15 @@ import { OrderItem } from '../../pos/order-item/entities/order-item.entity';
 import { KitchenStation } from '../kitchen-station/entities/kitchen-station.entity';
 import { OrdersModule } from '../../pos/orders/orders.module';
 import { ProductsInventoryModule } from 'src/inventory/products-inventory/products-inventory.module';
+import { isDevelopmentEnv } from 'src/config/environment';
 
 /**
- * Development tools only: in production the reset endpoint (a TRUNCATE of every merchant's
- * kitchen) is not even registered.
+ * Development tools only: outside development/test the reset endpoint (a TRUNCATE of every
+ * merchant's kitchen) is not even registered.
  */
-const devOnlyControllers =
-  process.env.NODE_ENV === 'production' ? [] : [KitchenOrderDevController];
+const devOnlyControllers = isDevelopmentEnv()
+  ? [KitchenOrderDevController]
+  : [];
 
 @Module({
   imports: [
