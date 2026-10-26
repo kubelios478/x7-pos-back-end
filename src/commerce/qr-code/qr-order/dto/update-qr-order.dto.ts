@@ -1,4 +1,4 @@
-//src/qr-code/qr-order/dto/update-qr-order.dto.ts
+import { PartialType } from '@nestjs/swagger';
 import { CreateQROrderDto } from './create-qr-order.dto';
 
-export class UpdateQROrderDto extends CreateQROrderDto {}
+export class UpdateQROrderDto extends PartialType(CreateQROrderDto) {}

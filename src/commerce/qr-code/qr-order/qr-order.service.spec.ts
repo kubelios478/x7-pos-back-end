@@ -371,18 +371,27 @@ describe('QROrderService', () => {
     it('should update and return a qr order successfully', async () => {
       const updatedQROrder: Partial<QROrder> = {
         ...mockQROrder,
-        ...mockUpdateQROrderDto,
-        merchant: mockUpdateQROrderDto.merchant as unknown as Merchant,
-        table: mockUpdateQROrderDto.table as unknown as Table,
-        customer: mockUpdateQROrderDto.customer as unknown as Customer,
-        order: mockUpdateQROrderDto.order as unknown as Order,
-        qrLocation: mockUpdateQROrderDto.qrLocation as unknown as QRLocation,
+        merchant: { id: 1 } as Merchant,
+        qrLocation: { id: 1 } as QRLocation,
+        customer: { id: 1 } as Customer,
+        table: { id: 1 } as Table,
+        order: { id: 1 } as Order,
+        qr_order_status: mockUpdateQROrderDto.qr_order_status,
+        notes: mockUpdateQROrderDto.notes,
+        total_amount: mockUpdateQROrderDto.total_amount,
+        status: mockUpdateQROrderDto.status,
       };
 
       const findOneSpy = jest.spyOn(qrOrderRepository, 'findOne');
       const saveSpy = jest.spyOn(qrOrderRepository, 'save');
 
-      findOneSpy.mockResolvedValue(mockQROrder as QROrder);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({ id: 1 } as Merchant);
+      jest.spyOn(qrLocationRepository, 'findOne').mockResolvedValue({ id: 1 } as QRLocation);
+      jest.spyOn(customerRepository, 'findOne').mockResolvedValue({ id: 1 } as Customer);
+      jest.spyOn(tableRepository, 'findOne').mockResolvedValue({ id: 1 } as Table);
+      jest.spyOn(orderRepository, 'findOne').mockResolvedValue({ id: 1 } as Order);
+
+      findOneSpy.mockResolvedValue({ ...mockQROrder } as QROrder);
       saveSpy.mockResolvedValue(updatedQROrder as QROrder);
       const result = await service.update(1, mockUpdateQROrderDto);
 

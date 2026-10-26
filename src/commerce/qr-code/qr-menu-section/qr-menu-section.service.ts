@@ -24,27 +24,26 @@ export class QRMenuSectionService {
   async create(
     dto: CreateQRMenuSectionDto,
   ): Promise<OneQRMenuSectionResponseDto> {
-    if (dto.qrMenu && !Number.isInteger(dto.qrMenu)) {
+    const menuId = dto.qrMenu ?? dto.qr_menu_id;
+    if (menuId && !Number.isInteger(menuId)) {
       ErrorHandler.invalidId('QR MENU ID must be positive integer');
     }
     let qRMenu: QRMenu | null = null;
 
-    if (dto.qrMenu) {
-      if (dto.qrMenu) {
-        qRMenu = await this.qrMenuRepository.findOne({
-          where: { id: dto.qrMenu },
-        });
-        if (!qRMenu) {
-          ErrorHandler.qrMenuNotFound();
-        }
+    if (menuId) {
+      qRMenu = await this.qrMenuRepository.findOne({
+        where: { id: menuId },
+      });
+      if (!qRMenu) {
+        ErrorHandler.qrMenuNotFound();
       }
     }
     const qrMenuSection = this.qrMenuSectionRepository.create({
       qrMenu: qRMenu,
-      name: dto.name,
-      description: dto.description,
-      display_order: dto.display_order,
-      status: dto.status,
+      name: dto.name.trim(),
+      description: dto.description?.trim() || '',
+      display_order: dto.display_order || 1,
+      status: dto.status || 'active',
     } as Partial<QRMenuSection>);
 
     const savedQRMenuSection =
@@ -55,15 +54,18 @@ export class QRMenuSectionService {
       data: savedQRMenuSection,
     };
   }
+
   async findAll(
     query: QueryQRMenuSectionDto,
   ): Promise<PaginatedQRMenuSectionResponseDto> {
     const {
       status,
+      qr_menu_id,
+      merchant_id,
       page = 1,
-      limit = 10,
-      sortBy = 'id',
-      sortOrder = 'DESC',
+      limit = 100,
+      sortBy = 'display_order',
+      sortOrder = 'ASC',
     } = query;
 
     if (page < 1 || limit < 1) {
@@ -73,7 +75,14 @@ export class QRMenuSectionService {
     const qb = this.qrMenuSectionRepository
       .createQueryBuilder('qrMenuSection')
       .leftJoin('qrMenuSection.qrMenu', 'qrMenu')
-      .select(['qrMenuSection', 'qrMenu.id', 'qrMenu.name']);
+      .leftJoin('qrMenu.merchant', 'merchant')
+      .select([
+        'qrMenuSection',
+        'qrMenu.id',
+        'qrMenu.name',
+        'merchant.id',
+        'merchant.name',
+      ]);
 
     if (status) {
       qb.andWhere('qrMenuSection.status = :status', { status });
@@ -83,11 +92,22 @@ export class QRMenuSectionService {
       });
     }
 
+    if (qr_menu_id) {
+      qb.andWhere('qrMenu.id = :qrMenuId', { qrMenuId: qr_menu_id });
+    }
+
+    if (merchant_id) {
+      qb.andWhere('merchant.id = :merchantId', { merchantId: merchant_id });
+    }
+
     qb.andWhere('qrMenuSection.status != :deleted', {
       deleted: 'deleted',
     });
 
-    qb.orderBy(`qrMenuSection.${sortBy}`, sortOrder);
+    const safeSortBy = ['id', 'display_order', 'name', 'status'].includes(sortBy)
+      ? sortBy
+      : 'display_order';
+    qb.orderBy(`qrMenuSection.${safeSortBy}`, sortOrder);
 
     qb.skip((page - 1) * limit).take(limit);
 
@@ -105,6 +125,7 @@ export class QRMenuSectionService {
       },
     };
   }
+
   async findOne(id: number): Promise<OneQRMenuSectionResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu Section ID must be a positive integer');
@@ -139,18 +160,25 @@ export class QRMenuSectionService {
     const qrMenuSection = await this.qrMenuSectionRepository.findOne({
       where: { id },
       relations: ['qrMenu'],
-      select: {
-        qrMenu: {
-          id: true,
-          name: true,
-        },
-      },
     });
     if (!qrMenuSection) {
       ErrorHandler.qrMenuSectionNotFound();
     }
 
-    Object.assign(qrMenuSection, dto);
+    const menuId = dto.qrMenu ?? dto.qr_menu_id;
+    if (menuId !== undefined) {
+      if (menuId === null) {
+        qrMenuSection.qrMenu = null as any;
+      } else {
+        const m = await this.qrMenuRepository.findOne({ where: { id: menuId } });
+        if (m) qrMenuSection.qrMenu = m;
+      }
+    }
+
+    if (dto.name !== undefined) qrMenuSection.name = dto.name.trim();
+    if (dto.description !== undefined) qrMenuSection.description = dto.description.trim();
+    if (dto.status !== undefined) qrMenuSection.status = dto.status;
+    if (dto.display_order !== undefined) qrMenuSection.display_order = dto.display_order;
 
     const updatedQrMenuSection =
       await this.qrMenuSectionRepository.save(qrMenuSection);

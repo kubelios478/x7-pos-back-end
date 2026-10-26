@@ -5,13 +5,21 @@ import { Type } from 'class-transformer';
 
 export class QueryQRMenuDto {
   @ApiPropertyOptional({
+    description: 'Filter by Merchant ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  merchant_id?: number;
+
+  @ApiPropertyOptional({
     description: 'Filter by status',
-    enum: ['active', 'inactive', 'deleted'],
+    enum: ['active', 'inactive', 'archived', 'deleted'],
     example: 'active',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['active', 'inactive', 'deleted'])
   status?: string;
 
   @ApiPropertyOptional({
@@ -32,7 +40,7 @@ export class QueryQRMenuDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  limit: number = 10;
+  limit: number = 100;
 
   @ApiPropertyOptional({
     description: 'Column to sort by',

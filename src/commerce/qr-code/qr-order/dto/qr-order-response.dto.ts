@@ -16,14 +16,18 @@ export class QROrderResponseDto {
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Customer',
+    nullable: true,
+    required: false,
   })
-  customer?: { id: number };
+  customer?: { id: number } | null;
 
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Table',
+    nullable: true,
+    required: false,
   })
-  table?: { id: number };
+  table?: { id: number } | null;
 
   @ApiProperty({
     example: 1,

@@ -127,6 +127,7 @@ export class QROrderService {
 
   async findAll(query: QueryQROrderDto): Promise<PaginatedQROrderResponseDto> {
     const {
+      merchant_id,
       status,
       page = 1,
       limit = 10,
@@ -159,6 +160,10 @@ export class QROrderService {
       qb.andWhere('qrOrder.status IN (:...statuses)', {
         statuses: ['active', 'inactive'],
       });
+    }
+
+    if (merchant_id) {
+      qb.andWhere('merchant.id = :merchantId', { merchantId: merchant_id });
     }
 
     qb.andWhere('qrOrder.status != :deleted', {
@@ -232,7 +237,38 @@ export class QROrderService {
       ErrorHandler.qrOrderNotFound();
     }
 
-    Object.assign(qrOrder, dto);
+    if (dto.qr_order_status) qrOrder.qr_order_status = dto.qr_order_status;
+    if (dto.status) qrOrder.status = dto.status;
+    if (dto.notes !== undefined) qrOrder.notes = dto.notes;
+    if (dto.total_amount !== undefined) qrOrder.total_amount = dto.total_amount;
+    if (dto.merchant) {
+      const m = await this.merchantRepository.findOne({ where: { id: dto.merchant } });
+      if (m) qrOrder.merchant = m;
+    }
+    if (dto.qrLocation) {
+      const loc = await this.qrLocationRepository.findOne({ where: { id: dto.qrLocation } });
+      if (loc) qrOrder.qrLocation = loc;
+    }
+    if (dto.customer !== undefined) {
+      if (dto.customer) {
+        const c = await this.customerRepository.findOne({ where: { id: dto.customer } });
+        if (c) qrOrder.customer = c;
+      } else {
+        qrOrder.customer = null;
+      }
+    }
+    if (dto.table !== undefined) {
+      if (dto.table) {
+        const t = await this.tableRepository.findOne({ where: { id: dto.table } });
+        if (t) qrOrder.table = t;
+      } else {
+        qrOrder.table = null;
+      }
+    }
+    if (dto.order) {
+      const o = await this.orderRepository.findOne({ where: { id: dto.order } });
+      if (o) qrOrder.order = o;
+    }
 
     const updatedQROrder = await this.qrOrderRepository.save(qrOrder);
     return {
