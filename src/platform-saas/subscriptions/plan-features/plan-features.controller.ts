@@ -44,7 +44,7 @@ import { PaginatedPlanFeatureResponseDto } from './dto/paginated-plan-feature-re
 export class PlanFeaturesController {
   constructor(private readonly planFeatureService: PlanFeaturesService) {}
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_ANDROID,
@@ -245,7 +245,7 @@ export class PlanFeaturesController {
     return this.planFeatureService.findOne(id);
   }
   @Patch(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -325,7 +325,7 @@ export class PlanFeaturesController {
     return this.planFeatureService.update(id, dto);
   }
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,

@@ -5,9 +5,13 @@ import { DeliveryDriverService } from './delivery-driver.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DeliveryDriver } from './entity/delivery-driver.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { DeliveryRealtimeModule } from '../realtime/delivery-realtime.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DeliveryDriver, Merchant])],
+  imports: [
+    TypeOrmModule.forFeature([DeliveryDriver, Merchant]),
+    DeliveryRealtimeModule,
+  ],
   controllers: [DeliveryDriverController],
   providers: [DeliveryDriverService],
 })

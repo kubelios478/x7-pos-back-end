@@ -109,7 +109,8 @@ export class CreateKitchenOrderItemDto {
   @ApiPropertyOptional({
     example: KitchenCourse.MAIN_COURSE,
     enum: KitchenCourse,
-    description: 'Course stage attribute (appetizer, main_course, dessert, beverage)',
+    description:
+      'Course stage attribute (appetizer, main_course, dessert, beverage)',
     required: false,
   })
   @IsOptional()

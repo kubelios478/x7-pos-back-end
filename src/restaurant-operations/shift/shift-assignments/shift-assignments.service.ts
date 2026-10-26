@@ -10,11 +10,7 @@ import { Repository, EntityManager, Between, Not } from 'typeorm';
 import { ShiftAssignment } from './entities/shift-assignment.entity';
 import { CreateShiftAssignmentDto } from './dto/create-shift-assignment.dto';
 import { UpdateShiftAssignmentDto } from './dto/update-shift-assignment.dto';
-import {
-  ShiftAssignmentResponseDto,
-  OneShiftAssignmentResponseDto,
-  AllShiftAssignmentsResponseDto,
-} from './dto/shift-assignment-response.dto';
+import { OneShiftAssignmentResponseDto } from './dto/shift-assignment-response.dto';
 import { GetShiftAssignmentsQueryDto } from './dto/get-shift-assignments-query.dto';
 import {
   PaginatedShiftAssignmentsResponseDto,

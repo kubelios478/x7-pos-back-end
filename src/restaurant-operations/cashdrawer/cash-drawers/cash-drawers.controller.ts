@@ -6,7 +6,6 @@ import {
   Param,
   Delete,
   UseGuards,
-  Request,
   Query,
   ParseIntPipe,
   Put,
@@ -305,9 +304,9 @@ export class CashDrawersController {
   })
   async findAll(
     @Query() query: GetCashDrawersQueryDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashDrawersService.findAll(query, authenticatedUserMerchantId);
   }
 
@@ -397,9 +396,9 @@ export class CashDrawersController {
   @ApiParam({ name: 'id', type: Number, description: 'Cash drawer ID' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashDrawersService.findOne(id, authenticatedUserMerchantId);
   }
 
@@ -597,9 +596,9 @@ export class CashDrawersController {
   @ApiParam({ name: 'id', type: Number, description: 'Cash drawer ID' })
   async remove(
     @Param('id', ParseIntPipe) id: number,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    const authenticatedUserMerchantId = req.merchant?.id;
+    const authenticatedUserMerchantId = user.merchant?.id;
     return this.cashDrawersService.remove(id, authenticatedUserMerchantId);
   }
 }

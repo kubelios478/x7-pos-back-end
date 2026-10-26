@@ -165,6 +165,31 @@ describe('QROrderItemService', () => {
       });
     });
 
+    // La columna era NOT NULL aunque el DTO declaraba notes opcional: sin ellas, 500.
+    it('stores null notes when they are not sent', async () => {
+      jest.spyOn(qrOrderRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as QROrder);
+      jest.spyOn(productRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as Product);
+      jest.spyOn(variantRepository, 'findOne').mockResolvedValue({
+        id: 1,
+      } as Variant);
+      const createSpy = jest
+        .spyOn(qrOrderItemRepository, 'create')
+        .mockReturnValue(mockQROrderItem as QROrderItem);
+      jest
+        .spyOn(qrOrderItemRepository, 'save')
+        .mockResolvedValue(mockQROrderItem as QROrderItem);
+
+      await service.create({ ...mockCreateQROrderItemDto, notes: undefined });
+
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ notes: null }),
+      );
+    });
+
     it('should handle database errors during creation', async () => {
       jest
         .spyOn(qrOrderItemRepository, 'findOne')
@@ -353,11 +378,6 @@ describe('QROrderItemService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['qrOrder', 'product', 'variant'],
-        select: {
-          qrOrder: { id: true },
-          product: { id: true },
-          variant: { id: true },
-        },
       });
     });
 
@@ -410,12 +430,6 @@ describe('QROrderItemService', () => {
           id: 1,
         },
         relations: ['qrOrder', 'product', 'variant'],
-
-        select: {
-          qrOrder: { id: true },
-          product: { id: true },
-          variant: { id: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQROrderItem);
       expect(result).toEqual({
@@ -441,11 +455,6 @@ describe('QROrderItemService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['qrOrder', 'product', 'variant'],
-        select: {
-          qrOrder: { id: true },
-          product: { id: true },
-          variant: { id: true },
-        },
       });
     });
 
@@ -476,6 +485,7 @@ describe('QROrderItemService', () => {
         where: {
           id: 1,
         },
+        relations: ['qrOrder', 'product', 'variant'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -500,6 +510,7 @@ describe('QROrderItemService', () => {
         where: {
           id: 999,
         },
+        relations: ['qrOrder', 'product', 'variant'],
       });
     });
   });

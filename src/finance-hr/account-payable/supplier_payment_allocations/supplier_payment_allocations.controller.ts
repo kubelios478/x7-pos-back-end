@@ -157,8 +157,14 @@ export class SupplierPaymentAllocationsController {
   @ApiBadRequestResponse({ description: 'Invalid ID' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiForbiddenResponse({ description: 'Forbidden' })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.supplierPaymentAllocationsService.findOne(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.supplierPaymentAllocationsService.findOne(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Put(':id')

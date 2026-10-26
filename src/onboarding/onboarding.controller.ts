@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { OnboardingService } from './onboarding.service';
 import { SelectSubscriptionDto } from './dto/select-subscription.dto';
@@ -22,6 +23,8 @@ import {
 
 @ApiTags('Onboarding')
 @Controller('onboarding')
+// Public wizard: 60 requests per IP per minute (ThrottlerModule default).
+@UseGuards(ThrottlerGuard)
 export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 
@@ -76,6 +79,7 @@ export class OnboardingController {
   }
 
   @Post('provision-account')
+  @Throttle({ default: { limit: 5, ttl: 60 * 60_000 } }) // new accounts per IP per hour
   @ApiOperation({
     summary: 'Complete onboarding and provision merchant admin account',
   })

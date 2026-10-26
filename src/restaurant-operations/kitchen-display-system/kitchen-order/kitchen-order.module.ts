@@ -3,6 +3,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { KitchenOrderService } from './kitchen-order.service';
 import { KitchenOrderController } from './kitchen-order.controller';
+import { KitchenOrderDevController } from './kitchen-order-dev.controller';
 import { KitchenOrderSyncService } from './kitchen-order-sync.service';
 import { KitchenOrder } from './entities/kitchen-order.entity';
 import { KitchenOrderItem } from '../kitchen-order-item/entities/kitchen-order-item.entity';
@@ -13,6 +14,13 @@ import { OrderItem } from '../../pos/order-item/entities/order-item.entity';
 import { KitchenStation } from '../kitchen-station/entities/kitchen-station.entity';
 import { OrdersModule } from '../../pos/orders/orders.module';
 import { ProductsInventoryModule } from 'src/inventory/products-inventory/products-inventory.module';
+
+/**
+ * Development tools only: in production the reset endpoint (a TRUNCATE of every merchant's
+ * kitchen) is not even registered.
+ */
+const devOnlyControllers =
+  process.env.NODE_ENV === 'production' ? [] : [KitchenOrderDevController];
 
 @Module({
   imports: [
@@ -29,7 +37,7 @@ import { ProductsInventoryModule } from 'src/inventory/products-inventory/produc
     forwardRef(() => OrdersModule),
     ProductsInventoryModule,
   ],
-  controllers: [KitchenOrderController],
+  controllers: [KitchenOrderController, ...devOnlyControllers],
   providers: [KitchenOrderService, KitchenOrderSyncService],
   exports: [KitchenOrderService, KitchenOrderSyncService],
 })

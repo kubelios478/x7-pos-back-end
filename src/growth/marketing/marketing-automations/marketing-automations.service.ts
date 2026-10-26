@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -67,7 +68,7 @@ export class MarketingAutomationsService {
     if (createMarketingAutomationDto.actionPayload) {
       try {
         JSON.parse(createMarketingAutomationDto.actionPayload);
-      } catch (error) {
+      } catch {
         throw new BadRequestException(
           'Action payload must be a valid JSON string',
         );
@@ -338,7 +339,7 @@ export class MarketingAutomationsService {
     ) {
       try {
         JSON.parse(updateMarketingAutomationDto.actionPayload);
-      } catch (error) {
+      } catch {
         throw new BadRequestException(
           'Action payload must be a valid JSON string',
         );
@@ -346,7 +347,7 @@ export class MarketingAutomationsService {
     }
 
     // Update marketing automation
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<MarketingAutomation> = {};
     if (updateMarketingAutomationDto.name !== undefined)
       updateData.name = updateMarketingAutomationDto.name.trim();
     if (updateMarketingAutomationDto.trigger !== undefined)

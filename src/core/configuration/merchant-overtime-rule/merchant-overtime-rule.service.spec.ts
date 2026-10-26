@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-overtime-rule/merchant-overtime-rule.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantOvertimeRuleService } from './merchant-overtime-rule.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MerchantOvertimeRule } from './entity/merchant-overtime-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { OvertimeCalculationType } from '../constants/overtime-calculation-type.enum';
 import { OvertimeRateType } from '../constants/overtime-rate-type.enum';
 import { CreateMerchantOvertimeRuleDto } from './dto/create-merchant-overtime-rule.dto';
@@ -61,11 +61,12 @@ describe('MerchantOvertimeRuleService', () => {
       name: 'Test Company',
       email: 'test@company.com',
       phone: '1234567890',
-      rut: '12345678-9',
+      tax_id: '12345678-9',
       address: '123 Test St',
       city: 'Test City',
       state: 'Test State',
       country: 'Test Country',
+      status: CompanyStatus.ACTIVE,
       merchants: [],
       customers: [],
       configurations: [],
@@ -780,12 +781,13 @@ describe('MerchantOvertimeRuleService', () => {
         mockMerchantOvertimeRule as MerchantOvertimeRule,
       );
 
-      const result = await service.remove(1);
+      const result = await service.remove(1, mockPortalAdminUser);
 
       expect(findOneSpy).toHaveBeenCalledWith({
         where: {
           id: 1,
         },
+        relations: ['company'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -796,20 +798,21 @@ describe('MerchantOvertimeRuleService', () => {
     });
 
     it('should throw error for invalid ID during removal', async () => {
-      await expect(service.remove(0)).rejects.toThrow();
+      await expect(service.remove(0, mockPortalAdminUser)).rejects.toThrow();
     });
 
     it('should throw error when merchant overtime rule to remove not found', async () => {
       const findOneSpy = jest.spyOn(merchantOvertimeRuleRepository, 'findOne');
       findOneSpy.mockResolvedValue(null);
 
-      await expect(service.remove(999)).rejects.toThrow(
+      await expect(service.remove(999, mockPortalAdminUser)).rejects.toThrow(
         'Merchant Overtime Rule not found',
       );
       expect(findOneSpy).toHaveBeenCalledWith({
         where: {
           id: 999,
         },
+        relations: ['company'],
       });
     });
   });

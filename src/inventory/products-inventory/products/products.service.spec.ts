@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
+import { Item } from '../stocks/items/entities/item.entity';
 import { StockAvailabilityService } from 'src/inventory/stock-alerts/stock-availability.service';
 import { PurchaseOrderItemService } from 'src/inventory/products-inventory/purchase-order-item/purchase-order-item.service';
 import { ItemsService } from 'src/inventory/products-inventory/stocks/items/items.service';
 import { ProductsService } from './products.service';
 import { Product } from './entities/product.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ProductsInventoryService } from '../products-inventory.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { GetProductsQueryDto } from './dto/get-products-query.dto';
@@ -19,6 +20,7 @@ import { Category } from '../category/entities/category.entity';
 import { Supplier } from 'src/core/business-partners/suppliers/entities/supplier.entity';
 
 describe('ProductsService', () => {
+  let stockRowsRepo: { find: jest.Mock };
   let service: ProductsService;
   let productRepo: jest.Mocked<Repository<Product>>;
   let categoryRepo: jest.Mocked<Repository<Category>>;
@@ -130,7 +132,17 @@ describe('ProductsService', () => {
       delete: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // deactivation runs in a transaction: products through this same mock, stock rows
+      // through stockRowsRepo (no stock on hand unless a test says so)
+      manager: {
+        transaction: (work: (manager: unknown) => unknown) =>
+          work({
+            getRepository: (entity: unknown) =>
+              entity === Item ? stockRowsRepo : mockProductRepo,
+          }),
+      },
     };
+    stockRowsRepo = { find: jest.fn(() => Promise.resolve([])) };
 
     mockQueryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -208,6 +220,7 @@ describe('ProductsService', () => {
           // Dependency that the service won and this spec never registered.
           provide: ItemsService,
           useValue: {
+            softRemoveByProductId: jest.fn().mockResolvedValue(undefined),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -220,6 +233,7 @@ describe('ProductsService', () => {
           // Dependency that the service won and this spec never registered.
           provide: PurchaseOrderItemService,
           useValue: {
+            softRemoveByProductId: jest.fn().mockResolvedValue(undefined),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -232,6 +246,7 @@ describe('ProductsService', () => {
           // Dependency that the service won and this spec never registered.
           provide: StockAvailabilityService,
           useValue: {
+            getProductAvailabilityMap: jest.fn().mockResolvedValue(new Map()),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -277,10 +292,6 @@ describe('ProductsService', () => {
         'product.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'product.name',
         'ASC',
@@ -288,7 +299,7 @@ describe('ProductsService', () => {
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(mockQuery.limit);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Products retrieved successfully',
         data: [
@@ -329,10 +340,6 @@ describe('ProductsService', () => {
         'product.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'product.name',
         'ASC',
@@ -346,6 +353,39 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('findResponsesByIds', () => {
+    it('loads every product in one query, shaped like findOne', async () => {
+      const other = { ...mockProduct, id: 2, name: 'Other' } as Product;
+      productRepo.find.mockResolvedValueOnce([mockProduct as Product, other]);
+
+      const map = await service.findResponsesByIds([1, 2, 1]);
+
+      expect(productRepo.find).toHaveBeenCalledTimes(1);
+      expect(productRepo.find).toHaveBeenCalledWith({
+        where: { id: In([1, 2]) },
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
+      });
+
+      productRepo.findOne.mockResolvedValueOnce(mockProduct as Product);
+      const single = await service.findOne(mockProduct.id!);
+      expect(map.get(1)).toEqual(single.data);
+      expect(map.get(2)?.name).toBe('Other');
+    });
+
+    it('does not query for an empty page', async () => {
+      const map = await service.findResponsesByIds([]);
+      expect(map.size).toBe(0);
+      expect(productRepo.find).not.toHaveBeenCalled();
+    });
+  });
+
   describe('FindOne', () => {
     it('should return a Product successfully', async () => {
       productRepo.findOne.mockResolvedValueOnce(mockProduct as Product);
@@ -356,12 +396,18 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Product retrieved successfully',
         data: {
@@ -388,9 +434,15 @@ describe('ProductsService', () => {
         where: {
           id: id_not_found,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
     });
 
@@ -429,11 +481,7 @@ describe('ProductsService', () => {
         merchantId: mockMerchant.id,
         isActive: true,
       });
-      expect(supplierRepo.findOneBy).toHaveBeenCalledWith({
-        id: mockCreateProductDto.supplierId,
-        company_id: mockMerchant.companyId,
-        isActive: true,
-      });
+      expect(supplierRepo.findOneBy).not.toHaveBeenCalled();
 
       expect(productRepo.findOne).toHaveBeenCalledWith({
         where: [
@@ -462,20 +510,27 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
       expect(productRepo.create).toHaveBeenCalledWith({
         name: mockCreateProductDto.name,
         sku: mockCreateProductDto.sku,
         basePrice: mockCreateProductDto.basePrice,
+        isActive: true,
         merchantId: mockMerchant.id,
         categoryId: mockCreateProductDto.categoryId,
         supplierId: mockCreateProductDto.supplierId,
       });
       expect(productRepo.save).toHaveBeenCalledWith(mockProduct);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Product Created successfully',
         data: {
@@ -508,7 +563,7 @@ describe('ProductsService', () => {
 
       expect(inactiveProduct.isActive).toBe(true);
       expect(productRepo.save).toHaveBeenCalledWith(inactiveProduct);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Product Created successfully',
         data: {
@@ -573,7 +628,11 @@ describe('ProductsService', () => {
       supplierRepo.findOneBy.mockResolvedValueOnce(null);
 
       await expect(
-        async () => await service.create(mockMerchant.id, mockCreateProductDto),
+        async () =>
+          await service.create(mockMerchant.id, {
+            ...mockCreateProductDto,
+            supplierId: 999,
+          }),
       ).rejects.toThrow('Supplier not found');
 
       expect(productRepo.create).not.toHaveBeenCalled();
@@ -623,7 +682,6 @@ describe('ProductsService', () => {
       expect(productRepo.findOneBy).toHaveBeenCalledWith({
         id: mockProduct.id,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(productRepo.findOne).toHaveBeenCalledWith({
         where: {
@@ -644,9 +702,15 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
       expect(productRepo.save).toHaveBeenCalledWith({
         ...mockProduct,
@@ -657,7 +721,7 @@ describe('ProductsService', () => {
         supplierId: mockUpdateProductDto.supplierId,
       });
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Product Updated successfully',
         data: {
@@ -688,7 +752,6 @@ describe('ProductsService', () => {
       expect(productRepo.findOneBy).toHaveBeenCalledWith({
         id: idNotFound,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(productRepo.save).not.toHaveBeenCalled();
     });
@@ -797,6 +860,41 @@ describe('ProductsService', () => {
     });
   });
 
+  describe('Deactivating a product with stock', () => {
+    it('refuses to delete it while it has stock, and changes nothing', async () => {
+      productRepo.findOneBy.mockResolvedValueOnce({
+        ...mockProduct,
+        isActive: true,
+      } as Product);
+      stockRowsRepo.find.mockResolvedValueOnce([
+        { currentQty: 5, locationId: 1, location: { name: 'Main Warehouse' } },
+      ]);
+
+      await expect(
+        service.remove(mockProduct.id!, mockMerchant.id),
+      ).rejects.toThrow(
+        'still has stock (Main Warehouse: 5). Adjust it to 0 before deactivating the product.',
+      );
+      expect(modifiersService.softRemoveByProductId).not.toHaveBeenCalled();
+      expect(productRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses PATCH isActive:false the same way', async () => {
+      productRepo.findOneBy.mockResolvedValueOnce({
+        ...mockProduct,
+        isActive: true,
+      } as Product);
+      stockRowsRepo.find.mockResolvedValueOnce([
+        { currentQty: 2, locationId: 7, location: null },
+      ]);
+
+      await expect(
+        service.update(mockProduct.id!, mockMerchant.id, { isActive: false }),
+      ).rejects.toThrow('still has stock (location 7: 2)');
+      expect(productRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Remove', () => {
     it('should remove a Product successfully', async () => {
       const productToDelete = { ...mockProduct, isActive: true } as Product;
@@ -819,11 +917,17 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Product Deleted successfully',
         data: {
@@ -897,13 +1001,16 @@ describe('ProductsService', () => {
 
       await service.remove(mockProduct.id!, mockMerchant.id);
 
+      // inside the deactivation transaction
       expect(modifiersService.softRemoveByProductId).toHaveBeenCalledWith(
         mockProduct.id!,
         mockMerchant.id,
+        expect.anything(),
       );
       expect(variantsService.softRemoveByProductId).toHaveBeenCalledWith(
         mockProduct.id!,
         mockMerchant.id,
+        expect.anything(),
       );
       expect(productToDelete.isActive).toBe(false);
       expect(productRepo.save).toHaveBeenCalledWith(productToDelete);
@@ -911,9 +1018,15 @@ describe('ProductsService', () => {
         where: {
           id: mockProduct.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
-        relations: ['merchant', 'category', 'category.parent', 'supplier'],
+        relations: [
+          'merchant',
+          'category',
+          'category.parent',
+          'supplier',
+          'variants',
+          'modifiers',
+        ],
       });
     });
   });

@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { CompanySubscription } from './company-subscriptions/entities/company-subscription.entity';
+import { SubscriptionPayment } from './subscription-payments/entity/subscription-payments.entity';
 import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 import { SubscriptionPlanModule } from './subscription-plan/subscription-plan.module';
@@ -15,6 +18,7 @@ import { SubscriptionPaymentsModule } from './subscription-payments/subscription
   providers: [SubscriptionsService],
   exports: [SubscriptionsService],
   imports: [
+    TypeOrmModule.forFeature([CompanySubscription, SubscriptionPayment]),
     SubscriptionPlanModule,
     MerchantSubscriptionModule,
     ApplicationsModule,

@@ -19,7 +19,10 @@ describe('ModifiersService', () => {
     Repository<Modifier> & { save: jest.Mock }
   >;
   let productRepository: jest.Mocked<Repository<Product> & { save: jest.Mock }>;
-  //let productsService: jest.Mocked<ProductsService>;
+  let mockProductsService: {
+    findOne: jest.Mock;
+    findResponsesByIds: jest.Mock;
+  };
 
   type MockQueryBuilder = {
     leftJoinAndSelect: jest.Mock;
@@ -87,6 +90,8 @@ describe('ModifiersService', () => {
   };
 
   const mockProductResponseDto = {
+    isOutOfStock: false,
+    isLowStock: false,
     id: mockProduct.id!,
     name: mockProduct.name!,
     sku: mockProduct.sku!,
@@ -98,6 +103,7 @@ describe('ModifiersService', () => {
   };
 
   const mockModifierResponseDto: ModifierResponseDto = {
+    isActive: true,
     id: mockModifier.id!,
     name: mockModifier.name!,
     priceDelta: mockModifier.priceDelta!,
@@ -134,10 +140,15 @@ describe('ModifiersService', () => {
       findOneBy: jest.fn(),
     };
 
-    const mockProductsService = {
+    mockProductsService = {
       findOne: jest.fn().mockResolvedValue({
         data: mockProductResponseDto,
       }),
+      findResponsesByIds: jest.fn((ids: number[]) =>
+        Promise.resolve(
+          new Map(ids.map((id) => [id, { ...mockProductResponseDto, id }])),
+        ),
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -359,10 +370,6 @@ describe('ModifiersService', () => {
         'product.merchantId = :merchantId',
         { merchantId },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'modifier.name',
         'ASC',
@@ -381,6 +388,32 @@ describe('ModifiersService', () => {
         hasNext: false,
         hasPrev: false,
       });
+    });
+
+    // Antes hacía un productsService.findOne completo por cada modificador.
+    it('loads the products of the page in one batch', async () => {
+      const modifiers = [1, 2, 3].map((id) => ({
+        ...mockModifier,
+        id,
+        product: { ...mockProduct, id: id === 3 ? 7 : mockProduct.id },
+      })) as Modifier[];
+      mockQueryBuilder.getMany.mockResolvedValue(modifiers);
+      mockQueryBuilder.getCount.mockResolvedValue(modifiers.length);
+
+      const result = await service.findAll(mockQuery, merchantId);
+
+      expect(mockProductsService.findOne).not.toHaveBeenCalled();
+      expect(mockProductsService.findResponsesByIds).toHaveBeenCalledTimes(1);
+      expect(mockProductsService.findResponsesByIds).toHaveBeenCalledWith([
+        mockProduct.id,
+        mockProduct.id,
+        7,
+      ]);
+      expect(result.data.map((m) => m.product?.id)).toEqual([
+        mockProduct.id,
+        mockProduct.id,
+        7,
+      ]);
     });
 
     it('should return empty array when no modifiers found', async () => {
@@ -408,10 +441,6 @@ describe('ModifiersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'modifier.name',
@@ -455,10 +484,6 @@ describe('ModifiersService', () => {
         id: mockModifier.id,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
       );
@@ -494,10 +519,6 @@ describe('ModifiersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('modifier.id = :id', {
         id: mockModifier.id,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         expect.any(Object),
@@ -520,10 +541,6 @@ describe('ModifiersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('modifier.id = :id', {
         id: id_not_found,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
@@ -571,10 +588,6 @@ describe('ModifiersService', () => {
         id: modifierId,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId: merchantId },
       );
@@ -609,10 +622,6 @@ describe('ModifiersService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('modifier.id = :id', {
         id: modifierId,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'modifier.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId: merchantId },
@@ -726,6 +735,7 @@ describe('ModifiersService', () => {
           id: inactiveModifier.id,
           name: inactiveModifier.name,
           priceDelta: inactiveModifier.priceDelta,
+          isActive: false,
           product: mockProductResponseDto,
           parent: null,
         },

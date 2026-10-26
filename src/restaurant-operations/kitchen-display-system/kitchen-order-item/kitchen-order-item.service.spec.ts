@@ -23,6 +23,7 @@ import { KitchenOrderStatus } from '../kitchen-order/constants/kitchen-order-sta
 import { OrderItemStatus } from '../../../restaurant-operations/pos/order-item/constants/order-item-status.enum';
 import { KitchenOrderSyncService } from '../kitchen-order/kitchen-order-sync.service';
 import { KitchenOrderItemPreparationStatus } from './constants/kitchen-order-item-preparation-status.enum';
+import { KitchenOrderBusinessStatus } from '../kitchen-order/constants/kitchen-order-business-status.enum';
 import { DataSource } from 'typeorm';
 import { OrdersService } from '../../pos/orders/orders.service';
 
@@ -37,6 +38,8 @@ describe('KitchenOrderItemService', () => {
   const mockKitchenOrderItemRepository = {
     save: jest.fn(),
     findOne: jest.fn(),
+    // sibling items, read to auto-bump the parent kitchen order
+    find: jest.fn().mockResolvedValue([]),
     createQueryBuilder: jest.fn(),
   };
 
@@ -273,6 +276,27 @@ describe('KitchenOrderItemService', () => {
       expect(result.data.kitchenOrderId).toBe(1);
     });
 
+    it('only accepts an order line and a product of the merchant', async () => {
+      jest
+        .spyOn(kitchenOrderRepository, 'findOne')
+        .mockResolvedValue(mockKitchenOrder as unknown as KitchenOrder);
+      jest
+        .spyOn(orderItemRepository, 'findOne')
+        .mockResolvedValue(mockOrderItem as unknown as OrderItem);
+      // another merchant's product: the merchant-scoped lookup finds nothing
+      jest.spyOn(productRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.create(createDto, 1)).rejects.toThrow(
+        'Product not found',
+      );
+      expect(orderItemRepository.findOne).toHaveBeenCalledWith({
+        where: expect.objectContaining({ order: { merchant_id: 1 } }),
+      });
+      expect(productRepository.findOne).toHaveBeenCalledWith({
+        where: { id: createDto.productId, merchantId: 1 },
+      });
+    });
+
     it('should create a kitchen order item with variant successfully', async () => {
       const dtoWithVariant = { ...createDto, variantId: 1 };
       jest
@@ -470,6 +494,42 @@ describe('KitchenOrderItemService', () => {
       expect(result.paginationMeta.page).toBe(1);
       expect(result.paginationMeta.limit).toBe(10);
       expect(result.paginationMeta.total).toBe(1);
+    });
+
+    // Antes guardaba los ítems reparados de a uno.
+    it('heals the items of completed orders with a single save', async () => {
+      jest
+        .spyOn(kitchenOrderItemRepository, 'createQueryBuilder')
+        .mockReturnValue(
+          mockQueryBuilder as unknown as SelectQueryBuilder<KitchenOrderItem>,
+        );
+      const completedOrder = {
+        ...mockKitchenOrder,
+        business_status: KitchenOrderBusinessStatus.COMPLETED,
+      };
+      const stale = [1, 2, 3].map((id) => ({
+        ...mockKitchenOrderItem,
+        id,
+        kitchenOrder: completedOrder,
+      }));
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([
+        stale as unknown as KitchenOrderItem[],
+        3,
+      ]);
+      const save = jest
+        .spyOn(kitchenOrderItemRepository, 'save')
+        .mockResolvedValue([] as never);
+
+      await service.findAll(query, 1);
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledWith(stale);
+      for (const item of stale) {
+        expect(item.preparation_status).toBe(
+          KitchenOrderItemPreparationStatus.READY,
+        );
+        expect(item.prepared_quantity).toBe(item.quantity);
+      }
     });
 
     it('should throw ForbiddenException when user has no merchant_id', async () => {
@@ -842,15 +902,18 @@ describe('KitchenOrderItemService', () => {
       ).toHaveBeenCalledWith(1);
     });
 
-    it('should throw ConflictException when already PENDING', async () => {
+    it('should throw ConflictException when already at the initial status (HELD)', async () => {
       jest
         .spyOn(kitchenOrderItemRepository, 'createQueryBuilder')
         .mockReturnValue(
           mockQueryBuilder as unknown as SelectQueryBuilder<KitchenOrderItem>,
         );
-      mockQueryBuilder.getOne.mockResolvedValue(
-        mockKitchenOrderItem as unknown as KitchenOrderItem,
-      );
+      // a fresh copy: earlier tests advance the shared fixture's status
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockKitchenOrderItem,
+        // HELD (coursing) now precedes PENDING as the first status
+        preparation_status: KitchenOrderItemPreparationStatus.HELD,
+      } as unknown as KitchenOrderItem);
 
       await expect(service.revertPreparationStatus(1, 1)).rejects.toThrow(
         ConflictException,
@@ -858,6 +921,24 @@ describe('KitchenOrderItemService', () => {
       await expect(service.revertPreparationStatus(1, 1)).rejects.toThrow(
         'Kitchen order item is already at the initial preparation status',
       );
+    });
+
+    it('should not revert a PENDING item into HELD (no hold timer would release it)', async () => {
+      jest
+        .spyOn(kitchenOrderItemRepository, 'createQueryBuilder')
+        .mockReturnValue(
+          mockQueryBuilder as unknown as SelectQueryBuilder<KitchenOrderItem>,
+        );
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockKitchenOrderItem,
+        preparation_status: KitchenOrderItemPreparationStatus.PENDING,
+      } as unknown as KitchenOrderItem);
+      const saveSpy = jest.spyOn(kitchenOrderItemRepository, 'save');
+
+      await expect(service.revertPreparationStatus(1, 1)).rejects.toThrow(
+        'Kitchen order item is already at the initial preparation status',
+      );
+      expect(saveSpy).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException when id is invalid', async () => {

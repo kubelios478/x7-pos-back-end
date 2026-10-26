@@ -29,7 +29,59 @@ export class QRMenuItemService {
     private readonly variantRepository: Repository<Variant>,
   ) {}
 
-  async create(dto: CreateQRMenuItemDto): Promise<OneQRMenuItemResponseDto> {
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { qrMenuSection: { qrMenu: { merchant: { id: scopedMerchantId } } } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: {
+      qrMenuSection?: number;
+      qr_menu_section_id?: number;
+      product?: number;
+      product_id?: number;
+      variant?: number;
+      variant_id?: number;
+    },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    const sectionId = dto.qrMenuSection ?? dto.qr_menu_section_id;
+    const productId = dto.product ?? dto.product_id;
+    const variantId = dto.variant ?? dto.variant_id;
+
+    if (sectionId != null) {
+      const owned = await this.qrMenuSectionRepository.exists({
+        where: {
+          id: sectionId,
+          qrMenu: { merchant: { id: scopedMerchantId } },
+        },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+    if (productId != null) {
+      const owned = await this.productRepository.exists({
+        where: { id: productId, merchantId: scopedMerchantId },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+    if (variantId != null) {
+      const owned = await this.variantRepository.exists({
+        where: { id: variantId, product: { merchantId: scopedMerchantId } },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+  }
+
+  async create(
+    dto: CreateQRMenuItemDto,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuItemResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+
     const sectionId = dto.qrMenuSection ?? dto.qr_menu_section_id;
     const productId = dto.product ?? dto.product_id;
     const variantId = dto.variant ?? dto.variant_id;
@@ -76,13 +128,14 @@ export class QRMenuItemService {
     }
 
     const itemName = dto.name?.trim() || product?.name || 'QR Menu Item';
-    const itemPrice = dto.price !== undefined
-      ? Number(dto.price)
-      : variant?.price
-        ? Number(variant.price)
-        : product?.basePrice
-          ? Number(product.basePrice)
-          : 0.0;
+    const itemPrice =
+      dto.price !== undefined
+        ? Number(dto.price)
+        : variant?.price
+          ? Number(variant.price)
+          : product?.basePrice
+            ? Number(product.basePrice)
+            : 0.0;
     const itemDesc = dto.description?.trim() || dto.notes?.trim() || '';
 
     const qrMenuItem = this.qrMenuItemRepository.create({
@@ -96,7 +149,7 @@ export class QRMenuItemService {
       status: dto.status || 'active',
       display_order: dto.display_order || 1,
       notes: dto.notes?.trim() || itemDesc,
-      is_visible: dto.is_visible ?? (dto.is_available ?? true),
+      is_visible: dto.is_visible ?? dto.is_available ?? true,
     } as Partial<QRMenuItem>);
 
     const savedQRMenuItem = await this.qrMenuItemRepository.save(qrMenuItem);
@@ -109,6 +162,7 @@ export class QRMenuItemService {
 
   async findAll(
     query: QueryQRMenuItemDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedQRMenuItemResponseDto> {
     const {
       merchant_id,
@@ -147,6 +201,12 @@ export class QRMenuItemService {
         'variant.sku',
       ]);
 
+    if (scopedMerchantId != null) {
+      qb.innerJoin('qrMenuSection.qrMenu', 'scopeMenu')
+        .innerJoin('scopeMenu.merchant', 'scopeMerchant')
+        .andWhere('scopeMerchant.id = :scopedMerchantId', { scopedMerchantId });
+    }
+
     if (status) {
       qb.andWhere('qrMenuItem.status = :status', { status });
     } else {
@@ -156,20 +216,31 @@ export class QRMenuItemService {
     }
 
     if (qr_menu_section_id) {
-      qb.andWhere('qrMenuSection.id = :sectionId', { sectionId: qr_menu_section_id });
+      qb.andWhere('qrMenuSection.id = :sectionId', {
+        sectionId: qr_menu_section_id,
+      });
     }
 
     if (merchant_id) {
-      qb.andWhere('(menuMerchant.id = :merchantId OR product.merchantId = :merchantId)', {
-        merchantId: merchant_id,
-      });
+      qb.andWhere(
+        '(menuMerchant.id = :merchantId OR product.merchantId = :merchantId)',
+        {
+          merchantId: merchant_id,
+        },
+      );
     }
 
     qb.andWhere('qrMenuItem.status != :deleted', {
       deleted: 'deleted',
     });
 
-    const safeSortBy = ['id', 'display_order', 'name', 'price', 'status'].includes(sortBy)
+    const safeSortBy = [
+      'id',
+      'display_order',
+      'name',
+      'price',
+      'status',
+    ].includes(sortBy)
       ? sortBy
       : 'display_order';
     qb.orderBy(`qrMenuItem.${safeSortBy}`, sortOrder);
@@ -190,13 +261,19 @@ export class QRMenuItemService {
       },
     };
   }
-
-  async findOne(id: number): Promise<OneQRMenuItemResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuItemResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu Item ID must be a positive integer');
     }
     const qrMenuItem = await this.qrMenuItemRepository.findOne({
-      where: { id, status: In(['active', 'inactive']) },
+      where: {
+        ...this.ownedBy(scopedMerchantId),
+        id,
+        status: In(['active', 'inactive']),
+      },
       relations: ['qrMenuSection', 'product', 'variant'],
     });
     if (!qrMenuItem) {
@@ -212,58 +289,22 @@ export class QRMenuItemService {
   async update(
     id: number,
     dto: UpdateQRMenuItemDto,
+    scopedMerchantId?: number,
   ): Promise<OneQRMenuItemResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu Item ID must be a positive integer');
     }
     const qrMenuItem = await this.qrMenuItemRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['qrMenuSection', 'product', 'variant'],
     });
     if (!qrMenuItem) {
       ErrorHandler.qrMenuItemNotFound();
     }
 
-    const sectionId = dto.qrMenuSection ?? dto.qr_menu_section_id;
-    const productId = dto.product ?? dto.product_id;
-    const variantId = dto.variant ?? dto.variant_id;
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
-    if (sectionId !== undefined) {
-      if (sectionId === null) {
-        qrMenuItem.qrMenuSection = null as any;
-      } else {
-        const sec = await this.qrMenuSectionRepository.findOne({ where: { id: sectionId } });
-        if (sec) qrMenuItem.qrMenuSection = sec;
-      }
-    }
-
-    if (productId !== undefined) {
-      if (productId === null) {
-        qrMenuItem.product = null as any;
-      } else {
-        const prod = await this.productRepository.findOne({ where: { id: productId } });
-        if (prod) qrMenuItem.product = prod;
-      }
-    }
-
-    if (variantId !== undefined) {
-      if (variantId === null) {
-        qrMenuItem.variant = null as any;
-      } else {
-        const v = await this.variantRepository.findOne({ where: { id: variantId } });
-        if (v) qrMenuItem.variant = v;
-      }
-    }
-
-    if (dto.name !== undefined) qrMenuItem.name = dto.name.trim();
-    if (dto.price !== undefined) qrMenuItem.price = Number(dto.price);
-    if (dto.description !== undefined) qrMenuItem.description = dto.description.trim();
-    if (dto.image_url !== undefined) qrMenuItem.image_url = dto.image_url.trim();
-    if (dto.status !== undefined) qrMenuItem.status = dto.status;
-    if (dto.display_order !== undefined) qrMenuItem.display_order = dto.display_order;
-    if (dto.notes !== undefined) qrMenuItem.notes = dto.notes;
-    if (dto.is_visible !== undefined) qrMenuItem.is_visible = dto.is_visible;
-    if (dto.is_available !== undefined) qrMenuItem.is_visible = dto.is_available;
+    Object.assign(qrMenuItem, dto);
 
     const updatedQrMenuItem = await this.qrMenuItemRepository.save(qrMenuItem);
     return {
@@ -273,13 +314,17 @@ export class QRMenuItemService {
     };
   }
 
-  async remove(id: number): Promise<OneQRMenuItemResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuItemResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu Item ID must be a positive integer');
     }
 
     const qrMenuItem = await this.qrMenuItemRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['qrMenuSection', 'product', 'variant'],
     });
     if (!qrMenuItem) {
       ErrorHandler.qrMenuItemNotFound();

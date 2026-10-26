@@ -42,11 +42,13 @@ export class CreateMerchantTipRuleDto {
   tipDistributionMethod: TipDistributionMethod;
 
   @ApiProperty({
-    example: [0.08, 0.02, 0.01],
-    description: 'Suggested tip percentages for customers to choose from',
+    example: [0.18, 0.2, 0.22],
+    description:
+      'Suggested tip percentages for customers to choose from, as fractions of the bill (0.18 = 18%). Each one is independent; they do not need to add up to 1.',
   })
   @IsArray()
   @IsNumber({}, { each: true })
+  @Min(0, { each: true })
   @Max(1, { each: true })
   @IsNotEmpty()
   suggestedPercentages?: number[];

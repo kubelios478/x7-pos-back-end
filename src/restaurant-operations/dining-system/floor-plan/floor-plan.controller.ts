@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Patch,
   Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
@@ -43,6 +44,9 @@ import {
 import { PaginatedFloorPlanResponseDto } from './dto/paginated-floor-plan-response.dto';
 import { QueryFloorPlanDto } from './dto/query-floor-plan.dto';
 import { UpdateFloorPlanDto } from './dto/update-floor-plan.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Restaurant operations - Dining System - Floor Plan')
 @Controller('floor-plan')
@@ -123,8 +127,9 @@ export class FloorPlanController {
   })
   async create(
     @Body() dto: CreateFloorPlanDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorPlanResponseDto> {
-    return this.floorPlanService.create(dto);
+    return this.floorPlanService.create(dto, merchantScopeOf(user));
   }
 
   @Get()
@@ -176,8 +181,9 @@ export class FloorPlanController {
   })
   async findAll(
     @Query() query: QueryFloorPlanDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedFloorPlanResponseDto> {
-    return this.floorPlanService.findAll(query);
+    return this.floorPlanService.findAll(query, merchantScopeOf(user));
   }
 
   @Get(':id')
@@ -264,11 +270,15 @@ export class FloorPlanController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorPlanResponseDto> {
     if (id <= 0) {
-      throw new Error('ID must be a positive integer');
+      throw new BadRequestException('ID must be a positive integer');
     }
-    const floorPlan = await this.floorPlanService.findOne(id);
+    const floorPlan = await this.floorPlanService.findOne(
+      id,
+      merchantScopeOf(user),
+    );
     return floorPlan;
   }
 
@@ -364,8 +374,9 @@ export class FloorPlanController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateFloorPlanDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorPlanResponseDto> {
-    return this.floorPlanService.update(id, dto);
+    return this.floorPlanService.update(id, dto, merchantScopeOf(user));
   }
 
   @Delete(':id')
@@ -452,7 +463,8 @@ export class FloorPlanController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneFloorPlanResponseDto> {
-    return this.floorPlanService.remove(id);
+    return this.floorPlanService.remove(id, merchantScopeOf(user));
   }
 }

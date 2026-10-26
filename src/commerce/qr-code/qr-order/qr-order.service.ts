@@ -37,7 +37,60 @@ export class QROrderService {
     private readonly orderRepository: Repository<Order>,
   ) {}
 
-  async create(dto: CreateQROrderDto): Promise<OneQROrderResponseDto> {
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { merchant: { id: scopedMerchantId } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: {
+      merchant?: number;
+      qrLocation?: number;
+      customer?: number;
+      table?: number;
+      order?: number;
+    },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.merchant != null && dto.merchant !== scopedMerchantId) {
+      ErrorHandler.differentMerchant();
+    }
+    dto.merchant = scopedMerchantId;
+    if (dto.qrLocation != null) {
+      const owned = await this.qrLocationRepository.exists({
+        where: { id: dto.qrLocation, merchant: { id: scopedMerchantId } },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+    if (dto.customer != null) {
+      const owned = await this.customerRepository.exists({
+        where: { id: dto.customer, merchantId: scopedMerchantId },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+    if (dto.table != null) {
+      const owned = await this.tableRepository.exists({
+        where: { id: dto.table, merchant_id: scopedMerchantId },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+    if (dto.order != null) {
+      const owned = await this.orderRepository.exists({
+        where: { id: dto.order, merchant_id: scopedMerchantId },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+  }
+
+  async create(
+    dto: CreateQROrderDto,
+    scopedMerchantId?: number,
+  ): Promise<OneQROrderResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
     if (dto.merchant && !Number.isInteger(dto.merchant)) {
       ErrorHandler.invalidId('Merchant ID must be a positive integer');
     }
@@ -125,7 +178,10 @@ export class QROrderService {
     };
   }
 
-  async findAll(query: QueryQROrderDto): Promise<PaginatedQROrderResponseDto> {
+  async findAll(
+    query: QueryQROrderDto,
+    scopedMerchantId?: number,
+  ): Promise<PaginatedQROrderResponseDto> {
     const {
       merchant_id,
       status,
@@ -154,6 +210,10 @@ export class QROrderService {
         'table.id',
         'order.id',
       ]);
+    if (scopedMerchantId != null) {
+      qb.andWhere('merchant.id = :scopedMerchantId', { scopedMerchantId });
+    }
+
     if (status) {
       qb.andWhere('qrOrder.status = :status', { status });
     } else {
@@ -189,21 +249,21 @@ export class QROrderService {
     };
   }
 
-  async findOne(id: number): Promise<OneQROrderResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQROrderResponseDto> {
     if (!Number.isInteger(id) || id < 1) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
     const qrOrder = await this.qrOrderRepository.findOne({
-      where: { id, status: In(['active', 'inactive']) },
-      relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-      select: {
-        merchant: { id: true },
-        qrLocation: { id: true },
-        customer: { id: true },
-        table: { id: true },
-        order: { id: true },
+      where: {
+        ...this.ownedBy(scopedMerchantId),
+        id,
+        status: In(['active', 'inactive']),
       },
+      relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
     });
     if (!qrOrder) {
       ErrorHandler.qrOrderNotFound();
@@ -218,57 +278,22 @@ export class QROrderService {
   async update(
     id: number,
     dto: UpdateQROrderDto,
+    scopedMerchantId?: number,
   ): Promise<OneQROrderResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
     const qrOrder = await this.qrOrderRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-      select: {
-        merchant: { id: true },
-        qrLocation: { id: true },
-        customer: { id: true },
-        table: { id: true },
-        order: { id: true },
-      },
     });
     if (!qrOrder) {
       ErrorHandler.qrOrderNotFound();
     }
 
-    if (dto.qr_order_status) qrOrder.qr_order_status = dto.qr_order_status;
-    if (dto.status) qrOrder.status = dto.status;
-    if (dto.notes !== undefined) qrOrder.notes = dto.notes;
-    if (dto.total_amount !== undefined) qrOrder.total_amount = dto.total_amount;
-    if (dto.merchant) {
-      const m = await this.merchantRepository.findOne({ where: { id: dto.merchant } });
-      if (m) qrOrder.merchant = m;
-    }
-    if (dto.qrLocation) {
-      const loc = await this.qrLocationRepository.findOne({ where: { id: dto.qrLocation } });
-      if (loc) qrOrder.qrLocation = loc;
-    }
-    if (dto.customer !== undefined) {
-      if (dto.customer) {
-        const c = await this.customerRepository.findOne({ where: { id: dto.customer } });
-        if (c) qrOrder.customer = c;
-      } else {
-        qrOrder.customer = null;
-      }
-    }
-    if (dto.table !== undefined) {
-      if (dto.table) {
-        const t = await this.tableRepository.findOne({ where: { id: dto.table } });
-        if (t) qrOrder.table = t;
-      } else {
-        qrOrder.table = null;
-      }
-    }
-    if (dto.order) {
-      const o = await this.orderRepository.findOne({ where: { id: dto.order } });
-      if (o) qrOrder.order = o;
-    }
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+
+    Object.assign(qrOrder, dto);
 
     const updatedQROrder = await this.qrOrderRepository.save(qrOrder);
     return {
@@ -278,13 +303,17 @@ export class QROrderService {
     };
   }
 
-  async remove(id: number): Promise<OneQROrderResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQROrderResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
     const qrOrder = await this.qrOrderRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
     });
     if (!qrOrder) {
       ErrorHandler.qrOrderNotFound();

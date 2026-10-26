@@ -26,9 +26,13 @@ export class Variant {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   price: number;
 
-  @ApiProperty({ example: '123456', description: 'Variant SKU' })
-  @Column({ type: 'varchar', length: 255 })
-  sku: string;
+  @ApiProperty({
+    example: '123456',
+    description: 'Variant SKU',
+    nullable: true,
+  })
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  sku: string | null;
 
   @ApiProperty({
     example: 1,

@@ -1,376 +1,272 @@
 //src/commerce/delivery-system/delivery-driver/delivery-driver.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
-import { SelectQueryBuilder } from 'typeorm';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { getMetadataArgsStorage } from 'typeorm';
 import { DeliveryDriverService } from './delivery-driver.service';
+import { DeliveryRealtimeService } from '../realtime/delivery-realtime.service';
 import { DeliveryDriver } from './entity/delivery-driver.entity';
-import { CreateDeliveryDriverDto } from './dto/create-delivery-driver.dto';
-import { UpdateDeliveryDriverDto } from './dto/update-delivery-driver.dto';
+import { VehicleType } from './constants/delivery-driver.constants';
+
+const MERCHANT_ID = 3;
 
 describe('DeliveryDriverService', () => {
   let service: DeliveryDriverService;
-  let repository: jest.Mocked<Repository<DeliveryDriver>>;
-  let merchantRepository: jest.Mocked<Repository<Merchant>>;
+  let repo: Record<string, jest.Mock>;
+  let qb: Record<string, jest.Mock>;
+  let uqb: Record<string, jest.Mock>;
+  let realtime: { driverStatusChanged: jest.Mock };
 
-  // Mock Data
-  const mockMerchant: Merchant = {
-    id: 1,
-    name: 'Test Merchant',
-  } as Merchant;
-
-  const mockDeliveryDriver: Partial<DeliveryDriver> = {
-    id: 1,
-    merchant: mockMerchant,
-    name: 'Mario Lopez',
-    phone: '809-555-1234',
-    vehicleType: 'Car',
-    status: 'active',
-  };
-
-  const mockCreateDeliveryDriverDto: CreateDeliveryDriverDto = {
-    merchant: 1,
-    name: 'Mario Lopez',
-    phone: '809-555-1234',
-    vehicleType: 'Car',
-    status: 'active',
-  };
-
-  const mockUpdateDeliveryDriverDto: UpdateDeliveryDriverDto = {
-    merchant: 1,
-    name: 'Mario Lopez',
-    phone: '809-555-1234',
-    vehicleType: 'Car',
-    status: 'inactive',
-  };
+  const driver = (over: Partial<DeliveryDriver> = {}) =>
+    ({
+      id: 5,
+      name: 'Mario Lopez',
+      phone: '+18095551234',
+      vehicleType: VehicleType.CAR,
+      status: 'active',
+      merchant: { id: MERCHANT_ID },
+      ...over,
+    }) as DeliveryDriver;
 
   beforeEach(async () => {
-    const mockQueryBuilder: any = {
-      leftJoin: jest.fn().mockReturnThis(),
+    realtime = { driverStatusChanged: jest.fn() };
+    qb = {
+      innerJoin: jest.fn().mockReturnThis(),
       select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
-      getManyAndCount: jest.fn().mockResolvedValue([[mockDeliveryDriver], 1]),
+      getManyAndCount: jest.fn().mockResolvedValue([[driver()], 1]),
     };
-
-    const mockRepository = {
-      create: jest.fn(),
-      save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
-      remove: jest.fn(),
-      createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+    uqb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
     };
-
+    repo = {
+      create: jest.fn((v: unknown) => v),
+      save: jest.fn((v: object) => Promise.resolve({ id: 5, ...v })),
+      findOne: jest.fn().mockResolvedValue(driver()),
+      query: jest.fn().mockResolvedValue([]),
+      // Sin alias → UPDATE; con alias → SELECT del listado.
+      createQueryBuilder: jest.fn((alias?: string) => (alias ? qb : uqb)),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DeliveryDriverService,
-        {
-          provide: getRepositoryToken(DeliveryDriver),
-          useValue: mockRepository,
-        },
-        {
-          provide: getRepositoryToken(Merchant),
-          useValue: {
-            findOne: jest.fn(),
-            find: jest.fn(),
-            create: jest.fn(),
-            save: jest.fn(),
-            remove: jest.fn(),
-          },
-        },
+        { provide: getRepositoryToken(DeliveryDriver), useValue: repo },
+        { provide: DeliveryRealtimeService, useValue: realtime },
       ],
     }).compile();
-
-    service = module.get<DeliveryDriverService>(DeliveryDriverService);
-    repository = module.get(getRepositoryToken(DeliveryDriver));
-    merchantRepository = module.get(getRepositoryToken(Merchant));
-    jest.clearAllMocks();
+    service = module.get(DeliveryDriverService);
   });
 
-  describe('Service Initialization', () => {
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-    it('repository should be defined', () => {
-      expect(repository).toBeDefined();
-    });
+  // Sin eager: el comercio se carga solo donde la respuesta lo usa (findScoped).
+  it('keeps the ManyToOne to Merchant on merchant_id, not eager', () => {
+    const relation = getMetadataArgsStorage().relations.find(
+      (r) => r.target === DeliveryDriver && r.propertyName === 'merchant',
+    );
+    const join = getMetadataArgsStorage().joinColumns.find(
+      (j) => j.target === DeliveryDriver && j.propertyName === 'merchant',
+    );
+    expect(relation?.relationType).toBe('many-to-one');
+    expect(relation?.options.eager).toBeFalsy();
+    expect(join?.name).toBe('merchant_id');
   });
 
-  describe('Create Delivery Driver', () => {
-    it('should create and return a delivery driver successfully', async () => {
-      jest
-        .spyOn(merchantRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as Merchant);
-
-      const createSpy = jest.spyOn(repository, 'create');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      createSpy.mockReturnValue(mockDeliveryDriver as DeliveryDriver);
-      saveSpy.mockResolvedValue(mockDeliveryDriver as DeliveryDriver);
-
-      const result = await service.create(mockCreateDeliveryDriverDto);
-
-      expect(createSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          merchant: { id: 1 },
-        }),
-      );
-      expect(saveSpy).toHaveBeenCalledWith(mockDeliveryDriver);
-      expect(result).toEqual({
-        statusCode: 201,
-        message: 'Delivery Driver created successfully',
-        data: mockDeliveryDriver,
-      });
-    });
-
-    it('should handle database errors during creation', async () => {
-      jest
-        .spyOn(merchantRepository, 'findOne')
-        .mockResolvedValue({ id: 1 } as Merchant);
-
-      const createSpy = jest.spyOn(repository, 'create');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      createSpy.mockReturnValue(mockDeliveryDriver as DeliveryDriver);
-      saveSpy.mockRejectedValue(new Error('Database error'));
-
-      await expect(service.create(mockCreateDeliveryDriverDto)).rejects.toThrow(
-        'Database error',
-      );
-
-      expect(createSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          merchant: { id: 1 },
-        }),
-      );
-      expect(saveSpy).toHaveBeenCalledWith(mockDeliveryDriver);
-    });
+  it('rejects callers without a merchant', async () => {
+    await expect(
+      service.summary(undefined as unknown as number),
+    ).rejects.toThrow(ForbiddenException);
   });
 
-  describe('Find All Delivery Drivers', () => {
-    it('should return all delivery drivers', async () => {
-      const mockDeliveryDrivers = [mockDeliveryDriver as DeliveryDriver];
-
-      // QueryBuilder ya mockeado en el beforeEach
-      const qb = repository.createQueryBuilder() as Partial<
-        SelectQueryBuilder<DeliveryDriver>
-      >;
-
-      jest
-        .spyOn(qb, 'getManyAndCount')
-        .mockResolvedValue([mockDeliveryDrivers, mockDeliveryDrivers.length]);
-
-      const result = await service.findAll({
-        page: 1,
-        limit: 10,
-      });
-
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Drivers retrieved successfully',
-        data: [mockDeliveryDriver],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: mockDeliveryDrivers.length,
-          totalPages: 1,
+  describe('create', () => {
+    it('takes the merchant from the JWT and stores the normalised phone', async () => {
+      repo.findOne.mockResolvedValueOnce(null);
+      const res = await service.create(
+        {
+          name: 'Mario Lopez',
+          phone: '+1 (809) 555-1234',
+          vehicleType: VehicleType.E_SCOOTER,
         },
-      });
-    });
-
-    it('should return an empty array when no delivery driver found', async () => {
-      const qb = repository.createQueryBuilder() as Partial<
-        SelectQueryBuilder<DeliveryDriver>
-      >;
-
-      jest.spyOn(qb, 'getManyAndCount').mockResolvedValue([[], 0]);
-
-      const result = await service.findAll({
-        page: 1,
-        limit: 10,
-      });
-
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Drivers retrieved successfully',
-        data: [],
-        pagination: {
-          page: 1,
-          limit: 10,
-          total: 0,
-          totalPages: 0,
-        },
-      });
-    });
-  });
-
-  describe('Find One Delivery Driver', () => {
-    it('should throw error for invalid ID (null)', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      await expect(service.findOne(null as any)).rejects.toThrow();
-    });
-
-    it('should throw error for invalid ID (zero)', async () => {
-      await expect(service.findOne(0)).rejects.toThrow();
-    });
-
-    it('should throw error for invalid ID (negative)', async () => {
-      await expect(service.findOne(-1)).rejects.toThrow();
-    });
-
-    it('should handle not found delivery driver', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      findOneSpy.mockResolvedValue(null);
-
-      await expect(service.findOne(999)).rejects.toThrow(
-        'Delivery Driver not found',
+        MERCHANT_ID,
       );
-
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 999,
-          status: In(['active', 'inactive']),
-        },
-        relations: ['merchant'],
-      });
-    });
-
-    it('should return a delivery driver when found', async () => {
-      const mockFound = {
-        id: 1,
+      expect(repo.create).toHaveBeenCalledWith({
+        merchant: { id: MERCHANT_ID },
+        name: 'Mario Lopez',
+        phone: '+18095551234',
+        vehicleType: 'e_scooter',
         status: 'active',
-        merchant: { id: 1, name: 'Merchant A' },
-      } as DeliveryDriver;
-
-      jest.spyOn(repository, 'findOne').mockResolvedValue(mockFound);
-
-      const result = await service.findOne(1);
-
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Driver retrieved successfully',
-        data: mockFound,
       });
-    });
-  });
-
-  describe('Update Delivery Driver', () => {
-    it('should update and return a delivery driver successfully', async () => {
-      const updatedDeliveryDriver: Partial<DeliveryDriver> = {
-        ...mockDeliveryDriver,
-        ...mockUpdateDeliveryDriverDto,
-        merchant: mockUpdateDeliveryDriverDto.merchant as unknown as Merchant,
-      };
-
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      findOneSpy.mockResolvedValue(mockDeliveryDriver as DeliveryDriver);
-      saveSpy.mockResolvedValue(updatedDeliveryDriver as DeliveryDriver);
-
-      const result = await service.update(1, mockUpdateDeliveryDriverDto);
-
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-          status: In(['active', 'inactive']),
-        },
-        relations: ['merchant'],
-      });
-      expect(saveSpy).toHaveBeenCalledWith(updatedDeliveryDriver);
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Driver updated successfully',
-        data: updatedDeliveryDriver,
-      });
+      expect(res.statusCode).toBe(201);
     });
 
-    it('should throw error for invalid ID during update', async () => {
+    it('rejects a duplicate phone among live drivers of the merchant (409)', async () => {
+      repo.findOne.mockResolvedValueOnce(driver({ id: 8 }));
       await expect(
-        service.update(0, mockUpdateDeliveryDriverDto),
-      ).rejects.toThrow();
-    });
-
-    it('should throw error when delivery driver to update not found', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      findOneSpy.mockResolvedValue(null);
-
-      await expect(
-        service.update(999, mockUpdateDeliveryDriverDto),
-      ).rejects.toThrow('Delivery Driver not found');
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: { id: 999, status: In(['active', 'inactive']) },
-        relations: ['merchant'],
-      });
-    });
-
-    it('should handle database errors during update', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      findOneSpy.mockResolvedValue(mockDeliveryDriver as DeliveryDriver);
-      saveSpy.mockRejectedValue(new Error('Database error'));
-
-      await expect(
-        service.update(1, mockUpdateDeliveryDriverDto),
-      ).rejects.toThrow('Database error');
-    });
-  });
-
-  describe('Remove Delivery Driver', () => {
-    it('should remove a delivery driver successfully', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      const saveSpy = jest.spyOn(repository, 'save');
-
-      findOneSpy.mockResolvedValue(mockDeliveryDriver as DeliveryDriver);
-      saveSpy.mockResolvedValue(mockDeliveryDriver as DeliveryDriver);
-
-      const result = await service.remove(1);
-
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 1,
-        },
-      });
-      expect(saveSpy).toHaveBeenCalled();
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Delivery Driver deleted successfully',
-        data: mockDeliveryDriver,
-      });
-    });
-
-    it('should throw error for invalid ID during removal', async () => {
-      await expect(service.remove(0)).rejects.toThrow();
-    });
-
-    it('should throw error when delivery driver to remove not found', async () => {
-      const findOneSpy = jest.spyOn(repository, 'findOne');
-      findOneSpy.mockResolvedValue(null);
-
-      await expect(service.remove(999)).rejects.toThrow(
-        'Delivery Driver not found',
+        service.create(
+          { name: 'X', phone: '809.555.1234', vehicleType: VehicleType.CAR },
+          MERCHANT_ID,
+        ),
+      ).rejects.toThrow(ConflictException);
+      expect(repo.findOne.mock.calls[0][0].where).toEqual(
+        expect.objectContaining({
+          merchant: { id: MERCHANT_ID },
+          phone: '8095551234',
+        }),
       );
-      expect(findOneSpy).toHaveBeenCalledWith({
-        where: {
-          id: 999,
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findAll', () => {
+    it('scopes by merchant and applies status, vehicle and search filters', async () => {
+      await service.findAll(
+        {
+          page: 1,
+          limit: 10,
+          status: ['active', 'on_delivery'],
+          vehicleType: [VehicleType.E_SCOOTER],
+          search: '809-5%',
         },
+        MERCHANT_ID,
+      );
+      expect(qb.where).toHaveBeenCalledWith('merchant.id = :merchantId', {
+        merchantId: MERCHANT_ID,
+      });
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'deliveryDriver.status IN (:...statuses)',
+        { statuses: ['active', 'on_delivery'] },
+      );
+      const vehicle = qb.andWhere.mock.calls.find((c) =>
+        String(c[0]).includes('vehicleType'),
+      ) as [string, { vehicleKeys: string[] }];
+      // Incluye las variantes antiguas ('E-Scooter', 'scooter'…).
+      expect(vehicle[1].vehicleKeys).toEqual(
+        expect.arrayContaining(['escooter', 'scooter']),
+      );
+      const search = qb.andWhere.mock.calls.find((c) =>
+        String(c[0]).includes('ILIKE'),
+      ) as [string, { term: string; phoneTerm: string }];
+      expect(search[0]).toContain('deliveryDriver.name ILIKE :term');
+      expect(search[0]).toContain('deliveryDriver.phone ILIKE');
+      expect(search[1]).toEqual({ term: '%809-5\\%%', phoneTerm: '%8095\\%%' });
+    });
+
+    it('defaults to every non-deleted status', async () => {
+      await service.findAll({ page: 1, limit: 10 }, MERCHANT_ID);
+      expect(qb.andWhere).toHaveBeenCalledWith(
+        'deliveryDriver.status IN (:...statuses)',
+        { statuses: ['active', 'inactive', 'on_delivery', 'off_duty'] },
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('uses a partial UPDATE guarded against on_delivery when the status changes', async () => {
+      await service.update(5, { status: 'off_duty' }, MERCHANT_ID);
+      expect(uqb.set).toHaveBeenCalledWith({ status: 'off_duty' });
+      expect(uqb.andWhere).toHaveBeenCalledWith('status <> :onDelivery', {
+        onDelivery: 'on_delivery',
+      });
+    });
+
+    it('409 when the driver is on a delivery', async () => {
+      uqb.execute.mockResolvedValueOnce({ affected: 0 });
+      await expect(
+        service.update(5, { status: 'inactive' }, MERCHANT_ID),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('checks phone uniqueness excluding itself', async () => {
+      repo.findOne
+        .mockResolvedValueOnce(driver())
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(driver());
+      await service.update(5, { phone: '809 555 0000' }, MERCHANT_ID);
+      expect(uqb.set).toHaveBeenCalledWith({ phone: '8095550000' });
+    });
+
+    it('404 for a driver of another merchant', async () => {
+      repo.findOne.mockResolvedValueOnce(null);
+      await expect(
+        service.update(5, { name: 'x' }, MERCHANT_ID),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('setShift', () => {
+    it.each([
+      [true, 'active'],
+      [false, 'off_duty'],
+    ])('on_shift=%s → %s', async (onShift, status) => {
+      await service.setShift(5, onShift, MERCHANT_ID);
+      expect(uqb.set).toHaveBeenCalledWith({ status });
+      expect(uqb.andWhere).toHaveBeenCalledWith('status IN (:...togglable)', {
+        togglable: ['active', 'off_duty'],
+      });
+    });
+
+    it.each(['on_delivery', 'inactive'])('409 while %s', async (status) => {
+      uqb.execute.mockResolvedValueOnce({ affected: 0 });
+      repo.findOne
+        .mockResolvedValueOnce(driver({ status }))
+        .mockResolvedValueOnce(driver({ status }));
+      await expect(service.setShift(5, true, MERCHANT_ID)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(realtime.driverStatusChanged).not.toHaveBeenCalled();
+    });
+
+    it('announces the new status to the fleet and dispatch screens', async () => {
+      repo.findOne
+        .mockResolvedValueOnce(driver())
+        .mockResolvedValueOnce(driver({ status: 'off_duty' }));
+      await service.setShift(5, false, MERCHANT_ID);
+      expect(realtime.driverStatusChanged).toHaveBeenCalledWith({
+        merchantId: MERCHANT_ID,
+        driverId: 5,
+        status: 'off_duty',
       });
     });
   });
 
-  describe('Repository Integration', () => {
-    it('should properly integrate with the delivery driver repository', () => {
-      expect(repository).toBeDefined();
-      expect(typeof repository.find).toBe('function');
-      expect(typeof repository.findOne).toBe('function');
-      expect(typeof repository.create).toBe('function');
-      expect(typeof repository.save).toBe('function');
-      expect(typeof repository.remove).toBe('function');
+  it('update announces only when the status changes', async () => {
+    await service.update(5, { name: 'Mario L.' }, MERCHANT_ID);
+    expect(realtime.driverStatusChanged).not.toHaveBeenCalled();
+    await service.update(5, { status: 'inactive' }, MERCHANT_ID);
+    expect(realtime.driverStatusChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('remove refuses a driver on a delivery', async () => {
+    uqb.execute.mockResolvedValueOnce({ affected: 0 });
+    await expect(service.remove(5, MERCHANT_ID)).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
+  it('summary groups the fleet by status', async () => {
+    repo.query.mockResolvedValueOnce([
+      { status: 'active', count: 5 },
+      { status: 'on_delivery', count: '4' },
+      { status: 'off_duty', count: 2 },
+      { status: 'inactive', count: 1 },
+    ]);
+    const res = await service.summary(MERCHANT_ID);
+    expect(res.data).toEqual({
+      total: 12,
+      available: 5,
+      en_route: 4,
+      unavailable: 3,
     });
+    expect(repo.query.mock.calls[0][1]).toEqual([MERCHANT_ID, 'deleted']);
   });
 });

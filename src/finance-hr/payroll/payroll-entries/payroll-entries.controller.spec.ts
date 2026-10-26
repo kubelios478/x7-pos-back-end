@@ -1,8 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PayrollEntriesController } from './payroll-entries.controller';
 import { PayrollEntriesService } from './payroll-entries.service';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('PayrollEntriesController', () => {
+  const merchantUser = {
+    id: 1,
+    email: 'admin@merchant.dev',
+    role: UserRole.MERCHANT_ADMIN,
+    merchant: { id: 7, companyId: 3 },
+  } as AuthenticatedUser;
+
   let controller: PayrollEntriesController;
 
   const mockPayrollEntriesService = {
@@ -40,8 +49,8 @@ describe('PayrollEntriesController', () => {
         message: 'Payroll entry created successfully',
         data: { id: 1, ...dto },
       });
-      await controller.create(dto);
-      expect(mockPayrollEntriesService.create).toHaveBeenCalledWith(dto);
+      await controller.create(dto, merchantUser);
+      expect(mockPayrollEntriesService.create).toHaveBeenCalledWith(dto, 7);
     });
   });
 
@@ -53,8 +62,8 @@ describe('PayrollEntriesController', () => {
         data: [],
         paginationMeta: {},
       });
-      await controller.findAll(query);
-      expect(mockPayrollEntriesService.findAll).toHaveBeenCalledWith(query);
+      await controller.findAll(query, merchantUser);
+      expect(mockPayrollEntriesService.findAll).toHaveBeenCalledWith(query, 7);
     });
   });
 });

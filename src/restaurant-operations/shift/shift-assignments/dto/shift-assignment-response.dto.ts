@@ -2,7 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ShiftRole } from '../../shifts/constants/shift-role.enum';
 import { ShiftAssignmentStatus } from '../constants/shift-assignment-status.enum';
 import { SuccessResponse } from '../../../../common/dtos/success-response.dto';
-import { ShiftAssignment } from '../entities/shift-assignment.entity';
 
 export class BasicShiftInfoDto {
   @ApiProperty({ example: 1, description: 'Shift ID' })

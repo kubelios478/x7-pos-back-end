@@ -4,6 +4,7 @@ import { Variant } from 'src/inventory/products-inventory/variants/entities/vari
 import {
   Column,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   ManyToOne,
   OneToMany,
@@ -14,6 +15,11 @@ import { Location } from '../../locations/entities/location.entity';
 
 import { Supply } from 'src/inventory/supplies/entities/supply.entity';
 
+// Partial unique indexes created by hand in migration InitialSchema (one active row per product +
+// variant + location, and per raw material + location). TypeORM cannot express them, so
+// synchronize: false keeps migration:generate from dropping them.
+@Index('UQ_stock_item_product_variant_location', { synchronize: false })
+@Index('UQ_stock_item_supply_location', { synchronize: false })
 @Entity({ name: 'stock_item' })
 export class Item {
   @ApiProperty({ example: 1, description: 'Item ID' })

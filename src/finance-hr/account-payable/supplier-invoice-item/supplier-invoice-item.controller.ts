@@ -155,8 +155,12 @@ export class SupplierInvoiceItemController {
   @ApiForbiddenResponse({ description: 'Forbidden' })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneSupplierInvoiceItemResponseDto> {
-    return this.supplierInvoiceItemService.findOne(id);
+    return this.supplierInvoiceItemService.findOne(
+      id,
+      this.merchantCompanyScope(user),
+    );
   }
 
   @Put(':id')

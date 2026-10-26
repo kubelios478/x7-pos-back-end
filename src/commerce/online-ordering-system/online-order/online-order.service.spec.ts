@@ -184,7 +184,7 @@ describe('OnlineOrderService', () => {
     };
 
     it('should create an online order successfully', async () => {
-      const storeQueryBuilder = { ...mockQueryBuilder };
+      const storeQueryBuilder = { ...mockQueryBuilder, getOne: jest.fn() };
       jest
         .spyOn(onlineStoreRepository, 'createQueryBuilder')
         .mockReturnValue(
@@ -203,7 +203,7 @@ describe('OnlineOrderService', () => {
       jest
         .spyOn(onlineOrderRepository, 'save')
         .mockResolvedValue(savedOrder as unknown as OnlineOrder);
-      const orderQueryBuilder = { ...mockQueryBuilder };
+      const orderQueryBuilder = { ...mockQueryBuilder, getOne: jest.fn() };
       onlineOrderRepository.createQueryBuilder = jest
         .fn()
         .mockReturnValue(
@@ -241,7 +241,7 @@ describe('OnlineOrderService', () => {
         order_id: null,
         order: null,
       };
-      const storeQueryBuilder = { ...mockQueryBuilder };
+      const storeQueryBuilder = { ...mockQueryBuilder, getOne: jest.fn() };
       jest
         .spyOn(onlineStoreRepository, 'createQueryBuilder')
         .mockReturnValue(
@@ -257,7 +257,7 @@ describe('OnlineOrderService', () => {
       jest
         .spyOn(onlineOrderRepository, 'save')
         .mockResolvedValue(savedOrder as unknown as OnlineOrder);
-      const orderQueryBuilder = { ...mockQueryBuilder };
+      const orderQueryBuilder = { ...mockQueryBuilder, getOne: jest.fn() };
       onlineOrderRepository.createQueryBuilder = jest
         .fn()
         .mockReturnValue(

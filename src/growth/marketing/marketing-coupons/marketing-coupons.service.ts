@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -438,7 +439,7 @@ export class MarketingCouponsService {
     }
 
     // Update marketing coupon
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<MarketingCoupon> = {};
     if (updateMarketingCouponDto.code !== undefined)
       updateData.code = updateMarketingCouponDto.code.trim().toUpperCase();
     if (updateMarketingCouponDto.type !== undefined)

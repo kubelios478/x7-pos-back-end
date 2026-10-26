@@ -1,10 +1,11 @@
+import { BadRequestException } from '@nestjs/common';
 //src/core/configuration/merchant-overtime-rule/merchant-overtime-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantOvertimeRuleController } from './merchant-overtime-rule.controller';
 import { MerchantOvertimeRuleService } from './merchant-overtime-rule.service';
 import { MerchantOvertimeRule } from './entity/merchant-overtime-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { User } from 'src/platform-saas/users/entities/user.entity';
 import { OvertimeCalculationType } from '../constants/overtime-calculation-type.enum';
 import { OvertimeRateType } from '../constants/overtime-rate-type.enum';
@@ -25,11 +26,12 @@ describe('MerchantOvertimeRuleController', () => {
     name: 'Test Company',
     email: 'test@company.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
     country: 'Test Country',
+    status: CompanyStatus.ACTIVE,
     merchants: [],
     customers: [],
     configurations: [],
@@ -359,9 +361,9 @@ describe('MerchantOvertimeRuleController', () => {
         .mockResolvedValue(deleteResponse);
       removeSpy.mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(1);
+      const result = await controller.remove(1, mockAuthenticatedUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(deleteResponse);
     });
 
@@ -372,9 +374,17 @@ describe('MerchantOvertimeRuleController', () => {
         .mockRejectedValue(new Error(errorMessage));
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(1)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(1, mockAuthenticatedUser)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
     });
+  });
+
+  it('answers 400, not 500, for a non-positive id', async () => {
+    await expect(controller.findOne(0, {} as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

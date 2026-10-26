@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +14,8 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { CreateCustomerDto } from './dtos/create-customer.dto';
 import { UpdateCustomerDto } from './dtos/update-customer.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import { requestedPage } from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class CustomersService {
@@ -31,7 +34,8 @@ export class CustomersService {
 
   async create(dto: CreateCustomerDto, user: AuthenticatedUser) {
     const userData = await this.userRepo.findOneBy({ id: user.id });
-    if (!userData) throw new Error('User not found');
+    // the token's user no longer exists: an authentication problem, not a server error
+    if (!userData) throw new UnauthorizedException('User not found');
 
     const merchant = await this.merchantRepo.findOneBy({
       id: user.merchant.id,
@@ -44,8 +48,10 @@ export class CustomersService {
       if (!company) throw new NotFoundException('Company not found');
     }
 
+    const { rut, document_id, ...fields } = dto;
     const customerData: Partial<Customer> = {
-      ...dto,
+      ...fields,
+      document_id: document_id ?? rut ?? null,
       merchant,
       ...(company ? { company } : {}),
     };
@@ -53,16 +59,21 @@ export class CustomersService {
     return this.customerRepo.save(customer);
   }
 
-  async findAll() {
-    const customers = await this.customerRepo.find({
+  /** Sin page ni limit, todos los clientes del comercio, como antes. */
+  async findAll(merchantId: number, query: PaginationQueryDto = {}) {
+    const pagination = requestedPage(query);
+    const [customers, total] = await this.customerRepo.findAndCount({
+      where: { merchantId },
       relations: ['merchant', 'company'],
+      order: { id: 'ASC' },
+      ...(pagination ? { skip: pagination.skip, take: pagination.limit } : {}),
     });
-    return customers.map((customer) => ({
+    const rows = customers.map((customer) => ({
       id: customer.id,
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
-      rut: customer.rut,
+      document_id: customer.document_id,
       address: customer.address,
       city: customer.city,
       state: customer.state,
@@ -75,6 +86,7 @@ export class CustomersService {
         ? { id: customer.company.id, name: customer.company.name }
         : null,
     }));
+    return { rows, total, paginated: pagination !== undefined };
   }
 
   async findOne(id: number, user: AuthenticatedUser) {
@@ -90,7 +102,7 @@ export class CustomersService {
       name: customer.name,
       email: customer.email,
       phone: customer.phone,
-      rut: customer.rut,
+      document_id: customer.document_id,
       address: customer.address,
       city: customer.city,
       state: customer.state,
@@ -121,7 +133,13 @@ export class CustomersService {
       customer.company = company;
     }
 
-    Object.assign(customer, { ...dto, company: customer.company });
+    const { rut, document_id, ...fields } = dto;
+    Object.assign(customer, { ...fields, company: customer.company });
+    // `rut` is the deprecated name of document_id; null clears it.
+    if (document_id !== undefined || rut !== undefined) {
+      customer.document_id =
+        (document_id !== undefined ? document_id : rut) ?? null;
+    }
     return this.customerRepo.save(customer);
   }
 

@@ -22,7 +22,10 @@ export class StatusHistoryReservationSummaryDto {
   @ApiProperty({ example: 4 })
   party_size: number;
 
-  @ApiProperty({ enum: ReservationStatus, example: ReservationStatus.COMPLETED })
+  @ApiProperty({
+    enum: ReservationStatus,
+    example: ReservationStatus.COMPLETED,
+  })
   status: ReservationStatus;
 
   @ApiPropertyOptional({
@@ -69,7 +72,8 @@ export class ReservationStatusHistoryResponseDto {
   @ApiPropertyOptional({
     example: 2,
     nullable: true,
-    description: 'Staff user id, or null when an automated process made the change',
+    description:
+      'Staff user id, or null when an automated process made the change',
   })
   changed_by: number | null;
 

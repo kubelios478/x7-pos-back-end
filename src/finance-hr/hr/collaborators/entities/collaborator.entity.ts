@@ -165,7 +165,7 @@ export class Collaborator {
   orders: Order[];
 
   @Column({ nullable: true })
-  shift_id: number;
+  shift_id: number | null;
 
   @ManyToOne(() => Shift, (shift) => shift.collaborators)
   @JoinColumn({ name: 'shift_id' })

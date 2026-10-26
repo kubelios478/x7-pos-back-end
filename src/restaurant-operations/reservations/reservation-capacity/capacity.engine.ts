@@ -133,14 +133,21 @@ export function evaluateBooking(
   const fitsCapacity = !configured || projectedSeats <= rules.seatCapacity;
 
   const slotStart = slotStartFor(start, rules.slotIntervalMinutes);
-  const arrivals = arrivalsInSlot(bookings, slotStart, rules.slotIntervalMinutes);
+  const arrivals = arrivalsInSlot(
+    bookings,
+    slotStart,
+    rules.slotIntervalMinutes,
+  );
   const fitsThrottle =
-    rules.maxCoversPerSlot == null || arrivals + partySize <= rules.maxCoversPerSlot;
+    rules.maxCoversPerSlot == null ||
+    arrivals + partySize <= rules.maxCoversPerSlot;
 
   // Un hueco lleno para ESTE grupo se pinta rojo aunque su ocupación actual sea ámbar: lo que
   // la anfitriona necesita saber es si puede darle esa hora a quien tiene al teléfono.
   const level: OccupancyLevel =
-    !fitsCapacity || !fitsThrottle ? 'sold_out' : occupancyLevel(occupancyPct ?? 0);
+    !fitsCapacity || !fitsThrottle
+      ? 'sold_out'
+      : occupancyLevel(occupancyPct ?? 0);
 
   return {
     bookedSeats,
@@ -172,7 +179,15 @@ export function shiftWindow(
   const startMin = parseClock(shift.start);
   const endMin = parseClock(shift.end);
   if (startMin == null || endMin == null) return null;
-  const base = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
+  const base = new Date(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
   const start = base.getTime() + startMin * MINUTE_MS;
   const endOffset = endMin <= startMin ? endMin + 24 * 60 : endMin;
   return { start, end: base.getTime() + endOffset * MINUTE_MS };

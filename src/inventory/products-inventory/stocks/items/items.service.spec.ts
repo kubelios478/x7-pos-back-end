@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Item } from './entities/item.entity';
 import { Location } from '../locations/entities/location.entity';
 import { MovementsService } from '../movements/movements.service';
+import { MovementsStatus } from '../movements/constants/movements-status';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
 import { GetItemsQueryDto } from './dto/get-items-query.dto';
@@ -32,8 +33,12 @@ describe('ItemsService', () => {
     andWhere: jest.Mock;
     getCount: jest.Mock;
     orderBy: jest.Mock;
+    addSelect: jest.Mock;
+    addOrderBy: jest.Mock;
     skip: jest.Mock;
     take: jest.Mock;
+    offset: jest.Mock;
+    limit: jest.Mock;
     getMany: jest.Mock;
     getOne: jest.Mock;
   };
@@ -102,12 +107,18 @@ describe('ItemsService', () => {
       findOne: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // update() checks the kardex history through the manager
+      manager: { exists: jest.fn().mockResolvedValue(false) },
     };
     const mockProductRepo = {
       findOneBy: jest.fn(),
     };
     const mockLocationRepo = {
       findOneBy: jest.fn(),
+      // the service reads the merchant's company through the repository manager
+      manager: {
+        findOne: jest.fn().mockResolvedValue({ id: 1, companyId: 1 }),
+      },
     };
     const mockVariantRepo = {
       findOneBy: jest.fn(),
@@ -121,8 +132,12 @@ describe('ItemsService', () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      addOrderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
       getCount: jest.fn(),
       getMany: jest.fn(),
       getOne: jest.fn(),
@@ -160,6 +175,7 @@ describe('ItemsService', () => {
           // Dependency that the service won and this spec never registered.
           provide: StockLevelMonitorService,
           useValue: {
+            evaluateStockItems: jest.fn().mockResolvedValue(undefined),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -238,14 +254,16 @@ describe('ItemsService', () => {
           variant: { id: mockCreateItemDto.variantId },
         },
       });
-      expect(itemRepo.create).toHaveBeenCalledWith({
-        currentQty: mockCreateItemDto.currentQty,
-        product: mockProduct,
-        location: mockLocation,
-        variant: mockVariant,
-      });
+      expect(itemRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentQty: mockCreateItemDto.currentQty,
+          product: mockProduct,
+          location: mockLocation,
+          variant: mockVariant,
+        }),
+      );
       expect(itemRepo.save).toHaveBeenCalledWith(mockItem);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Item Created successfully',
         data: {
@@ -298,7 +316,7 @@ describe('ItemsService', () => {
       });
       expect(inactiveItem.isActive).toBe(true); // Check if isActive was changed to true
       expect(itemRepo.save).toHaveBeenCalledWith(inactiveItem);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 201,
         message: 'Item Created successfully',
         data: {
@@ -444,12 +462,14 @@ describe('ItemsService', () => {
           variant: { id: mockCreateItemDto.variantId },
         },
       });
-      expect(itemRepo.create).toHaveBeenCalledWith({
-        currentQty: mockCreateItemDto.currentQty,
-        product: mockProduct,
-        location: mockLocation,
-        variant: mockVariant,
-      });
+      expect(itemRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currentQty: mockCreateItemDto.currentQty,
+          product: mockProduct,
+          location: mockLocation,
+          variant: mockVariant,
+        }),
+      );
       expect(itemRepo.save).toHaveBeenCalledWith(mockItem);
       expect(mockQueryBuilder.getOne).not.toHaveBeenCalled(); // findOne call inside create should not be called if save fails
     });
@@ -476,21 +496,25 @@ describe('ItemsService', () => {
         'location',
       );
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
         { isActive: true },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
-        'product.name',
+        '"itemName"',
         'ASC',
       );
-      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
-      expect(mockQueryBuilder.take).toHaveBeenCalledWith(mockQuery.limit);
+      expect(mockQueryBuilder.addOrderBy).toHaveBeenCalledWith(
+        'item.id',
+        'ASC',
+      );
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(mockQuery.limit);
 
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Items retrieved successfully',
         data: [
@@ -508,6 +532,29 @@ describe('ItemsService', () => {
         totalPages: Math.ceil(items.length / mockQuery.limit!),
         hasNext: false,
         hasPrev: false,
+      });
+    });
+
+    // Antes traía todos los ítems y cortaba la página en memoria.
+    it('asks the database only for the requested page', async () => {
+      mockQueryBuilder.getMany.mockResolvedValue([mockItem as Item]);
+      mockQueryBuilder.getCount.mockResolvedValue(21);
+
+      const result = await service.findAll(
+        { ...mockQuery, page: 3, limit: 10 },
+        mockMerchant.id,
+      );
+
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(20);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(10);
+      // La fila que devuelve la base es la página: no se vuelve a recortar.
+      expect(result.data).toHaveLength(1);
+      expect(result).toMatchObject({
+        page: 3,
+        total: 21,
+        totalPages: 3,
+        hasNext: false,
+        hasPrev: true,
       });
     });
 
@@ -530,21 +577,25 @@ describe('ItemsService', () => {
         'location',
       );
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
         { isActive: true },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
-        'product.name',
+        '"itemName"',
         'ASC',
       );
-      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
-      expect(mockQueryBuilder.take).toHaveBeenCalledWith(mockQuery.limit);
+      expect(mockQueryBuilder.addOrderBy).toHaveBeenCalledWith(
+        'item.id',
+        'ASC',
+      );
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(mockQuery.limit);
 
-      expect(result.data).toEqual([]);
+      expect(result.data).toMatchObject([]);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Items retrieved successfully');
       expect(result.total).toBe(0);
@@ -565,10 +616,10 @@ describe('ItemsService', () => {
       );
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'LOWER(product.name) LIKE LOWER(:productName)',
+        '(LOWER(product.name) LIKE LOWER(:productName) OR LOWER(supply.name) LIKE LOWER(:productName))',
         { productName: '%Test Product%' },
       );
-      expect(result.data).toEqual([
+      expect(result.data).toMatchObject([
         {
           id: mockItem.id,
           currentQty: mockItem.currentQty,
@@ -597,7 +648,7 @@ describe('ItemsService', () => {
         'LOWER(variant.name) LIKE LOWER(:variantName)',
         { variantName: '%Test Variant%' },
       );
-      expect(result.data).toEqual([
+      expect(result.data).toMatchObject([
         {
           id: mockItem.id,
           currentQty: mockItem.currentQty,
@@ -614,13 +665,15 @@ describe('ItemsService', () => {
         ...mockItem,
         id: i + 1,
       })) as Item[];
-      mockQueryBuilder.getMany.mockResolvedValue(items.slice(5, 10)); // Simulate second page
+      // The database returns only the requested page (offset 5, limit 5).
+      mockQueryBuilder.getMany.mockResolvedValue(items.slice(5, 10));
       mockQueryBuilder.getCount.mockResolvedValue(items.length);
 
       const result = await service.findAll(paginatedQuery, mockMerchant.id);
-
-      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(5); // (page - 1) * limit = (2 - 1) * 5 = 5
-      expect(mockQueryBuilder.take).toHaveBeenCalledWith(5);
+      expect(mockQueryBuilder.offset).toHaveBeenCalledWith(5);
+      expect(mockQueryBuilder.limit).toHaveBeenCalledWith(5);
+      expect(result.data).toHaveLength(5);
+      expect(result.data[0].id).toBe(items[5].id);
       expect(result.page).toBe(2);
       expect(result.limit).toBe(5);
       expect(result.total).toBe(10);
@@ -640,14 +693,14 @@ describe('ItemsService', () => {
         id: mockItem.id,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
         { isActive: true },
       );
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Item retrieved successfully',
         data: {
@@ -672,8 +725,8 @@ describe('ItemsService', () => {
         id: idNotFound,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
@@ -713,10 +766,12 @@ describe('ItemsService', () => {
         ...updatedItem,
         location: newMockLocation,
       });
+      // adjust() re-reads the item: the save above left its quantity untouched
       mockQueryBuilder.getOne.mockResolvedValueOnce({
-        ...updatedItem,
+        ...mockItem,
         location: newMockLocation,
-      } as Item); // For findOne call inside update
+      } as Item);
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
 
       await service.update(mockItem.id!, mockMerchant.id, mockUpdateItemDto);
 
@@ -724,8 +779,8 @@ describe('ItemsService', () => {
         id: mockItem.id,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
@@ -750,14 +805,51 @@ describe('ItemsService', () => {
           merchantId: mockMerchant.id,
         },
       });
+      // the quantity is not written straight onto the item...
       expect(itemRepo.save).toHaveBeenCalledWith({
         ...mockItem,
-        currentQty: mockUpdateItemDto.currentQty,
         product: mockProduct,
         location: newMockLocation,
         variant: mockVariant,
       });
-      expect(movementsService.create).toHaveBeenCalledTimes(2); // Two movements: OUT and IN
+      // ...but through the kardex: OUT and IN for the new location, then the adjustment
+      expect(movementsService.create).toHaveBeenCalledTimes(3);
+      expect(movementsService.create).toHaveBeenLastCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({
+          quantity: 5,
+          type: MovementsStatus.IN,
+          movementType: MovementsStatus.ADJUSTMENT,
+        }),
+      );
+    });
+
+    it('refuses to re-point a stock item with stock to another product', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 10,
+      } as Item);
+
+      await expect(
+        service.update(mockItem.id!, mockMerchant.id, {
+          productId: 2,
+          variantId: 2,
+        }),
+      ).rejects.toThrow('cannot change its product or raw material');
+      expect(itemRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('refuses to re-point an empty stock item that has kardex history', async () => {
+      mockQueryBuilder.getOne.mockResolvedValueOnce({
+        ...mockItem,
+        currentQty: 0,
+      } as Item);
+      (itemRepo.manager.exists as jest.Mock).mockResolvedValueOnce(true);
+
+      await expect(
+        service.update(mockItem.id!, mockMerchant.id, { supplyId: 5 }),
+      ).rejects.toThrow('cannot change its product or raw material');
+      expect(itemRepo.save).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if Item to update is not found', async () => {
@@ -772,8 +864,8 @@ describe('ItemsService', () => {
         id: idNotFound,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
@@ -878,8 +970,8 @@ describe('ItemsService', () => {
         id: mockItem.id,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
@@ -887,7 +979,7 @@ describe('ItemsService', () => {
       );
       expect(itemToDelete.isActive).toBe(false);
       expect(itemRepo.save).toHaveBeenCalledWith(itemToDelete);
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         statusCode: 200,
         message: 'Item Deleted successfully',
         data: {
@@ -912,8 +1004,8 @@ describe('ItemsService', () => {
         id: idNotFound,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'product.merchantId = :merchantId',
-        { merchantId: mockMerchant.id },
+        '(product.merchantId = :merchantId OR supply.company_id = :companyId)',
+        { merchantId: mockMerchant.id, companyId: 1 },
       );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'item.isActive = :isActive',
@@ -934,6 +1026,68 @@ describe('ItemsService', () => {
       await expect(async () =>
         service.remove(null as any, mockMerchant.id),
       ).rejects.toThrow('Item ID is incorrect');
+    });
+  });
+
+  describe('softRemoveByProductId', () => {
+    it('deactivates the stock rows without zeroing their quantity', async () => {
+      const row = { ...mockItem, currentQty: -3, isActive: true } as Item;
+      mockQueryBuilder.getMany.mockResolvedValueOnce([row]);
+
+      await service.softRemoveByProductId(1, mockMerchant.id);
+
+      expect(itemRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({ isActive: false, currentQty: -3 }),
+      ]);
+    });
+  });
+
+  describe('Adjust', () => {
+    beforeEach(() => {
+      mockQueryBuilder.getOne.mockResolvedValue({
+        ...mockItem,
+        currentQty: 10,
+      });
+      jest.spyOn(service, 'findOne').mockResolvedValue({} as never);
+    });
+
+    it('applies an absolute adjustment once, through a single ADJUSTMENT movement', async () => {
+      await service.adjust(1, mockMerchant.id, {
+        value: 15,
+        type: 'absolute',
+      });
+
+      // the movement updates the stock; saving the item here too counted it twice
+      expect(itemRepo.save).not.toHaveBeenCalled();
+      expect(movementsService.create).toHaveBeenCalledTimes(1);
+      expect(movementsService.create).toHaveBeenCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({
+          stockItemId: 1,
+          quantity: 5,
+          type: MovementsStatus.IN,
+          movementType: MovementsStatus.ADJUSTMENT,
+        }),
+      );
+    });
+
+    it('turns a negative relative adjustment into an OUT movement', async () => {
+      await service.adjust(1, mockMerchant.id, { value: -3, type: 'relative' });
+
+      expect(movementsService.create).toHaveBeenCalledWith(
+        mockMerchant.id,
+        expect.objectContaining({ quantity: 3, type: MovementsStatus.OUT }),
+      );
+    });
+
+    it('does nothing when the quantity does not change', async () => {
+      await service.adjust(1, mockMerchant.id, {
+        value: 10,
+        type: 'absolute',
+      });
+
+      expect(movementsService.create).not.toHaveBeenCalled();
+      expect(itemRepo.save).not.toHaveBeenCalled();
     });
   });
 

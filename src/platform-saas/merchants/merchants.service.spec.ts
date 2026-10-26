@@ -33,11 +33,12 @@ describe('MerchantsService', () => {
     name: 'Test Company',
     email: 'test@company.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
     country: 'Test Country',
+    status: CompanyStatus.ACTIVE,
     merchants: [],
     customers: [],
     configurations: [],
@@ -49,7 +50,7 @@ describe('MerchantsService', () => {
     name: 'Test Merchant',
     email: 'merchant@test.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
@@ -64,7 +65,7 @@ describe('MerchantsService', () => {
     name: 'New Merchant',
     email: 'new@merchant.com',
     phone: '9876543210',
-    rut: '98765432-1',
+    tax_id: '98765432-1',
     address: '456 New St',
     city: 'New City',
     state: 'New State',
@@ -87,7 +88,7 @@ describe('MerchantsService', () => {
 
   const mockCreateCompanyMerchantDto: CreateCompanyMerchantDto = {
     name: 'Branch Two',
-    rut: '12-3456789',
+    tax_id: '12-3456789',
     email: 'branch@example.com',
     address: '123 Main Street',
     city: 'Miami',
@@ -100,6 +101,7 @@ describe('MerchantsService', () => {
       create: jest.fn(),
       save: jest.fn(),
       find: jest.fn(),
+      findAndCount: jest.fn(),
       findOne: jest.fn(),
       remove: jest.fn(),
       exists: jest.fn(),
@@ -200,7 +202,7 @@ describe('MerchantsService', () => {
         name: mockCreateMerchantDto.name,
         email: mockCreateMerchantDto.email,
         phone: mockCreateMerchantDto.phone,
-        rut: mockCreateMerchantDto.rut,
+        tax_id: mockCreateMerchantDto.tax_id,
         address: mockCreateMerchantDto.address,
         city: mockCreateMerchantDto.city,
         state: mockCreateMerchantDto.state,
@@ -296,25 +298,29 @@ describe('MerchantsService', () => {
   });
 
   describe('findAll', () => {
+    const merchantQuery = {
+      relations: ['company', 'users'],
+      select: {
+        users: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          scope: true,
+        },
+      },
+      order: { id: 'ASC' },
+    };
+
     it('should return all merchants successfully', async () => {
       const merchants = [mockMerchant as Merchant];
-      const findSpy = jest.spyOn(merchantRepository, 'find');
-      findSpy.mockResolvedValue(merchants);
+      const findSpy = jest.spyOn(merchantRepository, 'findAndCount');
+      findSpy.mockResolvedValue([merchants, 1]);
 
       const result = await service.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith({
-        relations: ['company', 'users'],
-        select: {
-          users: {
-            id: true,
-            username: true,
-            email: true,
-            role: true,
-            scope: true,
-          },
-        },
-      });
+      // Sin page ni limit: todos, y la respuesta sin datos de paginación.
+      expect(findSpy).toHaveBeenCalledWith(merchantQuery);
       expect(result).toEqual({
         statusCode: 200,
         message: 'Merchants retrieved successfully',
@@ -323,26 +329,26 @@ describe('MerchantsService', () => {
     });
 
     it('should return empty array when no merchants found', async () => {
-      const findSpy = jest.spyOn(merchantRepository, 'find');
-      findSpy.mockResolvedValue([]);
+      jest.spyOn(merchantRepository, 'findAndCount').mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith({
-        relations: ['company', 'users'],
-        select: {
-          users: {
-            id: true,
-            username: true,
-            email: true,
-            role: true,
-            scope: true,
-          },
-        },
-      });
       expect(result.data).toEqual([]);
       expect(result.statusCode).toBe(200);
-      expect(result.message).toBe('Merchants retrieved successfully');
+    });
+
+    it('pages and adds the pagination data when page or limit is sent', async () => {
+      const findSpy = jest.spyOn(merchantRepository, 'findAndCount');
+      findSpy.mockResolvedValue([[mockMerchant as Merchant], 5]);
+
+      const result = await service.findAll({ limit: 2 });
+
+      expect(findSpy).toHaveBeenCalledWith({
+        ...merchantQuery,
+        skip: 0,
+        take: 2,
+      });
+      expect(result).toMatchObject({ page: 1, total: 5, totalPages: 3 });
     });
   });
 
@@ -395,7 +401,7 @@ describe('MerchantsService', () => {
         select: {
           id: true,
           name: true,
-          rut: true,
+          tax_id: true,
           email: true,
           phone: true,
           address: true,

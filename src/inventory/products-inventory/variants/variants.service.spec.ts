@@ -1,3 +1,6 @@
+import { StockAvailabilityService } from '../../stock-alerts/stock-availability.service';
+import { Location } from '../stocks/locations/entities/location.entity';
+import { Item } from '../stocks/items/entities/item.entity';
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
@@ -29,6 +32,7 @@ describe('VariantsService', () => {
     take: jest.Mock;
     getMany: jest.Mock;
     getOne: jest.Mock;
+    getExists: jest.Mock;
   };
   let mockQueryBuilder: MockQueryBuilder;
 
@@ -85,6 +89,8 @@ describe('VariantsService', () => {
   };
 
   const mockProductResponseDto = {
+    isOutOfStock: false,
+    isLowStock: false,
     id: mockProduct.id!,
     name: mockProduct.name!,
     sku: mockProduct.sku!,
@@ -96,6 +102,9 @@ describe('VariantsService', () => {
   };
 
   const mockVariantResponseDto: VariantResponseDto = {
+    isOutOfStock: false,
+    isLowStock: false,
+    isActive: true,
     id: mockVariant.id!,
     name: mockVariant.name!,
     price: mockVariant.price!,
@@ -123,6 +132,8 @@ describe('VariantsService', () => {
       getCount: jest.fn(),
       getMany: jest.fn(),
       getOne: jest.fn(),
+      // name uniqueness within the product: no clash unless a test says so
+      getExists: jest.fn().mockResolvedValue(false),
     };
 
     mockVariantRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
@@ -152,6 +163,35 @@ describe('VariantsService', () => {
           provide: ProductsService,
           useValue: mockProductsService,
         },
+        {
+          provide: getRepositoryToken(Location),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: getRepositoryToken(Item),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
+        {
+          provide: StockAvailabilityService,
+          useValue: {
+            getVariantAvailability: jest.fn().mockResolvedValue(undefined),
+            getVariantAvailabilityMap: jest.fn().mockResolvedValue(new Map()),
+          },
+        },
       ],
     }).compile();
 
@@ -174,9 +214,8 @@ describe('VariantsService', () => {
 
     it('should create a new Variant successfully', async () => {
       productRepository.findOneBy.mockResolvedValueOnce(mockProduct as Product);
-      variantRepository.findOne.mockResolvedValueOnce(null); // No active variant with same name
       variantRepository.findOne.mockResolvedValueOnce(null); // No active variant with same SKU
-      variantRepository.findOne.mockResolvedValueOnce(null); // No inactive variant with same name
+      variantRepository.findOne.mockResolvedValueOnce(null); // No inactive variant with same SKU
 
       variantRepository.create.mockReturnValueOnce(mockVariant as Variant);
       variantRepository.save.mockResolvedValueOnce(mockVariant as Variant);
@@ -186,11 +225,12 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
         where: [
           {
-            name: mockCreateVariantDto.name,
+            sku: mockCreateVariantDto.sku,
             isActive: true,
             product: { merchantId: merchantId },
           },
@@ -200,15 +240,6 @@ describe('VariantsService', () => {
         where: [
           {
             sku: mockCreateVariantDto.sku,
-            isActive: true,
-            product: { merchantId: merchantId },
-          },
-        ],
-      });
-      expect(variantRepository.findOne).toHaveBeenNthCalledWith(3, {
-        where: [
-          {
-            name: mockCreateVariantDto.name,
             isActive: false,
             product: { merchantId: merchantId },
           },
@@ -235,9 +266,8 @@ describe('VariantsService', () => {
       const activeVariant = { ...mockVariant, isActive: true } as Variant;
 
       productRepository.findOneBy.mockResolvedValueOnce(mockProduct as Product);
-      variantRepository.findOne.mockResolvedValueOnce(null); // No active variant with same name
       variantRepository.findOne.mockResolvedValueOnce(null); // No active variant with same SKU
-      variantRepository.findOne.mockResolvedValueOnce(inactiveVariant); // Found inactive variant
+      variantRepository.findOne.mockResolvedValueOnce(inactiveVariant); // Found inactive variant with same SKU
       variantRepository.save.mockResolvedValueOnce(activeVariant);
       mockQueryBuilder.getOne.mockResolvedValueOnce(activeVariant); // findOne inside findOne method
 
@@ -245,11 +275,12 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
         where: [
           {
-            name: mockCreateVariantDto.name,
+            sku: mockCreateVariantDto.sku,
             isActive: true,
             product: { merchantId: merchantId },
           },
@@ -259,15 +290,6 @@ describe('VariantsService', () => {
         where: [
           {
             sku: mockCreateVariantDto.sku,
-            isActive: true,
-            product: { merchantId: merchantId },
-          },
-        ],
-      });
-      expect(variantRepository.findOne).toHaveBeenNthCalledWith(3, {
-        where: [
-          {
-            name: mockCreateVariantDto.name,
             isActive: false,
             product: { merchantId: merchantId },
           },
@@ -295,38 +317,14 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
-      expect(variantRepository.create).not.toHaveBeenCalled();
-      expect(variantRepository.save).not.toHaveBeenCalled();
-    });
-
-    it('should throw BadRequestException if variant name already exists for product', async () => {
-      productRepository.findOneBy.mockResolvedValueOnce(mockProduct as Product);
-      variantRepository.findOne.mockResolvedValueOnce(mockVariant as Variant); // Active variant with same name exists
-
-      await expect(
-        async () => await service.create(merchantId, mockCreateVariantDto),
-      ).rejects.toThrow('Variant name already exists');
-
-      expect(productsService.findOne).toHaveBeenCalledWith(
-        mockCreateVariantDto.productId,
-      );
-      expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
-        where: [
-          {
-            name: mockCreateVariantDto.name,
-            isActive: true,
-            product: { merchantId: merchantId },
-          },
-        ],
-      });
       expect(variantRepository.create).not.toHaveBeenCalled();
       expect(variantRepository.save).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if variant SKU already exists for product', async () => {
       productRepository.findOneBy.mockResolvedValueOnce(mockProduct as Product);
-      variantRepository.findOne.mockResolvedValueOnce(null); // No active variant with same name
       variantRepository.findOne.mockResolvedValueOnce(mockVariant as Variant); // Active variant with same SKU exists
 
       await expect(
@@ -335,17 +333,9 @@ describe('VariantsService', () => {
 
       expect(productsService.findOne).toHaveBeenCalledWith(
         mockCreateVariantDto.productId,
+        merchantId,
       );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
-        where: [
-          {
-            name: mockCreateVariantDto.name,
-            isActive: true,
-            product: { merchantId: merchantId },
-          },
-        ],
-      });
-      expect(variantRepository.findOne).toHaveBeenNthCalledWith(2, {
         where: [
           {
             sku: mockCreateVariantDto.sku,
@@ -368,7 +358,10 @@ describe('VariantsService', () => {
 
       const result = await service.findAll(mockQuery, merchantId);
 
-      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id); // Added assertion for productsService.findOne
+      expect(productsService.findOne).toHaveBeenCalledWith(
+        mockProduct.id,
+        merchantId,
+      );
       expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         'variant.product',
         'product',
@@ -388,10 +381,6 @@ describe('VariantsService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'variant.isActive = :isActive',
-        { isActive: true },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'variant.name',
@@ -439,10 +428,6 @@ describe('VariantsService', () => {
         'product.merchantId = :merchantId',
         { merchantId },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'variant.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'variant.name',
         'ASC',
@@ -481,14 +466,13 @@ describe('VariantsService', () => {
 
       const result = await service.findOne(mockVariant.id!, merchantId);
 
-      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id!); // Added assertion for productsService.findOne
+      expect(productsService.findOne).toHaveBeenCalledWith(
+        mockProduct.id!,
+        merchantId,
+      );
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('variant.id = :id', {
         id: mockVariant.id,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'variant.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
@@ -522,14 +506,13 @@ describe('VariantsService', () => {
 
       const result = await service.findOne(mockVariant.id!);
 
-      expect(productsService.findOne).toHaveBeenCalledWith(mockProduct.id!); // Added assertion for productsService.findOne
+      expect(productsService.findOne).toHaveBeenCalledWith(
+        mockProduct.id!,
+        undefined,
+      );
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('variant.id = :id', {
         id: mockVariant.id,
       });
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'variant.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         expect.any(Object),
@@ -553,10 +536,6 @@ describe('VariantsService', () => {
         id: id_not_found,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'variant.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
       );
@@ -575,6 +554,31 @@ describe('VariantsService', () => {
         async () => await service.findOne(null as any, merchantId),
       ).rejects.toThrow('Variant ID is incorrect');
     });
+  });
+
+  // Sin SKU, TypeORM ignoraba la condición sku: undefined. Respondía "SKU ya existe" si el
+  // comercio tenía cualquier variante activa, o sobrescribía cualquier variante inactiva.
+  describe('Create without SKU', () => {
+    const merchantId = mockMerchant.id;
+
+    it.each([
+      ['missing', undefined],
+      ['blank', '   '],
+    ])(
+      'with the SKU %s, does not look variants up by SKU and stores null',
+      async (_label, sku) => {
+        variantRepository.create.mockReturnValueOnce(mockVariant as Variant);
+        variantRepository.save.mockResolvedValueOnce(mockVariant as Variant);
+        mockQueryBuilder.getOne.mockResolvedValueOnce(mockVariant as Variant);
+
+        await service.create(merchantId, { ...mockCreateVariantDto, sku });
+
+        expect(variantRepository.findOne).not.toHaveBeenCalled();
+        expect(variantRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ sku: null, productId: mockProduct.id }),
+        );
+      },
+    );
   });
 
   describe('Update', () => {
@@ -605,21 +609,15 @@ describe('VariantsService', () => {
         id: variantId,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'variant.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId },
       );
+      // the new name is checked within the variant's product
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'LOWER(variant.name) = LOWER(:name)',
+        { name: mockUpdateVariantDto.name },
+      );
       expect(variantRepository.findOne).toHaveBeenNthCalledWith(1, {
-        where: {
-          name: mockUpdateVariantDto.name,
-          product: { merchantId: merchantId },
-          isActive: true,
-        },
-      });
-      expect(variantRepository.findOne).toHaveBeenNthCalledWith(2, {
         where: {
           sku: mockUpdateVariantDto.sku,
           product: { merchantId: merchantId },
@@ -652,10 +650,6 @@ describe('VariantsService', () => {
         id: variantId,
       });
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'variant.isActive = :isActive',
-        { isActive: true },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'product.merchantId = :merchantId',
         { merchantId: merchantId },
       );
@@ -663,37 +657,43 @@ describe('VariantsService', () => {
     });
 
     it('should throw BadRequestException if new variant name already exists for product', async () => {
-      const existingVariantWithNewName = {
-        ...mockVariant,
-        id: 2,
-        name: 'Existing Variant Name',
-      } as Variant;
-      const dtoWithExistingName = {
-        ...mockUpdateVariantDto,
-        name: 'Existing Variant Name',
-      };
-
       mockQueryBuilder.getOne.mockResolvedValueOnce(mockVariant as Variant);
-      //variantRepository.findOne.mockResolvedValueOnce(null);
-      variantRepository.findOne.mockResolvedValueOnce(
-        existingVariantWithNewName,
-      ); // Variant with same name found
+      mockQueryBuilder.getExists.mockResolvedValueOnce(true); // same name in the product
 
       await expect(
-        async () =>
-          await service.update(variantId, merchantId, dtoWithExistingName),
+        service.update(variantId, merchantId, {
+          ...mockUpdateVariantDto,
+          name: 'Existing Variant Name',
+        }),
       ).rejects.toThrow('Variant name already exists');
 
-      expect(mockQueryBuilder.where).toHaveBeenCalledWith('variant.id = :id', {
-        id: variantId,
-      });
-      expect(variantRepository.findOne).toHaveBeenCalledWith({
-        where: {
-          name: dtoWithExistingName.name,
-          product: { merchantId: merchantId },
-          isActive: true,
-        },
-      });
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith(
+        'variant.productId = :productId',
+        { productId: mockVariant.productId },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'variant.id != :exceptVariantId',
+        { exceptVariantId: variantId },
+      );
+      expect(variantRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects creating a variant whose name already exists in the product (any case)', async () => {
+      jest.spyOn(productsService, 'findOne').mockResolvedValueOnce({
+        data: { id: mockVariant.productId },
+      } as never);
+      mockQueryBuilder.getExists.mockResolvedValueOnce(true);
+
+      await expect(
+        service.create(merchantId, {
+          ...mockCreateVariantDto,
+          name: 'small',
+        }),
+      ).rejects.toThrow('Variant name already exists');
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'LOWER(variant.name) = LOWER(:name)',
+        { name: 'small' },
+      );
       expect(variantRepository.save).not.toHaveBeenCalled();
     });
 
@@ -748,6 +748,22 @@ describe('VariantsService', () => {
     });
   });
 
+  describe('Update the SKU', () => {
+    it('clears it with a blank value, without looking it up', async () => {
+      const variant = { ...mockVariant } as Variant;
+      mockQueryBuilder.getOne.mockResolvedValueOnce(variant);
+      variantRepository.save.mockResolvedValueOnce(variant);
+      mockQueryBuilder.getOne.mockResolvedValueOnce(variant);
+
+      await service.update(mockVariant.id!, mockMerchant.id, { sku: '' });
+
+      expect(variantRepository.findOne).not.toHaveBeenCalled();
+      expect(variantRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ sku: null }),
+      );
+    });
+  });
+
   describe('Remove', () => {
     const merchantId = mockMerchant.id;
     const variantId = mockVariant.id!;
@@ -785,6 +801,9 @@ describe('VariantsService', () => {
           name: inactiveVariant.name,
           price: inactiveVariant.price,
           sku: inactiveVariant.sku,
+          isOutOfStock: false,
+          isLowStock: false,
+          isActive: false,
           product: mockProductResponseDto,
         },
       });

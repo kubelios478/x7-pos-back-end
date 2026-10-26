@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { CashShift } from './entities/cash-shift.entity';
 import { CashMovement } from '../cash-movements/entities/cash-movement.entity';
@@ -18,9 +18,12 @@ export class CashShiftRepository extends Repository<CashShift> {
    *
    * Formula: opening_balance + SUM(sales + incomes) - SUM(outflows)
    */
-  async getLiveBalance(shiftId: number): Promise<number> {
+  async getLiveBalance(
+    shiftId: number,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<number> {
     // Calculate standard cash transactions balance
-    const txResult = await this.dataSource
+    const txResult = await manager
       .getRepository(CashShift)
       .createQueryBuilder('cs')
       .leftJoin(
@@ -45,7 +48,7 @@ export class CashShiftRepository extends Repository<CashShift> {
     const txBalance = Number(txResult?.txBalance ?? 0);
 
     // Calculate the sum of expenses (outflows) recorded in cash_movements
-    const movementsResult = await this.dataSource
+    const movementsResult = await manager
       .getRepository(CashMovement)
       .createQueryBuilder('cm')
       .select(
@@ -58,7 +61,7 @@ export class CashShiftRepository extends Repository<CashShift> {
     const movementSum = Number(movementsResult?.movementSum ?? 0);
 
     // Calculate the sum of tip settlements paid in cash during this shift
-    const tipSettlementsResult = await this.dataSource
+    const tipSettlementsResult = await manager
       .getRepository(TipSettlement)
       .createQueryBuilder('ts')
       .select('SUM(ts.total_amount)', 'tipSettlementSum')

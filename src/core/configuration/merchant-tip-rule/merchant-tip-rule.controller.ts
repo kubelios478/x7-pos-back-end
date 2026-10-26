@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Patch,
   Delete,
+  BadRequestException,
 } from '@nestjs/common';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
@@ -297,7 +298,7 @@ export class MerchantTipRuleController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
     if (id <= 0) {
-      throw new Error('ID must be a positive integer');
+      throw new BadRequestException('ID must be a positive integer');
     }
     const merchantTipRule = await this.merchantTipRuleService.findOne(id, user);
     return merchantTipRule;
@@ -507,7 +508,8 @@ export class MerchantTipRuleController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantTipRuleResponseDto> {
-    return this.merchantTipRuleService.remove(id);
+    return this.merchantTipRuleService.remove(id, user);
   }
 }

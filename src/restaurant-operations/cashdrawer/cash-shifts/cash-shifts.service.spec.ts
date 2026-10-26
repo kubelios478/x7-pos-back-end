@@ -47,6 +47,7 @@ describe('CashShiftsService', () => {
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
+    findAndCount: jest.fn(),
     getLiveBalance: jest.fn(),
     getSalesSummary: jest.fn(),
   };
@@ -58,6 +59,7 @@ describe('CashShiftsService', () => {
   const mockEntityManager = {
     findOne: jest.fn(),
     query: jest.fn(),
+    createQueryBuilder: jest.fn(),
     getRepository: jest.fn().mockReturnThis(),
     create: jest.fn(),
     save: jest.fn(),
@@ -74,7 +76,26 @@ describe('CashShiftsService', () => {
 
   const mockDataSource = {
     createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+    transaction: jest.fn(),
   };
+
+  // openShift / closeShift run in dataSource.transaction(); inside it the manager reads and
+  // writes through the same repository mocks the tests set up.
+  const transactionManager = {
+    findOne: jest.fn((entity: unknown, options: unknown) =>
+      entity === CashDrawer
+        ? cashDrawerRepo.findOne(options as never)
+        : cashShiftRepo.findOne(options as never),
+    ),
+    create: jest.fn((_entity: unknown, data: unknown) =>
+      cashShiftRepo.create(data as never),
+    ),
+    save: jest.fn((_entity: unknown, entity: unknown) =>
+      cashShiftRepo.save(entity as never),
+    ),
+  };
+  const runInTransaction = (work: (manager: unknown) => unknown) =>
+    work(transactionManager);
 
   // Collaborator linked to the currently authenticated user (activeUser below).
   const mockCollaborator = {
@@ -142,14 +163,96 @@ describe('CashShiftsService', () => {
     );
     cashShiftRepo = module.get<CashShiftRepository>(CashShiftRepository);
     cashFlowService = module.get<CashFlowService>(CashFlowService);
+    mockDataSource.transaction.mockImplementation(runInTransaction);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    // reset (not just clear): queued mockResolvedValueOnce values must not leak into
+    // the next test.
+    jest.resetAllMocks();
+    mockDataSource.createQueryRunner.mockReturnValue(mockQueryRunner);
+    mockDataSource.transaction.mockImplementation(runInTransaction);
+    transactionManager.findOne.mockImplementation(
+      (entity: unknown, options: unknown) =>
+        entity === CashDrawer
+          ? cashDrawerRepo.findOne(options as never)
+          : cashShiftRepo.findOne(options as never),
+    );
+    transactionManager.create.mockImplementation(
+      (_entity: unknown, data: unknown) => cashShiftRepo.create(data as never),
+    );
+    transactionManager.save.mockImplementation(
+      (_entity: unknown, entity: unknown) =>
+        cashShiftRepo.save(entity as never),
+    );
+    mockEntityManager.getRepository.mockReturnThis();
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  // Antes devolvía todos los turnos del comercio, cada uno con todos sus movimientos.
+  describe('findAll', () => {
+    const closedShift = {
+      id: 1,
+      merchantId: 1,
+      status: CashShiftStatus.CLOSED,
+      openingBalance: 0,
+      cashMovements: [],
+    };
+
+    it('returns the 50 most recent shifts by default', async () => {
+      mockCashShiftRepository.findAndCount.mockResolvedValueOnce([
+        [closedShift],
+        120,
+      ]);
+
+      const result = await service.findAll(1);
+
+      expect(mockCashShiftRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { merchantId: 1 },
+          order: { openedAt: 'DESC', id: 'DESC' },
+          skip: 0,
+          take: 50,
+        }),
+      );
+      expect(mockCashShiftRepository.find).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        page: 1,
+        limit: 50,
+        total: 120,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: false,
+      });
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('honours page and limit', async () => {
+      mockCashShiftRepository.findAndCount.mockResolvedValueOnce([[], 120]);
+
+      const result = await service.findAll(1, { page: 3, limit: 50 });
+
+      expect(mockCashShiftRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 100, take: 50 }),
+      );
+      expect(result).toMatchObject({ page: 3, hasNext: false, hasPrev: true });
+    });
+
+    it('computes the live balance only for open shifts', async () => {
+      mockCashShiftRepository.findAndCount.mockResolvedValueOnce([
+        [closedShift, { ...closedShift, id: 2, status: CashShiftStatus.OPEN }],
+        2,
+      ]);
+      mockCashShiftRepository.getLiveBalance.mockResolvedValueOnce(80);
+
+      await service.findAll(1);
+
+      expect(mockCashShiftRepository.getLiveBalance).toHaveBeenCalledTimes(1);
+      expect(mockCashShiftRepository.getLiveBalance).toHaveBeenCalledWith(2);
+    });
   });
 
   describe('openShift', () => {
@@ -157,6 +260,30 @@ describe('CashShiftsService', () => {
       cashDrawerId: 1,
       openingBalance: 100,
     };
+
+    it('locks the drawer row before checking for an open shift', async () => {
+      jest
+        .spyOn(collaboratorRepo, 'findOne')
+        .mockResolvedValue(mockCollaborator as any);
+      jest.spyOn(cashDrawerRepo, 'findOne').mockResolvedValue({
+        id: 1,
+        merchant_id: 10,
+        status: CashDrawerStatus.OPEN,
+      } as any);
+      jest
+        .spyOn(cashShiftRepo, 'findOne')
+        .mockResolvedValueOnce({ id: 7 } as any); // another opening got there first
+
+      await expect(service.openShift(createDto, activeUser)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(transactionManager.findOne).toHaveBeenNthCalledWith(
+        1,
+        CashDrawer,
+        { where: { id: 1 }, lock: { mode: 'pessimistic_write' } },
+      );
+      expect(cashShiftRepo.save).not.toHaveBeenCalled();
+    });
 
     it('should resolve the collaborator from the JWT and open a shift successfully', async () => {
       jest
@@ -183,12 +310,11 @@ describe('CashShiftsService', () => {
       };
       jest.spyOn(cashShiftRepo, 'create').mockReturnValue(savedShift as any);
       jest.spyOn(cashShiftRepo, 'save').mockResolvedValue(savedShift as any);
-      // Exactly 3 queued values for the 3 real cashShiftRepo.findOne calls this
-      // path makes, in order: the per-collaborator guard, the per-drawer guard,
-      // and the post-save refetch-with-relations.
+      // Exactly 2 queued values for the 2 real cashShiftRepo.findOne calls this
+      // path makes, in order: the per-drawer guard and the post-save
+      // refetch-with-relations.
       jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValueOnce(null) // collaborator guard
         .mockResolvedValueOnce(null) // drawer guard
         .mockResolvedValueOnce({
           ...savedShift,
@@ -249,12 +375,18 @@ describe('CashShiftsService', () => {
       } as any);
       jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null) // drawer guard: this drawer is free
         .mockResolvedValueOnce({
           id: 99,
           status: CashShiftStatus.OPEN,
           openedByCollaborator: mockCollaborator,
-        } as any);
+        } as any); // post-save refetch
+      jest
+        .spyOn(cashShiftRepo, 'create')
+        .mockReturnValue({ id: 99, status: CashShiftStatus.OPEN } as any);
+      jest
+        .spyOn(cashShiftRepo, 'save')
+        .mockResolvedValue({ id: 99, status: CashShiftStatus.OPEN } as any);
 
       const result = await service.openShift(createDto, activeUser);
       expect(result.statusCode).toBe(201);
@@ -266,7 +398,6 @@ describe('CashShiftsService', () => {
         .mockResolvedValue(mockCollaborator as any);
       jest
         .spyOn(cashShiftRepo, 'findOne')
-        .mockResolvedValueOnce(null) // collaborator guard
         .mockResolvedValueOnce({ id: 42, status: CashShiftStatus.OPEN } as any); // drawer guard
 
       // A single invocation, inspected once: two separate `await expect(...)`
@@ -289,6 +420,41 @@ describe('CashShiftsService', () => {
     const closeDto: CloseCashShiftDto = {
       declaredAmount: 120,
     };
+
+    it('closes inside a transaction with the shift row locked, and sums the balance in it', async () => {
+      jest
+        .spyOn(cashShiftRepo, 'findOne')
+        .mockResolvedValueOnce({
+          id: 99,
+          merchantId: 10,
+          cashDrawerId: 1,
+          openedBy: 5,
+          openingBalance: 100,
+          status: CashShiftStatus.OPEN,
+        } as any)
+        .mockResolvedValueOnce(null);
+      jest
+        .spyOn(collaboratorRepo, 'findOne')
+        .mockResolvedValue(mockCollaborator as any);
+      jest.spyOn(cashShiftRepo, 'getLiveBalance').mockResolvedValue(120);
+      jest
+        .spyOn(cashShiftRepo, 'save')
+        .mockImplementation(async (s) => s as any);
+      jest.spyOn(cashShiftRepo, 'getSalesSummary').mockResolvedValue([]);
+
+      await service.closeShift(99, closeDto, activeUser);
+
+      expect(mockDataSource.transaction).toHaveBeenCalled();
+      expect(transactionManager.findOne).toHaveBeenCalledWith(CashShift, {
+        where: { id: 99 },
+        lock: { mode: 'pessimistic_write' },
+      });
+      // the system amount is read in the same transaction, after the lock
+      expect(cashShiftRepo.getLiveBalance).toHaveBeenCalledWith(
+        99,
+        transactionManager,
+      );
+    });
 
     const activeShift = {
       id: 99,
@@ -509,6 +675,16 @@ describe('CashShiftsService', () => {
   });
 
   describe('addManualTransaction', () => {
+    // Query builder returning the till's live balance for the locked shift.
+    const liveBalanceQuery = (liveBalance: string) => ({
+      leftJoin: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      addGroupBy: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ liveBalance }),
+    });
+
     const manualDto: ManualCashTransactionDto = {
       amount: 50,
       type: CashShiftMovementType.OUT,
@@ -534,7 +710,9 @@ describe('CashShiftsService', () => {
         .mockResolvedValue({ id: 5, merchant_id: 10 } as any);
 
       mockEntityManager.findOne.mockResolvedValue(activeShift);
-      mockEntityManager.query.mockResolvedValue([{ balance: '120' }]);
+      mockEntityManager.createQueryBuilder.mockReturnValue(
+        liveBalanceQuery('120'),
+      );
       jest
         .spyOn(cashFlowService, 'addMovement')
         .mockResolvedValue({ id: 1, amount: 50, type: 'withdrawal' } as any);
@@ -556,7 +734,9 @@ describe('CashShiftsService', () => {
         .mockResolvedValue({ id: 5, merchant_id: 10 } as any);
 
       mockEntityManager.findOne.mockResolvedValue(activeShift);
-      mockEntityManager.query.mockResolvedValue([{ balance: '30' }]);
+      mockEntityManager.createQueryBuilder.mockReturnValue(
+        liveBalanceQuery('30'),
+      );
 
       await expect(
         service.addManualTransaction(99, manualDto, 10),

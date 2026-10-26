@@ -9,4 +9,11 @@ export const ALLOWED_CONTRACT_DOCUMENT_MIME_TYPES = [
 
 export const ALLOWED_CONTRACT_DOCUMENT_EXTENSIONS = ['.pdf', '.doc', '.docx'];
 
-export const CONTRACT_DOCUMENT_DIR = 'uploads/contracts';
+/** Private: never served as static files (see contract-document-url.ts). */
+export const CONTRACT_DOCUMENT_DIR = 'storage/contracts';
+
+/** Where documents were stored while they were public; still read, no longer served. */
+export const LEGACY_CONTRACT_DOCUMENT_DIR = 'uploads/contracts';
+
+/** Lifetime of a signed download link. */
+export const CONTRACT_DOCUMENT_URL_TTL_SECONDS = 15 * 60;

@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -39,9 +40,40 @@ export class PayrollTaxDetailsService {
     };
   }
 
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { payrollEntry: { payrollRun: { merchant_id: scopedMerchantId } } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { payroll_entry_id?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.payroll_entry_id != null) {
+      const owned = await this.payrollEntryRepo.exists({
+        where: {
+          id: dto.payroll_entry_id,
+          payrollRun: { merchant_id: scopedMerchantId },
+        },
+      });
+      if (!owned) {
+        throw new ForbiddenException(
+          'You can only access payroll data of your merchant',
+        );
+      }
+    }
+  }
+
   async create(
     dto: CreatePayrollTaxDetailDto,
+    scopedMerchantId?: number,
   ): Promise<OnePayrollTaxDetailResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+
     const payrollEntry = await this.payrollEntryRepo.findOne({
       where: { id: dto.payroll_entry_id },
     });
@@ -68,6 +100,7 @@ export class PayrollTaxDetailsService {
 
   async findAll(
     query: GetPayrollTaxDetailsQueryDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedPayrollTaxDetailsResponseDto> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -78,6 +111,14 @@ export class PayrollTaxDetailsService {
     const qb = this.taxDetailRepo
       .createQueryBuilder('detail')
       .where('detail.deleted_at IS NULL');
+
+    if (scopedMerchantId != null) {
+      qb.innerJoin('detail.payrollEntry', 'scopeEntry')
+        .innerJoin('scopeEntry.payrollRun', 'scopeRun')
+        .andWhere('scopeRun.merchant_id = :scopedMerchantId', {
+          scopedMerchantId,
+        });
+    }
 
     if (query.payroll_entry_id != null) {
       qb.andWhere('detail.payroll_entry_id = :payrollEntryId', {
@@ -114,13 +155,16 @@ export class PayrollTaxDetailsService {
     };
   }
 
-  async findOne(id: number): Promise<OnePayrollTaxDetailResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollTaxDetailResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll tax detail ID');
     }
 
     const taxDetail = await this.taxDetailRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!taxDetail) {
       throw new NotFoundException(`Payroll tax detail with ID ${id} not found`);
@@ -136,17 +180,20 @@ export class PayrollTaxDetailsService {
   async update(
     id: number,
     dto: UpdatePayrollTaxDetailDto,
+    scopedMerchantId?: number,
   ): Promise<OnePayrollTaxDetailResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll tax detail ID');
     }
 
     const taxDetail = await this.taxDetailRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!taxDetail) {
       throw new NotFoundException(`Payroll tax detail with ID ${id} not found`);
     }
+
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
     if (dto.payroll_entry_id != null) {
       const payrollEntry = await this.payrollEntryRepo.findOne({
@@ -171,13 +218,16 @@ export class PayrollTaxDetailsService {
     };
   }
 
-  async remove(id: number): Promise<OnePayrollTaxDetailResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OnePayrollTaxDetailResponseDto> {
     if (!id || id <= 0) {
       throw new BadRequestException('Invalid payroll tax detail ID');
     }
 
     const taxDetail = await this.taxDetailRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: { ...this.ownedBy(scopedMerchantId), id, deleted_at: IsNull() },
     });
     if (!taxDetail) {
       throw new NotFoundException(`Payroll tax detail with ID ${id} not found`);

@@ -9,6 +9,7 @@ import { Variant } from '../variants/entities/variant.entity';
 import { Supplier } from '../../../core/business-partners/suppliers/entities/supplier.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { PurchaseOrderItem } from './entities/purchase-order-item.entity';
+import { Location } from '../stocks/locations/entities/location.entity';
 import { ProductsModule } from '../products/products.module';
 import { VariantsModule } from '../variants/variants.module';
 
@@ -22,6 +23,7 @@ import { VariantsModule } from '../variants/variants.module';
       Variant,
       Supplier,
       Merchant,
+      Location,
     ]),
     forwardRef(() => ProductsModule),
     forwardRef(() => VariantsModule),

@@ -4,6 +4,7 @@ import { KitchenEventLogModule } from './kitchen-event-log/kitchen-event-log.mod
 import { KitchenOrderModule } from './kitchen-order/kitchen-order.module';
 import { KitchenOrderItemModule } from './kitchen-order-item/kitchen-order-item.module';
 import { KitchenStationModule } from './kitchen-station/kitchen-station.module';
+import { KitchenAnalyticsModule } from './kitchen-analytics/kitchen-analytics.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { KitchenStationModule } from './kitchen-station/kitchen-station.module';
     KitchenOrderModule,
     KitchenOrderItemModule,
     KitchenStationModule,
+    KitchenAnalyticsModule,
   ],
   exports: [
     KitchenDisplayDeviceModule,
@@ -19,6 +21,7 @@ import { KitchenStationModule } from './kitchen-station/kitchen-station.module';
     KitchenOrderModule,
     KitchenOrderItemModule,
     KitchenStationModule,
+    KitchenAnalyticsModule,
   ],
 })
 export class KitchenDisplaySystemModule {}

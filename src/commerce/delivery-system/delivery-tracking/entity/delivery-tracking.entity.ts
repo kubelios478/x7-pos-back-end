@@ -3,12 +3,21 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { DeliveryAssignment } from '../../delivery-assignment/entity/delivery-assignment.entity';
 
+// Postgres devuelve `decimal` como cadena ("37.774900"); el mapa necesita números.
+const decimalToNumber = {
+  to: (value: number | null | undefined) => value,
+  from: (value: string | null) => (value === null ? null : Number(value)),
+};
+
+// La ruta y "último ping" de un reparto leen siempre por asignación ordenando por hora.
+@Index(['deliveryAssignment', 'recorded_at'])
 @Entity({ name: 'delivery_tracking' })
 export class DeliveryTracking {
   @ApiProperty({
@@ -23,7 +32,7 @@ export class DeliveryTracking {
     example: 1,
     description: 'Identifier of the related Delivery Assignment',
   })
-  @ManyToOne(() => DeliveryAssignment, { eager: true })
+  @ManyToOne(() => DeliveryAssignment)
   @JoinColumn({ name: 'delivery_assignment_id' })
   deliveryAssignment: DeliveryAssignment;
 
@@ -31,14 +40,24 @@ export class DeliveryTracking {
     example: 37.7749,
     description: 'Current latitude of the delivery driver',
   })
-  @Column({ type: 'decimal', precision: 10, scale: 6 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 6,
+    transformer: decimalToNumber,
+  })
   latitude: number;
 
   @ApiProperty({
     example: -122.4194,
     description: 'Current longitude of the delivery driver',
   })
-  @Column({ type: 'decimal', precision: 10, scale: 6 })
+  @Column({
+    type: 'decimal',
+    precision: 10,
+    scale: 6,
+    transformer: decimalToNumber,
+  })
   longitude: number;
 
   @ApiProperty({

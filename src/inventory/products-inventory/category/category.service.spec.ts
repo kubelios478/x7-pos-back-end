@@ -27,6 +27,10 @@ describe('CategoryService', () => {
     getMany: jest.Mock;
   };
   let mockQueryBuilder: MockQueryBuilder;
+  let mockProductsInventoryService: {
+    findParentCategories: jest.Mock;
+    findParentCategoriesMany: jest.Mock;
+  };
 
   const mockMerchant = {
     id: 1,
@@ -68,6 +72,11 @@ describe('CategoryService', () => {
       delete: jest.fn(),
       findOneBy: jest.fn(),
       createQueryBuilder: jest.fn(),
+      // writes run in a transaction whose manager reads and writes through this same mock
+      manager: {
+        transaction: (work: (manager: unknown) => unknown) =>
+          work({ getRepository: () => mockCategoryRepo }),
+      },
     };
 
     mockQueryBuilder = {
@@ -88,8 +97,9 @@ describe('CategoryService', () => {
       findOneBy: jest.fn(),
     };
 
-    const mockProductsInventoryService = {
+    mockProductsInventoryService = {
       findParentCategories: jest.fn().mockResolvedValue([]),
+      findParentCategoriesMany: jest.fn().mockResolvedValue(new Map()),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -112,6 +122,8 @@ describe('CategoryService', () => {
           // Dependency that the service won and this spec never registered.
           provide: ProductsService,
           useValue: {
+            // remove() also hides the products of the category tree
+            softRemoveByCategoryId: jest.fn().mockResolvedValue(undefined),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -163,6 +175,7 @@ describe('CategoryService', () => {
       expect(categoryRepo.create).toHaveBeenCalledWith({
         name: mockCreateCategoryDto.name,
         merchantId: mockMerchant.id,
+        isActive: true,
         parentId: mockCreateCategoryDto.parentId,
       });
       expect(categoryRepo.save).toHaveBeenCalledWith(mockCategory);
@@ -172,6 +185,7 @@ describe('CategoryService', () => {
         data: {
           id: mockCategory.id,
           name: mockCategory.name,
+          isActive: mockCategory.isActive,
           merchant: { id: mockMerchant.id, name: mockMerchant.name }, // Ensure merchant is an object with id and name
           parents: [],
         },
@@ -212,6 +226,7 @@ describe('CategoryService', () => {
         data: {
           id: activeCategory.id,
           name: activeCategory.name,
+          isActive: activeCategory.isActive,
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           parents: [],
         },
@@ -281,6 +296,7 @@ describe('CategoryService', () => {
       expect(categoryRepo.create).toHaveBeenCalledWith({
         name: mockCreateCategoryDto.name,
         merchantId: mockMerchant.id,
+        isActive: true,
         parentId: mockCreateCategoryDto.parentId,
       });
       expect(categoryRepo.save).toHaveBeenCalledWith(mockCategory);
@@ -304,10 +320,6 @@ describe('CategoryService', () => {
         'category.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
       );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'category.isActive = :isActive',
-        { isActive: true },
-      );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'category.name',
         'ASC',
@@ -322,6 +334,7 @@ describe('CategoryService', () => {
           {
             id: mockCategory.id,
             name: mockCategory.name,
+            isActive: mockCategory.isActive,
             merchant: mockMerchant,
             parents: [],
           },
@@ -333,6 +346,36 @@ describe('CategoryService', () => {
         hasNext: false,
         hasPrev: false,
       });
+    });
+
+    // Antes, una consulta por categoría y por nivel de padre.
+    it('loads the parents of the whole page in one call', async () => {
+      const categories = [1, 2, 3].map((id) => ({
+        ...mockCategory,
+        id,
+      })) as Category[];
+      mockQueryBuilder.getMany.mockResolvedValue(categories);
+      mockQueryBuilder.getCount.mockResolvedValue(categories.length);
+      mockProductsInventoryService.findParentCategoriesMany.mockResolvedValueOnce(
+        new Map([[3, [{ id: 1, parentName: 'Root' }]]]),
+      );
+
+      const result = await service.findAll(mockQuery, mockMerchant.id);
+
+      expect(
+        mockProductsInventoryService.findParentCategoriesMany,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockProductsInventoryService.findParentCategoriesMany,
+      ).toHaveBeenCalledWith([1, 2, 3]);
+      expect(
+        mockProductsInventoryService.findParentCategories,
+      ).not.toHaveBeenCalled();
+      expect(result.data.map((c) => c.parents)).toEqual([
+        [],
+        [],
+        [{ id: 1, parentName: 'Root' }],
+      ]);
     });
 
     it('should return empty array when no categories found', async () => {
@@ -348,10 +391,6 @@ describe('CategoryService', () => {
       expect(mockQueryBuilder.where).toHaveBeenCalledWith(
         'category.merchantId = :merchantId',
         { merchantId: mockMerchant.id },
-      );
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-        'category.isActive = :isActive',
-        { isActive: true },
       );
       expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
         'category.name',
@@ -376,7 +415,6 @@ describe('CategoryService', () => {
         where: {
           id: mockCategory.id,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
         relations: ['merchant'],
       });
@@ -387,6 +425,7 @@ describe('CategoryService', () => {
         data: {
           id: mockCategory.id,
           name: mockCategory.name,
+          isActive: mockCategory.isActive,
           merchant: mockMerchant,
           parents: [],
         },
@@ -405,7 +444,6 @@ describe('CategoryService', () => {
         where: {
           id: id_not_found,
           merchantId: mockMerchant.id,
-          isActive: true,
         },
         relations: ['merchant'],
       });
@@ -444,7 +482,6 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenCalledWith({
         id: mockCategory.id,
         merchantId: mockCategory.merchant?.id,
-        isActive: true,
       });
       expect(categoryRepo.findOne).toHaveBeenNthCalledWith(1, {
         where: {
@@ -457,7 +494,6 @@ describe('CategoryService', () => {
         where: {
           id: mockCategory.id,
           merchantId: mockCategory.merchant!.id,
-          isActive: true,
         },
         relations: ['merchant'],
       });
@@ -474,6 +510,7 @@ describe('CategoryService', () => {
         data: {
           id: updatedCategory.id,
           name: updatedCategory.name,
+          isActive: updatedCategory.isActive,
           merchant: { id: mockMerchant.id, name: mockMerchant.name },
           parents: [],
         },
@@ -495,7 +532,6 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenCalledWith({
         id: idNotFound,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(categoryRepo.save).not.toHaveBeenCalled();
     });
@@ -520,7 +556,6 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenCalledWith({
         id: mockCategory.id,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       expect(categoryRepo.findOne).toHaveBeenCalledWith({
         where: {
@@ -551,9 +586,9 @@ describe('CategoryService', () => {
       expect(categoryRepo.findOneBy).toHaveBeenNthCalledWith(1, {
         id: mockCategory.id,
         merchantId: mockMerchant.id,
-        isActive: true,
       });
       // Verification that parent was not found
+      // the new parent must still be an active category
       expect(categoryRepo.findOneBy).toHaveBeenNthCalledWith(2, {
         id: dtoWithInvalidParent.parentId,
         merchantId: mockMerchant.id,
@@ -615,7 +650,6 @@ describe('CategoryService', () => {
         where: {
           id: mockCategory.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
         relations: ['merchant'],
       });
@@ -627,6 +661,7 @@ describe('CategoryService', () => {
         data: {
           id: inactiveCategory.id,
           name: inactiveCategory.name,
+          isActive: inactiveCategory.isActive,
           merchant: inactiveCategory.merchant,
           parents: [],
         },
@@ -716,13 +751,25 @@ describe('CategoryService', () => {
 
       // Verifications for find for subcategories
       expect(categoryRepo.find).toHaveBeenNthCalledWith(1, {
-        where: { parentId: parentCategory.id, isActive: true },
+        where: {
+          parentId: parentCategory.id,
+          merchantId: mockMerchant.id,
+          isActive: true,
+        },
       });
       expect(categoryRepo.find).toHaveBeenNthCalledWith(2, {
-        where: { parentId: childCategory.id, isActive: true },
+        where: {
+          parentId: childCategory.id,
+          merchantId: mockMerchant.id,
+          isActive: true,
+        },
       });
       expect(categoryRepo.find).toHaveBeenNthCalledWith(3, {
-        where: { parentId: grandChildCategory.id, isActive: true },
+        where: {
+          parentId: grandChildCategory.id,
+          merchantId: mockMerchant.id,
+          isActive: true,
+        },
       });
 
       // Verifications for save for each category
@@ -745,7 +792,6 @@ describe('CategoryService', () => {
         where: {
           id: parentCategory.id,
           merchantId: mockMerchant.id,
-          isActive: false,
         },
         relations: ['merchant'],
       });
@@ -756,6 +802,7 @@ describe('CategoryService', () => {
         data: {
           id: expectedParentSaved.id,
           name: expectedParentSaved.name,
+          isActive: expectedParentSaved.isActive,
           merchant: expectedParentSaved.merchant,
           parents: [],
         },

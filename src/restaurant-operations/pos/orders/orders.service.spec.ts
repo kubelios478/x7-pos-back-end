@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashShiftMovementType } from '../../cashdrawer/cash-shifts/constants/cash-shift-movement-type.enum';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
+import { MerchantLockScope } from 'src/common/utils/merchant-lock.util';
 import { LoyaltyPointTransaction } from 'src/growth/loyalty/loyalty-points-transaction/entities/loyalty-points-transaction.entity';
 import { LoyaltyCustomer } from 'src/growth/loyalty/loyalty-customer/entities/loyalty-customer.entity';
 import { ReceiptsService } from 'src/core/billing-transactions/receipts/receipts.service';
@@ -15,6 +19,7 @@ import {
   UpdateResult,
   type DeepPartial,
   DataSource,
+  EntityManager,
 } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -37,6 +42,8 @@ import { OrderBusinessStatus } from './constants/order-business-status.enum';
 import { OrderType } from './constants/order-type.enum';
 import { OrderItem } from '../order-item/entities/order-item.entity';
 import { OrderPayment } from '../order-payments/entities/order-payment.entity';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import type { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { OrderTax } from '../order-taxes/entities/order-tax.entity';
 import { OrderItemModifier } from '../order-item-modifiers/entities/order-item-modifier.entity';
 import { OrderItemStatus } from '../order-item/constants/order-item-status.enum';
@@ -54,6 +61,11 @@ describe('OrdersService', () => {
 
   const mockEventEmitter = {
     emit: jest.fn(),
+  };
+
+  // processPayment / refundOrder move cash through the drawer
+  const mockCashFlowService = {
+    addMovement: jest.fn().mockResolvedValue(undefined),
   };
 
   let service: OrdersService;
@@ -74,18 +86,32 @@ describe('OrdersService', () => {
     getRawOne: jest.fn().mockResolvedValue({ maxn: null }),
   };
 
+  let merchantTimeZone = 'UTC';
   const mockOrderRepository = {
     create: jest.fn(),
     save: jest.fn(),
     findOne: jest.fn(),
+    // generateDailyTicketId() counts today's orders
+    count: jest.fn().mockResolvedValue(0),
     findAndCount: jest.fn(),
     update: jest.fn(),
     manager: {
+      // new orders are numbered and inserted in a transaction holding an advisory lock
+      transaction: (work: (manager: unknown) => unknown) =>
+        work(mockOrderRepository.manager),
+      query: jest.fn().mockResolvedValue([]),
+      // the daily ticket reads the merchant's time zone
+      findOne: jest.fn((entity: unknown) =>
+        Promise.resolve(
+          entity === Merchant ? { id: 1, timezone: merchantTimeZone } : null,
+        ),
+      ),
       getRepository: jest.fn((entity: unknown) => {
         if (entity === Order) {
           return {
             findOne: (opts: unknown) => mockOrderRepository.findOne(opts),
             save: (opts: unknown) => mockOrderRepository.save(opts),
+            count: (opts: unknown) => mockOrderRepository.count(opts),
             createQueryBuilder: jest.fn(() => mockOrderQbForOrderNumber),
           };
         }
@@ -268,6 +294,7 @@ describe('OrdersService', () => {
           provide: EventEmitter2,
           useValue: mockEventEmitter,
         },
+        { provide: CashFlowService, useValue: mockCashFlowService },
 
         {
           // El servicio ganó esta dependencia y el spec nunca la registró: el módulo
@@ -291,6 +318,9 @@ describe('OrdersService', () => {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: ShiftsService,
           useValue: {
+            // create() and payment flows attach the order to the active shift
+            findActiveShiftByMerchant: jest.fn().mockResolvedValue({ id: 1 }),
+            getShiftCollaborators: jest.fn().mockResolvedValue([]),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),
@@ -323,6 +353,7 @@ describe('OrdersService', () => {
             transaction: jest.fn(),
             createQueryRunner: jest.fn(),
             getRepository: jest.fn(),
+            query: jest.fn(),
           },
         },
 
@@ -458,6 +489,45 @@ describe('OrdersService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('createOrderForOnlineAcceptance', () => {
+    it('does not require a merchant subscription', async () => {
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      // the old lookup went through createQueryBuilder, which this mock lacks
+      const subscriptionQuery = jest.fn();
+      Object.assign(subscriptionRepository, {
+        createQueryBuilder: subscriptionQuery,
+      });
+      jest
+        .spyOn(
+          service as unknown as {
+            nextOrderNumberWithManager: () => Promise<string>;
+          },
+          'nextOrderNumberWithManager',
+        )
+        .mockResolvedValue('000001');
+      jest
+        .spyOn(orderRepository, 'save')
+        .mockImplementation((o) => Promise.resolve(o as Order));
+
+      const order = await service.createOrderForOnlineAcceptance({
+        merchantId: 1,
+        customerId: 1,
+        orderType: OrderType.DELIVERY,
+        deliveryAddress: 'Main St 1',
+        deliveryFee: 2,
+      });
+
+      expect(subscriptionQuery).not.toHaveBeenCalled();
+      expect(order.merchant_id).toBe(1);
+      expect(order.order_number).toBe('000001');
+    });
+  });
+
   describe('create', () => {
     const createOrderDto: CreateOrderDto = {
       merchantId: 1,
@@ -468,6 +538,87 @@ describe('OrdersService', () => {
       type: OrderType.DINE_IN,
       customerId: 1,
     };
+
+    it('numbers the order under the merchant order-numbering lock', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      jest
+        .spyOn(subscriptionRepository, 'findOne')
+        .mockResolvedValue(mockSubscription as MerchantSubscription);
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      jest.spyOn(orderRepository, 'save').mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+      mockOrderRepository.manager.query.mockClear();
+      mockOrderRepository.count.mockClear();
+
+      await service.create(createOrderDto, 1);
+
+      expect(mockOrderRepository.manager.query).toHaveBeenCalledWith(
+        'SELECT pg_advisory_xact_lock($1, $2)',
+        [MerchantLockScope.ORDER_NUMBERS, 1],
+      );
+      // lock first, then the daily ticket COUNT, then the insert
+      const lockedAt =
+        mockOrderRepository.manager.query.mock.invocationCallOrder[0];
+      expect(lockedAt).toBeLessThan(
+        mockOrderRepository.count.mock.invocationCallOrder[0],
+      );
+      expect(lockedAt).toBeLessThan(
+        (orderRepository.save as jest.Mock).mock.invocationCallOrder[0],
+      );
+    });
+
+    it("numbers the daily ticket by the merchant's own day", async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      jest
+        .spyOn(subscriptionRepository, 'findOne')
+        .mockResolvedValue(mockSubscription as MerchantSubscription);
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      jest.spyOn(orderRepository, 'save').mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+      merchantTimeZone = 'America/New_York';
+      jest.useFakeTimers({ now: new Date('2026-10-25T03:30:00Z') }); // 23:30 on the 24th in NY
+      mockOrderRepository.count.mockClear();
+
+      try {
+        await service.create(createOrderDto, 1);
+      } finally {
+        jest.useRealTimers();
+        merchantTimeZone = 'UTC';
+      }
+
+      // the 24th in New York: 04:00 UTC on the 24th to 04:00 UTC on the 25th
+      const where = mockOrderRepository.count.mock.calls[0][0].where;
+      expect(where.created_at.value[0].toISOString()).toBe(
+        '2026-10-24T04:00:00.000Z',
+      );
+      expect(where.created_at.value[1].toISOString()).toBe(
+        '2026-10-25T03:59:59.999Z',
+      );
+    });
 
     it('should create an order successfully', async () => {
       jest
@@ -486,6 +637,10 @@ describe('OrdersService', () => {
         .spyOn(customerRepository, 'findOne')
         .mockResolvedValue(mockCustomer as Customer);
       jest.spyOn(orderRepository, 'save').mockResolvedValue(mockOrder as Order);
+      // create() reloads the saved order with its relations
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
 
       const result = await service.create(createOrderDto, 1);
 
@@ -509,6 +664,66 @@ describe('OrdersService', () => {
       expect(result.message).toBe('Order created successfully');
       expect(result.data.id).toBe(1);
     });
+
+    it('creates an order without a merchant subscription (company subscription gates access)', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+      jest
+        .spyOn(tableRepository, 'findOne')
+        .mockResolvedValue(mockTable as unknown as Table);
+      jest
+        .spyOn(collaboratorRepository, 'findOne')
+        .mockResolvedValue(mockCollaborator as Collaborator);
+      const subscriptionLookup = jest.spyOn(subscriptionRepository, 'findOne');
+      jest
+        .spyOn(customerRepository, 'findOne')
+        .mockResolvedValue(mockCustomer as Customer);
+      const save = jest
+        .spyOn(orderRepository, 'save')
+        .mockResolvedValue(mockOrder as Order);
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue(mockOrder as Order);
+
+      const result = await service.create(
+        { ...createOrderDto, subscriptionId: undefined },
+        1,
+      );
+
+      expect(result.statusCode).toBe(201);
+      expect(subscriptionLookup).not.toHaveBeenCalled();
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ subscription_id: null }),
+      );
+    });
+
+    it('rejects a dine_in order without a table', async () => {
+      jest
+        .spyOn(merchantRepository, 'findOne')
+        .mockResolvedValue(mockMerchant as Merchant);
+
+      await expect(
+        service.create({ ...createOrderDto, tableId: undefined }, 1),
+      ).rejects.toThrow('tableId is required for dine_in orders');
+      expect(tableRepository.findOne).not.toHaveBeenCalled();
+    });
+
+    it.each([OrderType.TAKE_OUT, OrderType.DELIVERY])(
+      'does not look up a table for a %s order without one',
+      async (type) => {
+        jest
+          .spyOn(merchantRepository, 'findOne')
+          .mockResolvedValue(mockMerchant as Merchant);
+        // Stop right after the table step: the collaborator lookup comes next.
+        jest.spyOn(collaboratorRepository, 'findOne').mockResolvedValue(null);
+
+        await expect(
+          service.create({ ...createOrderDto, type, tableId: undefined }, 1),
+        ).rejects.toThrow('Collaborator with ID 1 not found');
+        expect(tableRepository.findOne).not.toHaveBeenCalled();
+      },
+    );
 
     it('should create an order with closedAt', async () => {
       const dtoWithClosedAt: CreateOrderDto = {
@@ -536,6 +751,10 @@ describe('OrdersService', () => {
         .mockResolvedValue(mockCustomer as Customer);
       jest
         .spyOn(orderRepository, 'save')
+        .mockResolvedValue(orderWithClosedAt as Order);
+      // create() reloads the saved order with its relations
+      jest
+        .spyOn(orderRepository, 'findOne')
         .mockResolvedValue(orderWithClosedAt as Order);
 
       const result = await service.create(dtoWithClosedAt, 1);
@@ -784,6 +1003,50 @@ describe('OrdersService', () => {
     });
   });
 
+  describe('completePurchase', () => {
+    const deliveryOrder = () => ({
+      id: 1,
+      merchant_id: 1,
+      type: OrderType.DELIVERY,
+      delivery_zone_id: 4,
+      status: OrderBusinessStatus.PENDING,
+      subtotal: 8,
+      discount_total: 0,
+      delivery_fee: 3,
+      orderItems: [{ total_price: 8 }],
+    });
+    const admin = { role: 'merchant_admin' } as never;
+
+    it('blocks a delivery checkout below the zone minimum order, with the shortfall', async () => {
+      mockOrderRepository.findOne.mockResolvedValue(deliveryOrder());
+      (service as any).dataSource.query.mockResolvedValue([
+        { min_order_amount: '10.99' },
+      ]);
+      await expect(
+        service.completePurchase(1, {} as never, admin),
+      ).rejects.toThrow(
+        new BadRequestException(
+          'Add $2.99 more to reach the $10.99 minimum order for delivery',
+        ),
+      );
+      expect((service as any).dataSource.query).toHaveBeenCalledWith(
+        expect.stringContaining('delivery_fees'),
+        [4, 1],
+      );
+    });
+
+    it('skips the minimum check for non-delivery orders', async () => {
+      mockOrderRepository.findOne.mockResolvedValue({
+        ...deliveryOrder(),
+        type: OrderType.DINE_IN,
+      });
+      await service
+        .completePurchase(1, {} as never, admin)
+        .catch(() => undefined);
+      expect((service as any).dataSource.query).not.toHaveBeenCalled();
+    });
+  });
+
   describe('findAll', () => {
     const query: GetOrdersQueryDto = {
       page: 1,
@@ -869,30 +1132,6 @@ describe('OrdersService', () => {
       expect(orderRepository.findAndCount).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ collaborator_id: 1 }),
-        }),
-      );
-    });
-
-    it('should filter by subscriptionId when provided', async () => {
-      const queryWithSubscriptionId = { ...query, subscriptionId: 1 };
-      jest
-        .spyOn(merchantRepository, 'findOne')
-        .mockResolvedValue(mockMerchant as Merchant);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(mockSubscription as MerchantSubscription);
-      jest
-        .spyOn(orderRepository, 'findAndCount')
-        .mockResolvedValue([[mockOrder], 1] as [Order[], number]);
-
-      await service.findAll(queryWithSubscriptionId, 1);
-
-      expect(subscriptionRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-      });
-      expect(orderRepository.findAndCount).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ subscription_id: 1 }),
         }),
       );
     });
@@ -1160,31 +1399,6 @@ describe('OrdersService', () => {
       );
     });
 
-    it('should throw ForbiddenException if subscriptionId provided but subscription belongs to different merchant', async () => {
-      const queryWithSubscriptionId = { ...query, subscriptionId: 1 };
-      const subscriptionFromDifferentMerchant = {
-        ...mockSubscription,
-        merchant: {
-          id: 2,
-        },
-      };
-      jest
-        .spyOn(merchantRepository, 'findOne')
-        .mockResolvedValue(mockMerchant as Merchant);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(
-          subscriptionFromDifferentMerchant as MerchantSubscription,
-        );
-
-      await expect(service.findAll(queryWithSubscriptionId, 1)).rejects.toThrow(
-        ForbiddenException,
-      );
-      await expect(service.findAll(queryWithSubscriptionId, 1)).rejects.toThrow(
-        'Subscription does not belong to your merchant',
-      );
-    });
-
     it('should throw ForbiddenException if customerId provided but customer belongs to different merchant', async () => {
       const queryWithCustomerId = { ...query, customerId: 1 };
       const customerFromDifferentMerchant = {
@@ -1347,6 +1561,38 @@ describe('OrdersService', () => {
       );
     });
 
+    it('clears the table when a take_out order sends tableId null', async () => {
+      jest.spyOn(orderRepository, 'findOne').mockResolvedValue({
+        ...mockOrder,
+        type: OrderType.TAKE_OUT,
+      } as Order);
+      jest.spyOn(orderRepository, 'update').mockResolvedValue({
+        affected: 1,
+        raw: [],
+        generatedMaps: [],
+      } as UpdateResult);
+
+      await service.update(1, { tableId: null }, 1);
+
+      expect(tableRepository.findOne).not.toHaveBeenCalled();
+      expect(orderRepository.update).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ table_id: null }),
+      );
+    });
+
+    it('rejects turning an order without a table into dine_in', async () => {
+      jest.spyOn(orderRepository, 'findOne').mockResolvedValue({
+        ...mockOrder,
+        type: OrderType.DELIVERY,
+        table_id: null,
+      } as Order);
+
+      await expect(
+        service.update(1, { type: OrderType.DINE_IN }, 1),
+      ).rejects.toThrow('tableId is required for dine_in orders');
+    });
+
     it('should update collaboratorId when provided', async () => {
       const dtoWithCollaboratorId: UpdateOrderDto = { collaboratorId: 2 };
       const newCollaborator = { ...mockCollaborator, id: 2 };
@@ -1371,33 +1617,6 @@ describe('OrdersService', () => {
       expect(orderRepository.update).toHaveBeenCalledWith(
         1,
         expect.objectContaining({ collaborator_id: 2 }),
-      );
-    });
-
-    it('should update subscriptionId when provided', async () => {
-      const dtoWithSubscriptionId: UpdateOrderDto = { subscriptionId: 2 };
-      const newSubscription = { ...mockSubscription, id: 2 };
-      const updatedOrder = { ...mockOrder, subscription_id: 2 };
-      jest
-        .spyOn(orderRepository, 'findOne')
-        .mockResolvedValue(updatedOrder as Order);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(newSubscription as MerchantSubscription);
-      jest.spyOn(orderRepository, 'update').mockResolvedValue({
-        affected: 1,
-        raw: [],
-        generatedMaps: [],
-      } as UpdateResult);
-
-      await service.update(1, dtoWithSubscriptionId, 1);
-
-      expect(subscriptionRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 2 },
-      });
-      expect(orderRepository.update).toHaveBeenCalledWith(
-        1,
-        expect.objectContaining({ subscription_id: 2 }),
       );
     });
 
@@ -1592,47 +1811,6 @@ describe('OrdersService', () => {
       );
       await expect(service.update(1, dtoWithCollaboratorId, 1)).rejects.toThrow(
         'Collaborator does not belong to your merchant',
-      );
-    });
-
-    it('should throw NotFoundException if subscription not found when updating subscriptionId', async () => {
-      const dtoWithSubscriptionId: UpdateOrderDto = { subscriptionId: 999 };
-      jest
-        .spyOn(orderRepository, 'findOne')
-        .mockResolvedValue(mockOrder as Order);
-      jest.spyOn(subscriptionRepository, 'findOne').mockResolvedValue(null);
-
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        'Subscription with ID 999 not found',
-      );
-    });
-
-    it('should throw ForbiddenException if subscription belongs to different merchant when updating subscriptionId', async () => {
-      const dtoWithSubscriptionId: UpdateOrderDto = { subscriptionId: 2 };
-      const subscriptionFromDifferentMerchant = {
-        ...mockSubscription,
-        id: 2,
-        merchant: {
-          id: 2,
-        },
-      };
-      jest
-        .spyOn(orderRepository, 'findOne')
-        .mockResolvedValue(mockOrder as Order);
-      jest
-        .spyOn(subscriptionRepository, 'findOne')
-        .mockResolvedValue(
-          subscriptionFromDifferentMerchant as MerchantSubscription,
-        );
-
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        ForbiddenException,
-      );
-      await expect(service.update(1, dtoWithSubscriptionId, 1)).rejects.toThrow(
-        'Subscription does not belong to your merchant',
       );
     });
 
@@ -1930,6 +2108,288 @@ describe('OrdersService', () => {
       await service.update(1, dto, 1);
 
       expect(syncSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('refundOrder', () => {
+    const admin = {
+      id: 7,
+      role: UserRole.MERCHANT_ADMIN,
+    } as unknown as AuthenticatedUser;
+    const paidOrder = {
+      id: 1,
+      merchant: { id: 1 },
+      status: OrderBusinessStatus.PAID,
+      total: 100,
+      subtotal: 100,
+      orderItems: [],
+      order_number: '000001',
+    };
+    let manager: {
+      findOne: jest.Mock;
+      find: jest.Mock;
+      save: jest.Mock;
+    };
+
+    beforeEach(() => {
+      jest
+        .spyOn(orderRepository, 'findOne')
+        .mockResolvedValue({ ...paidOrder } as unknown as Order);
+      manager = {
+        findOne: jest.fn((entity: unknown) =>
+          Promise.resolve(entity === Order ? { ...paidOrder } : null),
+        ),
+        find: jest.fn((entity: unknown) =>
+          Promise.resolve(
+            entity === OrderPayment
+              ? [{ amount: '100.00', method: 'cash' }]
+              : entity === CashShift
+                ? [{ id: 3, cashDrawerId: 2, openedBy: 5 }] // the only open drawer
+                : [],
+          ),
+        ),
+        save: jest.fn((a: unknown, b?: unknown) => Promise.resolve(b ?? a)),
+      };
+      const queryRunner = {
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager,
+      };
+      (
+        service['dataSource'] as unknown as { createQueryRunner: jest.Mock }
+      ).createQueryRunner.mockReturnValue(queryRunner);
+      jest
+        .spyOn(service, 'syncOrderAggregatesWithManager')
+        .mockResolvedValue({ becameFullyPaid: false, becameUnpaid: true });
+    });
+
+    it('locks the order, stores the refund as a positive amount and syncs the totals', async () => {
+      await service.refundOrder(
+        { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+        1,
+        admin,
+      );
+
+      expect(manager.findOne).toHaveBeenCalledWith(Order, {
+        where: { id: 1 },
+        lock: { mode: 'pessimistic_write' },
+      });
+      // is_refund is what subtracts it from paid_total; a negative amount added it back
+      expect(manager.save).toHaveBeenCalledWith(
+        OrderPayment,
+        expect.objectContaining({ amount: 100, is_refund: true }),
+      );
+      expect(service.syncOrderAggregatesWithManager).toHaveBeenCalledWith(
+        manager,
+        1,
+      );
+      // the cash part leaves the open drawer as a refund linked to the order
+      expect(mockCashFlowService.addMovement).toHaveBeenCalledWith(
+        3,
+        100,
+        CashShiftMovementType.OUT,
+        1,
+        5,
+        2,
+        manager,
+        'Wrong dish',
+      );
+    });
+
+    it('refuses to pay cash out when several drawers are open and none is chosen', async () => {
+      manager.find.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === OrderPayment
+            ? [{ amount: '100.00', method: 'cash' }]
+            : entity === CashShift
+              ? [{ id: 3 }, { id: 4 }]
+              : [],
+        ),
+      );
+
+      await expect(
+        service.refundOrder(
+          { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+          1,
+          admin,
+        ),
+      ).rejects.toThrow('Several cash shifts are open: send cashShiftId');
+    });
+
+    it('does not refund twice when another refund got the lock first', async () => {
+      manager.findOne.mockImplementation((entity: unknown) =>
+        Promise.resolve(
+          entity === Order
+            ? { ...paidOrder, status: OrderBusinessStatus.CANCELLED }
+            : null,
+        ),
+      );
+
+      await expect(
+        service.refundOrder(
+          { orderId: 1, fullRefund: true, reason: 'Wrong dish' },
+          1,
+          admin,
+        ),
+      ).rejects.toThrow('Only paid orders can be refunded');
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('business status after payments', () => {
+    const line = {
+      id: 1,
+      status: OrderItemStatus.ACTIVE,
+      total_price: 50,
+      quantity: 1,
+      price: 50,
+      discount: 0,
+      kitchen_status: 'pending',
+    };
+    const order = (status: OrderBusinessStatus, isPaid: boolean) => ({
+      id: 1,
+      status,
+      is_paid: isPaid,
+      total: 50,
+      paid_total: isPaid ? 50 : 0,
+      balance_due: isPaid ? 0 : 50,
+      manual_tip_total: 0,
+      discount_total: 0,
+      delivery_fee: 0,
+    });
+    const sync = () =>
+      service.syncOrderAggregatesWithManager(
+        mockOrderRepository.manager as unknown as EntityManager,
+        1,
+      );
+
+    beforeEach(() => {
+      mockOrderItemRepository.find.mockResolvedValue([line]);
+      mockOrderRepository.save.mockImplementation((o: unknown) =>
+        Promise.resolve(o),
+      );
+    });
+
+    it.each([
+      OrderBusinessStatus.PENDING,
+      OrderBusinessStatus.IN_PROGRESS,
+      OrderBusinessStatus.COMPLETED,
+    ])(
+      'a %s order paid in full through order-payments becomes PAID',
+      async (status) => {
+        mockOrderRepository.findOne.mockResolvedValueOnce(order(status, false));
+        mockOrderPaymentRepository.find.mockResolvedValueOnce([
+          { amount: 50, tip_amount: 0, is_refund: false },
+        ]);
+
+        const result = await sync();
+
+        expect(result.becameFullyPaid).toBe(true);
+        expect(mockOrderRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ status: OrderBusinessStatus.PAID }),
+        );
+      },
+    );
+
+    it('a split bill under way (something paid, balance due) is PARTIALLY_PAID', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PENDING, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 20, tip_amount: 0, is_refund: false },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PARTIALLY_PAID }),
+      );
+    });
+
+    it('a PAID order that gets new items and owes again is PARTIALLY_PAID', async () => {
+      mockOrderItemRepository.find.mockResolvedValueOnce([
+        line,
+        { ...line, id: 2, total_price: 30, price: 30 },
+      ]);
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PAID, true),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PARTIALLY_PAID }),
+      );
+    });
+
+    it('an order with total 0 and nothing paid is not PAID (no items is not a payment)', async () => {
+      mockOrderItemRepository.find.mockResolvedValueOnce([]);
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PENDING, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PENDING }),
+      );
+    });
+
+    it('a PARTIALLY_PAID order whose payment is refunded back to 0 returns to PENDING', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PARTIALLY_PAID, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 20, tip_amount: 0, is_refund: false },
+        { amount: 20, tip_amount: 0, is_refund: true },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.PENDING }),
+      );
+    });
+
+    it('a cancelled order stays cancelled even if its payments add up', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.CANCELLED, false),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+      ]);
+
+      await sync();
+
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: OrderBusinessStatus.CANCELLED }),
+      );
+    });
+
+    it('a refund that leaves a balance due turns a PAID order PARTIALLY_REFUNDED', async () => {
+      mockOrderRepository.findOne.mockResolvedValueOnce(
+        order(OrderBusinessStatus.PAID, true),
+      );
+      mockOrderPaymentRepository.find.mockResolvedValueOnce([
+        { amount: 50, tip_amount: 0, is_refund: false },
+        { amount: 20, tip_amount: 0, is_refund: true },
+      ]);
+
+      const result = await sync();
+
+      expect(result.becameUnpaid).toBe(true);
+      expect(mockOrderRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: OrderBusinessStatus.PARTIALLY_REFUNDED,
+        }),
+      );
     });
   });
 });

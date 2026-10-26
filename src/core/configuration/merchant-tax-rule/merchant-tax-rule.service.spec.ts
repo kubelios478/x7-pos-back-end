@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-tax-rule/merchant-tax-rule.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantTaxRuleService } from './merchant-tax-rule.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MerchantTaxRule } from './entity/merchant-tax-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { TaxType } from '../constants/tax-type.enum';
 import { CreateMerchantTaxRuleDto } from './dto/create-merchant-tax-rule.dto';
@@ -30,11 +30,12 @@ describe('MerchantTaxRuleService', () => {
       name: 'Test Company',
       email: 'test@company.com',
       phone: '1234567890',
-      rut: '12345678-9',
+      tax_id: '12345678-9',
       address: '123 Test St',
       city: 'Test City',
       state: 'Test State',
       country: 'Test Country',
+      status: CompanyStatus.ACTIVE,
       suppliers: [],
       merchants: [],
       customers: [],
@@ -181,6 +182,23 @@ describe('MerchantTaxRuleService', () => {
     });
     it('repository should be defined', () => {
       expect(merchantTaxRuleRepository).toBeDefined();
+    });
+
+    // Con la tabla vacía, el arranque creaba impuestos de ejemplo activos para el
+    // comercio 1, y el checkout aplica todos los impuestos activos del comercio.
+    it('does not seed tax rules on startup when the table is empty', async () => {
+      const repo = merchantTaxRuleRepository as unknown as Record<
+        string,
+        jest.Mock
+      >;
+      repo.count = jest.fn().mockResolvedValue(0);
+
+      await (
+        service as { onModuleInit?: () => Promise<void> }
+      ).onModuleInit?.();
+
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(repo.create).not.toHaveBeenCalled();
     });
   });
 
@@ -866,10 +884,11 @@ describe('MerchantTaxRuleService', () => {
       findOneSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
       saveSpy.mockResolvedValue(mockMerchantTaxRule as MerchantTaxRule);
 
-      const result = await service.remove(1);
+      const result = await service.remove(1, mockPortalAdminUser);
 
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 1 },
+        relations: ['company'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -880,18 +899,19 @@ describe('MerchantTaxRuleService', () => {
     });
 
     it('should throw error for invalid ID during removal', async () => {
-      await expect(service.remove(0)).rejects.toThrow();
+      await expect(service.remove(0, mockPortalAdminUser)).rejects.toThrow();
     });
 
     it('should throw error when merchant tax rule to remove not found', async () => {
       const findOneSpy = jest.spyOn(merchantTaxRuleRepository, 'findOne');
       findOneSpy.mockResolvedValue(null);
 
-      await expect(service.remove(999)).rejects.toThrow(
+      await expect(service.remove(999, mockPortalAdminUser)).rejects.toThrow(
         'Merchant Tax Rule not found',
       );
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
+        relations: ['company'],
       });
     });
   });

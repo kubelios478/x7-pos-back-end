@@ -18,7 +18,14 @@ export class CompanyProfileDto {
   @ApiProperty({ example: 'Acme Corp' })
   name: string;
 
-  @ApiProperty({ example: '12.345.678-9' })
+  @ApiProperty({ example: '12-3456789' })
+  tax_id: string;
+
+  @ApiProperty({
+    example: '12-3456789',
+    description: 'Deprecated: same value as tax_id.',
+    deprecated: true,
+  })
   rut: string;
 
   @ApiProperty({ example: 'contact@acme.com' })

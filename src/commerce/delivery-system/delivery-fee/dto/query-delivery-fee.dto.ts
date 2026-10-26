@@ -1,18 +1,56 @@
 //src/commerce/delivery-system/delivery-fee/dto/query-delivery-fee.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class QueryDeliveryFeeDto {
+  // Los checkboxes de estado pueden marcar varios a la vez: `?status=active,inactive` o
+  // `?status=active&status=inactive`.
   @ApiPropertyOptional({
-    description: 'Filter by status',
+    description:
+      'Filter by one or more statuses (comma-separated or repeated parameter)',
     enum: ['active', 'inactive', 'deleted'],
-    example: 'active',
+    isArray: true,
+    example: 'active,inactive',
+  })
+  @Transform(({ value }: { value: unknown }) =>
+    value === undefined || value === null || value === ''
+      ? undefined
+      : (Array.isArray(value) ? value : [value])
+          .flatMap((v) => String(v).split(','))
+          .map((v) => v.trim())
+          .filter(Boolean),
+  )
+  @IsOptional()
+  @IsArray()
+  @IsIn(['active', 'inactive', 'deleted'], { each: true })
+  status?: string[];
+
+  @ApiPropertyOptional({ description: 'Filter by delivery zone', example: 1 })
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  delivery_zone_id?: number;
+
+  @ApiPropertyOptional({
+    description: 'Case-insensitive search over the delivery zone name',
+    example: 'norte',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['active', 'inactive', 'deleted'])
-  status?: string;
+  @MaxLength(200)
+  search?: string;
 
   @ApiPropertyOptional({
     description: 'Page number',
@@ -32,6 +70,7 @@ export class QueryDeliveryFeeDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit: number = 10;
 
   @ApiPropertyOptional({

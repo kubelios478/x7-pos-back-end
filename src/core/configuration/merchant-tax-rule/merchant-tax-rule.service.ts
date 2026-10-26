@@ -1,5 +1,5 @@
 //src/core/configuration/merchant-tax-rule/merchant-tax-rule.service.ts
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
 import { User } from 'src/platform-saas/users/entities/user.entity';
@@ -35,7 +35,7 @@ const TAX_RULE_SELECT_FIELDS = [
 ];
 
 @Injectable()
-export class MerchantTaxRuleService implements OnModuleInit {
+export class MerchantTaxRuleService {
   constructor(
     @InjectRepository(MerchantTaxRule)
     private readonly merchantTaxRuleRepository: Repository<MerchantTaxRule>,
@@ -49,93 +49,6 @@ export class MerchantTaxRuleService implements OnModuleInit {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
-
-  async onModuleInit() {
-    await this.seedDatabaseIfEmpty();
-  }
-
-  async seedDatabaseIfEmpty() {
-    try {
-      const count = await this.merchantTaxRuleRepository.count();
-      if (count === 0) {
-        const seedRules = [
-          {
-            merchant_id: 1,
-            name: 'IVA General Standard Sales Tax (19%)',
-            description:
-              'Standard 19% national value added sales tax applicable to POS items',
-            taxType: TaxType.PERCENTAGE,
-            rate: 0.19,
-            appliesToTips: false,
-            appliesToOvertime: false,
-            status: 'active',
-            externalTaxCode: 'TAX-IVA-19',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            merchant_id: 1,
-            name: 'ICO F&B Consumption Tax (8%)',
-            description:
-              'National 8% food & beverage consumption tax rate for restaurant sales',
-            taxType: TaxType.PERCENTAGE,
-            rate: 0.08,
-            appliesToTips: false,
-            appliesToOvertime: false,
-            status: 'active',
-            externalTaxCode: 'TAX-ICO-08',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            merchant_id: 1,
-            name: 'Municipal Liquor Tax (5%)',
-            description:
-              'Compound 5% luxury liquor tax surcharge calculated on subtotal',
-            taxType: TaxType.COMPOUND,
-            rate: 0.05,
-            appliesToTips: false,
-            appliesToOvertime: false,
-            status: 'active',
-            externalTaxCode: 'TAX-LIC-05',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            merchant_id: 1,
-            name: 'Fixed Rate per Eco-Friendly Plastic Bag ($0.25)',
-            description:
-              'Fixed $0.25 environmental bag surcharge fee per order transaction',
-            taxType: TaxType.FIXED,
-            rate: 0.25,
-            appliesToTips: false,
-            appliesToOvertime: false,
-            status: 'active',
-            externalTaxCode: 'TAX-BAG-025',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          {
-            merchant_id: 1,
-            name: 'Retention of Tax on Tips (10%)',
-            description:
-              'Special 10% tax retention rule applying directly to voluntary customer tips',
-            taxType: TaxType.PERCENTAGE,
-            rate: 0.1,
-            appliesToTips: true,
-            appliesToOvertime: false,
-            status: 'inactive',
-            externalTaxCode: 'TAX-TIP-10',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-        ];
-        await this.merchantTaxRuleRepository.save(seedRules as any);
-      }
-    } catch (err: any) {
-      console.log('MerchantTaxRule DB seed check deferred:', err.message);
-    }
-  }
 
   private validateRate(taxType: TaxType, rate: number): void {
     if (rate === undefined || rate === null) {
@@ -365,17 +278,27 @@ export class MerchantTaxRuleService implements OnModuleInit {
     };
   }
 
-  async remove(id: number): Promise<OneMerchantTaxRuleResponseDto> {
+  async remove(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantTaxRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
 
     const merchantTaxRule = await this.merchantTaxRuleRepository.findOne({
       where: { id },
+      relations: ['company'],
     });
     if (!merchantTaxRule) {
       ErrorHandler.merchantTaxRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantTaxRule.company.id,
+    );
 
     merchantTaxRule.status = 'deleted';
     const deletedMerchantTaxRule =

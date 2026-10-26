@@ -32,7 +32,7 @@ export class JournalEntry {
   entry_number: string;
 
   @ApiProperty({ example: '2024-01-15', description: 'Date of the entry' })
-  @Column({ type: 'date' })
+  @Column({ type: 'date', utc: true })
   entry_date: Date;
 
   @ApiProperty({

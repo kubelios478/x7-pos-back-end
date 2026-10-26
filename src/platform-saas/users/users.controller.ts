@@ -10,6 +10,7 @@ import {
   Put,
   Patch,
   Req,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dtos/create-user.dto';
@@ -41,6 +42,7 @@ import {
   OneUserResponseDto,
   AllUsersResponseDto,
 } from './dtos/user-response.dto';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
 
 @Controller('users')
 @ApiTags('Platform SaaS - Users')
@@ -83,8 +85,8 @@ export class UsersController {
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'No users found' })
-  findAll(): Promise<AllUsersResponseDto> {
-    return this.usersService.findAll();
+  findAll(@Query() query: PaginationQueryDto): Promise<AllUsersResponseDto> {
+    return this.usersService.findAll(query);
   }
 
   @Get(':id')
@@ -103,8 +105,11 @@ export class UsersController {
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  findById(@Param('id', ParseIntPipe) id: number): Promise<OneUserResponseDto> {
-    return this.usersService.findOne(id);
+  findById(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request & { user: AuthenticatedUser },
+  ): Promise<OneUserResponseDto> {
+    return this.usersService.findOne(id, req.user);
   }
 
   @Get('merchant/:merchantId')
@@ -149,13 +154,19 @@ export class UsersController {
   @ApiNotFoundResponse({ description: 'User not found' })
   findByEmail(
     @Param('email') email: string,
-    // @Req() req: Request & { user: AuthenticatedUser },
+    @Req() req: Request & { user: AuthenticatedUser },
   ) {
-    // const currentUser = req.user;
-    return this.usersService.findByEmail(email);
+    return this.usersService.findByEmail(email, req.user);
   }
 
   @Put(':id')
+  // Any staff account may edit its own profile; the service decides what else it may touch.
+  @Roles(
+    UserRole.PORTAL_ADMIN,
+    UserRole.PORTAL_USER,
+    UserRole.MERCHANT_ADMIN,
+    UserRole.MERCHANT_USER,
+  )
   @ApiOperation({ summary: 'Update a user by ID' })
   @ApiParam({ name: 'id', type: Number, description: 'User ID' })
   @ApiOkResponse({
@@ -171,8 +182,8 @@ export class UsersController {
     @Body() dto: UpdateUserDto,
     @Req() req: Request & { user: AuthenticatedUser },
   ): Promise<OneUserResponseDto> {
-    const currentUser = req.user;
-    return this.usersService.update(id, dto, currentUser);
+    const authenticatedUser = req.user;
+    return this.usersService.update(id, dto, authenticatedUser);
   }
 
   @Patch(':id/status')

@@ -34,7 +34,7 @@ export class QROrderItem {
     example: 1,
     description: 'Identifier of the QR Order related',
   })
-  @ManyToOne(() => QROrder, { eager: true })
+  @ManyToOne(() => QROrder)
   @JoinColumn({ name: 'qr_order_id' })
   qrOrder: QROrder;
 
@@ -42,7 +42,7 @@ export class QROrderItem {
     example: 1,
     description: 'Identifier of the Product related',
   })
-  @ManyToOne(() => Product, { eager: true })
+  @ManyToOne(() => Product)
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
@@ -50,7 +50,7 @@ export class QROrderItem {
     example: 1,
     description: 'Identifier of the Variant related (if applicable)',
   })
-  @ManyToOne(() => Variant, { eager: true, nullable: true })
+  @ManyToOne(() => Variant, { nullable: true })
   @JoinColumn({ name: 'variant_id' })
   variant: Variant;
 
@@ -63,8 +63,8 @@ export class QROrderItem {
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   total_price: number;
 
-  @Column({ type: 'text' })
-  notes: string;
+  @Column({ type: 'text', nullable: true })
+  notes: string | null;
 
   @ApiProperty({
     example: 'active',

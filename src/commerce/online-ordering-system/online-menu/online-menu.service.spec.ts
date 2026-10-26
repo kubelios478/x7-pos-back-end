@@ -222,6 +222,24 @@ describe('OnlineMenuService', () => {
       );
     });
 
+    it('stores a blank description as null when creating, like update()', async () => {
+      jest
+        .spyOn(onlineStoreRepository, 'findOne')
+        .mockResolvedValue(mockOnlineStore as unknown as OnlineStore);
+      jest
+        .spyOn(onlineMenuRepository, 'save')
+        .mockResolvedValue(mockOnlineMenu as unknown as OnlineMenu);
+      jest
+        .spyOn(onlineMenuRepository, 'findOne')
+        .mockResolvedValueOnce(mockOnlineMenu as unknown as OnlineMenu);
+
+      await service.create({ ...createOnlineMenuDto, description: '   ' }, 1);
+
+      expect(onlineMenuRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ description: null }),
+      );
+    });
+
     it('should always set is_active to true when creating', async () => {
       jest
         .spyOn(onlineStoreRepository, 'findOne')

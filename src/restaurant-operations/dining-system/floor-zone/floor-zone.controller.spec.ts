@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { FloorZoneController } from './floor-zone.controller';
 import { FloorZoneService } from './floor-zone.service';
@@ -29,5 +30,11 @@ describe('FloorZoneController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('answers 400, not 500, for a non-positive id', async () => {
+    await expect(controller.findOne(0, {} as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

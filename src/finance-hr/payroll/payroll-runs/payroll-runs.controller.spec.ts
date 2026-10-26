@@ -2,8 +2,17 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PayrollRunsController } from './payroll-runs.controller';
 import { PayrollRunsService } from './payroll-runs.service';
 import { PayrollRunStatus } from './constants/payroll-run-status.enum';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('PayrollRunsController', () => {
+  const merchantUser = {
+    id: 1,
+    email: 'admin@merchant.dev',
+    role: UserRole.MERCHANT_ADMIN,
+    merchant: { id: 7, companyId: 3 },
+  } as AuthenticatedUser;
+
   let controller: PayrollRunsController;
 
   const mockPayrollRunsService = {
@@ -47,8 +56,8 @@ describe('PayrollRunsController', () => {
         message: 'Payroll run created successfully',
         data: { id: 1, ...dto },
       });
-      await controller.create(dto);
-      expect(mockPayrollRunsService.create).toHaveBeenCalledWith(dto);
+      await controller.create(dto, merchantUser);
+      expect(mockPayrollRunsService.create).toHaveBeenCalledWith(dto, 7);
     });
   });
 
@@ -60,8 +69,8 @@ describe('PayrollRunsController', () => {
         data: [],
         paginationMeta: {},
       });
-      await controller.findAll(query);
-      expect(mockPayrollRunsService.findAll).toHaveBeenCalledWith(query);
+      await controller.findAll(query, merchantUser);
+      expect(mockPayrollRunsService.findAll).toHaveBeenCalledWith(query, 7);
     });
   });
 });

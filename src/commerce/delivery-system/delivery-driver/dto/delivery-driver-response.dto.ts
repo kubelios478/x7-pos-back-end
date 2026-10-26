@@ -17,13 +17,13 @@ export class DeliveryDriverResponseDto {
   name: string;
 
   @ApiProperty({
-    example: '809-555-1234',
+    example: '+18095551234',
     description: 'Phone number of the Delivery Driver',
   })
   phone: string;
 
   @ApiProperty({
-    example: 'Car',
+    example: 'car',
     description: 'Vehicle type of the Delivery Driver',
   })
   vehicleType: string;

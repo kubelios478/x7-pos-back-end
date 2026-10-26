@@ -1,13 +1,17 @@
 //src/commerce/delivery-system/delivery-tracking/dto/create-delivery-tracking.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
-  IsString,
-  IsNotEmpty,
-  IsInt,
-  IsIn,
-  IsNumber,
   IsDate,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  Max,
+  Min,
 } from 'class-validator';
+import { TRACKING_STATUSES } from '../constants/delivery-tracking.constants';
 
 export class CreateDeliveryTrackingDto {
   @ApiProperty({
@@ -15,39 +19,44 @@ export class CreateDeliveryTrackingDto {
     description: 'Identifier of the Delivery Assignment',
   })
   @IsInt()
-  @IsNotEmpty()
+  @IsPositive()
   deliveryAssignment: number;
 
   @ApiProperty({
     example: 37.7749,
-    description: 'Current latitude of the delivery driver',
+    description: 'Current latitude of the delivery driver (WGS84)',
   })
-  @IsNotEmpty()
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(-90)
+  @Max(90)
   latitude: number;
 
   @ApiProperty({
     example: -122.4194,
-    description: 'Current longitude of the delivery driver',
+    description: 'Current longitude of the delivery driver (WGS84)',
   })
-  @IsNotEmpty()
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @Min(-180)
+  @Max(180)
   longitude: number;
 
-  @ApiProperty({
+  // Sin `@Type` el ISO que llega en el JSON es una cadena y `@IsDate` lo rechazaba siempre.
+  @ApiPropertyOptional({
     example: '2024-06-01T12:00:00Z',
-    description: 'Time when the location was recorded',
+    description:
+      'Time when the location was recorded on the device (default: now)',
   })
+  @IsOptional()
+  @Type(() => Date)
   @IsDate()
-  @IsNotEmpty()
-  recorded_at: Date;
+  recorded_at?: Date;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'active',
-    description: 'Status of the delivery driver',
+    enum: TRACKING_STATUSES,
+    description: 'Status of the tracking stream (default: active)',
   })
-  @IsString()
-  @IsNotEmpty()
-  @IsIn(['active', 'inactive'])
-  status: string;
+  @IsOptional()
+  @IsIn([...TRACKING_STATUSES])
+  status?: string;
 }

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  EntityManager,
   Repository,
   Between,
   type FindOptionsOrder,
@@ -16,6 +17,10 @@ import {
 // profunda `typeorm/query-builder/QueryPartialEntity`, así que tsc la resolvía pero jest no.
 import type { QueryDeepPartialEntity } from 'typeorm';
 import { KitchenStation } from './entities/kitchen-station.entity';
+import {
+  lockMerchantScope,
+  MerchantLockScope,
+} from 'src/common/utils/merchant-lock.util';
 import { Merchant } from '../../../platform-saas/merchants/entities/merchant.entity';
 import { KitchenDisplayDevice } from '../kitchen-display-device/entities/kitchen-display-device.entity';
 import { KitchenOrder } from '../kitchen-order/entities/kitchen-order.entity';
@@ -87,78 +92,90 @@ export class KitchenStationService {
       throw new BadRequestException('Name cannot exceed 100 characters');
     }
 
-    // Unique Name Constraint per Merchant
-    const duplicate = await this.kitchenStationRepository
-      .createQueryBuilder('ks')
-      .where('ks.merchant_id = :merchantId', {
-        merchantId: authenticatedUserMerchantId,
-      })
-      .andWhere('LOWER(ks.name) = LOWER(:name)', { name: trimmedName })
-      .andWhere('ks.status = :status', { status: KitchenStationStatus.ACTIVE })
-      .getOne();
-
-    if (duplicate) {
-      throw new ConflictException(
-        `A station named '${trimmedName}' already exists for this store.`,
-      );
-    }
-
     // Business rule validation: display order must be non-negative
     const targetOrder = createKitchenStationDto.displayOrder ?? 1;
     if (targetOrder < 0) {
       throw new BadRequestException('Display order must be non-negative');
     }
 
-    // Automatic Display Order Re-Sequencing: shift existing order >= targetOrder
-    await this.kitchenStationRepository
-      .createQueryBuilder()
-      .update(KitchenStation)
-      .set({ display_order: () => 'display_order + 1' })
-      .where('merchant_id = :merchantId', {
-        merchantId: authenticatedUserMerchantId,
-      })
-      .andWhere('display_order >= :targetOrder', { targetOrder })
-      .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
-      .execute();
+    // Station numbers (MAX + 1), display order shifting and the unique-name check run under
+    // the merchant's station lock, so concurrent creates cannot get the same number.
+    const savedKitchenStation = await this.withStationsLocked(
+      authenticatedUserMerchantId,
+      async (manager) => {
+        const stations = manager.getRepository(KitchenStation);
+        // Unique Name Constraint per Merchant
+        const duplicate = await stations
+          .createQueryBuilder('ks')
+          .where('ks.merchant_id = :merchantId', {
+            merchantId: authenticatedUserMerchantId,
+          })
+          .andWhere('LOWER(ks.name) = LOWER(:name)', { name: trimmedName })
+          .andWhere('ks.status = :status', {
+            status: KitchenStationStatus.ACTIVE,
+          })
+          .getOne();
 
-    // Compute next merchant-scoped station number
-    const maxNumberRow = await this.kitchenStationRepository
-      .createQueryBuilder('ks')
-      .select('MAX(ks.station_number)', 'max')
-      .where('ks.merchant_id = :merchantId', {
-        merchantId: authenticatedUserMerchantId,
-      })
-      .getRawOne();
-    const nextStationNumber =
-      (maxNumberRow?.max ? parseInt(maxNumberRow.max, 10) : 0) + 1;
+        if (duplicate) {
+          throw new ConflictException(
+            `A station named '${trimmedName}' already exists for this store.`,
+          );
+        }
 
-    // Create kitchen station
-    const kitchenStation = new KitchenStation();
-    kitchenStation.merchant_id = authenticatedUserMerchantId;
-    kitchenStation.name = trimmedName;
-    kitchenStation.station_type = createKitchenStationDto.stationType;
-    kitchenStation.display_mode = createKitchenStationDto.displayMode;
-    kitchenStation.display_order = targetOrder;
-    kitchenStation.station_number = nextStationNumber;
-    kitchenStation.printer_name = createKitchenStationDto.printerName || null;
-    kitchenStation.backup_station_id =
-      createKitchenStationDto.backupStationId || null;
-    kitchenStation.max_active_tickets_capacity =
-      createKitchenStationDto.maxActiveTicketsCapacity ?? 15;
-    kitchenStation.auto_reroute_on_offline =
-      createKitchenStationDto.autoRerouteOnOffline ?? true;
-    kitchenStation.auto_reroute_on_capacity =
-      createKitchenStationDto.autoRerouteOnCapacity ?? true;
-    kitchenStation.fallback_action =
-      createKitchenStationDto.fallbackAction || 'BACKUP_STATION';
-    kitchenStation.is_active = true; // Always set to true on creation
-    kitchenStation.status = KitchenStationStatus.ACTIVE;
+        // Automatic Display Order Re-Sequencing: shift existing order >= targetOrder
+        await stations
+          .createQueryBuilder()
+          .update(KitchenStation)
+          .set({ display_order: () => 'display_order + 1' })
+          .where('merchant_id = :merchantId', {
+            merchantId: authenticatedUserMerchantId,
+          })
+          .andWhere('display_order >= :targetOrder', { targetOrder })
+          .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
+          .execute();
 
-    const savedKitchenStation =
-      await this.kitchenStationRepository.save(kitchenStation);
+        // Compute next merchant-scoped station number
+        const maxNumberRow = await stations
+          .createQueryBuilder('ks')
+          .select('MAX(ks.station_number)', 'max')
+          .where('ks.merchant_id = :merchantId', {
+            merchantId: authenticatedUserMerchantId,
+          })
+          .getRawOne<{ max: string | null }>();
+        const nextStationNumber =
+          (maxNumberRow?.max ? parseInt(maxNumberRow.max, 10) : 0) + 1;
 
-    // Re-sequence all active stations for this merchant to maintain a clean gapless 1..N order
-    await this.resequenceStations(authenticatedUserMerchantId);
+        // Create kitchen station
+        const kitchenStation = new KitchenStation();
+        kitchenStation.merchant_id = authenticatedUserMerchantId;
+        kitchenStation.name = trimmedName;
+        kitchenStation.station_type = createKitchenStationDto.stationType;
+        kitchenStation.display_mode = createKitchenStationDto.displayMode;
+        kitchenStation.display_order = targetOrder;
+        kitchenStation.station_number = nextStationNumber;
+        kitchenStation.printer_name =
+          createKitchenStationDto.printerName || null;
+        kitchenStation.backup_station_id =
+          createKitchenStationDto.backupStationId || null;
+        kitchenStation.max_active_tickets_capacity =
+          createKitchenStationDto.maxActiveTicketsCapacity ?? 15;
+        kitchenStation.auto_reroute_on_offline =
+          createKitchenStationDto.autoRerouteOnOffline ?? true;
+        kitchenStation.auto_reroute_on_capacity =
+          createKitchenStationDto.autoRerouteOnCapacity ?? true;
+        kitchenStation.fallback_action =
+          createKitchenStationDto.fallbackAction || 'BACKUP_STATION';
+        kitchenStation.is_active = true; // Always set to true on creation
+        kitchenStation.status = KitchenStationStatus.ACTIVE;
+
+        const savedKitchenStation = await stations.save(kitchenStation);
+
+        // Re-sequence all active stations for this merchant to maintain a clean gapless 1..N order
+        await this.resequenceStations(manager, authenticatedUserMerchantId);
+
+        return savedKitchenStation;
+      },
+    );
 
     // Fetch the complete kitchen station with relations
     const completeKitchenStation = await this.kitchenStationRepository.findOne({
@@ -396,67 +413,75 @@ export class KitchenStationService {
       }
     }
 
-    // Business rule validation: display order must be non-negative if provided
-    if (updateKitchenStationDto.displayOrder !== undefined) {
-      const targetOrder = updateKitchenStationDto.displayOrder;
-      if (targetOrder < 0) {
-        throw new BadRequestException('Display order must be non-negative');
-      }
-      if (targetOrder !== existingKitchenStation.display_order) {
-        await this.kitchenStationRepository
-          .createQueryBuilder()
-          .update(KitchenStation)
-          .set({ display_order: () => 'display_order + 1' })
-          .where('merchant_id = :merchantId', {
-            merchantId: authenticatedUserMerchantId,
-          })
-          .andWhere('display_order >= :targetOrder', { targetOrder })
-          .andWhere('id != :id', { id })
-          .andWhere('status = :status', { status: KitchenStationStatus.ACTIVE })
-          .execute();
-      }
-    }
+    await this.withStationsLocked(
+      authenticatedUserMerchantId,
+      async (manager) => {
+        const stations = manager.getRepository(KitchenStation);
+        // Business rule validation: display order must be non-negative if provided
+        if (updateKitchenStationDto.displayOrder !== undefined) {
+          const targetOrder = updateKitchenStationDto.displayOrder;
+          if (targetOrder < 0) {
+            throw new BadRequestException('Display order must be non-negative');
+          }
+          if (targetOrder !== existingKitchenStation.display_order) {
+            await stations
+              .createQueryBuilder()
+              .update(KitchenStation)
+              .set({ display_order: () => 'display_order + 1' })
+              .where('merchant_id = :merchantId', {
+                merchantId: authenticatedUserMerchantId,
+              })
+              .andWhere('display_order >= :targetOrder', { targetOrder })
+              .andWhere('id != :id', { id })
+              .andWhere('status = :status', {
+                status: KitchenStationStatus.ACTIVE,
+              })
+              .execute();
+          }
+        }
 
-    // Update kitchen station
-    const updateData: QueryDeepPartialEntity<KitchenStation> = {};
-    if (updateKitchenStationDto.name !== undefined)
-      updateData.name = updateKitchenStationDto.name.trim();
-    if (updateKitchenStationDto.stationType !== undefined)
-      updateData.station_type = updateKitchenStationDto.stationType;
-    if (updateKitchenStationDto.displayMode !== undefined)
-      updateData.display_mode = updateKitchenStationDto.displayMode;
-    if (updateKitchenStationDto.displayOrder !== undefined)
-      updateData.display_order = updateKitchenStationDto.displayOrder;
-    if (updateKitchenStationDto.printerName !== undefined)
-      updateData.printer_name = updateKitchenStationDto.printerName || null;
-    if (updateKitchenStationDto.backupStationId !== undefined)
-      updateData.backup_station_id =
-        updateKitchenStationDto.backupStationId || null;
-    if (updateKitchenStationDto.maxActiveTicketsCapacity !== undefined)
-      updateData.max_active_tickets_capacity =
-        updateKitchenStationDto.maxActiveTicketsCapacity;
-    if (updateKitchenStationDto.autoRerouteOnOffline !== undefined)
-      updateData.auto_reroute_on_offline =
-        updateKitchenStationDto.autoRerouteOnOffline;
-    if (updateKitchenStationDto.autoRerouteOnCapacity !== undefined)
-      updateData.auto_reroute_on_capacity =
-        updateKitchenStationDto.autoRerouteOnCapacity;
-    if (updateKitchenStationDto.fallbackAction !== undefined)
-      updateData.fallback_action = updateKitchenStationDto.fallbackAction;
-    if (updateKitchenStationDto.isActive !== undefined)
-      updateData.is_active = updateKitchenStationDto.isActive;
+        // Update kitchen station
+        const updateData: QueryDeepPartialEntity<KitchenStation> = {};
+        if (updateKitchenStationDto.name !== undefined)
+          updateData.name = updateKitchenStationDto.name.trim();
+        if (updateKitchenStationDto.stationType !== undefined)
+          updateData.station_type = updateKitchenStationDto.stationType;
+        if (updateKitchenStationDto.displayMode !== undefined)
+          updateData.display_mode = updateKitchenStationDto.displayMode;
+        if (updateKitchenStationDto.displayOrder !== undefined)
+          updateData.display_order = updateKitchenStationDto.displayOrder;
+        if (updateKitchenStationDto.printerName !== undefined)
+          updateData.printer_name = updateKitchenStationDto.printerName || null;
+        if (updateKitchenStationDto.backupStationId !== undefined)
+          updateData.backup_station_id =
+            updateKitchenStationDto.backupStationId || null;
+        if (updateKitchenStationDto.maxActiveTicketsCapacity !== undefined)
+          updateData.max_active_tickets_capacity =
+            updateKitchenStationDto.maxActiveTicketsCapacity;
+        if (updateKitchenStationDto.autoRerouteOnOffline !== undefined)
+          updateData.auto_reroute_on_offline =
+            updateKitchenStationDto.autoRerouteOnOffline;
+        if (updateKitchenStationDto.autoRerouteOnCapacity !== undefined)
+          updateData.auto_reroute_on_capacity =
+            updateKitchenStationDto.autoRerouteOnCapacity;
+        if (updateKitchenStationDto.fallbackAction !== undefined)
+          updateData.fallback_action = updateKitchenStationDto.fallbackAction;
+        if (updateKitchenStationDto.isActive !== undefined)
+          updateData.is_active = updateKitchenStationDto.isActive;
 
-    if (updateKitchenStationDto.status !== undefined) {
-      updateData.status = updateKitchenStationDto.status;
-      if (updateKitchenStationDto.status === KitchenStationStatus.DELETED) {
-        updateData.is_active = false;
-      }
-    }
+        if (updateKitchenStationDto.status !== undefined) {
+          updateData.status = updateKitchenStationDto.status;
+          if (updateKitchenStationDto.status === KitchenStationStatus.DELETED) {
+            updateData.is_active = false;
+          }
+        }
 
-    await this.kitchenStationRepository.update(id, updateData);
+        await stations.update(id, updateData);
 
-    // Re-sequence all active stations for this merchant to maintain a clean gapless 1..N order
-    await this.resequenceStations(authenticatedUserMerchantId);
+        // Re-sequence all active stations for this merchant to maintain a clean gapless 1..N order
+        await this.resequenceStations(manager, authenticatedUserMerchantId);
+      },
+    );
 
     // Fetch updated kitchen station
     const updatedKitchenStation = await this.kitchenStationRepository.findOne({
@@ -515,10 +540,17 @@ export class KitchenStationService {
     // Perform logical deletion
     existingKitchenStation.status = KitchenStationStatus.DELETED;
     existingKitchenStation.is_active = false;
-    await this.kitchenStationRepository.save(existingKitchenStation);
+    await this.withStationsLocked(
+      authenticatedUserMerchantId,
+      async (manager) => {
+        await manager
+          .getRepository(KitchenStation)
+          .save(existingKitchenStation);
 
-    // Re-sequence remaining active stations
-    await this.resequenceStations(authenticatedUserMerchantId);
+        // Re-sequence remaining active stations
+        await this.resequenceStations(manager, authenticatedUserMerchantId);
+      },
+    );
 
     return {
       statusCode: 200,
@@ -527,8 +559,29 @@ export class KitchenStationService {
     };
   }
 
-  private async resequenceStations(merchantId: number): Promise<void> {
-    const stations = await this.kitchenStationRepository.find({
+  /** Runs a write on the merchant's stations in a transaction holding the station lock. */
+  private withStationsLocked<T>(
+    merchantId: number,
+    work: (manager: EntityManager) => Promise<T>,
+  ): Promise<T> {
+    return this.kitchenStationRepository.manager.transaction(
+      async (manager) => {
+        await lockMerchantScope(
+          manager,
+          MerchantLockScope.KITCHEN_STATIONS,
+          merchantId,
+        );
+        return work(manager);
+      },
+    );
+  }
+
+  private async resequenceStations(
+    manager: EntityManager,
+    merchantId: number,
+  ): Promise<void> {
+    const repository = manager.getRepository(KitchenStation);
+    const stations = await repository.find({
       where: {
         merchant_id: merchantId,
         status: KitchenStationStatus.ACTIVE,
@@ -543,7 +596,7 @@ export class KitchenStationService {
     for (let i = 0; i < stations.length; i++) {
       const expectedOrder = i + 1;
       if (stations[i].display_order !== expectedOrder) {
-        await this.kitchenStationRepository.update(stations[i].id, {
+        await repository.update(stations[i].id, {
           display_order: expectedOrder,
         });
       }

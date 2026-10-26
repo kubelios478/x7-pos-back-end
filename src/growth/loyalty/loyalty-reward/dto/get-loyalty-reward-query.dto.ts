@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class GetLoyaltyRewardQueryDto {
@@ -11,6 +11,7 @@ export class GetLoyaltyRewardQueryDto {
   page?: number;
 
   @ApiProperty({
+    maximum: 100,
     example: 10,
     description: 'Number of items per page',
     required: false,
@@ -19,6 +20,7 @@ export class GetLoyaltyRewardQueryDto {
   @IsOptional()
   @Type(() => Number)
   @Min(1)
+  @Max(100)
   limit?: number;
 
   @ApiProperty({

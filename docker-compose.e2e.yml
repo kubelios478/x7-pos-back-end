@@ -1,0 +1,18 @@
+# Base de datos desechable para los tests e2e (npm run test:e2e).
+# Los datos viven en memoria (tmpfs): al apagar el contenedor no queda nada.
+services:
+  postgres-e2e:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: x7_e2e
+      POSTGRES_PASSWORD: x7_e2e
+      POSTGRES_DB: x7_e2e
+    ports:
+      - '127.0.0.1:54329:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U x7_e2e -d x7_e2e']
+      interval: 1s
+      timeout: 3s
+      retries: 30

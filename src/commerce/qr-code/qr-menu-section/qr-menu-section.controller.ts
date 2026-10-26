@@ -44,6 +44,9 @@ import { QRMenuSectionService } from './qr-menu-section.service';
 import { PaginatedQRMenuSectionResponseDto } from './dto/paginated-qr-menu-section-response.dto';
 import { QueryQRMenuSectionDto } from './dto/query-qr-menu-section.dto';
 import { UpdateQRMenuSectionDto } from './dto/update-qr-menu-section.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Commerce - QR-Code - QR Menu Section')
 @Controller('qr-menu-sections')
@@ -127,8 +130,9 @@ export class QrMenuSectionController {
   })
   async create(
     @Body() dto: CreateQRMenuSectionDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuSectionResponseDto> {
-    return this.qrMenuSectionService.create(dto);
+    return this.qrMenuSectionService.create(dto, merchantScopeOf(user));
   }
 
   @Get()
@@ -140,6 +144,7 @@ export class QrMenuSectionController {
     Scope.MERCHANT_IOS,
     Scope.MERCHANT_CLOVER,
   )
+  @UseGuards(JwtAuthGuard, RolesGuard, FeatureAccessGuard)
   @ApiOperation({
     summary: 'Get All QR Menu Section',
     description: 'Endpoint for get ALL of the QR Menu Section.',
@@ -180,8 +185,9 @@ export class QrMenuSectionController {
   })
   async findAll(
     @Query() query: QueryQRMenuSectionDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedQRMenuSectionResponseDto> {
-    return this.qrMenuSectionService.findAll(query);
+    return this.qrMenuSectionService.findAll(query, merchantScopeOf(user));
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -269,11 +275,15 @@ export class QrMenuSectionController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuSectionResponseDto> {
     if (id <= 0) {
       throw new BadRequestException('Invalid ID. Must be a positive number.');
     }
-    const qrMenuSection = await this.qrMenuSectionService.findOne(id);
+    const qrMenuSection = await this.qrMenuSectionService.findOne(
+      id,
+      merchantScopeOf(user),
+    );
     return qrMenuSection;
   }
 
@@ -370,8 +380,9 @@ export class QrMenuSectionController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateQRMenuSectionDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuSectionResponseDto> {
-    return this.qrMenuSectionService.update(id, dto);
+    return this.qrMenuSectionService.update(id, dto, merchantScopeOf(user));
   }
   @Delete(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -458,7 +469,8 @@ export class QrMenuSectionController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneQRMenuSectionResponseDto> {
-    return this.qrMenuSectionService.remove(id);
+    return this.qrMenuSectionService.remove(id, merchantScopeOf(user));
   }
 }

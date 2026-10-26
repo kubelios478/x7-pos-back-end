@@ -15,11 +15,24 @@ describe('SupplierPaymentAllocationsService', () => {
     create: jest.fn(),
     save: jest.fn(),
     createQueryBuilder: jest.fn(),
+    manager: { transaction: jest.fn() },
   };
   const paymentRepoMock = { findOne: jest.fn(), save: jest.fn() };
   const supplierRepoMock = { findOne: jest.fn() };
   const creditNoteRepoMock = { findOne: jest.fn(), save: jest.fn() };
   const invoiceRepoMock = { find: jest.fn(), save: jest.fn() };
+
+  // Writes run in a transaction; inside it the same repository mocks answer.
+  const repoByEntity = new Map<unknown, unknown>([
+    [SupplierPaymentAllocation, allocationRepoMock],
+    [SupplierPayment, paymentRepoMock],
+    [Supplier, supplierRepoMock],
+    [SupplierCreditNote, creditNoteRepoMock],
+    [SupplierInvoice, invoiceRepoMock],
+  ]);
+  const transactionManager = {
+    getRepository: (entity: unknown) => repoByEntity.get(entity),
+  };
 
   /** Stubs the SUM query builders used by every recompute helper. */
   const stubSum = (sum = 0) => {
@@ -42,6 +55,9 @@ describe('SupplierPaymentAllocationsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    allocationRepoMock.manager.transaction.mockImplementation(
+      (work: (manager: unknown) => unknown) => work(transactionManager),
+    );
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SupplierPaymentAllocationsService,
@@ -94,6 +110,7 @@ describe('SupplierPaymentAllocationsService', () => {
       paymentRepoMock.findOne.mockResolvedValue({
         id: 1,
         company_id: 3,
+        supplier_id: 5,
         total_amount: 500,
         status: 'draft',
       });
@@ -119,6 +136,7 @@ describe('SupplierPaymentAllocationsService', () => {
       creditNoteRepoMock.findOne.mockResolvedValue({
         id: 2,
         company_id: 3,
+        supplier_id: 5,
         total_amount: 500,
         applied_amount: 0,
         status: 'issued',
@@ -166,6 +184,7 @@ describe('SupplierPaymentAllocationsService', () => {
       creditNoteRepoMock.findOne.mockResolvedValue({
         id: 2,
         company_id: 3,
+        supplier_id: 5,
         total_amount: 500,
         applied_amount: 0,
         status: 'issued',
@@ -194,6 +213,110 @@ describe('SupplierPaymentAllocationsService', () => {
       expect(invoice.paid_amount).toBe(200);
       expect(invoice.balance_due).toBe(300);
       expect(invoice.status).toBe('partially_paid');
+    });
+  });
+
+  describe('limits', () => {
+    /** SUM results in call order: allocated from the source, then paid on the invoice. */
+    const stubSums = (...sums: number[]) => {
+      const andWhere = jest.fn().mockReturnThis();
+      const getRawOne = jest.fn();
+      for (const sum of sums) {
+        getRawOne.mockResolvedValueOnce({ sum: String(sum) });
+      }
+      getRawOne.mockResolvedValue({ sum: '0' }); // recompute helpers afterwards
+      allocationRepoMock.createQueryBuilder.mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere,
+        getRawOne,
+      });
+      return { andWhere };
+    };
+    const payment = {
+      id: 1,
+      company_id: 3,
+      supplier_id: 5,
+      total_amount: '500.00',
+      status: 'draft',
+    };
+
+    beforeEach(() => {
+      paymentRepoMock.findOne.mockResolvedValue(payment);
+      paymentRepoMock.save.mockImplementation((v: object) =>
+        Promise.resolve(v),
+      );
+      supplierRepoMock.findOne.mockResolvedValue({ id: 5 });
+      allocationRepoMock.create.mockImplementation((v: object) => v);
+      allocationRepoMock.save.mockImplementation((v: object) =>
+        Promise.resolve({ id: 11, created_at: new Date(), ...v }),
+      );
+      invoiceRepoMock.save.mockImplementation((v: object) =>
+        Promise.resolve(v),
+      );
+    });
+
+    it('does not allocate more than what is left on the payment', async () => {
+      stubSums(450); // 450 of 500 already allocated
+      invoiceRepoMock.find.mockResolvedValue([]);
+
+      await expect(
+        service.create({ ...baseDto, payment_id: 1, allocated_amount: 60 }),
+      ).rejects.toThrow('only 50 is left unallocated');
+      expect(allocationRepoMock.save).not.toHaveBeenCalled();
+    });
+
+    it('locks the payment while checking what is left on it', async () => {
+      stubSums(0);
+      invoiceRepoMock.find.mockResolvedValue([]);
+
+      await service.create({ ...baseDto, payment_id: 1 });
+
+      expect(paymentRepoMock.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+      );
+    });
+
+    it('does not pay an invoice beyond its total', async () => {
+      stubSums(0, 80); // the invoice of 150 already has 80 paid
+      invoiceRepoMock.find.mockResolvedValue([
+        { id: 4, total_amount: '150.00', status: 'partially_paid' },
+      ]);
+
+      await expect(
+        service.create({ ...baseDto, payment_id: 1, allocated_amount: 100 }),
+      ).rejects.toThrow('only 70 is still due');
+      expect(invoiceRepoMock.find).toHaveBeenCalledWith(
+        expect.objectContaining({ lock: { mode: 'pessimistic_write' } }),
+      );
+      expect(allocationRepoMock.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects a supplier other than the payment's", async () => {
+      stubSums(0);
+
+      await expect(
+        service.create({ ...baseDto, payment_id: 1, supplier_id: 6 }),
+      ).rejects.toThrow('must be for the supplier of supplier payment 1');
+      expect(allocationRepoMock.save).not.toHaveBeenCalled();
+    });
+
+    it('leaves the allocation being edited out of the sums', async () => {
+      allocationRepoMock.findOne.mockResolvedValue({
+        id: 11,
+        payment_id: 1,
+        credit_note_id: null,
+        ...baseDto,
+      });
+      const { andWhere } = stubSums(100, 0);
+      invoiceRepoMock.find.mockResolvedValue([]);
+
+      await service.update(11, { allocated_amount: 400 });
+
+      expect(andWhere).toHaveBeenCalledWith('spa.id != :selfId', {
+        selfId: 11,
+      });
     });
   });
 });

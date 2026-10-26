@@ -83,8 +83,8 @@ export class User {
     required: false,
     nullable: true,
   })
-  @Column({ nullable: true })
-  refreshToken?: string;
+  @Column({ type: 'varchar', nullable: true })
+  refreshToken?: string | null;
 
   @ApiProperty({
     example: true,

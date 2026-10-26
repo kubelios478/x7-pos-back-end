@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 //src/qr-code/qr-menu-item/qr-menu-item.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { QRMenuItemService } from './qr-menu-item.service';
@@ -77,6 +78,7 @@ describe('QrMenuItemService', () => {
         {
           provide: getRepositoryToken(QRMenuSection),
           useValue: {
+            exists: jest.fn(),
             findOne: jest.fn(),
             find: jest.fn(),
             create: jest.fn(),
@@ -87,6 +89,7 @@ describe('QrMenuItemService', () => {
         {
           provide: getRepositoryToken(Product),
           useValue: {
+            exists: jest.fn(),
             findOne: jest.fn(),
             find: jest.fn(),
             create: jest.fn(),
@@ -276,11 +279,6 @@ describe('QrMenuItemService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['qrMenuSection', 'product', 'variant'],
-        select: {
-          qrMenuSection: { id: true, name: true },
-          product: { id: true, name: true },
-          variant: { id: true, name: true },
-        },
       });
     });
 
@@ -329,11 +327,6 @@ describe('QrMenuItemService', () => {
           id: 1,
         },
         relations: ['qrMenuSection', 'product', 'variant'],
-        select: {
-          qrMenuSection: { id: true, name: true },
-          product: { id: true, name: true },
-          variant: { id: true, name: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQRMenuItem);
       expect(result).toEqual({
@@ -359,11 +352,6 @@ describe('QrMenuItemService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['qrMenuSection', 'product', 'variant'],
-        select: {
-          qrMenuSection: { id: true, name: true },
-          product: { id: true, name: true },
-          variant: { id: true, name: true },
-        },
       });
     });
 
@@ -394,6 +382,7 @@ describe('QrMenuItemService', () => {
         where: {
           id: 1,
         },
+        relations: ['qrMenuSection', 'product', 'variant'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -418,6 +407,7 @@ describe('QrMenuItemService', () => {
         where: {
           id: 999,
         },
+        relations: ['qrMenuSection', 'product', 'variant'],
       });
     });
   });
@@ -430,6 +420,38 @@ describe('QrMenuItemService', () => {
       expect(typeof repository.create).toBe('function');
       expect(typeof repository.save).toBe('function');
       expect(typeof repository.remove).toBe('function');
+    });
+  });
+
+  describe('merchant scope', () => {
+    it("looks up an item through its section's menu merchant", async () => {
+      repository.findOne.mockResolvedValue(null);
+
+      await expect(service.findOne(5, 7)).rejects.toThrow();
+      expect(repository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: 5,
+            qrMenuSection: { qrMenu: { merchant: { id: 7 } } },
+          }),
+        }),
+      );
+    });
+
+    it("rejects an item that uses another merchant's product", async () => {
+      qrMenuSectionRepository.exists.mockResolvedValue(true);
+      productRepository.exists.mockResolvedValue(false);
+
+      await expect(
+        service.create(
+          { qrMenuSection: 1, product: 2, variant: 3 } as never,
+          7,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(productRepository.exists).toHaveBeenCalledWith({
+        where: { id: 2, merchantId: 7 },
+      });
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 });

@@ -226,7 +226,11 @@ const MOCK_LEDGER_ACCOUNTS: LedgerAccountDto[] = [
 ];
 
 @ApiTags('Finance & HR - Accounting - Ledger Accounts Setup')
-@ApiExtraModels(ErrorResponse, CreateFinanceHrLedgerAccountDto, UpdateFinanceHrLedgerAccountDto)
+@ApiExtraModels(
+  ErrorResponse,
+  CreateFinanceHrLedgerAccountDto,
+  UpdateFinanceHrLedgerAccountDto,
+)
 @ApiBearerAuth()
 @Controller('ledger-accounts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -500,4 +504,3 @@ export class LedgerAccountsController {
     return { data: account };
   }
 }
-

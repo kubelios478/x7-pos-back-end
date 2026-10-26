@@ -84,6 +84,8 @@ describe('KitchenOrderService', () => {
 
   const mockDataSource = {
     createQueryRunner: jest.fn(() => mockQueryRunner),
+    // raw UPDATE of the order's items when it starts
+    query: jest.fn().mockResolvedValue([]),
   };
 
   const mockMerchant = {
@@ -130,6 +132,7 @@ describe('KitchenOrderService', () => {
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
     skip: jest.fn().mockReturnThis(),
     take: jest.fn().mockReturnThis(),
     getOne: jest.fn(),
@@ -284,7 +287,7 @@ describe('KitchenOrderService', () => {
         BadRequestException,
       );
       await expect(service.create(dtoWithoutOrder, 1)).rejects.toThrow(
-        'Either orderId or onlineOrderId must be provided',
+        'Either orderId, onlineOrderId, or kitchenOrderItems must be provided',
       );
     });
   });
@@ -406,6 +409,34 @@ describe('KitchenOrderService', () => {
       );
       await expect(service.update(1, updateKitchenOrderDto, 1)).rejects.toThrow(
         'Cannot update a deleted kitchen order',
+      );
+    });
+  });
+
+  describe('cancelKitchenOrder', () => {
+    it("cannot cancel another merchant's kitchen order (nor move its stock)", async () => {
+      jest.spyOn(kitchenOrderRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.cancelKitchenOrder(
+          42,
+          {} as any,
+          {
+            id: 7,
+            merchant: { id: 1 },
+          } as any,
+        ),
+      ).rejects.toThrow('Kitchen order not found');
+      expect(kitchenOrderRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 42, merchant_id: 1 } }),
+      );
+    });
+
+    it('requires a merchant', async () => {
+      await expect(
+        service.cancelKitchenOrder(42, {} as any, { id: 7 } as any),
+      ).rejects.toThrow(
+        'You must be associated with a merchant to cancel kitchen orders',
       );
     });
   });

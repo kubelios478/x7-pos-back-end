@@ -1,5 +1,5 @@
 // src/companies/dtos/create-company.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsString,
@@ -7,7 +7,9 @@ import {
   Matches,
   IsOptional,
   Length,
+  ValidateIf,
 } from 'class-validator';
+import { IsTaxId } from 'src/common/decorators/validation.decorators';
 // import {
 //   IsValidRUT,
 //   IsBusinessEmail,
@@ -19,9 +21,9 @@ export class CreateCompanyDto {
   @Length(2, 100, {
     message: 'Company name must be between 2 and 100 characters',
   })
-  @Matches(/^[a-zA-Z0-9\s\-.&]+$/, {
+  @Matches(/^[\p{L}\p{M}\p{N}\s\-.&'’]+$/u, {
     message:
-      'Company name can only contain letters, numbers, spaces, hyphens, dots and ampersands',
+      'Company name can only contain letters, numbers, spaces, hyphens, dots, apostrophes, and ampersands',
   })
   @ApiProperty({
     example: 'Acme Corp',
@@ -53,17 +55,26 @@ export class CreateCompanyDto {
   })
   phone?: string;
 
-  @IsString({ message: 'RUT must be a string' })
-  // @IsNotEmpty({ message: 'RUT is required' })
-  // @Length(7, 15, { message: 'RUT must be between 7 and 15 characters' })
-  // @IsValidRUT({ message: 'Please provide a valid Chilean RUT format' })
   @ApiProperty({
-    example: '12.345.678-9',
-    description: 'RUT of the company',
-    minLength: 7,
-    maxLength: 15,
+    example: '12-3456789',
+    description: 'Tax ID of the company (e.g. US EIN 12-3456789)',
+    required: true,
   })
-  rut: string;
+  @ValidateIf((o: CreateCompanyDto) => o.rut === undefined)
+  @IsString()
+  @IsNotEmpty()
+  @IsTaxId()
+  tax_id?: string;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use tax_id. Accepted as an alias.',
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
+  rut?: string;
 
   @IsString({ message: 'Address must be a string' })
   @IsNotEmpty({ message: 'Address is required' })
@@ -79,8 +90,9 @@ export class CreateCompanyDto {
   @IsString({ message: 'City must be a string' })
   @IsNotEmpty({ message: 'City is required' })
   @Length(2, 50, { message: 'City must be between 2 and 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'City can only contain letters, spaces, hyphens and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'City can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'Miami',
@@ -93,8 +105,9 @@ export class CreateCompanyDto {
   @IsString({ message: 'State must be a string' })
   @IsNotEmpty({ message: 'State is required' })
   @Length(2, 50, { message: 'State must be between 2 and 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'State can only contain letters, spaces, hyphens and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'State can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'California',
@@ -107,8 +120,9 @@ export class CreateCompanyDto {
   @IsString({ message: 'Country must be a string' })
   @IsNotEmpty({ message: 'Country is required' })
   @Length(2, 50, { message: 'Country must be between 2 and 50 characters' })
-  @Matches(/^[a-zA-Z\s\-.]+$/, {
-    message: 'Country can only contain letters, spaces, hyphens and dots',
+  @Matches(/^[\p{L}\p{M}\s\-.'’]+$/u, {
+    message:
+      'Country can only contain letters, spaces, hyphens, dots, and apostrophes',
   })
   @ApiProperty({
     example: 'USA',

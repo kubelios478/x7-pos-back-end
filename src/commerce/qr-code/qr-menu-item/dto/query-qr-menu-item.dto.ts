@@ -1,6 +1,13 @@
 //src/qr-code/qr-menu-item/dto/query-qr-menu-item.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryQRMenuItemDto {
@@ -42,6 +49,7 @@ export class QueryQRMenuItemDto {
   page: number = 1;
 
   @ApiPropertyOptional({
+    maximum: 100,
     description: 'Items per page',
     example: 10,
   })
@@ -49,7 +57,8 @@ export class QueryQRMenuItemDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
-  limit: number = 100;
+  @Max(100)
+  limit: number = 10;
 
   @ApiPropertyOptional({
     description: 'Column to sort by',

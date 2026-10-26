@@ -46,6 +46,31 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Database migrations
+
+The schema is changed only through TypeORM migrations in `src/database/migrations`
+(`synchronize` is off and the app never migrates on startup). The scripts read the `DB_*`
+variables from `.env`.
+
+```bash
+# pending / applied migrations
+$ npm run migration:show
+
+# apply pending migrations
+$ npm run migration:run
+
+# undo the last one
+$ npm run migration:revert
+
+# after changing an entity: generate a migration from the difference with the database
+$ npm run migration:generate -- src/database/migrations/DescribeTheChange
+```
+
+Review a generated migration before committing it.
+
+How the schema is created, the rules for changing it, reference data and what is
+pending before production: [docs/database.md](docs/database.md).
+
 ## Run tests
 
 ```bash

@@ -1,3 +1,4 @@
+import { Location } from '../stocks/locations/entities/location.entity';
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Test, TestingModule } from '@nestjs/testing';
@@ -224,6 +225,18 @@ describe('PurchaseOrderItemService', () => {
           provide: VariantsService,
           useValue: mockVariantsService,
         },
+        {
+          provide: getRepositoryToken(Location),
+          useValue: {
+            exists: jest.fn().mockResolvedValue(true),
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+            findBy: jest.fn().mockResolvedValue([]),
+            count: jest.fn().mockResolvedValue(0),
+            create: jest.fn((e: unknown) => e),
+            save: jest.fn((e: unknown) => Promise.resolve(e)),
+          },
+        },
       ],
     }).compile();
 
@@ -282,6 +295,7 @@ describe('PurchaseOrderItemService', () => {
       });
       expect(purchaseOrderItemRepo.create).toHaveBeenCalledWith({
         purchaseOrderId: createDtoWithoutVariant.purchaseOrderId,
+        locationId: createDtoWithoutVariant.locationId,
         productId: createDtoWithoutVariant.productId,
         variantId: undefined,
         quantity: createDtoWithoutVariant.quantity,
@@ -348,6 +362,7 @@ describe('PurchaseOrderItemService', () => {
       });
       expect(purchaseOrderItemRepo.create).toHaveBeenCalledWith({
         purchaseOrderId: mockCreatePurchaseOrderItemDto.purchaseOrderId,
+        locationId: mockCreatePurchaseOrderItemDto.locationId,
         productId: mockCreatePurchaseOrderItemDto.productId,
         variantId: mockCreatePurchaseOrderItemDto.variantId,
         quantity: mockCreatePurchaseOrderItemDto.quantity,
@@ -417,6 +432,25 @@ describe('PurchaseOrderItemService', () => {
       ).rejects.toThrow('Purchase Order not found');
 
       expect(purchaseOrderItemRepo.create).not.toHaveBeenCalled();
+      expect(purchaseOrderItemRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject a receiving location of another merchant', async () => {
+      productRepo.findOneBy.mockResolvedValueOnce(mockProduct);
+      variantRepo.findOneBy.mockResolvedValueOnce(mockVariant);
+      purchaseOrderRepo.findOneBy.mockResolvedValueOnce(mockPurchaseOrder);
+      const locationRepo = (service as any).locationRepository;
+      locationRepo.exists.mockResolvedValueOnce(false);
+
+      await expect(
+        service.create(mockMerchant.id, mockCreatePurchaseOrderItemDto),
+      ).rejects.toThrow('Location not found');
+      expect(locationRepo.exists).toHaveBeenCalledWith({
+        where: {
+          id: mockCreatePurchaseOrderItemDto.locationId,
+          merchantId: mockMerchant.id,
+        },
+      });
       expect(purchaseOrderItemRepo.save).not.toHaveBeenCalled();
     });
 
@@ -1058,6 +1092,28 @@ describe('PurchaseOrderItemService', () => {
       expect(purchaseOrderItemToDelete.isActive).toBe(false);
       expect(purchaseOrderItemRepo.save).toHaveBeenCalledWith(
         purchaseOrderItemToDelete,
+      );
+    });
+  });
+
+  describe('softRemoveByProductId', () => {
+    it('only touches lines of orders that have not received anything', async () => {
+      mockQueryBuilder.getMany.mockResolvedValueOnce([]);
+
+      await service.softRemoveByProductId(1, 1);
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'purchaseOrder.status IN (:...openStatuses)',
+        {
+          openStatuses: [
+            PurchaseOrderStatus.DRAFT,
+            PurchaseOrderStatus.SENT,
+            PurchaseOrderStatus.PENDING,
+          ],
+        },
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'COALESCE(purchaseOrderItem.receivedQuantity, 0) = 0',
       );
     });
   });

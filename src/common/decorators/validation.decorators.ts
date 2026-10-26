@@ -53,6 +53,33 @@ export function IsValidRUT(validationOptions?: ValidationOptions) {
   };
 }
 
+/** Country-neutral tax ID shape: e.g. EIN 12-3456789, RUT 12.345.678-K, VAT DE123456789. */
+export const TAX_ID_PATTERN =
+  /^(?=.*\d)[A-Za-z0-9](?:[A-Za-z0-9.\-/ ]{0,48}[A-Za-z0-9])?$/;
+
+/**
+ * Validates a tax identifier without assuming any country's format: letters and digits,
+ * optionally separated by dots, hyphens, slashes or spaces, with at least one digit.
+ */
+export function IsTaxId(validationOptions?: ValidationOptions) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      name: 'isTaxId',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: unknown) {
+          return typeof value === 'string' && TAX_ID_PATTERN.test(value);
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `${args.property} must be a valid tax ID (e.g. EIN 12-3456789)`;
+        },
+      },
+    });
+  };
+}
+
 export function IsBusinessEmail(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({

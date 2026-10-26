@@ -23,39 +23,19 @@ export class ProductsInventoryService {
   ) {}
 
   async returnToStock(productId: number, quantity: number, meta?: any) {
-    console.log('ENTER returnToStock', {
-      productId,
-      quantity,
-      meta,
-    });
-
     const product = await this.productRepo.findOne({
       where: { id: productId },
     });
-
-    console.log('PRODUCT FOUND', product);
-
     if (!product) return;
 
     const item = await this.itemRepo.findOne({
       where: { product: { id: productId } },
       relations: ['product'],
     });
-
-    console.log('ITEM FOUND', item);
-
-    if (!item) {
-      console.log('ITEM NOT FOUND');
-      return;
-    }
+    if (!item) return;
 
     product.stock = Number(product.stock || 0) + quantity;
-
-    console.log('NEW STOCK', product.stock);
-
-    const savedProduct = await this.productRepo.save(product);
-
-    console.log('PRODUCT SAVED', savedProduct);
+    await this.productRepo.save(product);
 
     await this.movementsService.create(product.merchantId, {
       stockItemId: item.id,
@@ -64,8 +44,6 @@ export class ProductsInventoryService {
       reference: `VOID-${meta?.referenceId}`,
       reason: meta?.reason || 'Kitchen cancellation',
     });
-
-    console.log('MOVEMENT CREATED');
   }
 
   async registerWaste(productId: number, quantity: number, meta?: any) {
@@ -95,23 +73,46 @@ export class ProductsInventoryService {
   public async findParentCategories(
     categoryId: number,
   ): Promise<{ id: number; parentName: string }[]> {
-    const categories: { id: number; parentName: string }[] = [];
-    let currentCategory = await this.categoryRepo.findOne({
-      where: { id: categoryId },
-      relations: ['parent'],
-    });
+    const parents = await this.findParentCategoriesMany([categoryId]);
+    return parents.get(categoryId) ?? [];
+  }
 
-    while (currentCategory && currentCategory.parent) {
-      categories.unshift({
-        id: currentCategory.parent.id,
-        parentName: currentCategory.parent.name,
-      });
-      currentCategory = await this.categoryRepo.findOne({
-        where: { id: currentCategory.parent.id },
-        relations: ['parent'],
-      });
+  /**
+   * Los ancestros de varias categorías en una sola consulta, de la raíz hacia abajo
+   * (antes, una consulta por categoría y por nivel). Una categoría sin padre no
+   * aparece en el mapa.
+   */
+  public async findParentCategoriesMany(
+    categoryIds: number[],
+  ): Promise<Map<number, { id: number; parentName: string }[]>> {
+    const result = new Map<number, { id: number; parentName: string }[]>();
+    if (categoryIds.length === 0) return result;
+
+    // depth < 50 corta un ciclo de padres, que de otro modo no terminaría.
+    const rows = await this.categoryRepo.query<
+      { start_id: number; id: number; name: string }[]
+    >(
+      `WITH RECURSIVE ancestors AS (
+         SELECT c.id AS start_id, p.id, p.name, p."parentId" AS parent_id, 1 AS depth
+         FROM category c
+         JOIN category p ON p.id = c."parentId"
+         WHERE c.id = ANY($1::int[])
+         UNION ALL
+         SELECT a.start_id, p.id, p.name, p."parentId", a.depth + 1
+         FROM ancestors a
+         JOIN category p ON p.id = a.parent_id
+         WHERE a.depth < 50
+       )
+       SELECT start_id, id, name FROM ancestors ORDER BY start_id, depth DESC`,
+      [categoryIds],
+    );
+
+    for (const row of rows) {
+      const startId = Number(row.start_id);
+      const chain = result.get(startId) ?? [];
+      chain.push({ id: Number(row.id), parentName: row.name });
+      result.set(startId, chain);
     }
-
-    return categories;
+    return result;
   }
 }

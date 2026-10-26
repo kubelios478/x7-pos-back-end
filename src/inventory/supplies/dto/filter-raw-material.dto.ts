@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Min, Max } from 'class-validator';
 
 export enum RawMaterialStatusFilter {
   ACTIVE = 'active',
@@ -16,11 +16,12 @@ export class FilterRawMaterialDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ example: 10, default: 10 })
+  @ApiPropertyOptional({ example: 10, default: 10, maximum: 500 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(500)
   limit?: number = 10;
 
   @ApiPropertyOptional({ example: 1, description: 'Filter by category ID' })

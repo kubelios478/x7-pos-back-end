@@ -1,4 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In } from 'typeorm';
 import { Order } from 'src/restaurant-operations/pos/orders/entities/order.entity';
@@ -14,9 +20,12 @@ import { Item } from 'src/inventory/products-inventory/stocks/items/entities/ite
 import { Movement } from 'src/inventory/products-inventory/stocks/movements/entities/movement.entity';
 import { MovementsStatus } from 'src/inventory/products-inventory/stocks/movements/constants/movements-status';
 import { Location } from 'src/inventory/products-inventory/stocks/locations/entities/location.entity';
+import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
+import { Supply } from 'src/inventory/supplies/entities/supply.entity';
 import { CashTransaction } from 'src/restaurant-operations/cashdrawer/cash-transactions/entities/cash-transaction.entity';
 import { CashTransactionType } from 'src/restaurant-operations/cashdrawer/cash-transactions/constants/cash-transaction-type.enum';
 import { CashDrawer } from 'src/restaurant-operations/cashdrawer/cash-drawers/entities/cash-drawer.entity';
+import { Shift } from 'src/restaurant-operations/shift/shifts/entities/shift.entity';
 import type { OrderFullyPaidPayload } from './order-paid.events';
 import { StockLevelMonitorService } from '../stock-alerts/stock-level-monitor.service';
 
@@ -48,25 +57,89 @@ export class SaleInventoryDeductionService {
     private readonly stockLevelMonitor: StockLevelMonitorService,
   ) {}
 
+  /** Automatic deduction when an order becomes fully paid. Failures are logged, not thrown. */
   async processOrderFullyPaid(payload: OrderFullyPaidPayload): Promise<void> {
-    const { orderId } = payload;
+    try {
+      await this.deductOrderStock(payload.orderId, { requirePaid: true });
+    } catch {
+      // already logged by deductOrderStock; the order stays unclaimed
+    }
+  }
+
+  /**
+   * Manual deduction of an order's recipes (POST raw-material-stock/movements/deplete-from-order).
+   * Same rules as the automatic one, and it claims the order the same way, so an order is
+   * never deducted twice: neither by repeating the call nor when it is paid afterwards.
+   */
+  async deductOrderManually(
+    merchantId: number,
+    orderId: number,
+  ): Promise<{ success: boolean; movementsCount: number }> {
+    const order = await this.dataSource.manager.findOne(Order, {
+      where: { id: orderId, merchant_id: merchantId },
+      select: ['id', 'inventory_consumed_at'],
+    });
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found`);
+    }
+    if (order.inventory_consumed_at != null) {
+      throw new ConflictException(
+        `Inventory was already deducted for order #${orderId}`,
+      );
+    }
+
+    const result = await this.deductOrderStock(orderId, {
+      requirePaid: false,
+    });
+    if (!result.deducted) {
+      if (result.alreadyClaimed) {
+        throw new ConflictException(
+          `Inventory was already deducted for order #${orderId}`,
+        );
+      }
+      throw new BadRequestException(result.reason);
+    }
+    return { success: true, movementsCount: result.movementsCount };
+  }
+
+  /**
+   * Claims the order (inventory_consumed_at) and deducts its recipes from the default sales
+   * location in one transaction. Throws on failure, after rolling back and releasing the
+   * claim so the order can be deducted later.
+   */
+  private async deductOrderStock(
+    orderId: number,
+    options: { requirePaid: boolean },
+  ): Promise<
+    | { deducted: true; movementsCount: number }
+    | { deducted: false; alreadyClaimed: boolean; reason: string }
+  > {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
+    const affectedStockItemIds: number[] = [];
+    let merchantId = 0;
+
     try {
-      const claim = await queryRunner.manager
+      const claimQuery = queryRunner.manager
         .createQueryBuilder()
         .update(Order)
         .set({ inventory_consumed_at: new Date() })
         .where('id = :orderId', { orderId })
-        .andWhere('inventory_consumed_at IS NULL')
-        .andWhere('is_paid = :paid', { paid: true })
-        .execute();
+        .andWhere('inventory_consumed_at IS NULL');
+      if (options.requirePaid) {
+        claimQuery.andWhere('is_paid = :paid', { paid: true });
+      }
+      const claim = await claimQuery.execute();
 
       if (!claim.affected) {
         await queryRunner.rollbackTransaction();
-        return;
+        return {
+          deducted: false,
+          alreadyClaimed: true,
+          reason: `Inventory was already deducted for order #${orderId}`,
+        };
       }
 
       const order = await queryRunner.manager.findOne(Order, {
@@ -75,7 +148,11 @@ export class SaleInventoryDeductionService {
       });
       if (!order) {
         await queryRunner.rollbackTransaction();
-        return;
+        return {
+          deducted: false,
+          alreadyClaimed: false,
+          reason: `Order with ID ${orderId} not found`,
+        };
       }
 
       const merchant = await queryRunner.manager.findOne(Merchant, {
@@ -87,13 +164,13 @@ export class SaleInventoryDeductionService {
         this.logger.error(
           `Checkout inventory deduction skipped: default sales stock location is not configured for merchantId=${order.merchant_id} orderId=${orderId}`,
         );
-        await queryRunner.manager.update(
-          Order,
-          { id: orderId },
-          { inventory_consumed_at: null },
-        );
-        await queryRunner.commitTransaction();
-        return;
+        await queryRunner.rollbackTransaction();
+        return {
+          deducted: false,
+          alreadyClaimed: false,
+          reason:
+            'The default sales stock location is not configured for this merchant',
+        };
       }
 
       const location = await queryRunner.manager.findOne(Location, {
@@ -103,13 +180,12 @@ export class SaleInventoryDeductionService {
         this.logger.error(
           `Checkout inventory deduction skipped: default sales stock location ${locationId} is missing or not owned by merchantId=${order.merchant_id} orderId=${orderId}`,
         );
-        await queryRunner.manager.update(
-          Order,
-          { id: orderId },
-          { inventory_consumed_at: null },
-        );
-        await queryRunner.commitTransaction();
-        return;
+        await queryRunner.rollbackTransaction();
+        return {
+          deducted: false,
+          alreadyClaimed: false,
+          reason: `The default sales stock location ${locationId} is missing or not owned by this merchant`,
+        };
       }
 
       const items = await queryRunner.manager.find(OrderItem, {
@@ -195,11 +271,7 @@ export class SaleInventoryDeductionService {
         }
       }
 
-      const shiftId =
-        payload.shiftId ??
-        (await this.resolveShiftIdFromCashSales(queryRunner.manager, orderId));
-
-      const affectedStockItemIds: number[] = [];
+      const shiftId = await this.resolveWorkShiftId(queryRunner.manager, order);
 
       for (const [key, needQty] of aggregated) {
         if (needQty <= 0) {
@@ -222,8 +294,22 @@ export class SaleInventoryDeductionService {
             .getOne();
 
           if (!stockItem) {
-            throw new Error(
-              `No active stock item for raw material supplyId=${supplyId} at locationId=${locationId} (orderId=${orderId})`,
+            const owned = await queryRunner.manager.exists(Supply, {
+              where: { id: supplyId, company_id: merchant?.companyId },
+            });
+            if (!owned) {
+              throw new Error(
+                `Raw material supplyId=${supplyId} of the recipe is not the company's (orderId=${orderId})`,
+              );
+            }
+            stockItem = await queryRunner.manager.save(
+              queryRunner.manager.create(Item, {
+                supplyId,
+                locationId,
+                currentQty: 0,
+                isActive: true,
+                weightedAverageUnitCost: '0.0000',
+              }),
             );
           }
         } else {
@@ -244,30 +330,37 @@ export class SaleInventoryDeductionService {
             .getOne();
 
           if (!stockItem) {
-            throw new Error(
-              `No active stock item for supply productId=${supplyProductId} variantId=${supplyVariantId} at locationId=${locationId} (orderId=${orderId})`,
+            const owned = await queryRunner.manager.exists(Product, {
+              where: { id: supplyProductId, merchantId: order.merchant_id },
+            });
+            if (!owned) {
+              throw new Error(
+                `Supply productId=${supplyProductId} of the recipe is not the merchant's (orderId=${orderId})`,
+              );
+            }
+            stockItem = await queryRunner.manager.save(
+              queryRunner.manager.create(Item, {
+                productId: supplyProductId,
+                variantId: supplyVariantId,
+                locationId,
+                currentQty: 0,
+                isActive: true,
+                weightedAverageUnitCost: '0.0000',
+              }),
             );
           }
         }
 
-        const dec = await queryRunner.manager
+        // A sale is never blocked by the count on hand: as is usual in restaurants the
+        // stock may go negative, and the alert monitor flags it.
+        await queryRunner.manager
           .createQueryBuilder()
           .update(Item)
           .set({
             currentQty: () => `"currentQty" - ${needQty}`,
           })
           .where('id = :id', { id: stockItem.id })
-          .andWhere('"currentQty" >= :need', { need: needQty })
           .execute();
-
-        if (!dec.affected) {
-          const label = key.startsWith('supply:')
-            ? `raw material supplyId=${key.split(':')[1]}`
-            : `productId=${key.split(':')[1]} variantId=${key.split(':')[2]}`;
-          throw new Error(
-            `Insufficient stock for ${label} at locationId=${locationId} need=${needQty} (orderId=${orderId})`,
-          );
-        }
 
         const movement = queryRunner.manager.create(Movement, {
           stockItemId: stockItem.id,
@@ -285,37 +378,60 @@ export class SaleInventoryDeductionService {
       }
 
       await queryRunner.commitTransaction();
-
-      await this.stockLevelMonitor.evaluateStockItems(
-        order.merchant_id,
-        affectedStockItemIds,
-      );
+      merchantId = order.merchant_id;
     } catch (e) {
+      // the rollback also releases the claim, so the order can be deducted later
       await queryRunner.rollbackTransaction();
       const err = e instanceof Error ? e : new Error(String(e));
       this.logger.error(
         `Checkout inventory deduction failed for orderId=${orderId}: ${err.message}`,
         err.stack,
       );
-      await this.dataSource.manager.update(
-        Order,
-        { id: orderId },
-        { inventory_consumed_at: null },
-      );
+      throw err;
     } finally {
       await queryRunner.release();
     }
+
+    try {
+      await this.stockLevelMonitor.evaluateStockItems(
+        merchantId,
+        affectedStockItemIds,
+      );
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      this.logger.error(
+        `Stock alert evaluation failed after deducting orderId=${orderId}: ${err.message}`,
+      );
+    }
+    return { deducted: true, movementsCount: affectedStockItemIds.length };
   }
 
-  private async resolveShiftIdFromCashSales(
+  /**
+   * Work shift (`shift`, the FK of stock_movement.shift_id) for the kardex line: the one the
+   * order was taken in, or else the shift of the drawer that received its cash sale. Never a
+   * cash shift id, and never a shift of another merchant.
+   */
+  private async resolveWorkShiftId(
     manager: EntityManager,
-    orderId: number,
+    order: Pick<Order, 'id' | 'merchant_id' | 'shift_id'>,
   ): Promise<number | null> {
+    if (order.shift_id != null) {
+      const owned = await manager.exists(Shift, {
+        where: { id: order.shift_id, merchantId: order.merchant_id },
+      });
+      if (owned) {
+        return order.shift_id;
+      }
+    }
+
     const row = await manager
       .createQueryBuilder(CashTransaction, 'ct')
       .innerJoin(CashDrawer, 'cd', 'cd.id = ct.cash_drawer_id')
       .select('cd.shift_id', 'shiftId')
-      .where('ct.order_id = :orderId', { orderId })
+      .where('ct.order_id = :orderId', { orderId: order.id })
+      .andWhere('cd.merchant_id = :merchantId', {
+        merchantId: order.merchant_id,
+      })
       .andWhere('ct.type = :sale', { sale: CashTransactionType.SALE })
       .orderBy('ct.created_at', 'DESC')
       .limit(1)

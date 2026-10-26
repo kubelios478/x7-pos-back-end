@@ -37,7 +37,8 @@ export class LoyaltyCustomerService {
     merchant_id: number,
     createLoyaltyCustomerDto: CreateLoyaltyCustomerDto,
   ): Promise<OneLoyaltyCustomerResponse> {
-    let { loyalty_program_id, customer_id } = createLoyaltyCustomerDto;
+    const { customer_id } = createLoyaltyCustomerDto;
+    let { loyalty_program_id } = createLoyaltyCustomerDto;
 
     // If no ID is provided, search for the first active program found (by creation date)
     if (!loyalty_program_id) {

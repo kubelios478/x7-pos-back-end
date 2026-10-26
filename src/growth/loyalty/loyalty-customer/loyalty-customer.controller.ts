@@ -588,4 +588,3 @@ export class LoyaltyCustomerController {
     return this.loyaltyCustomerService.remove(id, merchantId);
   }
 }
-

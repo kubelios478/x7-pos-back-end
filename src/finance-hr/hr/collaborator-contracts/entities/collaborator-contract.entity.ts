@@ -148,7 +148,9 @@ export class CollaboratorContract {
     precision: 5,
     scale: 2,
     name: 'overtime_multiplier',
-    default: 1.5,
+    // SQL literal: Postgres guarda 1.5 sin cast y TypeORM no lo iguala con el número
+    // 1.5, así que migration:generate --check reportaría siempre un cambio.
+    default: () => '1.5',
   })
   overtime_multiplier: number;
 
@@ -174,7 +176,7 @@ export class CollaboratorContract {
   active: boolean;
 
   @ApiProperty({ example: '2024-01-01', description: 'Contract start date' })
-  @Column({ type: 'date', name: 'start_date' })
+  @Column({ type: 'date', utc: true, name: 'start_date' })
   start_date: Date;
 
   @ApiProperty({
@@ -182,7 +184,7 @@ export class CollaboratorContract {
     description: 'Contract end date (optional)',
     nullable: true,
   })
-  @Column({ type: 'date', name: 'end_date', nullable: true })
+  @Column({ type: 'date', utc: true, name: 'end_date', nullable: true })
   end_date: Date | null;
 
   @ApiProperty({ description: 'Creation timestamp' })

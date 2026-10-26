@@ -11,6 +11,7 @@ import {
   AllUsersResponseDto,
 } from './dtos/user-response.dto';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { Request } from 'express';
 
 describe('UsersController', () => {
   let controller: UsersController;
@@ -24,6 +25,7 @@ describe('UsersController', () => {
     role: UserRole.MERCHANT_ADMIN,
     scope: Scope.MERCHANT_WEB,
     merchantId: 1,
+    isActive: true,
   };
 
   const mockAuthenticatedUser: AuthenticatedUser = {
@@ -34,6 +36,10 @@ describe('UsersController', () => {
     merchant: {
       id: 1,
     },
+  };
+
+  const authRequest = { user: mockAuthenticatedUser } as Request & {
+    user: AuthenticatedUser;
   };
 
   const mockCreateUserDto: CreateUserDto = {
@@ -103,9 +109,12 @@ describe('UsersController', () => {
       const createSpy = jest.spyOn(usersService, 'create');
       createSpy.mockResolvedValue(mockOneUserResponse);
 
-      const result = await controller.create(mockCreateUserDto);
+      const result = await controller.create(mockCreateUserDto, authRequest);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateUserDto);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateUserDto,
+        mockAuthenticatedUser,
+      );
       expect(result).toEqual(mockOneUserResponse);
     });
 
@@ -114,10 +123,13 @@ describe('UsersController', () => {
       const createSpy = jest.spyOn(usersService, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.create(mockCreateUserDto)).rejects.toThrow(
-        errorMessage,
+      await expect(
+        controller.create(mockCreateUserDto, authRequest),
+      ).rejects.toThrow(errorMessage);
+      expect(createSpy).toHaveBeenCalledWith(
+        mockCreateUserDto,
+        mockAuthenticatedUser,
       );
-      expect(createSpy).toHaveBeenCalledWith(mockCreateUserDto);
     });
   });
 
@@ -126,7 +138,7 @@ describe('UsersController', () => {
       const findAllSpy = jest.spyOn(usersService, 'findAll');
       findAllSpy.mockResolvedValue(mockAllUsersResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAllUsersResponse);
@@ -141,7 +153,7 @@ describe('UsersController', () => {
       const findAllSpy = jest.spyOn(usersService, 'findAll');
       findAllSpy.mockResolvedValue(emptyResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(emptyResponse);
@@ -155,9 +167,9 @@ describe('UsersController', () => {
       const findOneSpy = jest.spyOn(usersService, 'findOne');
       findOneSpy.mockResolvedValue(mockOneUserResponse);
 
-      const result = await controller.findById(userId);
+      const result = await controller.findById(userId, authRequest);
 
-      expect(findOneSpy).toHaveBeenCalledWith(userId);
+      expect(findOneSpy).toHaveBeenCalledWith(userId, mockAuthenticatedUser);
       expect(result).toEqual(mockOneUserResponse);
     });
 
@@ -167,8 +179,10 @@ describe('UsersController', () => {
       const findOneSpy = jest.spyOn(usersService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findById(userId)).rejects.toThrow(errorMessage);
-      expect(findOneSpy).toHaveBeenCalledWith(userId);
+      await expect(controller.findById(userId, authRequest)).rejects.toThrow(
+        errorMessage,
+      );
+      expect(findOneSpy).toHaveBeenCalledWith(userId, mockAuthenticatedUser);
     });
   });
 
@@ -221,9 +235,9 @@ describe('UsersController', () => {
       const findByEmailSpy = jest.spyOn(usersService, 'findByEmail');
       findByEmailSpy.mockResolvedValue(mockOneUserResponse);
 
-      const result = await controller.findByEmail(email);
+      const result = await controller.findByEmail(email, authRequest);
 
-      expect(findByEmailSpy).toHaveBeenCalledWith(email);
+      expect(findByEmailSpy).toHaveBeenCalledWith(email, mockAuthenticatedUser);
       expect(result).toEqual(mockOneUserResponse);
     });
 
@@ -233,8 +247,10 @@ describe('UsersController', () => {
       const findByEmailSpy = jest.spyOn(usersService, 'findByEmail');
       findByEmailSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findByEmail(email)).rejects.toThrow(errorMessage);
-      expect(findByEmailSpy).toHaveBeenCalledWith(email);
+      await expect(controller.findByEmail(email, authRequest)).rejects.toThrow(
+        errorMessage,
+      );
+      expect(findByEmailSpy).toHaveBeenCalledWith(email, mockAuthenticatedUser);
     });
   });
 
@@ -334,9 +350,9 @@ describe('UsersController', () => {
       const findAllSpy = jest.spyOn(usersService, 'findAll');
       const findOneSpy = jest.spyOn(usersService, 'findOne');
 
-      await controller.create(mockCreateUserDto);
-      await controller.findAll();
-      await controller.findById(1);
+      await controller.create(mockCreateUserDto, authRequest);
+      await controller.findAll({});
+      await controller.findById(1, authRequest);
 
       expect(createSpy).toHaveBeenCalledTimes(1);
       expect(findAllSpy).toHaveBeenCalledTimes(1);

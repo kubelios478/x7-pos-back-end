@@ -32,11 +32,13 @@ export class Customer {
   phone?: string;
 
   @ApiProperty({
-    example: '1234567890',
-    description: 'RUT of the customer',
+    example: 'D123-4567-8901',
+    description:
+      "Optional identification document of the customer (e.g. driver's license or tax ID)",
+    nullable: true,
   })
-  @Column()
-  rut: string;
+  @Column({ name: 'document_id', type: 'varchar', nullable: true })
+  document_id: string | null;
 
   @ApiProperty({
     example: '123 Main St',

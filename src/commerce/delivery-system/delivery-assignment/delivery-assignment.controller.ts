@@ -10,6 +10,7 @@ import {
   ParseIntPipe,
   Patch,
   Delete,
+  HttpCode,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -23,6 +24,8 @@ import {
   ApiOkResponse,
   ApiParam,
   ApiNotFoundResponse,
+  ApiConflictResponse,
+  ApiServiceUnavailableResponse,
 } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Scopes } from 'src/auth/decorators/scopes.decorator';
@@ -39,6 +42,13 @@ import {
 import { PaginatedDeliveryAssignmentResponseDto } from './dto/paginated-delivery-assignment-response.dto';
 import { QueryDeliveryAssignmentDto } from './dto/query-delivery-assignment.dto';
 import { UpdateDeliveryAssignmentDto } from './dto/update-delivery-assignment.dto';
+import {
+  ExternalDispatchDto,
+  ExternalQuoteDto,
+} from './dto/external-delivery.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { DELIVERY_DELAY_THRESHOLD_MINUTES } from './constants/delivery-assignment.constants';
 
 @ApiTags('Commerce - Delivery System - Delivery Assignment')
 @Controller('delivery-assignment')
@@ -58,7 +68,7 @@ export class DeliveryAssignmentController {
   @ApiOperation({
     summary: 'Create a delivery assignment',
     description:
-      'Endpoint to create a delivery assignment for a delivery system.',
+      'Creates an assignment for a delivery order of the merchant. IN_HOUSE with an active driver starts as ASSIGNED (driver → on_delivery); without a driver, or for DSP types, it starts as PENDING. delivery_status and timestamps are set by the server. 409 if the order already has an open assignment or the driver is already on a delivery.',
   })
   @ApiBody({
     type: CreateDeliveryAssignmentDto,
@@ -68,25 +78,32 @@ export class DeliveryAssignmentController {
     type: DeliveryAssignmentResponseDto,
     schema: {
       example: {
-        order: 1,
-        deliveryDriver: 1,
+        id: 1,
+        order: { id: 1 },
+        deliveryDriver: { id: 1, name: 'Mario Lopez', status: 'on_delivery' },
+        assignment_type: 'in_house',
         delivery_status: 'assigned',
         assigned_at: '2024-06-01T12:00:00Z',
-        picked_up_at: '2024-06-01T12:15:00Z',
-        delivered_at: '2024-06-01T12:30:00Z',
+        picked_up_at: null,
+        delivered_at: null,
+        external_delivery_id: null,
+        external_tracking_url: null,
+        external_dsp_fee: null,
         status: 'active',
       },
     },
+  })
+  @ApiConflictResponse({
+    description:
+      'Order already has an open assignment, or the driver is already on a delivery',
   })
   @ApiBadRequestResponse({
     description: 'Invalid input data',
     schema: {
       example: {
         statusCode: 400,
-        message: [
-          'Delivery assignment date must be a date',
-          'status must be one of the following values: active, inactive',
-        ],
+        message:
+          "Delivery driver #2 is 'off_duty'; only active drivers can be assigned",
         error: 'Bad Request',
       },
     },
@@ -123,8 +140,71 @@ export class DeliveryAssignmentController {
   })
   async create(
     @Body() dto: CreateDeliveryAssignmentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryAssignmentResponseDto> {
-    return this.deliveryAssignmentService.create(dto);
+    return this.deliveryAssignmentService.create(dto, user.merchant?.id);
+  }
+
+  @Post('external-quote')
+  @HttpCode(200)
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Quote a third-party (DSP) delivery',
+    description:
+      'Loads the delivery order and its zone and asks the DSP provider for a quote. The real DoorDash Drive / Uber Direct integrations are NOT implemented yet: until a provider is configured this returns 503 and never a fake quote.',
+  })
+  @ApiBody({ type: ExternalQuoteDto })
+  @ApiServiceUnavailableResponse({
+    description: 'Provider not configured',
+    schema: {
+      example: {
+        statusCode: 503,
+        message:
+          "Delivery provider 'doordash_drive' is not configured. No quote or runner can be requested; record the external delivery manually instead.",
+        error: 'Service Unavailable',
+      },
+    },
+  })
+  async externalQuote(
+    @Body() dto: ExternalQuoteDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.deliveryAssignmentService.externalQuote(dto, user.merchant?.id);
+  }
+
+  @Post('external-dispatch')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Accept a DSP quote and dispatch the delivery',
+    description:
+      'Requests a runner from the DSP and creates the assignment with no in-house driver and the external_* fields returned by the provider (starts as PENDING until the provider reports dasher_assigned). 503 while the provider is not configured.',
+  })
+  @ApiBody({ type: ExternalDispatchDto })
+  @ApiCreatedResponse({ type: OneDeliveryAssignmentResponseDto })
+  @ApiConflictResponse({ description: 'Order already has an open assignment' })
+  @ApiServiceUnavailableResponse({ description: 'Provider not configured' })
+  async externalDispatch(
+    @Body() dto: ExternalDispatchDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<OneDeliveryAssignmentResponseDto> {
+    return this.deliveryAssignmentService.externalDispatch(
+      dto,
+      user.merchant?.id,
+    );
   }
 
   @Get()
@@ -177,8 +257,48 @@ export class DeliveryAssignmentController {
   })
   async findAll(
     @Query() query: QueryDeliveryAssignmentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedDeliveryAssignmentResponseDto> {
-    return this.deliveryAssignmentService.findAll(query);
+    return this.deliveryAssignmentService.findAll(query, user.merchant?.id);
+  }
+
+  // Declarado antes de `:id` para que "summary" no se interprete como un id.
+  @Get('summary')
+  @Roles(UserRole.MERCHANT_ADMIN)
+  @Scopes(
+    Scope.MERCHANT_WEB,
+    Scope.MERCHANT_ANDROID,
+    Scope.MERCHANT_IOS,
+    Scope.MERCHANT_CLOVER,
+  )
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({
+    summary: 'Dispatch KPI summary',
+    description: `pending_dispatch: delivery orders with kitchen_status=ready and no open assignment. pending_assignments: assignments still PENDING. in_transit: PICKED_UP + IN_TRANSIT. avg_completion_minutes: assigned_at→delivered_at over deliveries of the last 24 h (null when none). delayed: ASSIGNED/PICKED_UP/IN_TRANSIT assigned more than ${DELIVERY_DELAY_THRESHOLD_MINUTES} minutes ago. in_house_share_pct / dsp_share_pct: split of open assignments (null when none). dsp_fee_today: sum of external_dsp_fee since server-local midnight.`,
+  })
+  @ApiOkResponse({
+    description: 'Dispatch KPIs.',
+    schema: {
+      example: {
+        statusCode: 200,
+        message: 'Delivery assignment summary retrieved successfully',
+        data: {
+          pending_dispatch: 3,
+          pending_assignments: 1,
+          in_transit: 4,
+          avg_completion_minutes: 27.5,
+          delayed: 1,
+          delay_threshold_minutes: 45,
+          live_assignments: 8,
+          in_house_share_pct: 75,
+          dsp_share_pct: 25,
+          dsp_fee_today: 22.5,
+        },
+      },
+    },
+  })
+  async summary(@CurrentUser() user: AuthenticatedUser) {
+    return this.deliveryAssignmentService.summary(user.merchant?.id);
   }
 
   @Get(':id')
@@ -267,12 +387,9 @@ export class DeliveryAssignmentController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryAssignmentResponseDto> {
-    if (id <= 0) {
-      throw new Error('ID must be a positive integer');
-    }
-    const deliveryAssignment = await this.deliveryAssignmentService.findOne(id);
-    return deliveryAssignment;
+    return this.deliveryAssignmentService.findOne(id, user.merchant?.id);
   }
 
   @Patch(':id')
@@ -286,7 +403,8 @@ export class DeliveryAssignmentController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'Update a Delivery Assignment by ID',
-    description: 'Endpoint to update an existing Delivery Assignment.',
+    description:
+      'Moves the assignment through its lifecycle (pending→assigned→picked_up→in_transit→delivered; picked_up→delivered allowed; failed/cancelled from any non-terminal state) and/or binds a driver. Invalid transitions return 400. Timestamps are set by the server; a terminal state (delivered, failed, cancelled) returns the in-house driver to active.',
   })
   @ApiParam({
     name: 'id',
@@ -305,7 +423,7 @@ export class DeliveryAssignmentController {
         id: 1,
         order: 1,
         deliveryDriver: 1,
-        delivery_status: 'unassigned',
+        delivery_status: 'cancelled',
         assigned_at: '2024-06-01T12:00:00Z',
         picked_up_at: '2024-06-01T12:15:00Z',
         delivered_at: '2024-06-01T12:30:00Z',
@@ -318,10 +436,8 @@ export class DeliveryAssignmentController {
     schema: {
       example: {
         statusCode: 400,
-        message: [
-          'ID must be a number',
-          'status must be one of the following values: active, inactive',
-        ],
+        message:
+          "Invalid delivery status transition: 'assigned' → 'delivered'. Allowed from 'assigned': picked_up, failed, cancelled",
         error: 'Bad Request',
       },
     },
@@ -366,11 +482,13 @@ export class DeliveryAssignmentController {
       },
     },
   })
+  @ApiConflictResponse({ description: 'Driver is already on a delivery' })
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateDeliveryAssignmentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryAssignmentResponseDto> {
-    return this.deliveryAssignmentService.update(id, dto);
+    return this.deliveryAssignmentService.update(id, dto, user.merchant?.id);
   }
 
   @Delete(':id')
@@ -384,7 +502,8 @@ export class DeliveryAssignmentController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'Delete a Delivery Assignment by ID',
-    description: 'Endpoint to delete an existing Delivery Assignment.',
+    description:
+      'Soft-deletes the assignment. An open assignment is cancelled first and its in-house driver returned to active.',
   })
   @ApiParam({
     name: 'id',
@@ -399,7 +518,7 @@ export class DeliveryAssignmentController {
         id: 1,
         order: 1,
         deliveryDriver: 1,
-        delivery_status: 'unassigned',
+        delivery_status: 'cancelled',
         assigned_at: '2024-06-01T12:00:00Z',
         picked_up_at: '2024-06-01T12:15:00Z',
         delivered_at: '2024-06-01T12:30:00Z',
@@ -459,7 +578,8 @@ export class DeliveryAssignmentController {
   })
   async remove(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneDeliveryAssignmentResponseDto> {
-    return this.deliveryAssignmentService.remove(id);
+    return this.deliveryAssignmentService.remove(id, user.merchant?.id);
   }
 }

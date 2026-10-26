@@ -6,6 +6,7 @@ import {
   Body,
   ParseIntPipe,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -44,6 +45,7 @@ import { Roles } from '../../../auth/decorators/roles.decorator';
 import { Scopes } from '../../../auth/decorators/scopes.decorator';
 import { UserRole } from '../../../platform-saas/users/constants/role.enum';
 import { Scope } from '../../../platform-saas/users/constants/scope.enum';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
 
 @ApiExtraModels(
   ErrorResponse,
@@ -260,8 +262,11 @@ export class CashShiftsController {
     Scope.MERCHANT_CLOVER,
   )
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.cashShiftsService.findAll(user.merchant.id);
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.cashShiftsService.findAll(user.merchant.id, query);
   }
 
   @ApiOperation({
@@ -696,4 +701,3 @@ export class CashShiftsController {
     );
   }
 }
-

@@ -13,8 +13,20 @@ import { Configuration } from 'src/core/configuration/entity/configuration-entit
 import { UserRole } from '../users/constants/role.enum';
 import { Scope } from '../users/constants/scope.enum';
 import type { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { CompanyDefaultConfiguration } from 'src/core/configuration/company-default/entity/company-default-configuration.entity';
 
 describe('CompaniesService', () => {
+  const txManager = {
+    create: jest.fn((_entity: unknown, data: object) => ({ ...data })),
+    save: jest.fn(),
+  };
+  const companiesQuery = {
+    loadRelationCountAndMap: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn(),
+  };
   let service: CompaniesService;
   let companyRepository: jest.Mocked<Repository<Company>>;
   let merchantRepository: jest.Mocked<Repository<Merchant>>;
@@ -36,7 +48,7 @@ describe('CompaniesService', () => {
     name: 'Test Company',
     email: 'test@company.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
@@ -52,7 +64,7 @@ describe('CompaniesService', () => {
     name: 'New Company',
     email: 'new@company.com',
     phone: '9876543210',
-    rut: '98765432-1',
+    tax_id: '98765432-1',
     address: '456 New St',
     city: 'New City',
     state: 'New State',
@@ -71,6 +83,13 @@ describe('CompaniesService', () => {
       find: jest.fn(),
       findOne: jest.fn(),
       remove: jest.fn(),
+      createQueryBuilder: jest.fn(() => companiesQuery),
+      // create() writes the company and its default configuration in one transaction
+      manager: {
+        transaction: jest.fn((work: (m: typeof txManager) => unknown) =>
+          work(txManager),
+        ),
+      },
     };
 
     const mockMerchantRepository = {
@@ -145,17 +164,22 @@ describe('CompaniesService', () => {
   });
 
   describe('create', () => {
-    it('should create a new company successfully', async () => {
-      const createSpy = jest.spyOn(companyRepository, 'create');
-      const saveSpy = jest.spyOn(companyRepository, 'save');
-
-      createSpy.mockReturnValue(mockCompany as Company);
-      saveSpy.mockResolvedValue(mockCompany as Company);
+    it('should create the company and its default configuration in one transaction', async () => {
+      txManager.save.mockImplementation((entity: unknown, row: object) =>
+        Promise.resolve(entity === Company ? mockCompany : row),
+      );
 
       const result = await service.create(mockCreateCompanyDto);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateCompanyDto);
-      expect(saveSpy).toHaveBeenCalledWith(mockCompany);
+      expect(companyRepository.manager.transaction).toHaveBeenCalledTimes(1);
+      expect(txManager.create).toHaveBeenCalledWith(
+        Company,
+        mockCreateCompanyDto,
+      );
+      expect(txManager.save).toHaveBeenCalledWith(
+        CompanyDefaultConfiguration,
+        expect.objectContaining({ company: mockCompany, status: 'default' }),
+      );
       expect(result).toEqual({
         statusCode: 201,
         message: 'Company created successfully',
@@ -164,29 +188,32 @@ describe('CompaniesService', () => {
     });
 
     it('should handle database errors during creation', async () => {
-      const createSpy = jest.spyOn(companyRepository, 'create');
-      const saveSpy = jest.spyOn(companyRepository, 'save');
-
-      createSpy.mockReturnValue(mockCompany as Company);
-      saveSpy.mockRejectedValue(new Error('Database error'));
+      txManager.save.mockRejectedValueOnce(new Error('Database error'));
 
       await expect(service.create(mockCreateCompanyDto)).rejects.toThrow(
         'Database operation failed',
       );
-      expect(createSpy).toHaveBeenCalledWith(mockCreateCompanyDto);
-      expect(saveSpy).toHaveBeenCalledWith(mockCompany);
+      // the failure happens inside the transaction, so nothing else is written
+      expect(txManager.save).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('findAll', () => {
-    it('should return all companies successfully', async () => {
+    it('should return all companies with merchant and customer counts', async () => {
       const companies = [mockCompany as Company];
-      const findSpy = jest.spyOn(companyRepository, 'find');
-      findSpy.mockResolvedValue(companies);
+      companiesQuery.getManyAndCount.mockResolvedValue([companies, 1]);
 
       const result = await service.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith({ relations: ['merchants'] });
+      expect(companiesQuery.skip).not.toHaveBeenCalled();
+      expect(companiesQuery.loadRelationCountAndMap).toHaveBeenCalledWith(
+        'company.merchantsCount',
+        'company.merchants',
+      );
+      expect(companiesQuery.loadRelationCountAndMap).toHaveBeenCalledWith(
+        'company.customersCount',
+        'company.customers',
+      );
       expect(result).toEqual({
         statusCode: 200,
         message: 'Companies retrieved successfully',
@@ -195,15 +222,23 @@ describe('CompaniesService', () => {
     });
 
     it('should return empty array when no companies found', async () => {
-      const findSpy = jest.spyOn(companyRepository, 'find');
-      findSpy.mockResolvedValue([]);
+      companiesQuery.getManyAndCount.mockResolvedValue([[], 0]);
 
       const result = await service.findAll();
 
-      expect(findSpy).toHaveBeenCalledWith({ relations: ['merchants'] });
       expect(result.data).toEqual([]);
       expect(result.statusCode).toBe(200);
       expect(result.message).toBe('Companies retrieved successfully');
+    });
+
+    it('pages and adds the pagination data when page or limit is sent', async () => {
+      companiesQuery.getManyAndCount.mockResolvedValue([[mockCompany], 12]);
+
+      const result = await service.findAll({ page: 2, limit: 10 });
+
+      expect(companiesQuery.skip).toHaveBeenCalledWith(10);
+      expect(companiesQuery.take).toHaveBeenCalledWith(10);
+      expect(result).toMatchObject({ page: 2, total: 12, hasPrev: true });
     });
   });
 
@@ -357,6 +392,7 @@ describe('CompaniesService', () => {
         name: 'Test Company',
         email: 'test@company.com',
         phone: '1234567890',
+        tax_id: '12345678-9',
         rut: '12345678-9',
         address: '123 Test St',
         city: 'Test City',
@@ -391,7 +427,7 @@ describe('CompaniesService', () => {
 
       const result = await service.updateProfileForUser(mockMerchantAdmin, {
         name: 'Updated Corp',
-        rut: mockCompany.rut!,
+        tax_id: mockCompany.tax_id!,
         email: mockCompany.email!,
         phone: mockCompany.phone!,
         address: mockCompany.address!,

@@ -1,10 +1,13 @@
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
+import { errorMessage, errorStack } from 'src/common/utils/log-error.util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -151,6 +154,8 @@ const KITCHEN_ORDER_DETAIL_RELATIONS = {
 
 @Injectable()
 export class KitchenOrderService {
+  private readonly logger = new Logger(KitchenOrderService.name);
+
   constructor(
     @InjectRepository(KitchenOrder)
     private readonly kitchenOrderRepository: Repository<KitchenOrder>,
@@ -574,7 +579,7 @@ export class KitchenOrderService {
         );
       }
     } catch (err) {
-      console.error('Failed to log auto-reroute event:', err);
+      this.logger.error('Failed to log auto-reroute event', errorStack(err));
     }
 
     const completeKitchenOrder = await this.kitchenOrderRepository.findOne({
@@ -991,7 +996,10 @@ export class KitchenOrderService {
             await eventLogRepo.save(existingOrderInicio);
           }
         } catch (err) {
-          console.error('Failed to log INICIO on order start:', err);
+          this.logger.error(
+            'Failed to log INICIO on order start',
+            errorStack(err),
+          );
         }
       }
 
@@ -1042,7 +1050,10 @@ export class KitchenOrderService {
             );
           }
         } catch (err) {
-          console.error('Failed to log INICIO on auto-bump:', err);
+          this.logger.error(
+            'Failed to log INICIO on auto-bump',
+            errorStack(err),
+          );
         }
 
         // 2. Todos sus ítems pasan automáticamente a READY y se asegura evento INICIO y LISTO
@@ -1094,7 +1105,10 @@ export class KitchenOrderService {
               );
             }
           } catch (err) {
-            console.error('Failed to log events on item auto-bump:', err);
+            this.logger.error(
+              'Failed to log events on item auto-bump',
+              errorStack(err),
+            );
           }
         }
       }
@@ -1164,7 +1178,7 @@ export class KitchenOrderService {
             }),
           );
         } catch (err) {
-          console.error('Failed to log RECALL event:', err);
+          this.logger.error('Failed to log RECALL event', errorStack(err));
         }
       }
 
@@ -1220,9 +1234,9 @@ export class KitchenOrderService {
             event_type: KitchenEventLogEventType.LISTO,
           });
         } catch (err) {
-          console.error(
-            'Failed to clean events on order return to pending:',
-            err,
+          this.logger.error(
+            'Failed to clean events on order return to pending',
+            errorStack(err),
           );
         }
       }
@@ -1283,7 +1297,7 @@ export class KitchenOrderService {
           }
         }
       } catch (err) {
-        console.error('Failed to log kitchen order event:', err);
+        this.logger.error('Failed to log kitchen order event', errorStack(err));
       }
     }
 
@@ -1400,7 +1414,7 @@ export class KitchenOrderService {
         }),
       );
     } catch (err) {
-      console.error('Failed to log RECALL event:', err);
+      this.logger.error('Failed to log RECALL event', errorStack(err));
     }
 
     const response = await this.findOne(id, authenticatedUserMerchantId);
@@ -1469,10 +1483,21 @@ export class KitchenOrderService {
     return StockAdjustmentType.RETURN_TO_INVENTORY;
   }
 
-  async cancelKitchenOrder(id: number, dto: CancelKitchenOrderDto, user: any) {
-    const actorUserId = user?.id || user?.user?.id || null;
+  async cancelKitchenOrder(
+    id: number,
+    dto: CancelKitchenOrderDto,
+    authenticatedUser: AuthenticatedUser,
+  ) {
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to cancel kitchen orders',
+      );
+    }
+    const actorUserId = authenticatedUser.id ?? null;
+    // Only the merchant's own orders: cancelling also moves the products' stock.
     const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
-      where: { id },
+      where: { id, merchant_id: authenticatedUserMerchantId },
       relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
     });
 
@@ -1542,9 +1567,8 @@ export class KitchenOrderService {
           );
         }
       } catch (stockErr) {
-        console.warn(
-          'Inventory adjustment skipped or failed during order cancel:',
-          stockErr,
+        this.logger.warn(
+          `Inventory adjustment skipped or failed during order cancel: ${errorMessage(stockErr)}`,
         );
       }
     }
@@ -1552,7 +1576,7 @@ export class KitchenOrderService {
     existingKitchenOrder.business_status = KitchenOrderBusinessStatus.CANCELLED;
     existingKitchenOrder.cancellation_reason =
       dto.reason || KitchenCancellationReason.OTHER;
-    existingKitchenOrder.cancelled_by_user_id = user?.id || null;
+    existingKitchenOrder.cancelled_by_user_id = actorUserId;
     existingKitchenOrder.cancelled_at = new Date();
     if (dto.notes) {
       existingKitchenOrder.notes = existingKitchenOrder.notes
@@ -1607,7 +1631,10 @@ export class KitchenOrderService {
         }),
       );
     } catch (err) {
-      console.error('Failed to log kitchen order cancellation event:', err);
+      this.logger.error(
+        'Failed to log kitchen order cancellation event',
+        errorStack(err),
+      );
     }
 
     return savedOrder;

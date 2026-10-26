@@ -3,11 +3,19 @@ import {
   IsString,
   IsBoolean,
   IsOptional,
+  IsNumber,
   MaxLength,
   MinLength,
 } from 'class-validator';
 
 export class UpdateOnlineMenuDto {
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Identifier of the target Online Store channel',
+  })
+  @IsOptional()
+  @IsNumber({}, { message: 'Store ID must be a number' })
+  storeId?: number;
   @ApiPropertyOptional({
     example: 'Main Menu Updated',
     description: 'Name of the online menu',
