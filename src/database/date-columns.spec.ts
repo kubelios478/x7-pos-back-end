@@ -1,5 +1,4 @@
-process.env.TZ = 'America/Los_Angeles';
-
+// La zona horaria (America/Los_Angeles) la fija test/jest.global-setup.ts.
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { types } from 'pg';
@@ -25,6 +24,7 @@ describe('date columns', () => {
     files.forEach((file) => require(file));
   });
 
+  // Si esto falla, el resto no prueba nada: revisar globalSetup en la config de jest.
   it('runs in a time zone west of UTC', () => {
     expect(new Date('2024-01-01').getDate()).toBe(31);
   });
