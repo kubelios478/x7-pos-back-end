@@ -11,8 +11,6 @@ import type { ServiceShift } from '../constants/capacity.constants';
  * Configuración de aforo y ritmo de reservas de un comercio (una fila por comercio). Todo es
  * opcional: un comercio sin fila usa los turnos por defecto, el aforo calculado desde sus
  * mesas y ningún límite de llegadas.
- *
- * Con `synchronize: false` la tabla se crea con scripts/add-reservation-capacity.sql.
  */
 @Entity('reservation_settings')
 export class ReservationSettings {

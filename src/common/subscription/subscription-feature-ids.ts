@@ -1,6 +1,6 @@
 /**
  * Numeric `feature.id` from subscription reference seed (see
- * `scripts/seed-subscriptions-reference-data.sql` INSERT INTO feature, ids 1–116).
+ * `src/database/seeds/reference-data.sql` INSERT INTO feature, ids 1–116).
  * Used with `@RequireFeature` / `FeatureAccessGuard`.
  */
 export const SUBSCRIPTION_FEATURE_IDS = {

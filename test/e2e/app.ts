@@ -46,8 +46,14 @@ export async function migrateE2eDatabase(): Promise<void> {
   }
 }
 
-/** Levanta la app completa sobre una base vacía, creada con las migraciones. */
-export async function createE2eApp(): Promise<E2eApp> {
+/**
+ * Levanta la app completa sobre una base vacía, creada con las migraciones. Con
+ * `seedCatalog: false` no carga el plan de prueba (planId queda en 0): para probar los
+ * seeds reales sobre la base vacía.
+ */
+export async function createE2eApp({
+  seedCatalog = true,
+}: { seedCatalog?: boolean } = {}): Promise<E2eApp> {
   await migrateE2eDatabase();
 
   const moduleRef = await Test.createTestingModule({
@@ -68,7 +74,7 @@ export async function createE2eApp(): Promise<E2eApp> {
   };
   assertLocalDatabase(options);
 
-  const planId = await seedSubscriptionCatalog(dataSource);
+  const planId = seedCatalog ? await seedSubscriptionCatalog(dataSource) : 0;
 
   await app.init();
   return { app, dataSource, planId };
