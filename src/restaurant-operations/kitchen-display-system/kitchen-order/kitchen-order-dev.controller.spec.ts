@@ -37,9 +37,10 @@ describe('KitchenOrderDevController', () => {
   });
 
   describe('registration', () => {
-    const controllersWith = (nodeEnv: string): unknown[] => {
+    const controllersWith = (nodeEnv: string | undefined): unknown[] => {
       const previous = process.env.NODE_ENV;
-      process.env.NODE_ENV = nodeEnv;
+      if (nodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = nodeEnv;
       let controllers: unknown[] = [];
       jest.isolateModules(() => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -63,10 +64,20 @@ describe('KitchenOrderDevController', () => {
       );
     });
 
-    it('is registered outside production', () => {
-      expect(names(controllersWith('development'))).toContain(
-        'KitchenOrderDevController',
-      );
+    it('is not registered when NODE_ENV is unset or unknown', () => {
+      for (const nodeEnv of [undefined, 'prod']) {
+        expect(names(controllersWith(nodeEnv))).not.toContain(
+          'KitchenOrderDevController',
+        );
+      }
+    });
+
+    it('is registered in development and test', () => {
+      for (const nodeEnv of ['development', 'test']) {
+        expect(names(controllersWith(nodeEnv))).toContain(
+          'KitchenOrderDevController',
+        );
+      }
     });
   });
 });

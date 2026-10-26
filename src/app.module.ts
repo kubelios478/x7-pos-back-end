@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LegacyRutSubscriber } from './platform-saas/companies/legacy-rut.subscriber';
+import { validateEnv } from './config/environment';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import './database/pg-date-parser';
 import './database/pg-int8-parser';
@@ -26,7 +27,8 @@ import { RestaurantOperationsModule } from './restaurant-operations/restaurant-o
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // Sin una configuración válida (secretos, NODE_ENV, DB) la app no arranca.
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // Limits only apply where a handler opts in with ThrottlerGuard (public auth routes):
     // a global limit would throttle a whole restaurant sharing one IP.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
