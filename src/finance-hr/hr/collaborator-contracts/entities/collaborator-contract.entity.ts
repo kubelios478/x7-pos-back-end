@@ -148,7 +148,9 @@ export class CollaboratorContract {
     precision: 5,
     scale: 2,
     name: 'overtime_multiplier',
-    default: 1.5,
+    // SQL literal: Postgres guarda 1.5 sin cast y TypeORM no lo iguala con el número
+    // 1.5, así que migration:generate --check reportaría siempre un cambio.
+    default: () => '1.5',
   })
   overtime_multiplier: number;
 

@@ -16,7 +16,7 @@ import { CashShiftStatus } from '../constants/cash-shift-status.enum';
 import type { CashTransaction } from '../../cash-transactions/entities/cash-transaction.entity';
 import type { CashMovement } from '../../cash-movements/entities/cash-movement.entity';
 
-// Partial unique index created by migration 1761400000000: one OPEN shift per cash drawer.
+// Partial unique index created by hand in migration InitialSchema: one OPEN shift per cash drawer.
 // synchronize: false keeps migration:generate from dropping it.
 @Index('UQ_cash_shifts_open_per_drawer', { synchronize: false })
 @Entity('cash_shifts')
