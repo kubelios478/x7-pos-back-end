@@ -2,4 +2,6 @@
 import { PartialType } from '@nestjs/swagger';
 import { CreateQRMenuSectionDto } from './create-qr-menu-section.dto';
 
-export class UpdateQRMenuSectionDto extends PartialType(CreateQRMenuSectionDto) {}
+export class UpdateQRMenuSectionDto extends PartialType(
+  CreateQRMenuSectionDto,
+) {}

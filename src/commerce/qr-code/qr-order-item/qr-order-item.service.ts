@@ -154,12 +154,7 @@ export class QROrderItemService {
       typeof rawPrice === 'number'
         ? rawPrice
         : parseFloat(String(rawPrice || 0));
-    const rawTotal =
-      dto.total_price ?? dto.subtotal_price ?? dto.quantity * itemPrice;
-    const itemTotal =
-      typeof rawTotal === 'number'
-        ? rawTotal
-        : parseFloat(String(rawTotal || 0));
+    const itemTotal = dto.quantity * itemPrice;
 
     const qrOrderItem = this.qrOrderItemRepository.create({
       qrOrder,
@@ -317,6 +312,7 @@ export class QROrderItemService {
     await this.assertReferencesOwned(dto, scopedMerchantId);
 
     Object.assign(qrOrderItem, dto);
+    qrOrderItem.total_price = qrOrderItem.quantity * qrOrderItem.price;
 
     const updatedQrOrderItem =
       await this.qrOrderItemRepository.save(qrOrderItem);

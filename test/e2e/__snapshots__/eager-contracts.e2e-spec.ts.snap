@@ -1217,10 +1217,14 @@ exports[`QR and delivery response contracts (e2e) qrMenu keeps its response shap
 exports[`QR and delivery response contracts (e2e) qrMenuItem keeps its delete response shape 1`] = `
 {
   "data": {
+    "description": "string",
     "display_order": "number",
     "id": "number",
+    "image_url": "string",
     "is_visible": "boolean",
+    "name": "string",
     "notes": "string",
+    "price": "string",
     "product": {
       "basePrice": "string",
       "categoryId": "null",
@@ -1260,10 +1264,14 @@ exports[`QR and delivery response contracts (e2e) qrMenuItem keeps its response 
 {
   "create": {
     "data": {
+      "description": "string",
       "display_order": "number",
       "id": "number",
+      "image_url": "string",
       "is_visible": "boolean",
+      "name": "string",
       "notes": "string",
+      "price": "string",
       "product": {
         "basePrice": "string",
         "categoryId": "null",
@@ -1299,10 +1307,14 @@ exports[`QR and delivery response contracts (e2e) qrMenuItem keeps its response 
   },
   "detail": {
     "data": {
+      "description": "string",
       "display_order": "number",
       "id": "number",
+      "image_url": "string",
       "is_visible": "boolean",
+      "name": "string",
       "notes": "string",
+      "price": "string",
       "product": {
         "basePrice": "string",
         "categoryId": "null",
@@ -1339,22 +1351,34 @@ exports[`QR and delivery response contracts (e2e) qrMenuItem keeps its response 
   "list": {
     "data": [
       {
+        "description": "string",
         "display_order": "number",
         "id": "number",
+        "image_url": "string",
         "is_visible": "boolean",
+        "name": "string",
         "notes": "string",
+        "price": "string",
         "product": {
+          "basePrice": "string",
           "id": "number",
           "name": "string",
+          "sku": "string",
         },
         "qrMenuSection": {
           "id": "number",
           "name": "string",
+          "qrMenu": {
+            "id": "number",
+            "name": "string",
+          },
         },
         "status": "string",
         "variant": {
           "id": "number",
           "name": "string",
+          "price": "string",
+          "sku": "string",
         },
       },
     ],
@@ -1369,10 +1393,14 @@ exports[`QR and delivery response contracts (e2e) qrMenuItem keeps its response 
   },
   "patch": {
     "data": {
+      "description": "string",
       "display_order": "number",
       "id": "number",
+      "image_url": "string",
       "is_visible": "boolean",
+      "name": "string",
       "notes": "string",
+      "price": "string",
       "product": "number",
       "qrMenuSection": "number",
       "status": "string",
@@ -1455,6 +1483,10 @@ exports[`QR and delivery response contracts (e2e) qrMenuSection keeps its respon
         "name": "string",
         "qrMenu": {
           "id": "number",
+          "merchant": {
+            "id": "number",
+            "name": "string",
+          },
           "name": "string",
         },
         "status": "string",
@@ -1926,6 +1958,7 @@ exports[`QR and delivery response contracts (e2e) qrOrderItem keeps its response
         "stock": "string",
         "supplierId": "null",
       },
+      "qrMenuItem": "null",
       "qrOrder": {
         "id": "number",
         "notes": "string",
@@ -1966,6 +1999,7 @@ exports[`QR and delivery response contracts (e2e) qrOrderItem keeps its response
         "stock": "string",
         "supplierId": "null",
       },
+      "qrMenuItem": "null",
       "qrOrder": {
         "id": "number",
         "notes": "string",
@@ -1997,16 +2031,26 @@ exports[`QR and delivery response contracts (e2e) qrOrderItem keeps its response
         "notes": "string",
         "price": "string",
         "product": {
+          "basePrice": "string",
           "id": "number",
+          "name": "string",
+          "sku": "string",
         },
+        "qrMenuItem": "null",
         "qrOrder": {
           "id": "number",
+          "notes": "string",
+          "status": "string",
+          "total_amount": "string",
         },
         "quantity": "number",
         "status": "string",
         "total_price": "string",
         "variant": {
           "id": "number",
+          "name": "string",
+          "price": "string",
+          "sku": "string",
         },
       },
     ],

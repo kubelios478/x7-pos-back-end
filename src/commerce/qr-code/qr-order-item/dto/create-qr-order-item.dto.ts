@@ -6,7 +6,7 @@ import {
   IsOptional,
   IsString,
   IsNumber,
-  IsIn,
+  Min,
 } from 'class-validator';
 
 export class CreateQROrderItemDto {
@@ -57,30 +57,25 @@ export class CreateQROrderItemDto {
 
   @ApiPropertyOptional({ example: 19.99 })
   @IsNumber()
+  @Min(0)
   @IsOptional()
   price?: number;
 
   @ApiPropertyOptional({ example: 19.99 })
   @IsNumber()
+  @Min(0)
   @IsOptional()
   unit_price?: number;
-
-  @ApiPropertyOptional({ example: 39.98 })
-  @IsNumber()
-  @IsOptional()
-  subtotal_price?: number;
-
-  @ApiPropertyOptional({ example: 39.98 })
-  @IsNumber()
-  @IsOptional()
-  total_price?: number;
 
   @ApiPropertyOptional({ example: 'No onions, please' })
   @IsString()
   @IsOptional()
   notes?: string;
 
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive', 'served', 'cancelled'] })
+  @ApiProperty({
+    example: 'active',
+    enum: ['active', 'inactive', 'served', 'cancelled'],
+  })
   @IsString()
   @IsNotEmpty()
   status: string;

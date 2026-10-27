@@ -425,6 +425,7 @@ describe('QROrderItemService', () => {
       const updatedQROrderItem = {
         ...mockQROrderItem,
         ...mockUpdateQROrderItemDto,
+        total_price: 45.0,
         qrOrder: mockUpdateQROrderItemDto.qrOrder as unknown as QROrder,
         product: mockUpdateQROrderItemDto.product as unknown as Product,
         variant: mockUpdateQROrderItemDto.variant as unknown as Variant,

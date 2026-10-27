@@ -14,7 +14,13 @@ import { QRMenuItem } from '../qr-menu-item/entity/qr-menu-item.entity';
 @Module({
   imports: [
     AuthModule,
-    TypeOrmModule.forFeature([QROrderItem, QROrder, Product, Variant, QRMenuItem]),
+    TypeOrmModule.forFeature([
+      QROrderItem,
+      QROrder,
+      Product,
+      Variant,
+      QRMenuItem,
+    ]),
   ],
   controllers: [QROrderItemController],
   providers: [QROrderItemService],

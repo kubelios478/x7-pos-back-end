@@ -1,6 +1,6 @@
 //src/qr-code/qr-menu-section/dto/create-qr-menu-section.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsIn, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreateQRMenuSectionDto {
   @ApiPropertyOptional({ example: 1 })
