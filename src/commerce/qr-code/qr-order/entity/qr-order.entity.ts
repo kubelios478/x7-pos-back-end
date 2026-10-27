@@ -42,18 +42,20 @@ export class QROrder {
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Customer related (if applicable)',
+    nullable: true,
   })
   @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: 'customer_id' })
-  customer: Customer;
+  customer: Customer | null;
 
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Table related (if applicable)',
+    nullable: true,
   })
   @ManyToOne(() => Table, { nullable: true })
   @JoinColumn({ name: 'table_id' })
-  table: Table;
+  table: Table | null;
 
   @ApiProperty({
     example: 1,

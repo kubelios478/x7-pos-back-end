@@ -51,13 +51,11 @@ export class QrMenuService {
     let merchant: Merchant | null = null;
 
     if (dto.merchant) {
-      if (dto.merchant) {
-        merchant = await this.merchantRepository.findOne({
-          where: { id: dto.merchant },
-        });
-        if (!merchant) {
-          ErrorHandler.differentMerchant();
-        }
+      merchant = await this.merchantRepository.findOne({
+        where: { id: dto.merchant },
+      });
+      if (!merchant) {
+        ErrorHandler.differentMerchant();
       }
     }
     const qrMenu = this.qrMenuRepository.create({
@@ -81,9 +79,10 @@ export class QrMenuService {
     scopedMerchantId?: number,
   ): Promise<PaginatedQRMenuResponseDto> {
     const {
+      merchant_id,
       status,
       page = 1,
-      limit = 10,
+      limit = 100,
       sortBy = 'id',
       sortOrder = 'DESC',
     } = query;
@@ -107,6 +106,10 @@ export class QrMenuService {
       qb.andWhere('qrMenu.status IN (:...statuses)', {
         statuses: ['active', 'inactive'],
       });
+    }
+
+    if (merchant_id) {
+      qb.andWhere('merchant.id = :merchantId', { merchantId: merchant_id });
     }
 
     qb.andWhere('qrMenu.status != :deleted', {
@@ -155,6 +158,7 @@ export class QrMenuService {
       data: qrMenu,
     };
   }
+
   async update(
     id: number,
     dto: UpdateQRMenuDto,

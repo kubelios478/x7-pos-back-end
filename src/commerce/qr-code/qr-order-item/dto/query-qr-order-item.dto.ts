@@ -12,6 +12,24 @@ import { Type } from 'class-transformer';
 
 export class QueryQROrderItemDto {
   @ApiPropertyOptional({
+    description: 'Filter by merchant ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  merchant_id?: number;
+
+  @ApiPropertyOptional({
+    description: 'Filter by QR order ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  qr_order_id?: number;
+
+  @ApiPropertyOptional({
     description: 'Filter by status',
     enum: ['active', 'inactive', 'deleted'],
     example: 'active',

@@ -12,6 +12,15 @@ import { Type } from 'class-transformer';
 
 export class QueryQROrderDto {
   @ApiPropertyOptional({
+    description: 'Filter by merchant ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  merchant_id?: number;
+
+  @ApiPropertyOptional({
     description: 'Filter by status',
     enum: ['active', 'inactive', 'deleted'],
     example: 'active',

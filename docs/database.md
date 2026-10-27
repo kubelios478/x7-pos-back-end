@@ -131,6 +131,7 @@ they run the same locally and on the platform.
 | Migration | Change |
 | --- | --- |
 | `InitialSchema1793031148222` | The whole schema, including the three partial unique indexes |
+| `QrMenuItemDetails1793052708351` | Detalle en ítems de menú QR (name, price, description, image_url, notes nullable) y FK en qr_order_item |
 
 It replaced these, whose changes it contains: `AlignSharedSchema1761170000000`,
 `OrderTableOptional1761250000000`, `CustomerDocumentId1761300000000`,

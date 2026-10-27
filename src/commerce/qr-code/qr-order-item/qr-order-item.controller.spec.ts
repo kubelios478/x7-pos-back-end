@@ -51,7 +51,6 @@ describe('QROrderItemController', () => {
     variant: 1,
     quantity: 2,
     price: 50.0,
-    total_price: 100.0,
     notes: 'Test item notes',
     status: 'active',
   };
@@ -82,7 +81,6 @@ describe('QROrderItemController', () => {
     variant: 1,
     quantity: 3,
     price: 50.0,
-    total_price: 150.0,
     notes: 'Updated item notes',
     status: 'inactive',
   };

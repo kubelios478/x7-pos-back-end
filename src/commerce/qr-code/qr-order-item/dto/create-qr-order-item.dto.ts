@@ -1,57 +1,82 @@
 //src/qr-code/qr-order-item/dto/create-qr-order-item.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsNumber,
-  IsIn,
+  Min,
 } from 'class-validator';
 
 export class CreateQROrderItemDto {
-  @ApiProperty({
-    example: 1,
-    description: 'Identifier of the QR Order related',
-  })
+  @ApiPropertyOptional({ example: 1 })
   @IsInt()
-  @IsNotEmpty()
-  qrOrder: number;
+  @IsOptional()
+  qrMenuItem?: number;
 
-  @ApiProperty({ example: 1, description: 'Identifier of the Product related' })
+  @ApiPropertyOptional({ example: 1 })
   @IsInt()
-  @IsNotEmpty()
-  product: number;
+  @IsOptional()
+  qrOrder?: number;
 
-  @ApiProperty({
-    example: 1,
-    description: 'Identifier of the Variant related (if applicable)',
-  })
+  @ApiPropertyOptional({ example: 1 })
+  @IsInt()
+  @IsOptional()
+  qr_order_id?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsInt()
+  @IsOptional()
+  product?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsInt()
+  @IsOptional()
+  product_id?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsInt()
+  @IsOptional()
+  qr_menu_item_id?: number;
+
+  @ApiPropertyOptional({ example: 1 })
   @IsInt()
   @IsOptional()
   variant?: number;
 
-  @ApiProperty({ example: 2, description: 'Quantity of the product ordered' })
+  @ApiPropertyOptional({ example: 1 })
+  @IsInt()
+  @IsOptional()
+  variant_id?: number;
+
+  @ApiProperty({ example: 2 })
   @IsInt()
   @IsNotEmpty()
   quantity: number;
 
-  @ApiProperty({ example: 19.99, description: 'Price per unit of the product' })
+  @ApiPropertyOptional({ example: 19.99 })
   @IsNumber()
-  @IsNotEmpty()
-  price: number;
+  @Min(0)
+  @IsOptional()
+  price?: number;
 
-  @ApiProperty({
-    example: 'No onions, please',
-    description: 'Additional notes or instructions for the order item',
-  })
+  @ApiPropertyOptional({ example: 19.99 })
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  unit_price?: number;
+
+  @ApiPropertyOptional({ example: 'No onions, please' })
   @IsString()
   @IsOptional()
   notes?: string;
 
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
+  @ApiProperty({
+    example: 'active',
+    enum: ['active', 'inactive', 'served', 'cancelled'],
+  })
   @IsString()
   @IsNotEmpty()
-  @IsIn(['active', 'inactive'])
   status: string;
 }

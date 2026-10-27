@@ -38,28 +38,39 @@ export class QRMenuItemService {
 
   /** For merchant users, every id the DTO references must belong to their merchant. */
   private async assertReferencesOwned(
-    dto: { qrMenuSection?: number; product?: number; variant?: number },
+    dto: {
+      qrMenuSection?: number;
+      qr_menu_section_id?: number;
+      product?: number;
+      product_id?: number;
+      variant?: number;
+      variant_id?: number;
+    },
     scopedMerchantId?: number,
   ): Promise<void> {
     if (scopedMerchantId == null) return;
-    if (dto.qrMenuSection != null) {
+    const sectionId = dto.qrMenuSection ?? dto.qr_menu_section_id;
+    const productId = dto.product ?? dto.product_id;
+    const variantId = dto.variant ?? dto.variant_id;
+
+    if (sectionId != null) {
       const owned = await this.qrMenuSectionRepository.exists({
         where: {
-          id: dto.qrMenuSection,
+          id: sectionId,
           qrMenu: { merchant: { id: scopedMerchantId } },
         },
       });
       if (!owned) ErrorHandler.differentMerchant();
     }
-    if (dto.product != null) {
+    if (productId != null) {
       const owned = await this.productRepository.exists({
-        where: { id: dto.product, merchantId: scopedMerchantId },
+        where: { id: productId, merchantId: scopedMerchantId },
       });
       if (!owned) ErrorHandler.differentMerchant();
     }
-    if (dto.variant != null) {
+    if (variantId != null) {
       const owned = await this.variantRepository.exists({
-        where: { id: dto.variant, product: { merchantId: scopedMerchantId } },
+        where: { id: variantId, product: { merchantId: scopedMerchantId } },
       });
       if (!owned) ErrorHandler.differentMerchant();
     }
@@ -70,54 +81,75 @@ export class QRMenuItemService {
     scopedMerchantId?: number,
   ): Promise<OneQRMenuItemResponseDto> {
     await this.assertReferencesOwned(dto, scopedMerchantId);
-    if (dto.qrMenuSection && !Number.isInteger(dto.qrMenuSection)) {
+
+    const sectionId = dto.qrMenuSection ?? dto.qr_menu_section_id;
+    const productId = dto.product ?? dto.product_id;
+    const variantId = dto.variant ?? dto.variant_id;
+
+    if (sectionId && !Number.isInteger(sectionId)) {
       ErrorHandler.invalidId('QR MENU SECTION ID must be positive integer');
     }
-    if (dto.product && !Number.isInteger(dto.product)) {
+    if (productId && !Number.isInteger(productId)) {
       ErrorHandler.invalidId('PRODUCT ID must be positive integer');
     }
-    if (dto.variant && !Number.isInteger(dto.variant)) {
+    if (variantId && !Number.isInteger(variantId)) {
       ErrorHandler.invalidId('VARIANT ID must be positive integer');
     }
+
     let qrMenuSection: QRMenuSection | null = null;
     let product: Product | null = null;
     let variant: Variant | null = null;
 
-    if (dto.qrMenuSection) {
+    if (sectionId) {
       qrMenuSection = await this.qrMenuSectionRepository.findOne({
-        where: { id: dto.qrMenuSection },
+        where: { id: sectionId },
       });
       if (!qrMenuSection) {
         ErrorHandler.qrMenuItemNotFound();
       }
     }
 
-    if (dto.product) {
+    if (productId) {
       product = await this.productRepository.findOne({
-        where: { id: dto.product },
+        where: { id: productId },
       });
       if (!product) {
         ErrorHandler.productNotFound();
       }
     }
 
-    if (dto.variant) {
+    if (variantId) {
       variant = await this.variantRepository.findOne({
-        where: { id: dto.variant },
+        where: { id: variantId },
       });
       if (!variant) {
         ErrorHandler.variantNotFound();
       }
     }
 
+    const itemName = dto.name?.trim() || product?.name || 'QR Menu Item';
+    const itemPrice =
+      dto.price !== undefined
+        ? Number(dto.price)
+        : variant?.price
+          ? Number(variant.price)
+          : product?.basePrice
+            ? Number(product.basePrice)
+            : 0.0;
+    const itemDesc = dto.description?.trim() || dto.notes?.trim() || '';
+
     const qrMenuItem = this.qrMenuItemRepository.create({
-      qrMenuSection: qrMenuSection,
-      product: product,
-      variant: variant,
-      status: dto.status,
-      display_order: dto.display_order,
-      notes: dto.notes,
-      is_visible: dto.is_visible,
+      qrMenuSection,
+      product,
+      variant,
+      name: itemName,
+      price: itemPrice,
+      description: itemDesc,
+      image_url: dto.image_url?.trim() || '',
+      status: dto.status || 'active',
+      display_order: dto.display_order || 1,
+      notes: dto.notes?.trim() || itemDesc,
+      is_visible: dto.is_visible ?? dto.is_available ?? true,
     } as Partial<QRMenuItem>);
 
     const savedQRMenuItem = await this.qrMenuItemRepository.save(qrMenuItem);
@@ -127,16 +159,19 @@ export class QRMenuItemService {
       data: savedQRMenuItem,
     };
   }
+
   async findAll(
     query: QueryQRMenuItemDto,
     scopedMerchantId?: number,
   ): Promise<PaginatedQRMenuItemResponseDto> {
     const {
+      merchant_id,
+      qr_menu_section_id,
       status,
       page = 1,
-      limit = 10,
-      sortBy = 'id',
-      sortOrder = 'DESC',
+      limit = 100,
+      sortBy = 'display_order',
+      sortOrder = 'ASC',
     } = query;
 
     if (page < 1 || limit < 1) {
@@ -146,16 +181,24 @@ export class QRMenuItemService {
     const qb = this.qrMenuItemRepository
       .createQueryBuilder('qrMenuItem')
       .leftJoin('qrMenuItem.qrMenuSection', 'qrMenuSection')
+      .leftJoin('qrMenuSection.qrMenu', 'qrMenu')
+      .leftJoin('qrMenu.merchant', 'menuMerchant')
       .leftJoin('qrMenuItem.product', 'product')
       .leftJoin('qrMenuItem.variant', 'variant')
       .select([
         'qrMenuItem',
         'qrMenuSection.id',
         'qrMenuSection.name',
+        'qrMenu.id',
+        'qrMenu.name',
         'product.id',
         'product.name',
+        'product.basePrice',
+        'product.sku',
         'variant.id',
         'variant.name',
+        'variant.price',
+        'variant.sku',
       ]);
 
     if (scopedMerchantId != null) {
@@ -172,11 +215,35 @@ export class QRMenuItemService {
       });
     }
 
+    if (qr_menu_section_id) {
+      qb.andWhere('qrMenuSection.id = :sectionId', {
+        sectionId: qr_menu_section_id,
+      });
+    }
+
+    if (merchant_id) {
+      qb.andWhere(
+        '(menuMerchant.id = :merchantId OR product.merchantId = :merchantId)',
+        {
+          merchantId: merchant_id,
+        },
+      );
+    }
+
     qb.andWhere('qrMenuItem.status != :deleted', {
       deleted: 'deleted',
     });
 
-    qb.orderBy(`qrMenuItem.${sortBy}`, sortOrder);
+    const safeSortBy = [
+      'id',
+      'display_order',
+      'name',
+      'price',
+      'status',
+    ].includes(sortBy)
+      ? sortBy
+      : 'display_order';
+    qb.orderBy(`qrMenuItem.${safeSortBy}`, sortOrder);
 
     qb.skip((page - 1) * limit).take(limit);
 
@@ -218,6 +285,7 @@ export class QRMenuItemService {
       data: qrMenuItem,
     };
   }
+
   async update(
     id: number,
     dto: UpdateQRMenuItemDto,

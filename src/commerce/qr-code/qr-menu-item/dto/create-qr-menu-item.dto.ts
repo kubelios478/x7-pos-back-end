@@ -1,47 +1,86 @@
 //src/qr-code/qr-menu-item/dto/create-qr-menu-item.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsNotEmpty,
   IsNumber,
   IsString,
-  IsIn,
   IsBoolean,
+  IsOptional,
 } from 'class-validator';
 
 export class CreateQRMenuItemDto {
-  @ApiProperty({ example: 'QR MENU SECTION ID' })
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
-  qrMenuSection: number;
+  qrMenuSection?: number;
 
-  @ApiProperty({ example: 'PRODUCT ID' })
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
-  product: number;
+  qr_menu_section_id?: number;
 
-  @ApiProperty({ example: 'VARIANT ID' })
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
-  variant: number;
+  product?: number;
 
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  product_id?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  variant?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  variant_id?: number;
+
+  @ApiPropertyOptional({ example: 'Dish Title' })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({ example: 15.5 })
+  @IsOptional()
+  @IsNumber()
+  price?: number;
+
+  @ApiPropertyOptional({ example: 'Dish description' })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiPropertyOptional({ example: 'https://images.unsplash.com/...' })
+  @IsOptional()
+  @IsString()
+  image_url?: string;
+
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive', 'archived'] })
   @IsString()
   @IsNotEmpty()
-  @IsIn(['active', 'inactive'])
   status: string;
 
-  @ApiProperty({ example: 'DISPLAY ORDER OF THE ITEM' })
+  @ApiProperty({ example: 1 })
   @IsNumber()
   @IsNotEmpty()
   display_order: number;
 
-  @ApiProperty({ example: 'Special instructions for this item' })
+  @ApiPropertyOptional({ example: 'Special instructions for this item' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  notes: string;
+  notes?: string;
 
-  @ApiProperty({ example: true })
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
   @IsBoolean()
-  @IsNotEmpty()
-  is_visible: boolean;
+  is_visible?: boolean;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  is_available?: boolean;
 }

@@ -40,6 +40,10 @@ describe('QrMenuItemController', () => {
 
   const mockQRMenuItem: QRMenuItem = {
     id: 1,
+    name: 'Dish Name',
+    price: 15.0,
+    description: 'Dish description',
+    image_url: 'https://...',
     qrMenuSection: mockQRMenuSection,
     product: mockProduct,
     variant: mockVariant,

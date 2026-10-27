@@ -12,13 +12,21 @@ import { Type } from 'class-transformer';
 
 export class QueryQRMenuDto {
   @ApiPropertyOptional({
+    description: 'Filter by Merchant ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  merchant_id?: number;
+
+  @ApiPropertyOptional({
     description: 'Filter by status',
-    enum: ['active', 'inactive', 'deleted'],
+    enum: ['active', 'inactive', 'archived', 'deleted'],
     example: 'active',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['active', 'inactive', 'deleted'])
   status?: string;
 
   @ApiPropertyOptional({

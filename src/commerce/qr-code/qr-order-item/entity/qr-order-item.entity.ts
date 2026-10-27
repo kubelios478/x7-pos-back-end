@@ -1,5 +1,6 @@
 //src/qr-code/qr-order-item/entity/qr-order-item.entity.ts
 import { QROrder } from 'src/commerce/qr-code/qr-order/entity/qr-order.entity';
+import { QRMenuItem } from 'src/commerce/qr-code/qr-menu-item/entity/qr-menu-item.entity';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 import {
@@ -9,7 +10,7 @@ import {
   PrimaryGeneratedColumn,
   JoinColumn,
 } from 'typeorm';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 @Entity({ name: 'qr_order_item' })
 export class QROrderItem {
@@ -19,6 +20,14 @@ export class QROrderItem {
   })
   @PrimaryGeneratedColumn()
   id: number;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Identifier of the QR Menu Item related',
+  })
+  @ManyToOne(() => QRMenuItem, { nullable: true })
+  @JoinColumn({ name: 'qr_menu_item_id' })
+  qrMenuItem: QRMenuItem;
 
   @ApiProperty({
     example: 1,

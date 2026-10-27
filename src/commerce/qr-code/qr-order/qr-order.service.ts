@@ -183,6 +183,7 @@ export class QROrderService {
     scopedMerchantId?: number,
   ): Promise<PaginatedQROrderResponseDto> {
     const {
+      merchant_id,
       status,
       page = 1,
       limit = 10,
@@ -219,6 +220,10 @@ export class QROrderService {
       qb.andWhere('qrOrder.status IN (:...statuses)', {
         statuses: ['active', 'inactive'],
       });
+    }
+
+    if (merchant_id) {
+      qb.andWhere('merchant.id = :merchantId', { merchantId: merchant_id });
     }
 
     qb.andWhere('qrOrder.status != :deleted', {
