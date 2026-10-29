@@ -21,20 +21,41 @@ export class QrMenuService {
     private readonly merchantRepository: Repository<Merchant>,
   ) {}
 
-  async create(dto: CreateQRMenuDto): Promise<OneQRMenuResponseDto> {
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { merchant: { id: scopedMerchantId } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { merchant?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.merchant != null && dto.merchant !== scopedMerchantId) {
+      ErrorHandler.differentMerchant();
+    }
+    dto.merchant = scopedMerchantId;
+  }
+
+  async create(
+    dto: CreateQRMenuDto,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
     if (dto.merchant && !Number.isInteger(dto.merchant)) {
       ErrorHandler.invalidId('Merchant ID must be positive integer');
     }
     let merchant: Merchant | null = null;
 
     if (dto.merchant) {
-      if (dto.merchant) {
-        merchant = await this.merchantRepository.findOne({
-          where: { id: dto.merchant },
-        });
-        if (!merchant) {
-          ErrorHandler.differentMerchant();
-        }
+      merchant = await this.merchantRepository.findOne({
+        where: { id: dto.merchant },
+      });
+      if (!merchant) {
+        ErrorHandler.differentMerchant();
       }
     }
     const qrMenu = this.qrMenuRepository.create({
@@ -53,11 +74,15 @@ export class QrMenuService {
       data: savedQRMenu,
     };
   }
-  async findAll(query: QueryQRMenuDto): Promise<PaginatedQRMenuResponseDto> {
+  async findAll(
+    query: QueryQRMenuDto,
+    scopedMerchantId?: number,
+  ): Promise<PaginatedQRMenuResponseDto> {
     const {
+      merchant_id,
       status,
       page = 1,
-      limit = 10,
+      limit = 100,
       sortBy = 'id',
       sortOrder = 'DESC',
     } = query;
@@ -71,12 +96,20 @@ export class QrMenuService {
       .leftJoin('qrMenu.merchant', 'merchant')
       .select(['qrMenu', 'merchant.id', 'merchant.name']);
 
+    if (scopedMerchantId != null) {
+      qb.andWhere('merchant.id = :scopedMerchantId', { scopedMerchantId });
+    }
+
     if (status) {
       qb.andWhere('qrMenu.status = :status', { status });
     } else {
       qb.andWhere('qrMenu.status IN (:...statuses)', {
         statuses: ['active', 'inactive'],
       });
+    }
+
+    if (merchant_id) {
+      qb.andWhere('merchant.id = :merchantId', { merchantId: merchant_id });
     }
 
     qb.andWhere('qrMenu.status != :deleted', {
@@ -101,19 +134,20 @@ export class QrMenuService {
       },
     };
   }
-  async findOne(id: number): Promise<OneQRMenuResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu ID must be a positive integer');
     }
     const qrMenu = await this.qrMenuRepository.findOne({
-      where: { id, status: In(['active', 'inactive']) },
-      relations: ['merchant'],
-      select: {
-        merchant: {
-          id: true,
-          name: true,
-        },
+      where: {
+        ...this.ownedBy(scopedMerchantId),
+        id,
+        status: In(['active', 'inactive']),
       },
+      relations: ['merchant'],
     });
     if (!qrMenu) {
       ErrorHandler.qrMenuNotFound();
@@ -124,26 +158,24 @@ export class QrMenuService {
       data: qrMenu,
     };
   }
+
   async update(
     id: number,
     dto: UpdateQRMenuDto,
+    scopedMerchantId?: number,
   ): Promise<OneQRMenuResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu ID must be a positive integer');
     }
     const qrMenu = await this.qrMenuRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['merchant'],
-      select: {
-        merchant: {
-          id: true,
-          name: true,
-        },
-      },
     });
     if (!qrMenu) {
       ErrorHandler.qrMenuNotFound();
     }
+
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
     Object.assign(qrMenu, dto);
 
@@ -155,13 +187,17 @@ export class QrMenuService {
     };
   }
 
-  async remove(id: number): Promise<OneQRMenuResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu ID must be a positive integer');
     }
 
     const qrMenu = await this.qrMenuRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['merchant'],
     });
     if (!qrMenu) {
       ErrorHandler.qrMenuNotFound();

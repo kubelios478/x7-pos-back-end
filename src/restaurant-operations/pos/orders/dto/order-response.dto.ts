@@ -17,14 +17,14 @@ export class OrderResponseDto {
   @ApiProperty({ example: 1 })
   merchantId: number;
 
-  @ApiProperty({ example: 1 })
-  tableId: number;
+  @ApiProperty({ example: 1, nullable: true })
+  tableId: number | null;
 
   @ApiProperty({ example: 1 })
   collaboratorId: number;
 
-  @ApiProperty({ example: 1 })
-  subscriptionId: number;
+  @ApiProperty({ example: null, nullable: true })
+  subscriptionId: number | null;
 
   @ApiProperty({
     example: OrderBusinessStatus.PENDING,

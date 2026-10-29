@@ -24,7 +24,7 @@ export class QRMenuItem {
     example: 1,
     description: 'Identifier of the QR Menu Section related',
   })
-  @ManyToOne(() => QRMenuSection, { eager: true })
+  @ManyToOne(() => QRMenuSection)
   @JoinColumn({ name: 'qr_menu_section_id' })
   qrMenuSection: QRMenuSection;
 
@@ -32,7 +32,7 @@ export class QRMenuItem {
     example: 1,
     description: 'Identifier of the Product related',
   })
-  @ManyToOne(() => Product, { eager: true })
+  @ManyToOne(() => Product)
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
@@ -40,9 +40,39 @@ export class QRMenuItem {
     example: 1,
     description: 'Identifier of the Variant related',
   })
-  @ManyToOne(() => Variant, { eager: true })
+  @ManyToOne(() => Variant)
   @JoinColumn({ name: 'variant_id' })
   variant: Variant;
+
+  @ApiProperty({
+    example: 'Dish Name',
+  })
+  @Column({ type: 'varchar', length: 150, nullable: true })
+  name: string;
+
+  @ApiProperty({
+    example: 15.0,
+  })
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+    nullable: true,
+    default: 0.0,
+  })
+  price: number;
+
+  @ApiProperty({
+    example: 'Dish description',
+  })
+  @Column({ type: 'text', nullable: true })
+  description: string;
+
+  @ApiProperty({
+    example: 'https://...',
+  })
+  @Column({ type: 'text', nullable: true })
+  image_url: string;
 
   @ApiProperty({
     example: 'active',
@@ -54,7 +84,7 @@ export class QRMenuItem {
   @Column({ type: 'int' })
   display_order: number;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   notes: string;
 
   @Column({ type: 'boolean' })

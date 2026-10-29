@@ -80,3 +80,7 @@ query-db-state.js
 normalize_orders.js
 seed_*.js
 test-items-service-ts*
+
+# Uploaded files (personal data: never versioned)
+/uploads/
+/storage/

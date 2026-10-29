@@ -309,7 +309,10 @@ export class MerchantPayrollRuleService {
     };
   }
 
-  async remove(id: number): Promise<OneMerchantPayrollRuleResponseDto> {
+  async remove(
+    id: number,
+    user: AuthenticatedUser,
+  ): Promise<OneMerchantPayrollRuleResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('ID must be a positive integer');
     }
@@ -317,10 +320,17 @@ export class MerchantPayrollRuleService {
     const merchantPayrollRule =
       await this.merchantPayrollRuleRepository.findOne({
         where: { id },
+        relations: ['company'],
       });
     if (!merchantPayrollRule) {
       ErrorHandler.merchantPayrollRuleNotFound();
     }
+
+    await assertOwnsCompany(
+      this.merchantRepository,
+      user,
+      merchantPayrollRule.company.id,
+    );
 
     merchantPayrollRule.status = 'deleted';
     const deletedMerchantPayrollRule =

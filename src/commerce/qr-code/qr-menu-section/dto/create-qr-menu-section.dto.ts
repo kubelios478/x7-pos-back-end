@@ -1,30 +1,34 @@
 //src/qr-code/qr-menu-section/dto/create-qr-menu-section.dto.ts
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 
 export class CreateQRMenuSectionDto {
-  @ApiProperty({ example: 'QR MENU ID' })
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
-  qrMenu: number;
+  qrMenu?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsNumber()
+  qr_menu_id?: number;
 
   @ApiProperty({ example: 'Ice cream Section' })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'Includes a variety of flavors' })
+  @ApiPropertyOptional({ example: 'Includes a variety of flavors' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  description: string;
+  description?: string;
 
-  @ApiProperty({ example: 'active', enum: ['active', 'inactive'] })
+  @ApiProperty({ example: 'active', enum: ['active', 'inactive', 'archived'] })
   @IsString()
   @IsNotEmpty()
-  @IsIn(['active', 'inactive'])
   status: string;
 
-  @ApiProperty({ example: 'DISPPLAY ORDER OF THE SECTION' })
+  @ApiProperty({ example: 1 })
   @IsNumber()
   @IsNotEmpty()
   display_order: number;

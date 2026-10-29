@@ -353,7 +353,7 @@ export class KitchenOrderItemController {
   @ApiOperation({
     summary: 'Revert kitchen order item preparation status',
     description:
-      'Moves preparation to the previous step (ready → in preparation → pending). Cannot revert from the initial status. Same access rules as updating a kitchen order item.',
+      'Moves preparation to the previous step (ready → in preparation → pending). Pending is as far back as it goes: to hold an item use the hold endpoint, which sets the hold timer. Same access rules as updating a kitchen order item.',
   })
   @ApiOkResponse({
     description: 'Preparation status reverted successfully',
@@ -373,8 +373,7 @@ export class KitchenOrderItemController {
     type: ErrorResponse,
   })
   @ApiConflictResponse({
-    description:
-      'Conflict - Already at initial preparation status, or item is deleted',
+    description: 'Conflict - Already pending or held, or item is deleted',
     type: ErrorResponse,
   })
   @ApiParam({

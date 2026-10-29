@@ -1,3 +1,4 @@
+import { ThrottlerModule } from '@nestjs/throttler';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -30,6 +31,8 @@ describe('AuthController', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
+      // the public routes carry ThrottlerGuard
+      imports: [ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }])],
       controllers: [AuthController],
       providers: [
         {
@@ -131,7 +134,7 @@ describe('AuthController', () => {
       companyName: 'Acme Corp',
       companyEmail: 'contact@acme.com',
       companyPhone: '+56 9 1234 5678',
-      rut: '12.345.678-9',
+      tax_id: '12.345.678-9',
       address: '123 Main Street, Suite 100',
       city: 'Santiago',
       state: 'Metropolitan Region',
@@ -480,6 +483,23 @@ describe('AuthController', () => {
 
       const resetResponse = await controller.resetPassword(resetPasswordDto);
       expect(resetResponse).toEqual(resetResult);
+    });
+  });
+
+  describe('password reset logging', () => {
+    it('does not log the reset request (email) nor the new password and token', async () => {
+      const log = jest.spyOn(console, 'log').mockImplementation(() => {});
+      mockAuthService.sendResetLink.mockResolvedValue({ message: 'ok' });
+      mockAuthService.resetPassword.mockResolvedValue({ message: 'ok' });
+
+      await controller.requestReset({ email: 'someone@example.com' });
+      await controller.resetPassword({
+        token: 'live-reset-token',
+        newPassword: 'N3w-Secret!',
+      } as ResetPasswordDto);
+
+      expect(log).not.toHaveBeenCalled();
+      log.mockRestore();
     });
   });
 });

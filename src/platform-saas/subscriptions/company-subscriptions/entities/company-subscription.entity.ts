@@ -32,13 +32,13 @@ export class CompanySubscription {
   @JoinColumn({ name: 'plan_id' })
   plan: SubscriptionPlan;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', utc: true })
   startDate: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'date', utc: true, nullable: true })
   endDate?: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'date', utc: true, nullable: true })
   renewalDate?: Date;
 
   @Column({ length: 50 })

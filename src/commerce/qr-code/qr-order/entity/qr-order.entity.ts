@@ -27,7 +27,7 @@ export class QROrder {
     example: 1,
     description: 'Identifier of the Merchant related',
   })
-  @ManyToOne(() => Merchant, { eager: true })
+  @ManyToOne(() => Merchant)
   @JoinColumn({ name: 'merchant_id' })
   merchant: Merchant;
 
@@ -35,31 +35,33 @@ export class QROrder {
     example: 1,
     description: 'Identifier of the QR Location related',
   })
-  @ManyToOne(() => QRLocation, { eager: true })
+  @ManyToOne(() => QRLocation)
   @JoinColumn({ name: 'qr_location_id' })
   qrLocation: QRLocation;
 
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Customer related (if applicable)',
+    nullable: true,
   })
-  @ManyToOne(() => Customer, { eager: true, nullable: true })
+  @ManyToOne(() => Customer, { nullable: true })
   @JoinColumn({ name: 'customer_id' })
-  customer: Customer;
+  customer: Customer | null;
 
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Table related (if applicable)',
+    nullable: true,
   })
-  @ManyToOne(() => Table, { eager: true, nullable: true })
+  @ManyToOne(() => Table, { nullable: true })
   @JoinColumn({ name: 'table_id' })
-  table: Table;
+  table: Table | null;
 
   @ApiProperty({
     example: 1,
     description: 'Identifier of the Order related',
   })
-  @ManyToOne(() => Order, { eager: true })
+  @ManyToOne(() => Order)
   @JoinColumn({ name: 'order_id' })
   order: Order;
 

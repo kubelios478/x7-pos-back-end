@@ -29,7 +29,42 @@ export class QRLocationService {
     private readonly tableRepository: Repository<Table>,
   ) {}
 
-  async create(dto: CreateQRLocationDto): Promise<OneQRLocationResponseDto> {
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { merchant: { id: scopedMerchantId } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { merchant?: number; qrMenu?: number; table?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    if (dto.merchant != null && dto.merchant !== scopedMerchantId) {
+      ErrorHandler.differentMerchant();
+    }
+    dto.merchant = scopedMerchantId;
+    if (dto.qrMenu != null) {
+      const owned = await this.qrMenuRepository.exists({
+        where: { id: dto.qrMenu, merchant: { id: scopedMerchantId } },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+    if (dto.table != null) {
+      const owned = await this.tableRepository.exists({
+        where: { id: dto.table, merchant_id: scopedMerchantId },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+  }
+
+  async create(
+    dto: CreateQRLocationDto,
+    scopedMerchantId?: number,
+  ): Promise<OneQRLocationResponseDto> {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
     if (dto.merchant && !Number.isInteger(dto.merchant)) {
       ErrorHandler.invalidId('MERCHANT ID must be positive integer');
     }
@@ -91,6 +126,7 @@ export class QRLocationService {
   }
   async findAll(
     query: QueryQRLocationDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedQRLocationResponseDto> {
     const {
       status,
@@ -117,6 +153,10 @@ export class QRLocationService {
         'merchant.name',
         'table.id',
       ]);
+
+    if (scopedMerchantId != null) {
+      qb.andWhere('merchant.id = :scopedMerchantId', { scopedMerchantId });
+    }
 
     if (status) {
       qb.andWhere('qrLocation.status = :status', { status });
@@ -148,26 +188,20 @@ export class QRLocationService {
       },
     };
   }
-  async findOne(id: number): Promise<OneQRLocationResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRLocationResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Location ID must be a positive integer');
     }
     const qrLocation = await this.qrLocationRepository.findOne({
-      where: { id, status: In(['active', 'inactive']) },
-      relations: ['qrMenu', 'merchant', 'table'],
-      select: {
-        qrMenu: {
-          id: true,
-          name: true,
-        },
-        merchant: {
-          id: true,
-          name: true,
-        },
-        table: {
-          id: true,
-        },
+      where: {
+        ...this.ownedBy(scopedMerchantId),
+        id,
+        status: In(['active', 'inactive']),
       },
+      relations: ['qrMenu', 'merchant', 'table'],
     });
     if (!qrLocation) {
       ErrorHandler.qrLocationNotFound();
@@ -182,30 +216,20 @@ export class QRLocationService {
   async update(
     id: number,
     dto: UpdateQrLocationDto,
+    scopedMerchantId?: number,
   ): Promise<OneQRLocationResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Location ID must be a positive integer');
     }
     const qrLocation = await this.qrLocationRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['qrMenu', 'merchant', 'table'],
-      select: {
-        qrMenu: {
-          id: true,
-          name: true,
-        },
-        merchant: {
-          id: true,
-          name: true,
-        },
-        table: {
-          id: true,
-        },
-      },
     });
     if (!qrLocation) {
       ErrorHandler.qrLocationNotFound();
     }
+
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
     Object.assign(qrLocation, dto);
 
@@ -217,13 +241,17 @@ export class QRLocationService {
     };
   }
 
-  async remove(id: number): Promise<OneQRLocationResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRLocationResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Location ID must be a positive integer');
     }
 
     const qrLocation = await this.qrLocationRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['merchant', 'qrMenu', 'table'],
     });
     if (!qrLocation) {
       ErrorHandler.qrLocationNotFound();

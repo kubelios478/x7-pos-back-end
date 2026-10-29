@@ -86,7 +86,8 @@ export class Reservation {
 
   @ApiPropertyOptional({
     example: 2,
-    description: 'Merchant admin who authorized booking over capacity / pacing (manager override)',
+    description:
+      'Merchant admin who authorized booking over capacity / pacing (manager override)',
   })
   @Column({ type: 'int', nullable: true })
   capacity_override_by: number | null;

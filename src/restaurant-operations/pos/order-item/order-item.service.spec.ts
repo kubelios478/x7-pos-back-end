@@ -188,6 +188,9 @@ describe('OrderItemService', () => {
           // Dependencia que el servicio ganó y este spec nunca registró.
           provide: StockAvailabilityService,
           useValue: {
+            // create() blocks out-of-stock products/variants; in stock by default
+            getVariantAvailability: jest.fn().mockResolvedValue(undefined),
+            getProductAvailabilityMap: jest.fn().mockResolvedValue(new Map()),
             create: jest.fn(),
             findAll: jest.fn(),
             findOne: jest.fn(),

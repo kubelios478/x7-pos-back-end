@@ -3,7 +3,9 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
+import { errorMessage } from 'src/common/utils/log-error.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Supply } from './entities/supply.entity';
@@ -24,6 +26,8 @@ import { Location } from 'src/inventory/products-inventory/stocks/locations/enti
 
 @Injectable()
 export class SuppliesService {
+  private readonly logger = new Logger(SuppliesService.name);
+
   constructor(
     @InjectRepository(Supply)
     private readonly supplyRepo: Repository<Supply>,
@@ -132,10 +136,8 @@ export class SuppliesService {
         }
       }
     } catch (e) {
-      console.warn(
-        'Failed to auto-provision stock_item for supply across locations:',
-        savedSupply.id,
-        e,
+      this.logger.warn(
+        `Failed to auto-provision stock_item for supply #${savedSupply.id} across locations: ${errorMessage(e)}`,
       );
     }
 

@@ -21,6 +21,7 @@ import { Request as ExpressRequest } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname, join } from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
+import { randomUUID } from 'crypto';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
@@ -80,7 +81,8 @@ function storeContractDocument(file: UploadedContractDocument): string {
   const dir = join(process.cwd(), CONTRACT_DOCUMENT_DIR);
   mkdirSync(dir, { recursive: true });
   const ext = extname(file.originalname).toLowerCase();
-  const filename = `contract-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  // unguessable name; the folder is private and downloads go through signed links
+  const filename = `${randomUUID()}${ext}`;
   writeFileSync(join(dir, filename), file.buffer);
   return filename;
 }

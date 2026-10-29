@@ -7,13 +7,19 @@ export class BasicKitchenOrderInfoDto {
   @ApiProperty({ example: 1, description: 'Kitchen Order ID' })
   id: number;
 
-  @ApiPropertyOptional({ example: 'started', description: 'Kitchen Order business status' })
+  @ApiPropertyOptional({
+    example: 'started',
+    description: 'Kitchen Order business status',
+  })
   businessStatus?: string | null;
 
   @ApiPropertyOptional({ example: 1, description: 'Order Priority' })
   priority?: number | null;
 
-  @ApiPropertyOptional({ example: 'No onions on burger', description: 'Kitchen order notes' })
+  @ApiPropertyOptional({
+    example: 'No onions on burger',
+    description: 'Kitchen order notes',
+  })
   notes?: string | null;
 
   @ApiPropertyOptional({ example: 5, description: 'POS Order ID' })
@@ -30,10 +36,16 @@ export class BasicKitchenOrderItemInfoDto {
   @ApiPropertyOptional({ example: 1, description: 'Prepared quantity' })
   preparedQuantity?: number | null;
 
-  @ApiPropertyOptional({ example: 'in_preparation', description: 'Preparation status' })
+  @ApiPropertyOptional({
+    example: 'in_preparation',
+    description: 'Preparation status',
+  })
   preparationStatus?: string | null;
 
-  @ApiPropertyOptional({ example: 'Classic Cheeseburger', description: 'Product name' })
+  @ApiPropertyOptional({
+    example: 'Classic Cheeseburger',
+    description: 'Product name',
+  })
   productName?: string | null;
 
   @ApiPropertyOptional({ example: 'Double Patty', description: 'Variant name' })

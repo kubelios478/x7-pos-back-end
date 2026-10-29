@@ -5,7 +5,6 @@ import {
   IsOptional,
   MaxLength,
   IsBoolean,
-  IsJSON,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MarketingAutomationTrigger } from '../constants/marketing-automation-trigger.enum';

@@ -1,14 +1,6 @@
-import {
-  IsOptional,
-  IsString,
-  IsNumber,
-  IsEnum,
-  Min,
-  Max,
-} from 'class-validator';
+import { IsOptional, IsNumber, IsEnum, Min, Max } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ShiftRole } from '../constants/shift-role.enum';
 import { CollaboratorStatus } from '../constants/collaborator-status.enum';
 
 export class GetCollaboratorsQueryDto {

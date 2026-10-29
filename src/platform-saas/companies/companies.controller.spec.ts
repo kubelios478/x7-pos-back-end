@@ -31,11 +31,12 @@ describe('CompaniesController', () => {
     name: 'Test Company',
     email: 'test@company.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
     country: 'Test Country',
+    status: CompanyStatus.ACTIVE,
     merchants: [],
     customers: [],
     configurations: [],
@@ -46,7 +47,7 @@ describe('CompaniesController', () => {
     name: 'New Company',
     email: 'new@company.com',
     phone: '9876543210',
-    rut: '98765432-1',
+    tax_id: '98765432-1',
     address: '456 New St',
     city: 'New City',
     state: 'New State',
@@ -151,7 +152,7 @@ describe('CompaniesController', () => {
       const findAllSpy = jest.spyOn(companiesService, 'findAll');
       findAllSpy.mockResolvedValue(mockAllCompaniesResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(mockAllCompaniesResponse);
@@ -166,7 +167,7 @@ describe('CompaniesController', () => {
       const findAllSpy = jest.spyOn(companiesService, 'findAll');
       findAllSpy.mockResolvedValue(emptyResponse);
 
-      const result = await controller.findAll();
+      const result = await controller.findAll({});
 
       expect(findAllSpy).toHaveBeenCalled();
       expect(result).toEqual(emptyResponse);
@@ -178,7 +179,7 @@ describe('CompaniesController', () => {
       const findAllSpy = jest.spyOn(companiesService, 'findAll');
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll()).rejects.toThrow(errorMessage);
+      await expect(controller.findAll({})).rejects.toThrow(errorMessage);
       expect(findAllSpy).toHaveBeenCalled();
     });
   });
@@ -357,7 +358,7 @@ describe('CompaniesController', () => {
       const removeSpy = jest.spyOn(companiesService, 'remove');
 
       await controller.create(mockCreateCompanyDto);
-      await controller.findAll();
+      await controller.findAll({});
       await controller.findOne(1, mockUser);
       await controller.update(1, mockUpdateCompanyDto, mockUser);
       await controller.remove(1, mockUser);
@@ -397,7 +398,7 @@ describe('CompaniesController', () => {
 
       // Call all controller methods
       const createResult = await controller.create(mockCreateCompanyDto);
-      const findAllResult = await controller.findAll();
+      const findAllResult = await controller.findAll({});
       const findOneResult = await controller.findOne(1, mockUser);
       const updateResult = await controller.update(
         1,

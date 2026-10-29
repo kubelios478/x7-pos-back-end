@@ -24,6 +24,8 @@ import { CreateRecipeV1Dto } from './dto/create-recipe-v1.dto';
 import { UpdateRecipeV1Dto } from './dto/update-recipe-v1.dto';
 import { Supply } from 'src/inventory/supplies/entities/supply.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import { requestedPage } from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class RecipesService {
@@ -32,20 +34,32 @@ export class RecipesService {
     private readonly recipeTheoreticalCostService: RecipeTheoreticalCostService,
   ) {}
 
-  async findAllForMerchant(merchantId: number): Promise<ProductRecipe[]> {
-    return this.dataSource.manager.find(ProductRecipe, {
-      where: { merchantId },
-      relations: [
-        'finishedProduct',
-        'finishedVariant',
-        'lines',
-        'lines.rawMaterial',
-        'lines.supplyProduct',
-        'lines.supplyVariant',
-        'lines.modifier',
-      ],
-      order: { id: 'DESC' },
-    });
+  /** Sin page ni limit, todas las recetas del comercio, como antes. */
+  async findAllForMerchant(
+    merchantId: number,
+    query: PaginationQueryDto = {},
+  ): Promise<{ rows: ProductRecipe[]; total: number; paginated: boolean }> {
+    const pagination = requestedPage(query);
+    const [rows, total] = await this.dataSource.manager.findAndCount(
+      ProductRecipe,
+      {
+        where: { merchantId },
+        relations: [
+          'finishedProduct',
+          'finishedVariant',
+          'lines',
+          'lines.rawMaterial',
+          'lines.supplyProduct',
+          'lines.supplyVariant',
+          'lines.modifier',
+        ],
+        order: { id: 'DESC' },
+        ...(pagination
+          ? { skip: pagination.skip, take: pagination.limit }
+          : {}),
+      },
+    );
+    return { rows, total, paginated: pagination !== undefined };
   }
 
   async findAllForProduct(

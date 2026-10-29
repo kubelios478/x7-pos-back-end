@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   BadRequestException,
@@ -22,7 +23,6 @@ import {
 } from './dto/receipt-response.dto';
 import { AllPaginatedReceipts } from './dto/all-paginated-receipts.dto';
 
-import { ReceiptType } from './constants/receipt-type.enum';
 import { ReceiptItem } from '../receipt-item/entities/receipt-item.entity';
 import { ReceiptTax } from '../receipt-tax/entities/receipt-tax.entity';
 
@@ -120,6 +120,7 @@ export class ReceiptsService {
 
     const entity = this.receiptRepo.create({
       order_id: dto.orderId,
+      merchant_id: order.merchant_id,
       type: typeValue,
       fiscal_data: dto.fiscalData ?? null,
       subtotal: 0,
@@ -326,7 +327,7 @@ export class ReceiptsService {
       );
     }
 
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<Receipt> = {};
     if (dto.orderId !== undefined) {
       if (dto.orderId <= 0) throw new BadRequestException('Invalid order ID');
       const newOrder = await this.orderRepo.findOne({

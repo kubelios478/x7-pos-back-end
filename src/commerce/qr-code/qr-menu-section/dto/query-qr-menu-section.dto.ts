@@ -1,17 +1,41 @@
 //src/qr-code/qr-menu-section/dto/query-qr-menu-section.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryQRMenuSectionDto {
   @ApiPropertyOptional({
+    description: 'Filter by QR Menu ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  qr_menu_id?: number;
+
+  @ApiPropertyOptional({
+    description: 'Filter by Merchant ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  merchant_id?: number;
+
+  @ApiPropertyOptional({
     description: 'Filter by status',
-    enum: ['active', 'inactive', 'deleted'],
+    enum: ['active', 'inactive', 'archived', 'deleted'],
     example: 'active',
   })
   @IsOptional()
   @IsString()
-  @IsIn(['active', 'inactive', 'deleted'])
   status?: string;
 
   @ApiPropertyOptional({
@@ -25,6 +49,7 @@ export class QueryQRMenuSectionDto {
   page: number = 1;
 
   @ApiPropertyOptional({
+    maximum: 100,
     description: 'Items per page',
     example: 10,
   })
@@ -32,23 +57,23 @@ export class QueryQRMenuSectionDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit: number = 10;
 
   @ApiPropertyOptional({
     description: 'Column to sort by',
-    enum: ['id'],
-    example: 'id',
+    example: 'display_order',
   })
   @IsOptional()
-  @IsIn(['id'])
-  sortBy?: 'id';
+  @IsString()
+  sortBy?: string = 'display_order';
 
   @ApiPropertyOptional({
     description: 'Sort order',
     enum: ['ASC', 'DESC'],
-    example: 'DESC',
+    example: 'ASC',
   })
   @IsOptional()
   @IsIn(['ASC', 'DESC'])
-  sortOrder?: 'ASC' | 'DESC' = 'DESC';
+  sortOrder?: 'ASC' | 'DESC' = 'ASC';
 }

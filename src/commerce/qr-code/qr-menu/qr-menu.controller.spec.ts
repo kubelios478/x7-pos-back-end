@@ -8,8 +8,17 @@ import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { QRMenuType } from '../constants/qr-menu-type.enum';
 import { PaginatedQRMenuResponseDto } from './dto/paginated-qr-menu-response.dto';
 import { UpdateQRMenuDto } from './dto/update-qr-menu.dto';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
 describe('QRMenuController', () => {
+  const merchantUser = {
+    id: 1,
+    email: 'admin@merchant.dev',
+    role: UserRole.MERCHANT_ADMIN,
+    merchant: { id: 7, companyId: 3 },
+  } as AuthenticatedUser;
+
   let controller: QrMenuController;
   let service: QrMenuService;
 
@@ -114,9 +123,9 @@ describe('QRMenuController', () => {
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockResolvedValue(createResponse);
 
-      const result = await controller.create(mockCreateQrMenuDto);
+      const result = await controller.create(mockCreateQrMenuDto, merchantUser);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateQrMenuDto);
+      expect(createSpy).toHaveBeenCalledWith(mockCreateQrMenuDto, 7);
       expect(result).toEqual(createResponse);
     });
 
@@ -125,11 +134,11 @@ describe('QRMenuController', () => {
       const createSpy = jest.spyOn(service, 'create');
       createSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.create(mockCreateQrMenuDto)).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.create(mockCreateQrMenuDto, merchantUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(createSpy).toHaveBeenCalledWith(mockCreateQrMenuDto);
+      expect(createSpy).toHaveBeenCalledWith(mockCreateQrMenuDto, 7);
     });
   });
 
@@ -141,9 +150,12 @@ describe('QRMenuController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        merchantUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 7);
       expect(result).toEqual(mockPaginatedResponse);
     });
 
@@ -163,9 +175,12 @@ describe('QRMenuController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockResolvedValue(emptyPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        merchantUser,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 7);
       expect(result).toEqual(emptyPaginatedResponse);
       expect(result.data).toHaveLength(0);
     });
@@ -175,11 +190,11 @@ describe('QRMenuController', () => {
       const findAllSpy = jest.spyOn(service, 'findAll');
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.findAll({ page: 1, limit: 10 }, merchantUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 7);
     });
   });
 
@@ -191,9 +206,9 @@ describe('QRMenuController', () => {
       const findOneSpy = jest.spyOn(service, 'findOne');
       findOneSpy.mockResolvedValue(mockOneQrMenuResponseDto);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, merchantUser);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, 7);
       expect(result).toEqual(mockOneQrMenuResponseDto);
     });
 
@@ -202,9 +217,11 @@ describe('QRMenuController', () => {
       const findOneSpy = jest.spyOn(service, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(999)).rejects.toThrow(errorMessage);
+      await expect(controller.findOne(999, merchantUser)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(findOneSpy).toHaveBeenCalledWith(999);
+      expect(findOneSpy).toHaveBeenCalledWith(999, 7);
     });
   });
 
@@ -222,9 +239,13 @@ describe('QRMenuController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockResolvedValue(updateResponse);
 
-      const result = await controller.update(1, mockUpdateQrMenuDto);
+      const result = await controller.update(
+        1,
+        mockUpdateQrMenuDto,
+        merchantUser,
+      );
 
-      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateQrMenuDto);
+      expect(updateSpy).toHaveBeenCalledWith(1, mockUpdateQrMenuDto, 7);
       expect(result).toEqual(updateResponse);
     });
 
@@ -233,11 +254,11 @@ describe('QRMenuController', () => {
       const updateSpy = jest.spyOn(service, 'update');
       updateSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.update(999, mockUpdateQrMenuDto)).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.update(999, mockUpdateQrMenuDto, merchantUser),
+      ).rejects.toThrow(errorMessage);
 
-      expect(updateSpy).toHaveBeenCalledWith(999, mockUpdateQrMenuDto);
+      expect(updateSpy).toHaveBeenCalledWith(999, mockUpdateQrMenuDto, 7);
     });
   });
 
@@ -254,9 +275,9 @@ describe('QRMenuController', () => {
       const removeSpy = jest.spyOn(service, 'remove');
       removeSpy.mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(1);
+      const result = await controller.remove(1, merchantUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, 7);
       expect(result).toEqual(deleteResponse);
     });
 
@@ -265,9 +286,11 @@ describe('QRMenuController', () => {
       const removeSpy = jest.spyOn(service, 'remove');
       removeSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.remove(999)).rejects.toThrow(errorMessage);
+      await expect(controller.remove(999, merchantUser)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(removeSpy).toHaveBeenCalledWith(999);
+      expect(removeSpy).toHaveBeenCalledWith(999, 7);
     });
   });
 });

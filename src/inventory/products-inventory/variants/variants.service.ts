@@ -8,7 +8,7 @@ import {
 import { GetVariantsQueryDto } from './dto/get-variants-query.dto';
 import { AllPaginatedVariants } from './dto/all-paginated-variants.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Variant } from './entities/variant.entity';
 import { ProductsService } from '../products/products.service';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
@@ -31,6 +31,28 @@ export class VariantsService {
     private readonly stockAvailabilityService: StockAvailabilityService,
   ) {}
 
+  /**
+   * Variant names are unique within their product (case-insensitive), on create and on
+   * update alike. Not across the merchant: two products may both have a "Small" variant.
+   */
+  private async assertNameFreeInProduct(
+    productId: number,
+    name: string | undefined,
+    exceptVariantId?: number,
+  ): Promise<void> {
+    if (!name) return;
+    const qb = this.variantRepository
+      .createQueryBuilder('variant')
+      .where('variant.productId = :productId', { productId })
+      .andWhere('LOWER(variant.name) = LOWER(:name)', { name: name.trim() })
+      .andWhere('variant.isActive = :isActive', { isActive: true });
+    if (exceptVariantId != null) {
+      qb.andWhere('variant.id != :exceptVariantId', { exceptVariantId });
+    }
+    if (await qb.getExists()) {
+      ErrorHandler.exists(ErrorMessage.VARIANT_NAME_EXISTS);
+    }
+  }
 
   async create(
     merchant_id: number,
@@ -38,38 +60,52 @@ export class VariantsService {
   ): Promise<OneVariantResponse> {
     const { productId, ...variantData } = createVariantDto;
 
-    const product = await this.productsService.findOne(productId);
+    // the merchant's own product only (findOne answers 404 for anyone else's)
+    const product = await this.productsService.findOne(productId, merchant_id);
 
     if (!product) {
       ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
     }
 
-    const existingVariantBySku = await this.variantRepository.findOne({
-      where: [
-        {
-          sku: variantData.sku,
-          isActive: true,
-          product: { merchantId: merchant_id },
-        },
-      ],
-    });
+    await this.assertNameFreeInProduct(product.data.id, variantData.name);
+
+    // Sin SKU no hay duplicado que buscar ni variante inactiva que reactivar. Antes se
+    // buscaba igual, y con sku undefined TypeORM ignora la condición: respondía "SKU ya
+    // existe" si el comercio tenía cualquier variante activa, o sobrescribía cualquier
+    // variante inactiva del comercio, de otro producto incluso.
+    const sku = blankToNull(variantData.sku);
+
+    const existingVariantBySku = sku
+      ? await this.variantRepository.findOne({
+          where: [
+            {
+              sku,
+              isActive: true,
+              product: { merchantId: merchant_id },
+            },
+          ],
+        })
+      : null;
 
     if (existingVariantBySku) {
       ErrorHandler.exists(ErrorMessage.VARIANT_SKU_EXISTS);
     }
-    const existingButIsNotActive = await this.variantRepository.findOne({
-      where: [
-        {
-          sku: variantData.sku,
-          isActive: false,
-          product: { merchantId: merchant_id },
-        },
-      ],
-    });
+    const existingButIsNotActive = sku
+      ? await this.variantRepository.findOne({
+          where: [
+            {
+              sku,
+              isActive: false,
+              product: { merchantId: merchant_id },
+            },
+          ],
+        })
+      : null;
 
     if (existingButIsNotActive) {
       Object.assign(existingButIsNotActive, {
         ...variantData,
+        sku,
         productId: product.data.id,
         isActive: true,
       });
@@ -80,6 +116,7 @@ export class VariantsService {
     } else {
       const newVariant = this.variantRepository.create({
         ...variantData,
+        sku,
         productId: product.data.id,
       });
 
@@ -284,23 +321,20 @@ export class VariantsService {
     }
 
     if (variantData.name && variantData.name !== variant.name) {
-      const existingVariantName = await this.variantRepository.findOne({
-        where: {
-          name: variantData.name,
-          isActive: true,
-          product: { merchantId: merchant_id },
-        },
-      });
-
-      if (existingVariantName && existingVariantName.id !== id) {
-        ErrorHandler.exists(ErrorMessage.VARIANT_NAME_EXISTS);
-      }
+      await this.assertNameFreeInProduct(
+        variant.productId,
+        variantData.name,
+        id,
+      );
     }
 
-    if (variantData.sku && variantData.sku !== variant.sku) {
+    // Un SKU vacío lo borra; sólo uno con valor puede chocar con otra variante.
+    const sku =
+      variantData.sku === undefined ? undefined : blankToNull(variantData.sku);
+    if (sku && sku !== variant.sku) {
       const existingVariantSku = await this.variantRepository.findOne({
         where: {
-          sku: variantData.sku,
+          sku,
           isActive: true,
           product: { merchantId: merchant_id },
         },
@@ -311,7 +345,7 @@ export class VariantsService {
       }
     }
 
-    Object.assign(variant, variantData);
+    Object.assign(variant, variantData, sku === undefined ? {} : { sku });
     await this.variantRepository.save(variant);
 
     return this.findOne(id, merchant_id, 'Updated');
@@ -348,8 +382,11 @@ export class VariantsService {
   async softRemoveByProductId(
     productId: number,
     merchant_id: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const variants = await this.variantRepository
+    const repository =
+      manager?.getRepository(Variant) ?? this.variantRepository;
+    const variants = await repository
       .createQueryBuilder('variant')
       .leftJoinAndSelect('variant.product', 'product')
       .where('variant.productId = :productId', { productId })
@@ -361,7 +398,13 @@ export class VariantsService {
       for (const variant of variants) {
         variant.isActive = false;
       }
-      await this.variantRepository.save(variants);
+      await repository.save(variants);
     }
   }
+}
+
+/** Un texto vacío o solo con espacios cuenta como ausente. */
+function blankToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }

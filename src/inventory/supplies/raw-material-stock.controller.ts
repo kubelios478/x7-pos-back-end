@@ -47,12 +47,18 @@ import { UpdateLocationDto } from '../products-inventory/stocks/locations/dto/up
 import { GetLocationsQueryDto } from '../products-inventory/stocks/locations/dto/get-locations-query.dto';
 import { GetItemsQueryDto } from '../products-inventory/stocks/items/dto/get-items-query.dto';
 import { MovementsService } from '../products-inventory/stocks/movements/movements.service';
+import { SaleInventoryDeductionService } from '../sale-inventory/sale-inventory-deduction.service';
 import { CreateMovementDto } from '../products-inventory/stocks/movements/dto/create-movement.dto';
 import { GetMovementsQueryDto } from '../products-inventory/stocks/movements/dto/get-movements-query.dto';
 import { OneMovementResponse } from '../products-inventory/stocks/movements/dto/movement-response.dto';
 import { DepleteFromOrderDto } from './dto/deplete-from-order.dto';
 
-@ApiExtraModels(ErrorResponse, OneMovementResponse, CreateMovementDto, DepleteFromOrderDto)
+@ApiExtraModels(
+  ErrorResponse,
+  OneMovementResponse,
+  CreateMovementDto,
+  DepleteFromOrderDto,
+)
 @ApiTags('Inventory - Supplies - Raw Material Stock')
 @ApiBearerAuth()
 @Controller('v1/raw-material-stock')
@@ -63,6 +69,7 @@ export class RawMaterialStockController {
     private readonly itemsService: ItemsService,
     private readonly locationsService: LocationsService,
     private readonly movementsService: MovementsService,
+    private readonly saleInventoryDeductionService: SaleInventoryDeductionService,
   ) {}
 
   @Get('items')
@@ -70,7 +77,8 @@ export class RawMaterialStockController {
   @Scopes(Scope.MERCHANT_WEB, Scope.MERCHANT_ANDROID, Scope.MERCHANT_IOS)
   @ApiOperation({
     summary: 'Get stock balance per raw material and location',
-    description: 'Retrieves current stock balances for raw materials across storage locations.',
+    description:
+      'Retrieves current stock balances for raw materials across storage locations.',
   })
   @ApiQuery({ name: 'locationId', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'supplyId', required: false, type: Number, example: 5 })
@@ -119,10 +127,11 @@ export class RawMaterialStockController {
     if (!merchantId) throw new BadRequestException('User must have a merchant');
 
     return await this.itemsService.findAll(
+      // findAll reads this extra flag to list only raw-material stock rows
       {
         ...query,
         onlySupplies: true,
-      } as any,
+      } as GetItemsQueryDto,
       merchantId,
     );
   }
@@ -178,7 +187,10 @@ export class RawMaterialStockController {
   @ApiOperation({ summary: 'Get details for a specific storage location' })
   @ApiParam({ name: 'id', type: Number, example: 1 })
   @ApiOkResponse({ description: 'Storage location details' })
-  @ApiNotFoundResponse({ description: 'Storage location not found', type: ErrorResponse })
+  @ApiNotFoundResponse({
+    description: 'Storage location not found',
+    type: ErrorResponse,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized', type: ErrorResponse })
   @ApiForbiddenResponse({ description: 'Forbidden', type: ErrorResponse })
   async getOneLocation(
@@ -198,7 +210,10 @@ export class RawMaterialStockController {
   @ApiParam({ name: 'id', type: Number, example: 1 })
   @ApiBody({ type: UpdateLocationDto })
   @ApiOkResponse({ description: 'Storage location updated successfully' })
-  @ApiNotFoundResponse({ description: 'Storage location not found', type: ErrorResponse })
+  @ApiNotFoundResponse({
+    description: 'Storage location not found',
+    type: ErrorResponse,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized', type: ErrorResponse })
   @ApiForbiddenResponse({ description: 'Forbidden', type: ErrorResponse })
   async updateLocation(
@@ -217,7 +232,10 @@ export class RawMaterialStockController {
   @ApiOperation({ summary: 'Soft-delete or deactivate a storage location' })
   @ApiParam({ name: 'id', type: Number, example: 1 })
   @ApiOkResponse({ description: 'Storage location soft-deleted successfully' })
-  @ApiNotFoundResponse({ description: 'Storage location not found', type: ErrorResponse })
+  @ApiNotFoundResponse({
+    description: 'Storage location not found',
+    type: ErrorResponse,
+  })
   @ApiUnauthorizedResponse({ description: 'Unauthorized', type: ErrorResponse })
   @ApiForbiddenResponse({ description: 'Forbidden', type: ErrorResponse })
   async deleteLocation(
@@ -306,7 +324,8 @@ export class RawMaterialStockController {
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden - User must be associated with a merchant or lacks role permissions',
+    description:
+      'Forbidden - User must be associated with a merchant or lacks role permissions',
     type: ErrorResponse,
     schema: {
       example: {
@@ -343,7 +362,7 @@ export class RawMaterialStockController {
     summary:
       'Internal/Service endpoint to process recipe-driven stock depletion from sales orders',
     description:
-      'Processes automatic raw material recipe depletion based on items in a fulfilled sales order.',
+      'Deducts the recipes of a sales order from the default sales location, with the same rules as the automatic deduction when the order is paid. An order is deducted only once: repeating the call, or calling it for an order already deducted at checkout, answers 409, and paying the order afterwards does not deduct it again.',
   })
   @ApiBody({
     type: DepleteFromOrderDto,
@@ -389,7 +408,8 @@ export class RawMaterialStockController {
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden - User must be associated with a merchant or lacks role permissions',
+    description:
+      'Forbidden - User must be associated with a merchant or lacks role permissions',
     type: ErrorResponse,
     schema: {
       example: {
@@ -418,7 +438,7 @@ export class RawMaterialStockController {
     if (!merchantId) throw new BadRequestException('User must have a merchant');
     if (!body.orderId) throw new BadRequestException('Must provide orderId');
 
-    return await this.movementsService.depleteFromOrder(
+    return await this.saleInventoryDeductionService.deductOrderManually(
       merchantId,
       body.orderId,
     );

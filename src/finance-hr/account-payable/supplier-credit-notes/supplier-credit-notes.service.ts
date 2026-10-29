@@ -157,12 +157,19 @@ export class SupplierCreditNotesService {
     };
   }
 
-  async findOne(id: number): Promise<OneSupplierCreditNoteResponseDto> {
+  async findOne(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierCreditNoteResponseDto> {
     if (!id || id <= 0)
       throw new BadRequestException('Invalid supplier credit note ID');
 
     const cn = await this.creditNoteRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: IsNull(),
+      },
     });
     if (!cn)
       throw new NotFoundException(
@@ -240,12 +247,19 @@ export class SupplierCreditNotesService {
     };
   }
 
-  async remove(id: number): Promise<OneSupplierCreditNoteResponseDto> {
+  async remove(
+    id: number,
+    scopedCompanyId?: number,
+  ): Promise<OneSupplierCreditNoteResponseDto> {
     if (!id || id <= 0)
       throw new BadRequestException('Invalid supplier credit note ID');
 
     const cn = await this.creditNoteRepo.findOne({
-      where: { id, deleted_at: IsNull() },
+      where: {
+        ...(scopedCompanyId != null && { company_id: scopedCompanyId }),
+        id,
+        deleted_at: IsNull(),
+      },
     });
     if (!cn)
       throw new NotFoundException(

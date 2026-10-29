@@ -23,8 +23,10 @@ export enum CashTransactionSortBy {
  * The frontend type selector uses labels like SALE, REFUND, PAY_IN, PAY_OUT,
  * DRAWER_DROP as logical groupings; we resolve them to the backend enum here.
  */
-function normalizeType(value: string): string {
-  if (!value) return value;
+function normalizeType(raw: unknown): string {
+  // a query value can be anything; a falsy one goes through untouched, as before
+  if (!raw) return raw as string;
+  const value = String(raw);
   const map: Record<string, CashTransactionType> = {
     SALE: CashTransactionType.SALE,
     REFUND: CashTransactionType.REFUND,
@@ -41,8 +43,10 @@ function normalizeType(value: string): string {
  * VOIDED / AUDITED / RECONCILED are frontend-only display states; they are
  * not stored separately in the DB so we fall back to ACTIVE for them.
  */
-function normalizeStatus(value: string): string {
-  if (!value) return value;
+function normalizeStatus(raw: unknown): string {
+  // a query value can be anything; a falsy one goes through untouched, as before
+  if (!raw) return raw as string;
+  const value = String(raw);
   const lower = value.toLowerCase();
   if (lower === 'deleted') return CashTransactionStatus.DELETED;
   // All other values (ACTIVE, VOIDED, AUDITED, RECONCILED) map to active rows

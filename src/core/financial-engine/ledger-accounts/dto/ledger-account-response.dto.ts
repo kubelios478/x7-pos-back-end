@@ -79,4 +79,3 @@ export class OneLedgerAccountResponse extends SuccessResponse {
   @ApiProperty({ type: () => LedgerAccountResponseDto })
   data: LedgerAccountResponseDto;
 }
-

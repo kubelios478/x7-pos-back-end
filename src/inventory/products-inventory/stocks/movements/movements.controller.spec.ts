@@ -200,7 +200,7 @@ describe('MovementsController', () => {
     it('should update a movement', async () => {
       const movementId = 1;
       const updateMovementDto: UpdateMovementDto = {
-        quantity: 20,
+        reason: 'Recount',
       };
       const expectedResult = {
         statusCode: 200,
@@ -230,7 +230,7 @@ describe('MovementsController', () => {
 
     it('should handle movement not found during update', async () => {
       const movementId = 999;
-      const updateMovementDto: UpdateMovementDto = { quantity: 20 };
+      const updateMovementDto: UpdateMovementDto = { reason: 'Recount' };
       const errorMessage = 'Movement not found';
       mockMovementsService.update.mockRejectedValue(new Error(errorMessage));
 
@@ -297,7 +297,7 @@ describe('MovementsController', () => {
         reference: 'Test',
         reason: 'Initial stock',
       };
-      const updateMovementDto: UpdateMovementDto = { quantity: 20 };
+      const updateMovementDto: UpdateMovementDto = { reason: 'Recount' };
       const movementId = 1;
       const query: GetMovementsQueryDto = { page: 1, limit: 10 };
 

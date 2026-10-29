@@ -1,10 +1,11 @@
+import { BadRequestException } from '@nestjs/common';
 //src/core/configuration/merchant-payroll-rule/merchant-payroll-rule.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantPayrollRuleController } from './merchant-payroll-rule.controller';
 import { MerchantPayrollRuleService } from './merchant-payroll-rule.service';
 import { MerchantPayrollRule } from './entity/merchant-payroll-rule.entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { User } from 'src/platform-saas/users/entities/user.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { PayrollFrequency } from '../constants/payroll-frequency.enum';
@@ -23,11 +24,12 @@ describe('MerchantPayrollRuleController', () => {
     name: 'Test Company',
     email: 'test@company.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    tax_id: '12345678-9',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
     country: 'Test Country',
+    status: CompanyStatus.ACTIVE,
     merchants: [],
     customers: [],
     configurations: [],
@@ -290,16 +292,24 @@ describe('MerchantPayrollRuleController', () => {
         .spyOn(service, 'remove')
         .mockResolvedValue(deleteResponse);
 
-      const result = await controller.remove(1);
+      const result = await controller.remove(1, mockAuthenticatedUser);
 
-      expect(removeSpy).toHaveBeenCalledWith(1);
+      expect(removeSpy).toHaveBeenCalledWith(1, mockAuthenticatedUser);
       expect(result).toEqual(deleteResponse);
     });
 
     it('should handle errors during deletion', async () => {
       jest.spyOn(service, 'remove').mockRejectedValue(new Error('not found'));
 
-      await expect(controller.remove(1)).rejects.toThrow('not found');
+      await expect(controller.remove(1, mockAuthenticatedUser)).rejects.toThrow(
+        'not found',
+      );
     });
+  });
+
+  it('answers 400, not 500, for a non-positive id', async () => {
+    await expect(controller.findOne(0, {} as never)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

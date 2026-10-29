@@ -1,9 +1,10 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CreatePurchaseOrderItemDto } from './dto/create-purchase-order-item.dto';
 import { UpdatePurchaseOrderItemDto } from './dto/update-purchase-order-item.dto';
 import { PurchaseOrderItem } from './entities/purchase-order-item.entity';
+import { PurchaseOrderStatus } from '../purchase-order/constants/purchase-order-status.enum';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
 import { PurchaseOrder } from '../purchase-order/entities/purchase-order.entity';
@@ -16,6 +17,7 @@ import {
 import { ProductsService } from '../products/products.service';
 import { VariantsService } from '../variants/variants.service';
 import { Product } from '../products/entities/product.entity';
+import { Location } from '../stocks/locations/entities/location.entity';
 import { Variant } from '../variants/entities/variant.entity';
 
 @Injectable()
@@ -29,6 +31,8 @@ export class PurchaseOrderItemService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Variant)
     private readonly variantRepository: Repository<Variant>,
+    @InjectRepository(Location)
+    private readonly locationRepository: Repository<Location>,
     @Inject(forwardRef(() => ProductsService))
     private readonly productsService: ProductsService,
     private readonly variantsService: VariantsService,
@@ -70,6 +74,11 @@ export class PurchaseOrderItemService {
     if (!purchaseOrder) {
       ErrorHandler.notFound(ErrorMessage.PURCHASE_ORDER_NOT_FOUND);
     }
+
+    await this.assertLocationOwned(
+      purchaseOrderItemData.locationId,
+      merchant_id,
+    );
 
     try {
       const newPurchaseOrderItem = this.purchaseOrderItemRepository.create({
@@ -320,6 +329,8 @@ export class PurchaseOrderItemService {
       ErrorHandler.notFound(ErrorMessage.VARIANT_NOT_FOUND);
     }
 
+    await this.assertLocationOwned(updateData.locationId, merchant_id);
+
     Object.assign(purchaseOrderItem, {
       ...updateData,
       totalPrice:
@@ -366,23 +377,52 @@ export class PurchaseOrderItemService {
     }
   }
 
+  /**
+   * Drops the product's lines from purchase orders that have not received anything yet.
+   * Lines of orders that already received goods (or are closed) are history: deactivating
+   * them made those orders' totals stop matching their lines.
+   */
   async softRemoveByProductId(
     productId: number,
     merchantId: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const items = await this.purchaseOrderItemRepository
+    const repository =
+      manager?.getRepository(PurchaseOrderItem) ??
+      this.purchaseOrderItemRepository;
+    const items = await repository
       .createQueryBuilder('purchaseOrderItem')
       .leftJoinAndSelect('purchaseOrderItem.purchaseOrder', 'purchaseOrder')
       .where('purchaseOrderItem.productId = :productId', { productId })
       .andWhere('purchaseOrderItem.isActive = :isActive', { isActive: true })
       .andWhere('purchaseOrder.merchantId = :merchantId', { merchantId })
+      .andWhere('purchaseOrder.status IN (:...openStatuses)', {
+        openStatuses: [
+          PurchaseOrderStatus.DRAFT,
+          PurchaseOrderStatus.SENT,
+          PurchaseOrderStatus.PENDING,
+        ],
+      })
+      .andWhere('COALESCE(purchaseOrderItem.receivedQuantity, 0) = 0')
       .getMany();
 
     if (items.length > 0) {
       for (const item of items) {
         item.isActive = false;
       }
-      await this.purchaseOrderItemRepository.save(items);
+      await repository.save(items);
     }
+  }
+
+  /** The receiving location must be one of the merchant's own. */
+  private async assertLocationOwned(
+    locationId: number | undefined,
+    merchantId: number,
+  ): Promise<void> {
+    if (locationId == null) return;
+    const owned = await this.locationRepository.exists({
+      where: { id: locationId, merchantId },
+    });
+    if (!owned) ErrorHandler.notFound(ErrorMessage.LOCATION_NOT_FOUND);
   }
 }

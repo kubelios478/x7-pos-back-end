@@ -228,6 +228,7 @@ export class DeliveryAssignmentService {
         status: In(LIVE_RECORD_STATUSES),
         order: { merchant_id: merchantId },
       },
+      relations: ['order', 'deliveryDriver'],
     });
     if (!assignment) {
       ErrorHandler.deliveryAssignmentNotFound();
@@ -296,6 +297,7 @@ export class DeliveryAssignmentService {
     }
     return (await manager.findOne(DeliveryAssignment, {
       where: { id },
+      relations: ['order', 'deliveryDriver'],
     })) as DeliveryAssignment;
   }
 
@@ -1018,6 +1020,7 @@ export class DeliveryAssignmentService {
       // El QueryBuilder con bloqueo no trae relaciones: se relee para saber pedido y comercio.
       const full = await manager.findOne(DeliveryAssignment, {
         where: { id: assignment.id },
+        relations: ['order', 'deliveryDriver'],
       });
       if (full?.order) {
         await this.syncOrderDeliveryStatus(manager, full.order.id, target);

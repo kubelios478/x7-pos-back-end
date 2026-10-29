@@ -331,13 +331,6 @@ describe('QROrderService', () => {
           status: In(['active', 'inactive']),
         },
         relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-        select: {
-          merchant: { id: true },
-          qrLocation: { id: true },
-          customer: { id: true },
-          table: { id: true },
-          order: { id: true },
-        },
       });
     });
 
@@ -369,20 +362,21 @@ describe('QROrderService', () => {
 
   describe('Update QR Order', () => {
     it('should update and return a qr order successfully', async () => {
-      const updatedQROrder: Partial<QROrder> = {
+      const updatedQROrder = {
         ...mockQROrder,
         ...mockUpdateQROrderDto,
-        merchant: mockUpdateQROrderDto.merchant as unknown as Merchant,
-        table: mockUpdateQROrderDto.table as unknown as Table,
-        customer: mockUpdateQROrderDto.customer as unknown as Customer,
-        order: mockUpdateQROrderDto.order as unknown as Order,
-        qrLocation: mockUpdateQROrderDto.qrLocation as unknown as QRLocation,
       };
 
       const findOneSpy = jest.spyOn(qrOrderRepository, 'findOne');
       const saveSpy = jest.spyOn(qrOrderRepository, 'save');
 
-      findOneSpy.mockResolvedValue(mockQROrder as QROrder);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({ id: 1 } as Merchant);
+      jest.spyOn(qrLocationRepository, 'findOne').mockResolvedValue({ id: 1 } as QRLocation);
+      jest.spyOn(customerRepository, 'findOne').mockResolvedValue({ id: 1 } as Customer);
+      jest.spyOn(tableRepository, 'findOne').mockResolvedValue({ id: 1 } as Table);
+      jest.spyOn(orderRepository, 'findOne').mockResolvedValue({ id: 1 } as Order);
+
+      findOneSpy.mockResolvedValue({ ...mockQROrder } as QROrder);
       saveSpy.mockResolvedValue(updatedQROrder as QROrder);
       const result = await service.update(1, mockUpdateQROrderDto);
 
@@ -391,13 +385,6 @@ describe('QROrderService', () => {
           id: 1,
         },
         relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-        select: {
-          merchant: { id: true },
-          qrLocation: { id: true },
-          customer: { id: true },
-          table: { id: true },
-          order: { id: true },
-        },
       });
       expect(saveSpy).toHaveBeenCalledWith(updatedQROrder);
       expect(result).toEqual({
@@ -421,13 +408,6 @@ describe('QROrderService', () => {
       expect(findOneSpy).toHaveBeenCalledWith({
         where: { id: 999 },
         relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
-        select: {
-          merchant: { id: true },
-          qrLocation: { id: true },
-          customer: { id: true },
-          table: { id: true },
-          order: { id: true },
-        },
       });
     });
 
@@ -458,6 +438,7 @@ describe('QROrderService', () => {
         where: {
           id: 1,
         },
+        relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -480,6 +461,7 @@ describe('QROrderService', () => {
         where: {
           id: 999,
         },
+        relations: ['merchant', 'qrLocation', 'customer', 'table', 'order'],
       });
     });
   });

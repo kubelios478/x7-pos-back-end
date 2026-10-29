@@ -27,8 +27,12 @@ export class BasicVariantInfoDto {
   @ApiProperty({ example: 15.99, description: 'Variant price' })
   price: number;
 
-  @ApiProperty({ example: '123456-L', description: 'Variant SKU' })
-  sku: string;
+  @ApiProperty({
+    example: '123456-L',
+    description: 'Variant SKU',
+    nullable: true,
+  })
+  sku: string | null;
 }
 
 export class BasicOnlineOrderInfoDto {

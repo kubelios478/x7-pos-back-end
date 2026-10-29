@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import { KitchenAnalyticsService } from './kitchen-analytics.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
@@ -56,7 +56,8 @@ export class KitchenAnalyticsController {
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden - Insufficient permissions to access prep time analytics',
+    description:
+      'Forbidden - Insufficient permissions to access prep time analytics',
     type: ErrorResponse,
     schema: {
       example: {
@@ -88,7 +89,8 @@ export class KitchenAnalyticsController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary: 'Get list of cancelled kitchen orders with estimated financial loss',
+    summary:
+      'Get list of cancelled kitchen orders with estimated financial loss',
     description:
       'Retrieves all cancelled kitchen order records for the authenticated merchant within an optional date range.',
   })
@@ -143,7 +145,8 @@ export class KitchenAnalyticsController {
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden - Insufficient permissions to access cancelled orders',
+    description:
+      'Forbidden - Insufficient permissions to access cancelled orders',
     type: ErrorResponse,
     schema: {
       example: {
@@ -155,10 +158,10 @@ export class KitchenAnalyticsController {
   })
   async getCancelledOrders(
     @Query() query: GetCancelledOrdersDto,
-    @Request() req: AuthenticatedUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const data = await this.service.getCancelledKitchenOrders(
-      req.merchant.id,
+      user.merchant.id,
       query.startDate,
       query.endDate,
     );
@@ -222,7 +225,8 @@ export class KitchenAnalyticsController {
     },
   })
   @ApiForbiddenResponse({
-    description: 'Forbidden - Insufficient permissions to access cancellation summary',
+    description:
+      'Forbidden - Insufficient permissions to access cancellation summary',
     type: ErrorResponse,
     schema: {
       example: {
@@ -232,8 +236,8 @@ export class KitchenAnalyticsController {
       },
     },
   })
-  async getSummary(@Request() req: AuthenticatedUser) {
-    const data = await this.service.getCancellationSummary(req.merchant.id);
+  async getSummary(@CurrentUser() user: AuthenticatedUser) {
+    const data = await this.service.getCancellationSummary(user.merchant.id);
 
     return {
       statusCode: 200,
@@ -359,7 +363,8 @@ export class KitchenAnalyticsController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary: 'Slowest item prep duration & bottleneck ranking (Historia X7P-4205)',
+    summary:
+      'Slowest item prep duration & bottleneck ranking (Historia X7P-4205)',
   })
   @ApiUnauthorizedResponse({
     description: 'Unauthorized - Missing or invalid authentication token',
@@ -456,4 +461,3 @@ export class KitchenAnalyticsController {
     };
   }
 }
-

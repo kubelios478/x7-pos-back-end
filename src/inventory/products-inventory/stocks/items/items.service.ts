@@ -8,7 +8,7 @@ import { UpdateItemDto } from './dto/update-item.dto';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Item } from './entities/item.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ItemResponseDto, OneItemResponse } from './dto/item-response.dto';
 import { GetItemsQueryDto } from './dto/get-items-query.dto';
 import { AllPaginatedItems } from './dto/all-paginated-items.dto';
@@ -19,6 +19,7 @@ import { Product } from '../../products/entities/product.entity';
 import { Variant } from '../../variants/entities/variant.entity';
 import { MovementsService } from '../movements/movements.service';
 import { MovementsStatus } from '../movements/constants/movements-status';
+import { Movement } from '../movements/entities/movement.entity';
 import { Location } from '../locations/entities/location.entity';
 import { ProductLittleResponseDto } from '../../products/dto/product-response.dto';
 import { VariantLittleResponseDto } from '../../variants/dto/variant-response.dto';
@@ -228,12 +229,16 @@ export class ItemsService {
 
     const total = await queryBuilder.getCount();
 
-    const allItems = await queryBuilder
+    // Los cuatro joins son muchos a uno, así que hay una fila por ítem y LIMIT/OFFSET
+    // paginan bien (skip/take armaría una subconsulta que acá no hace falta). item.id
+    // desempata nombres repetidos para que ninguno se repita ni se salte entre páginas.
+    const items = await queryBuilder
       .addSelect('COALESCE(product.name, supply.name)', 'itemName')
       .orderBy('"itemName"', 'ASC')
+      .addOrderBy('item.id', 'ASC')
+      .offset(skip)
+      .limit(limit)
       .getMany();
-
-    const items = allItems.slice(skip, skip + limit);
 
     const totalPages = Math.ceil(total / limit);
     const hasNext = page < totalPages;
@@ -452,6 +457,28 @@ export class ItemsService {
 
     const oldLocation = existingItem.location;
 
+    // A stock row with stock or kardex history keeps its product/raw material: re-pointing
+    // it would move that stock to another product without a single movement.
+    const changesWhatIsStocked =
+      (supplyId != null &&
+        supplyId !== (existingItem.supply?.id ?? existingItem.supplyId)) ||
+      (productId != null &&
+        variantId != null &&
+        (productId !== (existingItem.product?.id ?? existingItem.productId) ||
+          variantId !== (existingItem.variant?.id ?? existingItem.variantId)));
+    if (changesWhatIsStocked) {
+      const hasHistory =
+        Number(existingItem.currentQty || 0) !== 0 ||
+        (await this.itemRepository.manager.exists(Movement, {
+          where: { stockItemId: existingItem.id },
+        }));
+      if (hasHistory) {
+        throw new BadRequestException(
+          'This stock item has stock or kardex history, so it cannot change its product or raw material. Create a new stock item instead.',
+        );
+      }
+    }
+
     if (locationId) {
       const location = await this.locationRepository.findOneBy({
         id: locationId,
@@ -494,9 +521,6 @@ export class ItemsService {
       existingItem.supply = null;
     }
 
-    if (currentQty !== undefined) {
-      existingItem.currentQty = currentQty;
-    }
     if (minimumQty !== undefined) {
       existingItem.minimumQty = minimumQty ?? null;
     }
@@ -518,6 +542,15 @@ export class ItemsService {
         type: MovementsStatus.IN,
         reference: `Movement between locations: Entry to ${updatedItem.location.name}`,
         reason: 'Transfer between stock locations',
+      });
+    }
+
+    // A new quantity goes through an adjustment, so the kardex explains the stock.
+    if (currentQty !== undefined) {
+      await this.adjust(updatedItem.id, merchantId, {
+        value: currentQty,
+        type: 'absolute',
+        reason: 'Quantity edited on the stock item',
       });
     }
 
@@ -567,8 +600,10 @@ export class ItemsService {
   async softRemoveByProductId(
     productId: number,
     merchantId: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const items = await this.itemRepository
+    const repository = manager?.getRepository(Item) ?? this.itemRepository;
+    const items = await repository
       .createQueryBuilder('item')
       .leftJoinAndSelect('item.product', 'product')
       .where('item.productId = :productId', { productId })
@@ -577,11 +612,12 @@ export class ItemsService {
       .getMany();
 
     if (items.length > 0) {
+      // The quantity is kept: zeroing it here made stock vanish with no kardex line.
+      // ProductsService refuses to deactivate a product that still has stock.
       for (const item of items) {
         item.isActive = false;
-        item.currentQty = 0;
       }
-      await this.itemRepository.save(items);
+      await repository.save(items);
     }
   }
 
@@ -619,32 +655,21 @@ export class ItemsService {
     }
 
     const oldQty = Number(item.currentQty) || 0;
-    let newQty = oldQty;
-    let diff = 0;
+    const diff = type === 'absolute' ? value - oldQty : value;
 
-    if (type === 'absolute') {
-      newQty = value;
-      diff = newQty - oldQty;
-    } else {
-      newQty = oldQty + value;
-      diff = value;
-    }
-
-    item.currentQty = newQty;
-    const savedItem = await this.itemRepository.save(item);
-
+    // The movement applies the change to the stock (and re-evaluates stock alerts):
+    // saving the new quantity here as well counted every adjustment twice.
     if (diff !== 0) {
       await this.movementsService.create(merchantId, {
         stockItemId: item.id,
         quantity: Math.abs(diff),
         type: diff > 0 ? MovementsStatus.IN : MovementsStatus.OUT,
+        movementType: MovementsStatus.ADJUSTMENT,
         reference: 'Manual Stock Correction',
         reason: reason || 'Manual adjustment by administrator',
       });
     }
 
-    await this.stockLevelMonitor.evaluateStockItems(merchantId, [savedItem.id]);
-
-    return this.findOne(savedItem.id, merchantId, 'Updated');
+    return this.findOne(item.id, merchantId, 'Updated');
   }
 }

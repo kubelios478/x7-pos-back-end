@@ -1,5 +1,6 @@
 //src/qr-code/qr-order-item/entity/qr-order-item.entity.ts
 import { QROrder } from 'src/commerce/qr-code/qr-order/entity/qr-order.entity';
+import { QRMenuItem } from 'src/commerce/qr-code/qr-menu-item/entity/qr-menu-item.entity';
 import { Product } from 'src/inventory/products-inventory/products/entities/product.entity';
 import { Variant } from 'src/inventory/products-inventory/variants/entities/variant.entity';
 import {
@@ -9,7 +10,7 @@ import {
   PrimaryGeneratedColumn,
   JoinColumn,
 } from 'typeorm';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 @Entity({ name: 'qr_order_item' })
 export class QROrderItem {
@@ -20,11 +21,19 @@ export class QROrderItem {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Identifier of the QR Menu Item related',
+  })
+  @ManyToOne(() => QRMenuItem, { nullable: true })
+  @JoinColumn({ name: 'qr_menu_item_id' })
+  qrMenuItem: QRMenuItem;
+
   @ApiProperty({
     example: 1,
     description: 'Identifier of the QR Order related',
   })
-  @ManyToOne(() => QROrder, { eager: true })
+  @ManyToOne(() => QROrder)
   @JoinColumn({ name: 'qr_order_id' })
   qrOrder: QROrder;
 
@@ -32,7 +41,7 @@ export class QROrderItem {
     example: 1,
     description: 'Identifier of the Product related',
   })
-  @ManyToOne(() => Product, { eager: true })
+  @ManyToOne(() => Product)
   @JoinColumn({ name: 'product_id' })
   product: Product;
 
@@ -40,7 +49,7 @@ export class QROrderItem {
     example: 1,
     description: 'Identifier of the Variant related (if applicable)',
   })
-  @ManyToOne(() => Variant, { eager: true, nullable: true })
+  @ManyToOne(() => Variant, { nullable: true })
   @JoinColumn({ name: 'variant_id' })
   variant: Variant;
 
@@ -53,8 +62,8 @@ export class QROrderItem {
   @Column({ type: 'numeric', precision: 12, scale: 2 })
   total_price: number;
 
-  @Column({ type: 'text' })
-  notes: string;
+  @Column({ type: 'text', nullable: true })
+  notes: string | null;
 
   @ApiProperty({
     example: 'active',

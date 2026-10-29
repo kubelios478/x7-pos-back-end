@@ -1,9 +1,25 @@
 //src/qr-code/qr-order/dto/query-qr-order.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryQROrderDto {
+  @ApiPropertyOptional({
+    description: 'Filter by merchant ID',
+    example: 1,
+  })
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  merchant_id?: number;
+
   @ApiPropertyOptional({
     description: 'Filter by status',
     enum: ['active', 'inactive', 'deleted'],
@@ -25,6 +41,7 @@ export class QueryQROrderDto {
   page: number = 1;
 
   @ApiPropertyOptional({
+    maximum: 100,
     description: 'Items per page',
     example: 10,
   })
@@ -32,6 +49,7 @@ export class QueryQROrderDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit: number = 10;
 
   @ApiPropertyOptional({

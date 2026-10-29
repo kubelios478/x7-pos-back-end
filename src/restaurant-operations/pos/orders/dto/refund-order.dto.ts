@@ -5,6 +5,7 @@ import {
   IsArray,
   IsString,
   IsBoolean,
+  IsInt,
 } from 'class-validator';
 
 export class RefundOrderDto {
@@ -39,4 +40,13 @@ export class RefundOrderDto {
   })
   @IsString()
   reason: string;
+
+  @ApiPropertyOptional({
+    example: 3,
+    description:
+      "Open cash shift (drawer) that pays out the cash. Optional: by default the shift the user opened, or the merchant's only open shift.",
+  })
+  @IsOptional()
+  @IsInt()
+  cashShiftId?: number;
 }

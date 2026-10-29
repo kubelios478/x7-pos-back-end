@@ -48,11 +48,11 @@ export class Company {
   phone?: string;
 
   @ApiProperty({
-    example: '1234567890',
-    description: 'RUT of the company',
+    example: '12-3456789',
+    description: 'Tax ID of the company (e.g. US EIN 12-3456789)',
   })
-  @Column({ nullable: true })
-  rut: string;
+  @Column({ name: 'tax_id', nullable: true })
+  tax_id: string;
 
   @ApiProperty({
     example: '123 Main St',
@@ -127,4 +127,12 @@ export class Company {
     required: false,
   })
   customersCount?: number;
+
+  @ApiProperty({
+    example: '12-3456789',
+    description:
+      'Deprecated: same value as tax_id, kept in responses while clients migrate (set by LegacyRutSubscriber, not a column).',
+    deprecated: true,
+  })
+  rut?: string;
 }

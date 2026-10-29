@@ -251,13 +251,9 @@ describe('CashDrawersService', () => {
       expect(result.statusCode).toBe(201);
     });
 
-    it('should not conflict with an open drawer for the same shift that belongs to a different merchant', async () => {
-      // An OPEN drawer with the same shift_id exists, but it belongs to merchant_id 2 — a
-      // different merchant than mockUser's (merchant_id 1). The guard query filters by
-      // merchant_id, so in production this drawer would never be returned by
-      // cashDrawerRepository.findOne() for mockUser's request; we simulate that filtered
-      // result here (null) and assert the query was built with merchant_id, proving the
-      // guard is merchant-scoped and not just shift-scoped.
+    it('should allow several open drawers in the same shift (one per register)', async () => {
+      // 42da9cc removed the "one open drawer per shift" guard: each register opens its
+      // own drawer, so create() only looks the drawer up again after saving it.
       jest
         .spyOn(shiftRepository, 'findOne')
         .mockResolvedValue(mockShift as any);
@@ -273,13 +269,10 @@ describe('CashDrawersService', () => {
 
       const result = await service.create(createCashDrawerDto, mockUser);
 
-      expect(cashDrawerRepository.findOne).toHaveBeenNthCalledWith(1, {
-        where: {
-          shift_id: mockShift.id,
-          merchant_id: mockUser.merchant.id,
-          status: CashDrawerStatus.OPEN,
-        },
-      });
+      expect(cashDrawerRepository.findOne).toHaveBeenCalledTimes(1);
+      expect(cashDrawerRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: mockCashDrawer.id } }),
+      );
       expect(result.statusCode).toBe(201);
     });
   });

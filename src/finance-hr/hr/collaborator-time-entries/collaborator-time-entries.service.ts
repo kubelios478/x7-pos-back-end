@@ -5,7 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { TimeEntry } from './entities/time-entry.entity';
 import { CreateTimeEntryDto } from './dto/create-time-entry.dto';
 import { UpdateTimeEntryDto } from './dto/update-time-entry.dto';
@@ -191,6 +191,15 @@ export class CollaboratorTimeEntriesService {
         'Collaborator does not belong to the given merchant',
       );
     }
+
+    await this.assertConsistentOwner(
+      {
+        company_id: dto.company_id,
+        merchant_id: dto.merchant_id,
+        collaborator_id: dto.collaborator_id,
+      },
+      authenticatedUserMerchantId,
+    );
 
     // The shift is optional: a manual sign-in due to forgetting can have none behind it.
     if (dto.shift_id != null) {
@@ -400,6 +409,7 @@ export class CollaboratorTimeEntriesService {
         throw new NotFoundException(`Shift with ID ${dto.shift_id} not found`);
       entry.shift_id = dto.shift_id;
     }
+    await this.assertConsistentOwner(entry, authenticatedUserMerchantId);
     if (dto.clock_in != null) entry.clock_in = new Date(dto.clock_in);
     if (dto.clock_out !== undefined)
       entry.clock_out = dto.clock_out ? new Date(dto.clock_out) : null;
@@ -536,5 +546,59 @@ export class CollaboratorTimeEntriesService {
       message: 'Time entry deleted successfully',
       data: this.toResponseDto(entry),
     };
+  }
+
+  /**
+   * A time entry stays inside one merchant: its company is that merchant's company, and its
+   * collaborator and shift belong there. Merchant users cannot move it to another merchant.
+   */
+  private async assertConsistentOwner(
+    row: {
+      company_id: number;
+      merchant_id: number;
+      collaborator_id: number;
+      shift_id?: number | null;
+    },
+    authenticatedUserMerchantId: number | undefined,
+  ): Promise<void> {
+    if (
+      authenticatedUserMerchantId != null &&
+      row.merchant_id !== authenticatedUserMerchantId
+    ) {
+      throw new ForbiddenException(
+        'A time entry cannot be moved to another merchant',
+      );
+    }
+    const merchant = await this.merchantRepo.findOne({
+      where: { id: row.merchant_id },
+    });
+    if (!merchant) {
+      throw new NotFoundException(
+        `Merchant with ID ${row.merchant_id} not found`,
+      );
+    }
+    if (merchant.companyId !== row.company_id) {
+      throw new BadRequestException(
+        "The company does not match the merchant's company",
+      );
+    }
+    const collaborator = await this.collaboratorRepo.findOne({
+      where: { id: row.collaborator_id },
+    });
+    if (!collaborator || collaborator.merchant_id !== row.merchant_id) {
+      throw new BadRequestException(
+        'Collaborator does not belong to the given merchant',
+      );
+    }
+    if (row.shift_id != null) {
+      const shift = await this.shiftRepo.findOne({
+        where: { id: row.shift_id },
+      });
+      if (!shift || shift.merchantId !== row.merchant_id) {
+        throw new BadRequestException(
+          'Shift does not belong to the given merchant',
+        );
+      }
+    }
   }
 }

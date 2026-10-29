@@ -1,3 +1,4 @@
+import { toInt } from 'src/common/transformers/query.transformers';
 import {
   IsOptional,
   IsEnum,
@@ -28,7 +29,7 @@ export class GetKitchenDisplayDeviceQueryDto {
     description: 'Filter by kitchen station ID',
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   stationId?: number;
 
@@ -96,7 +97,7 @@ export class GetKitchenDisplayDeviceQueryDto {
     minimum: 1,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   @Min(1)
   page?: number = 1;
@@ -108,7 +109,7 @@ export class GetKitchenDisplayDeviceQueryDto {
     maximum: 100,
   })
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
+  @Transform(({ value }) => toInt(value))
   @IsNumber()
   @Min(1)
   @Max(100)

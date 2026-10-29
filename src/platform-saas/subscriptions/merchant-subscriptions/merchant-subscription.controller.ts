@@ -41,6 +41,9 @@ import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscription.dto';
 import { PaginatedMerchantSubscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
 import { QueryMerchantSubscriptionDto } from './dtos/query-merchant-subscription.dto';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { merchantScopeOf } from 'src/common/utils/merchant-scope.util';
 
 @ApiTags('Platform SaaS - Subscriptions - Merchant Subscriptions')
 @ApiBearerAuth()
@@ -52,7 +55,7 @@ export class MerchantSubscriptionController {
   ) {}
 
   @Post()
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -185,8 +188,12 @@ export class MerchantSubscriptionController {
   })
   async findAll(
     @Query() query: QueryMerchantSubscriptionDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PaginatedMerchantSubscriptionResponseDto> {
-    return this.merchantSubscriptionService.findAll(query);
+    return this.merchantSubscriptionService.findAll(
+      query,
+      merchantScopeOf(user),
+    );
   }
   @Get(':id')
   @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
@@ -277,17 +284,20 @@ export class MerchantSubscriptionController {
   })
   async findOne(
     @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<OneMerchantSubscriptionSummaryDto> {
     if (id <= 0) {
       throw new BadRequestException('Invalid ID. Must be a positive number.');
     }
-    const merchantSubscription =
-      await this.merchantSubscriptionService.findOne(id);
+    const merchantSubscription = await this.merchantSubscriptionService.findOne(
+      id,
+      merchantScopeOf(user),
+    );
     return merchantSubscription;
   }
 
   @Patch(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,
@@ -388,7 +398,7 @@ export class MerchantSubscriptionController {
     return this.merchantSubscriptionService.update(id, dto);
   }
   @Delete(':id')
-  @Roles(UserRole.PORTAL_ADMIN, UserRole.MERCHANT_ADMIN)
+  @Roles(UserRole.PORTAL_ADMIN)
   @Scopes(
     Scope.ADMIN_PORTAL,
     Scope.MERCHANT_WEB,

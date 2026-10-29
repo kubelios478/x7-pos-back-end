@@ -31,6 +31,7 @@ import { BusinessProfileDto } from './dto/business-profile.dto';
 import { MerchantProfileDto } from './dto/merchant-profile.dto';
 import { ProvisionAccountDto } from './dto/provision-account.dto';
 import { SaveOnboardingDraftDto } from './dto/onboarding-draft.dto';
+import { availableUsername } from 'src/auth/utils/available-username.util';
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -99,7 +100,7 @@ export class OnboardingService {
     const session = await this.getActiveSession(dto.sessionId);
 
     const rutTaken = await this.companyRepository.exists({
-      where: { rut: dto.taxId },
+      where: { tax_id: dto.taxId },
     });
     if (rutTaken) {
       throw new BadRequestException(
@@ -139,6 +140,7 @@ export class OnboardingService {
       merchantCity: dto.city.trim(),
       merchantState: dto.state.trim(),
       merchantCountry: dto.country.trim(),
+      merchantTimezone: dto.timezone ?? session.merchantTimezone ?? null,
       step: Math.max(session.step, 4),
       expiresAt: this.createExpiryDate(),
     });
@@ -175,7 +177,7 @@ export class OnboardingService {
     this.ensureReadyForProvisioning(session);
 
     const rutTaken = await this.companyRepository.exists({
-      where: { rut: session.taxId! },
+      where: { tax_id: session.taxId! },
     });
     if (rutTaken) {
       throw new ConflictException(
@@ -183,18 +185,12 @@ export class OnboardingService {
       );
     }
 
-    const merchantName = `${session.merchantName} (${session.taxId})`;
-    const merchantTaken = await this.merchantRepository.exists({
-      where: { name: merchantName },
-    });
-    if (merchantTaken) {
-      throw new ConflictException(
-        'An outlet with this name and tax ID combination already exists',
-      );
-    }
+    // The company is created in this same transaction, so the outlet name cannot clash:
+    // merchant names are unique per company, not globally.
+    const merchantName = session.merchantName!;
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const username = workEmail.split('@')[0];
+    const username = await availableUsername(this.userRepository, workEmail);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -206,7 +202,7 @@ export class OnboardingService {
         name: session.legalBusinessName!,
         email: session.merchantEmail!,
         phone: session.merchantPhone ?? undefined,
-        rut: session.taxId!,
+        tax_id: session.taxId!,
         address: session.registeredAddress!,
         city: session.city!,
         state: session.state!,
@@ -218,11 +214,15 @@ export class OnboardingService {
         name: merchantName,
         email: session.merchantEmail!,
         phone: session.merchantPhone ?? undefined,
-        rut: session.taxId!,
+        tax_id: session.taxId!,
         address: session.merchantAddress!,
         city: session.merchantCity!,
         state: session.merchantState!,
         country: session.merchantCountry!,
+        // without one, the column default (UTC) applies
+        ...(session.merchantTimezone
+          ? { timezone: session.merchantTimezone }
+          : {}),
         companyId: savedCompany.id,
         status: MerchantStatus.ACTIVE,
       });
@@ -319,6 +319,8 @@ export class OnboardingService {
         merchantCity: dto.merchantProfile.city ?? session.merchantCity,
         merchantState: dto.merchantProfile.state ?? session.merchantState,
         merchantCountry: dto.merchantProfile.country ?? session.merchantCountry,
+        merchantTimezone:
+          dto.merchantProfile.timezone ?? session.merchantTimezone,
       });
     }
 
@@ -486,6 +488,7 @@ export class OnboardingService {
       city: session.merchantCity ?? undefined,
       state: session.merchantState ?? undefined,
       country: session.merchantCountry ?? undefined,
+      timezone: session.merchantTimezone ?? undefined,
     };
   }
 

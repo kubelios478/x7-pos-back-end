@@ -1,10 +1,15 @@
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import {
   Injectable,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
+import { errorMessage, errorStack } from 'src/common/utils/log-error.util';
+import * as fs from 'fs';
+import * as path from 'path';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull, In } from 'typeorm';
 import { KitchenOrder } from './entities/kitchen-order.entity';
@@ -149,6 +154,8 @@ const KITCHEN_ORDER_DETAIL_RELATIONS = {
 
 @Injectable()
 export class KitchenOrderService {
+  private readonly logger = new Logger(KitchenOrderService.name);
+
   constructor(
     @InjectRepository(KitchenOrder)
     private readonly kitchenOrderRepository: Repository<KitchenOrder>,
@@ -587,7 +594,7 @@ export class KitchenOrderService {
         );
       }
     } catch (err) {
-      console.error('Failed to log auto-reroute event:', err);
+      this.logger.error('Failed to log auto-reroute event', errorStack(err));
     }
 
     const completeKitchenOrder = await this.kitchenOrderRepository.findOne({
@@ -1004,7 +1011,10 @@ export class KitchenOrderService {
             await eventLogRepo.save(existingOrderInicio);
           }
         } catch (err) {
-          console.error('Failed to log INICIO on order start:', err);
+          this.logger.error(
+            'Failed to log INICIO on order start',
+            errorStack(err),
+          );
         }
       }
 
@@ -1055,7 +1065,10 @@ export class KitchenOrderService {
             );
           }
         } catch (err) {
-          console.error('Failed to log INICIO on auto-bump:', err);
+          this.logger.error(
+            'Failed to log INICIO on auto-bump',
+            errorStack(err),
+          );
         }
 
         // 2. Todos sus ítems pasan automáticamente a READY y se asegura evento INICIO y LISTO
@@ -1107,7 +1120,10 @@ export class KitchenOrderService {
               );
             }
           } catch (err) {
-            console.error('Failed to log events on item auto-bump:', err);
+            this.logger.error(
+              'Failed to log events on item auto-bump',
+              errorStack(err),
+            );
           }
         }
       }
@@ -1177,7 +1193,7 @@ export class KitchenOrderService {
             }),
           );
         } catch (err) {
-          console.error('Failed to log RECALL event:', err);
+          this.logger.error('Failed to log RECALL event', errorStack(err));
         }
       }
 
@@ -1233,9 +1249,9 @@ export class KitchenOrderService {
             event_type: KitchenEventLogEventType.LISTO,
           });
         } catch (err) {
-          console.error(
-            'Failed to clean events on order return to pending:',
-            err,
+          this.logger.error(
+            'Failed to clean events on order return to pending',
+            errorStack(err),
           );
         }
       }
@@ -1296,7 +1312,7 @@ export class KitchenOrderService {
           }
         }
       } catch (err) {
-        console.error('Failed to log kitchen order event:', err);
+        this.logger.error('Failed to log kitchen order event', errorStack(err));
       }
     }
 
@@ -1418,7 +1434,7 @@ export class KitchenOrderService {
         }),
       );
     } catch (err) {
-      console.error('Failed to log RECALL event:', err);
+      this.logger.error('Failed to log RECALL event', errorStack(err));
     }
 
     // 5. Synchronize POS order & Online Order back to in_preparation
@@ -1490,10 +1506,21 @@ export class KitchenOrderService {
     return StockAdjustmentType.RETURN_TO_INVENTORY;
   }
 
-  async cancelKitchenOrder(id: number, dto: CancelKitchenOrderDto, user: any) {
-    const actorUserId = user?.id || user?.user?.id || null;
+  async cancelKitchenOrder(
+    id: number,
+    dto: CancelKitchenOrderDto,
+    authenticatedUser: AuthenticatedUser,
+  ) {
+    const authenticatedUserMerchantId = authenticatedUser?.merchant?.id;
+    if (!authenticatedUserMerchantId) {
+      throw new ForbiddenException(
+        'You must be associated with a merchant to cancel kitchen orders',
+      );
+    }
+    const actorUserId = authenticatedUser.id ?? null;
+    // Only the merchant's own orders: cancelling also moves the products' stock.
     const existingKitchenOrder = await this.kitchenOrderRepository.findOne({
-      where: { id },
+      where: { id, merchant_id: authenticatedUserMerchantId },
       relations: ['kitchenOrderItems', 'kitchenOrderItems.product'],
     });
 
@@ -1563,9 +1590,8 @@ export class KitchenOrderService {
           );
         }
       } catch (stockErr) {
-        console.warn(
-          'Inventory adjustment skipped or failed during order cancel:',
-          stockErr,
+        this.logger.warn(
+          `Inventory adjustment skipped or failed during order cancel: ${errorMessage(stockErr)}`,
         );
       }
     }
@@ -1573,7 +1599,7 @@ export class KitchenOrderService {
     existingKitchenOrder.business_status = KitchenOrderBusinessStatus.CANCELLED;
     existingKitchenOrder.cancellation_reason =
       dto.reason || KitchenCancellationReason.OTHER;
-    existingKitchenOrder.cancelled_by_user_id = user?.id || null;
+    existingKitchenOrder.cancelled_by_user_id = actorUserId;
     existingKitchenOrder.cancelled_at = new Date();
     if (dto.notes) {
       existingKitchenOrder.notes = existingKitchenOrder.notes
@@ -1628,7 +1654,10 @@ export class KitchenOrderService {
         }),
       );
     } catch (err) {
-      console.error('Failed to log kitchen order cancellation event:', err);
+      this.logger.error(
+        'Failed to log kitchen order cancellation event',
+        errorStack(err),
+      );
     }
 
     return savedOrder;
@@ -1808,5 +1837,60 @@ export class KitchenOrderService {
         err,
       );
     }
+  }
+
+  async resetTestData(
+    merchantId: number,
+    mode: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy' = 'seed',
+  ) {
+    if (mode === 'clear') {
+      await this.dataSource.query(
+        `TRUNCATE TABLE kitchen_event_log, kitchen_order_item, kitchen_order RESTART IDENTITY CASCADE;`,
+      );
+      return {
+        success: true,
+        message: 'All kitchen orders cleared successfully',
+      };
+    }
+
+    const filename =
+      mode === 'simple'
+        ? 'seed-simple-orders.sql'
+        : mode === 'multi'
+          ? 'seed-multi-orders.sql'
+          : mode === 'multi2'
+            ? 'seed-multi2-orders.sql'
+            : mode === 'allergy'
+              ? 'seed-allergy-orders.sql'
+              : 'seed-test-orders.sql';
+
+    const possiblePaths = [
+      path.resolve(process.cwd(), `scripts/${filename}`),
+      path.resolve(__dirname, `../../../../../../scripts/${filename}`),
+      path.resolve(__dirname, `../../../../../scripts/${filename}`),
+      `/home/rafac183/x7pos/x7-pos-back-end/scripts/${filename}`,
+    ];
+
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        const sql = fs.readFileSync(p, 'utf8');
+        await this.dataSource.query(sql);
+        return {
+          success: true,
+          message:
+            mode === 'simple'
+              ? '2 simple test orders reseeded successfully (Smash Burger + Iced Latte)'
+              : mode === 'multi'
+                ? '1 multi-course order reseeded successfully (Appetizer, Beverage, Main, Dessert)'
+                : mode === 'multi2'
+                  ? '2 multi-course orders reseeded successfully (Appetizer, Beverage, Main, Dessert)'
+                  : mode === 'allergy'
+                    ? '3 allergy and modifier test orders reseeded successfully (Severe Allergy, Celiac/Vegan, Color Badges)'
+                    : '8 test orders reseeded successfully with full multi-course pacing',
+        };
+      }
+    }
+
+    throw new BadRequestException(`Seed script ${filename} not found`);
   }
 }

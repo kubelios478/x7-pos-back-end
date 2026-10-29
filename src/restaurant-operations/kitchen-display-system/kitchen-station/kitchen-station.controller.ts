@@ -439,8 +439,7 @@ export class KitchenStationController {
     Scope.MERCHANT_CLOVER,
   )
   @ApiOperation({
-    summary:
-      'Update station fallback and load balancing reroute configuration',
+    summary: 'Update station fallback and load balancing reroute configuration',
     description:
       'Configures backup_station_id, queue capacity threshold, automatic offline rerouting, and thermal printer fallback.',
   })
@@ -533,4 +532,3 @@ export class KitchenStationController {
     );
   }
 }
-

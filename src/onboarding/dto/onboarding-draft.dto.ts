@@ -1,12 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
-  IsBoolean,
   IsEmail,
   IsIn,
   IsInt,
   IsOptional,
   IsString,
+  IsTimeZone,
   IsUUID,
   Max,
   Min,
@@ -72,6 +72,12 @@ class DraftMerchantProfileDto {
   @IsOptional()
   @IsString()
   country?: string;
+
+  @IsOptional()
+  @IsTimeZone({
+    message: 'timezone must be a valid IANA time zone, e.g. America/New_York',
+  })
+  timezone?: string;
 }
 
 class DraftAdminIdentityDto {

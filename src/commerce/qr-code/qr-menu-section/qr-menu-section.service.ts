@@ -21,30 +21,53 @@ export class QRMenuSectionService {
     private readonly qrMenuRepository: Repository<QRMenu>,
   ) {}
 
+  /** `where` fragment that keeps merchant users inside their merchant (none for portal users). */
+  private ownedBy(scopedMerchantId?: number) {
+    return scopedMerchantId != null
+      ? { qrMenu: { merchant: { id: scopedMerchantId } } }
+      : {};
+  }
+
+  /** For merchant users, every id the DTO references must belong to their merchant. */
+  private async assertReferencesOwned(
+    dto: { qrMenu?: number; qr_menu_id?: number },
+    scopedMerchantId?: number,
+  ): Promise<void> {
+    if (scopedMerchantId == null) return;
+    const menuId = dto.qrMenu ?? dto.qr_menu_id;
+    if (menuId != null) {
+      const owned = await this.qrMenuRepository.exists({
+        where: { id: menuId, merchant: { id: scopedMerchantId } },
+      });
+      if (!owned) ErrorHandler.differentMerchant();
+    }
+  }
+
   async create(
     dto: CreateQRMenuSectionDto,
+    scopedMerchantId?: number,
   ): Promise<OneQRMenuSectionResponseDto> {
-    if (dto.qrMenu && !Number.isInteger(dto.qrMenu)) {
+    await this.assertReferencesOwned(dto, scopedMerchantId);
+    const menuId = dto.qrMenu ?? dto.qr_menu_id;
+    if (menuId && !Number.isInteger(menuId)) {
       ErrorHandler.invalidId('QR MENU ID must be positive integer');
     }
     let qRMenu: QRMenu | null = null;
 
-    if (dto.qrMenu) {
-      if (dto.qrMenu) {
-        qRMenu = await this.qrMenuRepository.findOne({
-          where: { id: dto.qrMenu },
-        });
-        if (!qRMenu) {
-          ErrorHandler.qrMenuNotFound();
-        }
+    if (menuId) {
+      qRMenu = await this.qrMenuRepository.findOne({
+        where: { id: menuId },
+      });
+      if (!qRMenu) {
+        ErrorHandler.qrMenuNotFound();
       }
     }
     const qrMenuSection = this.qrMenuSectionRepository.create({
       qrMenu: qRMenu,
-      name: dto.name,
-      description: dto.description,
-      display_order: dto.display_order,
-      status: dto.status,
+      name: dto.name.trim(),
+      description: dto.description?.trim() || '',
+      display_order: dto.display_order || 1,
+      status: dto.status || 'active',
     } as Partial<QRMenuSection>);
 
     const savedQRMenuSection =
@@ -55,15 +78,19 @@ export class QRMenuSectionService {
       data: savedQRMenuSection,
     };
   }
+
   async findAll(
     query: QueryQRMenuSectionDto,
+    scopedMerchantId?: number,
   ): Promise<PaginatedQRMenuSectionResponseDto> {
     const {
       status,
+      qr_menu_id,
+      merchant_id,
       page = 1,
-      limit = 10,
-      sortBy = 'id',
-      sortOrder = 'DESC',
+      limit = 100,
+      sortBy = 'display_order',
+      sortOrder = 'ASC',
     } = query;
 
     if (page < 1 || limit < 1) {
@@ -73,7 +100,21 @@ export class QRMenuSectionService {
     const qb = this.qrMenuSectionRepository
       .createQueryBuilder('qrMenuSection')
       .leftJoin('qrMenuSection.qrMenu', 'qrMenu')
-      .select(['qrMenuSection', 'qrMenu.id', 'qrMenu.name']);
+      .leftJoin('qrMenu.merchant', 'merchant')
+      .select([
+        'qrMenuSection',
+        'qrMenu.id',
+        'qrMenu.name',
+        'merchant.id',
+        'merchant.name',
+      ]);
+
+    if (scopedMerchantId != null) {
+      qb.innerJoin('qrMenu.merchant', 'scopeMerchant').andWhere(
+        'scopeMerchant.id = :scopedMerchantId',
+        { scopedMerchantId },
+      );
+    }
 
     if (status) {
       qb.andWhere('qrMenuSection.status = :status', { status });
@@ -83,11 +124,24 @@ export class QRMenuSectionService {
       });
     }
 
+    if (qr_menu_id) {
+      qb.andWhere('qrMenu.id = :qrMenuId', { qrMenuId: qr_menu_id });
+    }
+
+    if (merchant_id) {
+      qb.andWhere('merchant.id = :merchantId', { merchantId: merchant_id });
+    }
+
     qb.andWhere('qrMenuSection.status != :deleted', {
       deleted: 'deleted',
     });
 
-    qb.orderBy(`qrMenuSection.${sortBy}`, sortOrder);
+    const safeSortBy = ['id', 'display_order', 'name', 'status'].includes(
+      sortBy,
+    )
+      ? sortBy
+      : 'display_order';
+    qb.orderBy(`qrMenuSection.${safeSortBy}`, sortOrder);
 
     qb.skip((page - 1) * limit).take(limit);
 
@@ -105,19 +159,20 @@ export class QRMenuSectionService {
       },
     };
   }
-  async findOne(id: number): Promise<OneQRMenuSectionResponseDto> {
+  async findOne(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuSectionResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu Section ID must be a positive integer');
     }
     const qrMenuSection = await this.qrMenuSectionRepository.findOne({
-      where: { id, status: In(['active', 'inactive']) },
-      relations: ['qrMenu'],
-      select: {
-        qrMenu: {
-          id: true,
-          name: true,
-        },
+      where: {
+        ...this.ownedBy(scopedMerchantId),
+        id,
+        status: In(['active', 'inactive']),
       },
+      relations: ['qrMenu'],
     });
     if (!qrMenuSection) {
       ErrorHandler.qrMenuSectionNotFound();
@@ -132,23 +187,20 @@ export class QRMenuSectionService {
   async update(
     id: number,
     dto: UpdateQRMenuSectionDto,
+    scopedMerchantId?: number,
   ): Promise<OneQRMenuSectionResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu Section ID must be a positive integer');
     }
     const qrMenuSection = await this.qrMenuSectionRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
       relations: ['qrMenu'],
-      select: {
-        qrMenu: {
-          id: true,
-          name: true,
-        },
-      },
     });
     if (!qrMenuSection) {
       ErrorHandler.qrMenuSectionNotFound();
     }
+
+    await this.assertReferencesOwned(dto, scopedMerchantId);
 
     Object.assign(qrMenuSection, dto);
 
@@ -161,13 +213,17 @@ export class QRMenuSectionService {
     };
   }
 
-  async remove(id: number): Promise<OneQRMenuSectionResponseDto> {
+  async remove(
+    id: number,
+    scopedMerchantId?: number,
+  ): Promise<OneQRMenuSectionResponseDto> {
     if (!Number.isInteger(id) || id <= 0) {
       ErrorHandler.invalidId('QR Menu Section ID must be a positive integer');
     }
 
     const qrMenuSection = await this.qrMenuSectionRepository.findOne({
-      where: { id },
+      where: { ...this.ownedBy(scopedMerchantId), id },
+      relations: ['qrMenu'],
     });
     if (!qrMenuSection) {
       ErrorHandler.qrMenuSectionNotFound();

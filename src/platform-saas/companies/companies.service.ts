@@ -29,6 +29,12 @@ import {
   CompanyConfigurationsResponseDto,
   CompanyConfigurationItemDto,
 } from './dtos/company-configurations.dto';
+import { normalizeTaxId } from 'src/common/utils/tax-id.util';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import {
+  paginationMeta,
+  requestedPage,
+} from 'src/common/utils/pagination.util';
 
 const CONFIGURATION_TYPE_LABELS: Record<string, string> = {
   merchant_tax_rule: 'Tax Rules',
@@ -62,7 +68,7 @@ export class CompaniesService {
       // must never exist without its initial SaaS configuration record (AC 3).
       const createdCompany = await this.companyRepo.manager.transaction(
         async (manager) => {
-          const company = manager.create(Company, dto);
+          const company = manager.create(Company, normalizeTaxId(dto));
           const savedCompany = await manager.save(Company, company);
 
           const now = new Date();
@@ -91,18 +97,26 @@ export class CompaniesService {
     }
   }
 
-  async findAll(): Promise<AllCompanyResponseDto> {
-    const companies = await this.companyRepo
+  /** Sin page ni limit, todas las compañías, como antes. */
+  async findAll(
+    query: PaginationQueryDto = {},
+  ): Promise<AllCompanyResponseDto> {
+    const pagination = requestedPage(query);
+    const qb = this.companyRepo
       .createQueryBuilder('company')
       .loadRelationCountAndMap('company.merchantsCount', 'company.merchants')
       .loadRelationCountAndMap('company.customersCount', 'company.customers')
-      .orderBy('company.id', 'ASC')
-      .getMany();
+      .orderBy('company.id', 'ASC');
+    if (pagination) qb.skip(pagination.skip).take(pagination.limit);
+    const [companies, total] = await qb.getManyAndCount();
 
     return {
       statusCode: 200,
       message: 'Companies retrieved successfully',
       data: companies,
+      ...(pagination
+        ? paginationMeta(pagination.page, pagination.limit, total)
+        : {}),
     };
   }
 
@@ -166,7 +180,7 @@ export class CompaniesService {
     }
 
     try {
-      Object.assign(company, dto);
+      Object.assign(company, normalizeTaxId(dto));
       await this.companyRepo.save(company);
       const profile = await this.buildCompanyProfile(companyId);
 
@@ -283,7 +297,7 @@ export class CompaniesService {
     }
 
     try {
-      Object.assign(company, dto);
+      Object.assign(company, normalizeTaxId(dto));
       const updatedCompany = await this.companyRepo.save(company);
 
       return {
@@ -366,7 +380,8 @@ export class CompaniesService {
     return {
       id: company.id,
       name: company.name,
-      rut: company.rut,
+      tax_id: company.tax_id,
+      rut: company.tax_id,
       email: company.email,
       phone: company.phone,
       address: company.address,

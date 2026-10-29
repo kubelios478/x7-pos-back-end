@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -26,6 +27,7 @@ describe('CustomersService', () => {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
+    findAndCount: jest.fn(),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     remove: jest.fn(),
@@ -58,7 +60,7 @@ describe('CustomersService', () => {
     name: 'John Doe',
     email: 'john@example.com',
     phone: '+1234567890',
-    rut: '12345678-9',
+    document_id: 'D123-4567-8901',
     address: '123 Main St',
     city: 'New York',
     state: 'NY',
@@ -89,7 +91,7 @@ describe('CustomersService', () => {
     name: 'Test Company',
     email: 'test@company.com',
     phone: '1234567890',
-    rut: '12345678-9',
+    document_id: 'D123-4567-8901',
     address: '123 Test St',
     city: 'Test City',
     state: 'Test State',
@@ -149,12 +151,51 @@ describe('CustomersService', () => {
       name: 'John Doe',
       email: 'john@example.com',
       phone: '+1234567890',
-      rut: '12345678-9',
+      document_id: 'D123-4567-8901',
       address: '123 Main St',
       city: 'New York',
       state: 'NY',
       country: 'USA',
     };
+
+    it.each([
+      [{ document_id: undefined }, null],
+      [{ document_id: undefined, rut: 'LEGACY-1' }, 'LEGACY-1'],
+    ])(
+      'stores document_id %j as %j (optional, rut accepted as alias)',
+      async (
+        overrides: Partial<CreateCustomerDto>,
+        expected: string | null,
+      ) => {
+        jest
+          .spyOn(userRepository, 'findOneBy')
+          .mockResolvedValue(mockUserEntity as any);
+        jest
+          .spyOn(merchantRepository, 'findOneBy')
+          .mockResolvedValue(mockMerchant as any);
+        jest
+          .spyOn(customerRepository, 'create')
+          .mockImplementation((data) => data as any);
+        jest
+          .spyOn(customerRepository, 'save')
+          .mockImplementation(async (c) => c as any);
+
+        await service.create({ ...createCustomerDto, ...overrides }, mockUser);
+
+        const created = (customerRepository.create as jest.Mock).mock
+          .calls[0][0];
+        expect(created.document_id).toBe(expected);
+        expect(created).not.toHaveProperty('rut');
+      },
+    );
+
+    it("answers 401 (not 500) when the token's user no longer exists", async () => {
+      jest.spyOn(userRepository, 'findOneBy').mockResolvedValue(null);
+
+      await expect(
+        service.create(createCustomerDto, mockUser),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+    });
 
     it('should create a customer successfully without company', async () => {
       jest
@@ -274,21 +315,27 @@ describe('CustomersService', () => {
 
     it('should return all customers with formatted data', async () => {
       jest
-        .spyOn(customerRepository, 'find')
-        .mockResolvedValue(mockCustomers as any);
+        .spyOn(customerRepository, 'findAndCount')
+        .mockResolvedValue([mockCustomers as any, 2]);
 
-      const result = await service.findAll();
+      const { rows: result, paginated } = await service.findAll(
+        mockCustomer.merchantId,
+      );
 
-      expect(customerRepository.find).toHaveBeenCalledWith({
+      // Sin page ni limit: todos, como antes.
+      expect(customerRepository.findAndCount).toHaveBeenCalledWith({
+        where: { merchantId: mockCustomer.merchantId },
         relations: ['merchant', 'company'],
+        order: { id: 'ASC' },
       });
+      expect(paginated).toBe(false);
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         id: mockCustomers[0].id,
         name: mockCustomers[0].name,
         email: mockCustomers[0].email,
         phone: mockCustomers[0].phone,
-        rut: mockCustomers[0].rut,
+        document_id: mockCustomers[0].document_id,
         address: mockCustomers[0].address,
         city: mockCustomers[0].city,
         state: mockCustomers[0].state,
@@ -312,13 +359,29 @@ describe('CustomersService', () => {
       ];
 
       jest
-        .spyOn(customerRepository, 'find')
-        .mockResolvedValue(customersWithoutRelations as any);
+        .spyOn(customerRepository, 'findAndCount')
+        .mockResolvedValue([customersWithoutRelations as any, 1]);
 
-      const result = await service.findAll();
+      const { rows: result } = await service.findAll(mockCustomer.merchantId);
 
       expect(result[0].merchant).toBeNull();
       expect(result[0].company).toBeNull();
+    });
+
+    it('pages in the database when page or limit is sent', async () => {
+      jest
+        .spyOn(customerRepository, 'findAndCount')
+        .mockResolvedValue([mockCustomers as any, 230]);
+
+      const result = await service.findAll(mockCustomer.merchantId, {
+        page: 3,
+        limit: 20,
+      });
+
+      expect(customerRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+      expect(result).toMatchObject({ total: 230, paginated: true });
     });
   });
 
@@ -339,7 +402,7 @@ describe('CustomersService', () => {
         name: mockCustomer.name,
         email: mockCustomer.email,
         phone: mockCustomer.phone,
-        rut: mockCustomer.rut,
+        document_id: mockCustomer.document_id,
         address: mockCustomer.address,
         city: mockCustomer.city,
         state: mockCustomer.state,
@@ -419,6 +482,28 @@ describe('CustomersService', () => {
       expect(customerRepository.save).toHaveBeenCalled();
       expect(result).toEqual(updatedCustomer);
     });
+
+    it.each([
+      [{ document_id: 'D999' }, 'D999'],
+      [{ rut: 'LEGACY-1' }, 'LEGACY-1'],
+      [{ document_id: null }, null],
+      [{ name: 'Only name' }, 'D123-4567-8901'],
+    ])(
+      'updates document_id from %j',
+      async (dto: UpdateCustomerDto, expected: string | null) => {
+        jest
+          .spyOn(customerRepository, 'findOne')
+          .mockResolvedValue({ ...mockCustomer } as any);
+        jest
+          .spyOn(customerRepository, 'save')
+          .mockImplementation(async (c) => c as any);
+
+        const result = await service.update(1, dto, mockUser);
+
+        expect(result.document_id).toBe(expected);
+        expect(result).not.toHaveProperty('rut');
+      },
+    );
 
     it('should update a customer successfully with companyId', async () => {
       const dtoWithCompany = { ...updateCustomerDto, companyId: 1 };

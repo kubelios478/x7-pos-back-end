@@ -4,7 +4,8 @@ import { IsNotEmpty, IsString, IsOptional, IsInt, Min } from 'class-validator';
 export class BatchBumpFifoDto {
   @ApiProperty({
     example: 'Classic Burger',
-    description: 'Product name to batch bump in FIFO order across active tickets',
+    description:
+      'Product name to batch bump in FIFO order across active tickets',
   })
   @IsNotEmpty({ message: 'Product name is required' })
   @IsString({ message: 'Product name must be a string' })
@@ -28,7 +29,8 @@ export class BatchBumpFifoDto {
 
   @ApiPropertyOptional({
     example: 1,
-    description: 'Number of units cooked/prepared to distribute (defaults to 1)',
+    description:
+      'Number of units cooked/prepared to distribute (defaults to 1)',
     default: 1,
     minimum: 1,
   })

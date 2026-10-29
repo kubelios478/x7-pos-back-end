@@ -9,7 +9,7 @@ import { GetModifiersQueryDto } from './dto/get-modifiers-query.dto';
 import { AllPaginatedModifiers } from './dto/all-paginated-modifiers.dto';
 import { Modifier } from './entities/modifier.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { ProductsService } from '../products/products.service';
 import { ErrorHandler } from 'src/common/utils/error-handler.util';
 import { ErrorMessage } from 'src/common/constants/error-messages';
@@ -129,24 +129,24 @@ export class ModifiersService {
     const hasNext = page < totalPages;
     const hasPrev = page > 1;
 
-    // 7. Map to ModifierResponseDto
-    const data: ModifierResponseDto[] = await Promise.all(
-      modifiers.map(async (modifier) => {
-        const result: ModifierResponseDto = {
-          id: modifier.id,
-          name: modifier.name,
-          priceDelta: modifier.priceDelta,
-          product: modifier.product
-            ? (await this.productsService.findOne(modifier.product.id)).data
-            : null,
-          parent: modifier.parent
-            ? { id: modifier.parent.id, name: modifier.parent.name }
-            : null,
-          isActive: modifier.isActive,
-        };
-        return result;
-      }),
+    // 7. Map to ModifierResponseDto (los productos de la página, en una sola consulta)
+    const products = await this.productsService.findResponsesByIds(
+      modifiers.flatMap((modifier) =>
+        modifier.product ? [modifier.product.id] : [],
+      ),
     );
+    const data: ModifierResponseDto[] = modifiers.map((modifier) => ({
+      id: modifier.id,
+      name: modifier.name,
+      priceDelta: modifier.priceDelta,
+      product: modifier.product
+        ? (products.get(modifier.product.id) ?? null)
+        : null,
+      parent: modifier.parent
+        ? { id: modifier.parent.id, name: modifier.parent.name }
+        : null,
+      isActive: modifier.isActive,
+    }));
 
     return {
       statusCode: 200,
@@ -339,8 +339,11 @@ export class ModifiersService {
   async softRemoveByProductId(
     productId: number,
     merchant_id: number,
+    manager?: EntityManager,
   ): Promise<void> {
-    const modifiers = await this.modifierRepository
+    const repository =
+      manager?.getRepository(Modifier) ?? this.modifierRepository;
+    const modifiers = await repository
       .createQueryBuilder('modifier')
       .leftJoinAndSelect('modifier.product', 'product')
       .where('modifier.productId = :productId', { productId })
@@ -352,7 +355,7 @@ export class ModifiersService {
       for (const modifier of modifiers) {
         modifier.isActive = false;
       }
-      await this.modifierRepository.save(modifiers);
+      await repository.save(modifiers);
     }
   }
 }

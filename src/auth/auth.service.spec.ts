@@ -1,3 +1,8 @@
+import {
+  createPasswordResetToken,
+  hashToken,
+  isPasswordResetTokenLive,
+} from 'src/platform-saas/users/auth-tokens.util';
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/unbound-method */
@@ -6,13 +11,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DataSource, Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import {
+  BadRequestException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { User } from '../platform-saas/users/entities/user.entity';
 import { Company } from '../platform-saas/companies/entities/company.entity';
 import { Merchant } from '../platform-saas/merchants/entities/merchant.entity';
 import { SubscriptionPlan } from '../platform-saas/subscriptions/subscription-plan/entity/subscription-plan.entity';
+import { CompanySubscription } from '../platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
+import { OnboardingRegisterDto } from './dto/onboarding-register.dto';
 import { UsersService } from '../platform-saas/users/users.service';
 import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
@@ -25,7 +36,7 @@ import { UserRole } from '../platform-saas/users/constants/role.enum';
 import { getAllSubscriptionFeatureIds } from '../common/subscription/subscription-feature-ids';
 
 // Mock bcrypt
-jest.mock('bcrypt');
+jest.mock('bcryptjs');
 const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
 
 // Mock uuid
@@ -45,6 +56,7 @@ describe('AuthService', () => {
   const mockUserRepository = {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
+    find: jest.fn(),
     exists: jest.fn(),
     manager: { transaction: jest.fn() },
   };
@@ -100,6 +112,7 @@ describe('AuthService', () => {
       name: 'Test Merchant',
       companyId: 1,
     },
+    isActive: true,
     refreshToken: null,
   };
 
@@ -252,6 +265,17 @@ describe('AuthService', () => {
       );
     });
 
+    it('should reject a deactivated account once the password is right', async () => {
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ ...mockUser, isActive: false } as any);
+      mockedBcrypt.compare.mockResolvedValue(true as never);
+
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'This account has been deactivated',
+      );
+    });
+
     it('should throw UnauthorizedException if user has no associated merchant', async () => {
       const userWithoutMerchant = { ...mockUser, merchant: null };
 
@@ -363,15 +387,17 @@ describe('AuthService', () => {
       const result = await service.sendResetLink(email);
 
       expect(usersService.findByEmail).toHaveBeenCalledWith(email);
+      // the link carries the token; only its hash is stored
+      const mail = (mailService.sendMail as jest.Mock).mock.calls[0][0];
+      const sentToken = /token=([^"&\s]+)/.exec(mail.text)![1];
+      expect(isPasswordResetTokenLive(sentToken)).toBe(true);
       expect(usersService.saveResetToken).toHaveBeenCalledWith(
         mockUser.id,
-        'test-uuid-123',
+        hashToken(sentToken),
       );
-      expect(mailService.sendMail).toHaveBeenCalledWith({
+      expect(mail).toMatchObject({
         to: mockUser.email,
         subject: 'Reset Password',
-        text: expect.stringContaining('test-uuid-123'),
-        html: expect.stringContaining('test-uuid-123'),
       });
       expect(result).toEqual({
         message:
@@ -414,8 +440,24 @@ describe('AuthService', () => {
     });
   });
 
+  describe('sendResetLink for a deactivated account', () => {
+    it('sends nothing and answers with the same neutral message', async () => {
+      jest
+        .spyOn(usersService, 'findByEmail')
+        .mockResolvedValue({ data: { ...mockUser, isActive: false } } as any);
+      const sendMail = jest.spyOn(mailService, 'sendMail');
+
+      const result = await service.sendResetLink(mockUser.email);
+
+      expect(sendMail).not.toHaveBeenCalled();
+      expect(result.message).toContain(
+        'If the email matches an active account',
+      );
+    });
+  });
+
   describe('resetPassword', () => {
-    const token = 'reset-token-123';
+    const token = createPasswordResetToken().token;
     const newPassword = 'newPassword456';
     const hashedPassword = 'hashedNewPassword789';
 
@@ -430,7 +472,9 @@ describe('AuthService', () => {
 
       const result = await service.resetPassword(token, newPassword);
 
-      expect(usersService.findByResetToken).toHaveBeenCalledWith(token);
+      expect(usersService.findByResetToken).toHaveBeenCalledWith(
+        hashToken(token),
+      );
       expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 10);
       expect(usersService.updatePassword).toHaveBeenCalledWith(
         mockUser.id,
@@ -450,11 +494,24 @@ describe('AuthService', () => {
       );
     });
 
+    it('should refuse an expired link without querying the database', async () => {
+      const expired = createPasswordResetToken(
+        new Date(Date.now() - 31 * 60 * 1000),
+      ).token;
+
+      await expect(service.resetPassword(expired, newPassword)).rejects.toThrow(
+        'Invalid or expired token',
+      );
+      expect(usersService.findByResetToken).not.toHaveBeenCalled();
+    });
+
     it('should handle password hashing errors', async () => {
       jest
         .spyOn(usersService, 'findByResetToken')
         .mockResolvedValue(mockUser as any);
-      mockedBcrypt.hash.mockRejectedValue(new Error('Hashing failed') as never);
+      mockedBcrypt.hash.mockRejectedValueOnce(
+        new Error('Hashing failed') as never,
+      );
 
       await expect(service.resetPassword(token, newPassword)).rejects.toThrow(
         'Hashing failed',
@@ -466,9 +523,27 @@ describe('AuthService', () => {
     const refreshToken = 'valid-refresh-token';
     const newAccessToken = 'new-access-token';
 
+    it('should reject the refresh of a deactivated account', async () => {
+      jest
+        .spyOn(jwtService, 'verify')
+        .mockReturnValue({ sub: mockUser.id, email: mockUser.email } as any);
+      jest.spyOn(usersService, 'findById').mockResolvedValue({
+        ...mockUser,
+        refreshToken,
+        isActive: false,
+      } as any);
+
+      await expect(service.refreshToken(refreshToken)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
     it('should refresh token successfully with valid refresh token', async () => {
       const payload = { sub: mockUser.id, email: mockUser.email };
-      const userWithRefreshToken = { ...mockUser, refreshToken };
+      const userWithRefreshToken = {
+        ...mockUser,
+        refreshToken: hashToken(refreshToken),
+      };
 
       jest.spyOn(jwtService, 'verify').mockReturnValue(payload as any);
       jest
@@ -547,6 +622,148 @@ describe('AuthService', () => {
       await expect(service.refreshToken('expired-token')).rejects.toThrow(
         'Refresh token expired or invalid',
       );
+    });
+  });
+
+  describe('registerOnboarding', () => {
+    const dto: OnboardingRegisterDto = {
+      companyName: 'Demo Group',
+      companyEmail: 'contact@demo.dev',
+      rut: '76.123.456-7',
+      address: '123 Main Street',
+      city: 'Austin',
+      state: 'Texas',
+      country: 'USA',
+      branchName: 'Downtown',
+      adminEmail: 'admin@demo.dev',
+      password: 'Secret123',
+    };
+
+    let manager: { create: jest.Mock; save: jest.Mock };
+    const originalDefaultPlan = process.env.ONBOARDING_DEFAULT_PLAN_ID;
+
+    beforeEach(() => {
+      mockUserRepository.exists.mockResolvedValue(false);
+      mockUserRepository.find.mockResolvedValue([]);
+      mockCompanyRepository.exists.mockResolvedValue(false);
+      mockMerchantRepository.exists.mockResolvedValue(false);
+      mockSubscriptionPlanRepository.findOne.mockImplementation(
+        ({ where }: { where: { id: number } }) =>
+          Promise.resolve({ id: where.id, status: 'active' }),
+      );
+      mockSubscriptionAccessService.getSubscriptionAccessForCompany.mockResolvedValue(
+        { planId: 2, authorizedFeatureIds: [1, 2] },
+      );
+      mockJwtService.sign.mockReturnValue('token');
+
+      manager = {
+        create: jest.fn((_entity, data) => ({ ...data })),
+        save: jest.fn((entity, data) => {
+          const ids = new Map<unknown, number>([
+            [Company, 10],
+            [Merchant, 20],
+            [User, 30],
+          ]);
+          return Promise.resolve({ ...data, id: ids.get(entity) ?? 40 });
+        }),
+      };
+      mockDataSource.createQueryRunner.mockReturnValue({
+        connect: jest.fn(),
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        rollbackTransaction: jest.fn(),
+        release: jest.fn(),
+        manager,
+      });
+    });
+
+    afterEach(() => {
+      if (originalDefaultPlan === undefined) {
+        delete process.env.ONBOARDING_DEFAULT_PLAN_ID;
+      } else {
+        process.env.ONBOARDING_DEFAULT_PLAN_ID = originalDefaultPlan;
+      }
+    });
+
+    it('creates an active company subscription for the requested plan', async () => {
+      const result = await service.registerOnboarding({ ...dto, planId: 2 });
+
+      const subscriptionSave = manager.save.mock.calls.find(
+        ([entity]) => entity === CompanySubscription,
+      );
+      expect(subscriptionSave).toBeDefined();
+      expect(subscriptionSave![1]).toMatchObject({
+        company_id: 10,
+        plan: { id: 2 },
+        status: 'active',
+        paymentMethod: 'onboarding',
+      });
+      expect(
+        mockSubscriptionAccessService.getSubscriptionAccessForCompany,
+      ).toHaveBeenCalledWith(10);
+      expect(result.user.planId).toBe(2);
+      expect(result.user.authorizedFeatureIds).toEqual([1, 2]);
+    });
+
+    // Antes, el segundo admin@ de cualquier compañía recibía 409 "Username is already taken".
+    it('derives a free username from the email, with a suffix when taken', async () => {
+      mockUserRepository.find.mockResolvedValueOnce([
+        { username: 'admin' },
+        { username: 'admin-2' },
+      ]);
+
+      await service.registerOnboarding({ ...dto, planId: 2 });
+
+      const userSave = manager.save.mock.calls.find(
+        ([entity]) => entity === User,
+      );
+      expect(userSave![1]).toMatchObject({ username: 'admin-3' });
+      expect(mockUserRepository.exists).not.toHaveBeenCalledWith({
+        where: { username: 'admin' },
+      });
+    });
+
+    it('still rejects a chosen username that is taken', async () => {
+      mockUserRepository.exists.mockImplementation(
+        ({ where }: { where: { username?: string } }) =>
+          Promise.resolve(where.username === 'chef'),
+      );
+
+      await expect(
+        service.registerOnboarding({ ...dto, planId: 2, username: 'chef' }),
+      ).rejects.toThrow('Username is already taken');
+    });
+
+    it('falls back to ONBOARDING_DEFAULT_PLAN_ID when planId is omitted', async () => {
+      process.env.ONBOARDING_DEFAULT_PLAN_ID = '1';
+
+      await service.registerOnboarding(dto);
+
+      expect(mockSubscriptionPlanRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 1, status: 'active' },
+      });
+      const subscriptionSave = manager.save.mock.calls.find(
+        ([entity]) => entity === CompanySubscription,
+      );
+      expect(subscriptionSave![1]).toMatchObject({ plan: { id: 1 } });
+    });
+
+    it('rejects the registration when no plan can be resolved', async () => {
+      delete process.env.ONBOARDING_DEFAULT_PLAN_ID;
+
+      await expect(service.registerOnboarding(dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unknown or inactive plan', async () => {
+      mockSubscriptionPlanRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.registerOnboarding({ ...dto, planId: 99 }),
+      ).rejects.toThrow('Subscription plan 99 does not exist or is not active');
+      expect(mockDataSource.createQueryRunner).not.toHaveBeenCalled();
     });
   });
 });

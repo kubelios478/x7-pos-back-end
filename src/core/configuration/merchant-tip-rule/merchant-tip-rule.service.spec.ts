@@ -1,10 +1,10 @@
 //src/core/configuration/merchant-tip-rule/merchant-tip-rule.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { MerchantTipRuleService } from './merchant-tip-rule.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { MerchantTipRule } from './entity/merchant-tip-rule-entity';
 import { Company } from 'src/platform-saas/companies/entities/company.entity';
+import { CompanyStatus } from 'src/platform-saas/companies/constants/company-status.enum';
 import { TipCalculationMethod } from '../constants/tip-calculation-method.enum';
 import { TipDistributionMethod } from '../constants/tip-distribution-method.enum';
 import { CreateMerchantTipRuleDto } from './dto/create-merchant-tip-rule.dto';
@@ -61,11 +61,12 @@ describe('MerchantTipRuleService', () => {
       name: 'Test Company',
       email: 'test@company.com',
       phone: '1234567890',
-      rut: '12345678-9',
+      tax_id: '12345678-9',
       address: '123 Test St',
       city: 'Test City',
       state: 'Test State',
       country: 'Test Country',
+      status: CompanyStatus.ACTIVE,
       merchants: [],
       customers: [],
       configurations: [],
@@ -294,19 +295,75 @@ describe('MerchantTipRuleService', () => {
       });
     });
 
-    it('rejects suggested percentages that do not sum to 100 for percentage calculation', async () => {
+    it('rejects suggested percentages sent as whole numbers instead of fractions', async () => {
       await expect(
         service.create(
           {
             ...mockCreateMerchantTipRuleDto,
-            suggestedPercentages: [0.15, 0.2],
+            suggestedPercentages: [18, 20, 22],
           },
           mockMerchantAdminUser,
         ),
-      ).rejects.toThrow('Suggested percentages must sum to 100%');
+      ).rejects.toThrow(
+        'Each suggested percentage must be greater than 0 and at most 1 (e.g. 0.18 for 18%)',
+      );
     });
 
-    it('accepts a single 100% suggested percentage (one worker takes the full tip)', async () => {
+    it('rejects a zero or negative suggested percentage', async () => {
+      await expect(
+        service.create(
+          {
+            ...mockCreateMerchantTipRuleDto,
+            suggestedPercentages: [0.18, 0],
+          },
+          mockMerchantAdminUser,
+        ),
+      ).rejects.toThrow(
+        'Each suggested percentage must be greater than 0 and at most 1 (e.g. 0.18 for 18%)',
+      );
+    });
+
+    it('rejects percentage calculation without suggested percentages', async () => {
+      await expect(
+        service.create(
+          { ...mockCreateMerchantTipRuleDto, suggestedPercentages: [] },
+          mockMerchantAdminUser,
+        ),
+      ).rejects.toThrow(
+        'Percentage calculation requires at least one suggested percentage',
+      );
+    });
+
+    it.each([[[0.18, 0.2, 0.22]], [[0.1, 0.15]], [[1]]])(
+      'accepts independent suggested percentages %j',
+      async (suggestedPercentages: number[]) => {
+        jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+          id: 10,
+          companyId: 7,
+        } as Merchant);
+        jest.spyOn(companyRepository, 'findOne').mockResolvedValue({
+          id: 7,
+        } as Company);
+        jest.spyOn(userRepository, 'findOne').mockResolvedValue({
+          id: 1,
+        } as User);
+        jest
+          .spyOn(merchantTipRuleRepository, 'create')
+          .mockReturnValue(mockMerchantTipRule as MerchantTipRule);
+        jest
+          .spyOn(merchantTipRuleRepository, 'save')
+          .mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
+
+        await expect(
+          service.create(
+            { ...mockCreateMerchantTipRuleDto, suggestedPercentages },
+            mockMerchantAdminUser,
+          ),
+        ).resolves.toBeDefined();
+      },
+    );
+
+    it('accepts a single 100% suggested percentage', async () => {
       jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
         id: 10,
         companyId: 7,
@@ -332,7 +389,7 @@ describe('MerchantTipRuleService', () => {
       ).resolves.toBeDefined();
     });
 
-    it('skips the sum check entirely for non-percentage calculation methods', async () => {
+    it('skips the suggested percentage check for non-percentage calculation methods', async () => {
       jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
         id: 10,
         companyId: 7,
@@ -698,7 +755,7 @@ describe('MerchantTipRuleService', () => {
       );
     });
 
-    it('rejects an update where suggested percentages do not sum to 100 for percentage calculation', async () => {
+    it('rejects an update with suggested percentages out of range for percentage calculation', async () => {
       jest
         .spyOn(merchantTipRuleRepository, 'findOne')
         .mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
@@ -712,14 +769,16 @@ describe('MerchantTipRuleService', () => {
           1,
           {
             tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
-            suggestedPercentages: [0.5, 0.2],
+            suggestedPercentages: [15, 20],
           },
           mockMerchantAdminUser,
         ),
-      ).rejects.toThrow('Suggested percentages must sum to 100%');
+      ).rejects.toThrow(
+        'Each suggested percentage must be greater than 0 and at most 1 (e.g. 0.18 for 18%)',
+      );
     });
 
-    it('accepts an update where suggested percentages sum to exactly 100', async () => {
+    it('accepts an update with suggested percentages that do not add up to 1', async () => {
       jest
         .spyOn(merchantTipRuleRepository, 'findOne')
         .mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
@@ -739,7 +798,7 @@ describe('MerchantTipRuleService', () => {
           1,
           {
             tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
-            suggestedPercentages: [0.2, 0.8],
+            suggestedPercentages: [0.18, 0.2, 0.22],
           },
           mockMerchantAdminUser,
         ),
@@ -750,7 +809,7 @@ describe('MerchantTipRuleService', () => {
       jest.spyOn(merchantTipRuleRepository, 'findOne').mockResolvedValue({
         ...mockMerchantTipRule,
         tipCalculationMethod: TipCalculationMethod.PERCENTAGE,
-        suggestedPercentages: [0.3, 0.3],
+        suggestedPercentages: [18, 20],
       } as MerchantTipRule);
       jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
         id: 10,
@@ -766,7 +825,9 @@ describe('MerchantTipRuleService', () => {
           { tipCalculationMethod: TipCalculationMethod.PERCENTAGE },
           mockMerchantAdminUser,
         ),
-      ).rejects.toThrow('Suggested percentages must sum to 100%');
+      ).rejects.toThrow(
+        'Each suggested percentage must be greater than 0 and at most 1 (e.g. 0.18 for 18%)',
+      );
     });
 
     it('rejects an update that sets Role-Based distribution without percentages summing to 100 (closes the pre-existing update() gap)', async () => {
@@ -847,12 +908,13 @@ describe('MerchantTipRuleService', () => {
       findOneSpy.mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
       saveSpy.mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
 
-      const result = await service.remove(1);
+      const result = await service.remove(1, mockPortalAdminUser);
 
       expect(findOneSpy).toHaveBeenCalledWith({
         where: {
           id: 1,
         },
+        relations: ['company'],
       });
       expect(saveSpy).toHaveBeenCalled();
       expect(result).toEqual({
@@ -862,21 +924,38 @@ describe('MerchantTipRuleService', () => {
       });
     });
 
+    it("rejects removing another company's tip rule", async () => {
+      jest
+        .spyOn(merchantTipRuleRepository, 'findOne')
+        .mockResolvedValue(mockMerchantTipRule as MerchantTipRule);
+      jest.spyOn(merchantRepository, 'findOne').mockResolvedValue({
+        id: 10,
+        companyId: 999,
+      } as Merchant);
+      const saveSpy = jest.spyOn(merchantTipRuleRepository, 'save');
+
+      await expect(service.remove(1, mockMerchantAdminUser)).rejects.toThrow(
+        'You do not have access to this record.',
+      );
+      expect(saveSpy).not.toHaveBeenCalled();
+    });
+
     it('should throw error for invalid ID during removal', async () => {
-      await expect(service.remove(0)).rejects.toThrow();
+      await expect(service.remove(0, mockPortalAdminUser)).rejects.toThrow();
     });
 
     it('should throw error when merchant tip rule to remove not found', async () => {
       const findOneSpy = jest.spyOn(merchantTipRuleRepository, 'findOne');
       findOneSpy.mockResolvedValue(null);
 
-      await expect(service.remove(999)).rejects.toThrow(
+      await expect(service.remove(999, mockPortalAdminUser)).rejects.toThrow(
         'Merchant Tip Rule not found',
       );
       expect(findOneSpy).toHaveBeenCalledWith({
         where: {
           id: 999,
         },
+        relations: ['company'],
       });
     });
   });

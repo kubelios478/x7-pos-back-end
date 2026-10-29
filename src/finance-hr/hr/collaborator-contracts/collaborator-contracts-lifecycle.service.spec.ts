@@ -122,7 +122,9 @@ describe('CollaboratorContractsService — lifecycle', () => {
         {
           provide: getRepositoryToken(Merchant),
           useValue: {
-            findOne: jest.fn().mockResolvedValue({ id: MERCHANT_ID }),
+            findOne: jest
+              .fn()
+              .mockResolvedValue({ id: MERCHANT_ID, companyId: 1 }),
           },
         },
         {
@@ -338,6 +340,7 @@ describe('CollaboratorContractsService — lifecycle', () => {
     });
 
     it('logs the document attachment too', async () => {
+      process.env.CONTRACT_DOCUMENT_SECRET = 'test-secret';
       contractRepo.findOne.mockResolvedValue(contractFixture());
 
       const res = await service.attachDocument(
@@ -347,7 +350,10 @@ describe('CollaboratorContractsService — lifecycle', () => {
         99,
       );
 
-      expect(res.data.document_url).toBe('/uploads/contracts/c-1.pdf');
+      // the API hands out a signed download link, not the stored path
+      expect(res.data.document_url).toMatch(
+        /^\/api\/collaborator-contracts\/12\/document\/c-1\.pdf\?expires=\d+&signature=[0-9a-f]{64}$/,
+      );
       expect(res.data.document_name).toBe('Singed.pdf');
       const saved = revisionRepo.save.mock.calls[0][0] as Array<{
         field: string;
@@ -377,6 +383,29 @@ describe('CollaboratorContractsService — lifecycle', () => {
         where: { contract_id: 12 },
         order: { created_at: 'DESC', id: 'DESC' },
       });
+    });
+  });
+
+  describe('document_url from the client', () => {
+    it('is not accepted on create: documents are attached by uploading them', async () => {
+      await expect(
+        service.create(
+          { ...baseCreateDto, document_url: '/storage/contracts/other.pdf' },
+          MERCHANT_ID,
+        ),
+      ).rejects.toThrow('document_url is set by uploading the document');
+    });
+
+    it('can only be cleared on update', async () => {
+      contractRepo.findOne.mockResolvedValue(contractFixture());
+
+      await expect(
+        service.update(
+          12,
+          { document_url: '/storage/contracts/other.pdf' },
+          MERCHANT_ID,
+        ),
+      ).rejects.toThrow('document_url is set by uploading the document');
     });
   });
 
@@ -432,6 +461,34 @@ describe('CollaboratorContractsService — lifecycle', () => {
       await expect(service.findOne(404, MERCHANT_ID)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('ownership', () => {
+    it('a merchant user cannot move a contract to another merchant', async () => {
+      contractRepo.findOne.mockResolvedValue(contractFixture());
+
+      await expect(
+        service.update(12, { merchant_id: 99 }, MERCHANT_ID),
+      ).rejects.toThrow('A contract cannot be moved to another merchant');
+    });
+
+    it("rejects assigning another merchant's collaborator", async () => {
+      contractRepo.findOne.mockResolvedValue(contractFixture());
+      collaboratorRepo.findOne.mockResolvedValue({
+        id: 77,
+        merchant_id: 99,
+      });
+
+      await expect(
+        service.update(12, { collaborator_id: 77 }, MERCHANT_ID),
+      ).rejects.toThrow('Collaborator does not belong to the given merchant');
+    });
+
+    it("rejects a company that is not the merchant's company", async () => {
+      await expect(
+        service.create({ ...baseCreateDto, company_id: 2 }, MERCHANT_ID),
+      ).rejects.toThrow("The company does not match the merchant's company");
     });
   });
 });

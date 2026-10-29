@@ -40,7 +40,7 @@ export class DeliveryAssignment {
     example: 1,
     description: 'Identifier of the Order related',
   })
-  @ManyToOne(() => Order, { eager: true })
+  @ManyToOne(() => Order)
   @JoinColumn({ name: 'order_id' })
   order: Order;
 
@@ -50,7 +50,7 @@ export class DeliveryAssignment {
     nullable: true,
     description: 'Delivery Driver (in-house only)',
   })
-  @ManyToOne(() => DeliveryDriver, { eager: true, nullable: true })
+  @ManyToOne(() => DeliveryDriver, { nullable: true })
   @JoinColumn({ name: 'delivery_driver_id' })
   deliveryDriver: DeliveryDriver | null;
 

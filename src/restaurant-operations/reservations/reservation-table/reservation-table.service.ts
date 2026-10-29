@@ -254,7 +254,12 @@ export class ReservationTableService {
         );
       }
 
-      await this.assertNoOverlap(dto.table_ids, reservation, merchantId, manager);
+      await this.assertNoOverlap(
+        dto.table_ids,
+        reservation,
+        merchantId,
+        manager,
+      );
 
       // Reasignar una mesa que ya estuvo en esta reserva y se soltó reactiva la fila en vez de
       // insertar una segunda: el par (reserva, mesa) es uno solo por mucho que se toquetee.

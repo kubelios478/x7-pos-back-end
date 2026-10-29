@@ -5,15 +5,30 @@ import { MerchantSubscriptionService } from './merchant-subscription.service';
 import { CreateMerchantSubscriptionDto } from './dtos/create-merchant-subscription.dto';
 import { UpdateMerchantSubscriptionDto } from './dtos/update-merchant-subscription.dto';
 import { OneMerchantSubscriptionSummaryDto } from './dtos/merchant-subscription-summary.dto';
-import { PaginatedMerchantSuscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
+import { PaginatedMerchantSubscriptionResponseDto } from './dtos/paginated-merchant-subscription-response.dto';
 import { Merchant } from '../../merchants/entities/merchant.entity';
 import { SubscriptionPlan } from '../subscription-plan/entity/subscription-plan.entity';
+import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/platform-saas/users/constants/role.enum';
+import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 
 describe('MerchantSubscriptionController', () => {
   let controller: MerchantSubscriptionController;
   let merchantSubscriptionService: jest.Mocked<MerchantSubscriptionService>;
 
   // Mock data
+  const merchantAdmin = {
+    id: 10,
+    email: 'admin@merchant.dev',
+    role: UserRole.MERCHANT_ADMIN,
+    scope: Scope.MERCHANT_WEB,
+    merchant: { id: 1 },
+  } as AuthenticatedUser;
+  const portalAdmin = {
+    ...merchantAdmin,
+    role: UserRole.PORTAL_ADMIN,
+  } as AuthenticatedUser;
+
   const mockMerchant: Merchant = {
     id: 1,
     name: 'Test Merchant',
@@ -47,7 +62,7 @@ describe('MerchantSubscriptionController', () => {
     totalPages: 1,
   };
 
-  const mockPaginatedResponse: PaginatedMerchantSuscriptionResponseDto = {
+  const mockPaginatedResponse: PaginatedMerchantSubscriptionResponseDto = {
     statusCode: 200,
     message: 'Merchant Subscriptions retrieved successfully',
     data: [mockMerchantSubscription],
@@ -155,14 +170,17 @@ describe('MerchantSubscriptionController', () => {
       const findAllSpy = jest.spyOn(merchantSubscriptionService, 'findAll');
       findAllSpy.mockResolvedValue(mockPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        merchantAdmin,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 1);
       expect(result).toEqual(mockPaginatedResponse);
     });
 
     it('should return empty list with pagination', async () => {
-      const emptyPaginatedResponse: PaginatedMerchantSuscriptionResponseDto = {
+      const emptyPaginatedResponse: PaginatedMerchantSubscriptionResponseDto = {
         statusCode: 200,
         message: 'Merchant Subscriptions retrieved successfully',
         data: [],
@@ -177,9 +195,12 @@ describe('MerchantSubscriptionController', () => {
       const findAllSpy = jest.spyOn(merchantSubscriptionService, 'findAll');
       findAllSpy.mockResolvedValue(emptyPaginatedResponse);
 
-      const result = await controller.findAll({ page: 1, limit: 10 });
+      const result = await controller.findAll(
+        { page: 1, limit: 10 },
+        merchantAdmin,
+      );
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 1);
       expect(result).toEqual(emptyPaginatedResponse);
       expect(result.data).toHaveLength(0);
     });
@@ -189,11 +210,11 @@ describe('MerchantSubscriptionController', () => {
       const findAllSpy = jest.spyOn(merchantSubscriptionService, 'findAll');
       findAllSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findAll({ page: 1, limit: 10 })).rejects.toThrow(
-        errorMessage,
-      );
+      await expect(
+        controller.findAll({ page: 1, limit: 10 }, merchantAdmin),
+      ).rejects.toThrow(errorMessage);
 
-      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 });
+      expect(findAllSpy).toHaveBeenCalledWith({ page: 1, limit: 10 }, 1);
     });
   });
 
@@ -205,9 +226,9 @@ describe('MerchantSubscriptionController', () => {
       const findOneSpy = jest.spyOn(merchantSubscriptionService, 'findOne');
       findOneSpy.mockResolvedValue(mockOneMerchantSubscriptionSummaryDto);
 
-      const result = await controller.findOne(1);
+      const result = await controller.findOne(1, merchantAdmin);
 
-      expect(findOneSpy).toHaveBeenCalledWith(1);
+      expect(findOneSpy).toHaveBeenCalledWith(1, 1);
       expect(result).toEqual(mockOneMerchantSubscriptionSummaryDto);
     });
 
@@ -216,9 +237,20 @@ describe('MerchantSubscriptionController', () => {
       const findOneSpy = jest.spyOn(merchantSubscriptionService, 'findOne');
       findOneSpy.mockRejectedValue(new Error(errorMessage));
 
-      await expect(controller.findOne(999)).rejects.toThrow(errorMessage);
+      await expect(controller.findOne(999, merchantAdmin)).rejects.toThrow(
+        errorMessage,
+      );
 
-      expect(findOneSpy).toHaveBeenCalledWith(999);
+      expect(findOneSpy).toHaveBeenCalledWith(999, 1);
+    });
+
+    it('should not restrict portal users to a merchant', async () => {
+      const findOneSpy = jest.spyOn(merchantSubscriptionService, 'findOne');
+      findOneSpy.mockResolvedValue(mockOneMerchantSubscriptionSummaryDto);
+
+      await controller.findOne(1, portalAdmin);
+
+      expect(findOneSpy).toHaveBeenCalledWith(1, undefined);
     });
   });
 

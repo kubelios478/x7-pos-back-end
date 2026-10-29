@@ -108,10 +108,14 @@ describe('ModifiersController', () => {
         statusCode: 200,
         message: 'Modifier retrieved successfully',
         data: {
+          isActive: true,
           id: modifierId,
           name: 'Test Modifier',
           priceDelta: 10,
           product: {
+            isOutOfStock: false,
+            isLowStock: false,
+            isActive: true,
             id: 1,
             name: 'Test Product',
             sku: 'SKU123',
@@ -160,10 +164,14 @@ describe('ModifiersController', () => {
         statusCode: 201,
         message: 'Modifier Created successfully',
         data: {
+          isActive: true,
           id: 10,
           name: 'New Modifier',
           priceDelta: 20,
           product: {
+            isOutOfStock: false,
+            isLowStock: false,
+            isActive: true,
             id: 1,
             name: 'Test Product',
             sku: 'SKU123',
@@ -234,10 +242,14 @@ describe('ModifiersController', () => {
         statusCode: 201,
         message: 'Modifier Updated successfully',
         data: {
+          isActive: true,
           id: modifierId,
           name: 'Updated Modifier',
           priceDelta: 25,
           product: {
+            isOutOfStock: false,
+            isLowStock: false,
+            isActive: true,
             id: 1,
             name: 'Test Product',
             sku: 'SKU123',
@@ -307,10 +319,14 @@ describe('ModifiersController', () => {
         statusCode: 201,
         message: 'Modifier Deleted successfully',
         data: {
+          isActive: true,
           id: modifierId,
           name: 'Deleted Modifier',
           priceDelta: 10,
           product: {
+            isOutOfStock: false,
+            isLowStock: false,
+            isActive: true,
             id: 1,
             name: 'Test Product',
             sku: 'SKU123',

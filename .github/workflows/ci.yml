@@ -1,0 +1,52 @@
+# CI: cada PR a main y cada push a main. Sin secretos ni acceso a bases compartidas:
+# los e2e levantan su propia Postgres desechable (docker-compose.e2e.yml).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Un push nuevo al mismo PR cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, build y tests unitarios
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Igual que npm run lint, pero sin --fix: falla en vez de corregir.
+      - name: Lint
+        run: npx eslint "{src,apps,libs,test}/**/*.ts"
+      - name: Build
+        run: npm run build
+      - name: Tests unitarios
+        run: npx jest --maxWorkers=2
+
+  e2e:
+    name: Tests e2e (base creada con las migraciones)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Incluye test/e2e/schema.e2e-spec.ts: falla si una entidad cambió sin su migración.
+      - name: Tests e2e
+        run: npm run test:e2e

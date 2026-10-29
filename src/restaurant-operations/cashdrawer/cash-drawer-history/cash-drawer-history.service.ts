@@ -1,3 +1,4 @@
+import type { QueryDeepPartialEntity } from 'typeorm';
 import {
   Injectable,
   NotFoundException,
@@ -493,7 +494,7 @@ export class CashDrawerHistoryService {
     }
 
     // Update cash drawer history
-    const updateData: any = {};
+    const updateData: QueryDeepPartialEntity<CashDrawerHistory> = {};
     if (updateCashDrawerHistoryDto.cashDrawerId !== undefined)
       updateData.cash_drawer_id = updateCashDrawerHistoryDto.cashDrawerId;
     if (updateCashDrawerHistoryDto.openingBalance !== undefined)

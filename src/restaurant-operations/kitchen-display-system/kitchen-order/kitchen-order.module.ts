@@ -3,6 +3,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { KitchenOrderService } from './kitchen-order.service';
 import { KitchenOrderController } from './kitchen-order.controller';
+import { KitchenOrderDevController } from './kitchen-order-dev.controller';
 import { KitchenOrderSyncService } from './kitchen-order-sync.service';
 import { KitchenOrder } from './entities/kitchen-order.entity';
 import { KitchenOrderItem } from '../kitchen-order-item/entities/kitchen-order-item.entity';
@@ -13,17 +14,15 @@ import { OrderItem } from '../../pos/order-item/entities/order-item.entity';
 import { KitchenStation } from '../kitchen-station/entities/kitchen-station.entity';
 import { OrdersModule } from '../../pos/orders/orders.module';
 import { ProductsInventoryModule } from 'src/inventory/products-inventory/products-inventory.module';
+import { isDevelopmentEnv } from 'src/config/environment';
 
-let devControllers: any[] = [];
-try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const sim = (require as any)('./kitchen-order-simulator.controller');
-  if (sim && sim.KitchenOrderSimulatorController) {
-    devControllers.push(sim.KitchenOrderSimulatorController);
-  }
-} catch {
-  // Ignored when simulator file is removed
-}
+/**
+ * Development tools only: outside development/test the reset endpoint (a TRUNCATE of every
+ * merchant's kitchen) is not even registered.
+ */
+const devOnlyControllers = isDevelopmentEnv()
+  ? [KitchenOrderDevController]
+  : [];
 
 @Module({
   imports: [
@@ -40,7 +39,7 @@ try {
     forwardRef(() => OrdersModule),
     ProductsInventoryModule,
   ],
-  controllers: [KitchenOrderController, ...devControllers],
+  controllers: [KitchenOrderController, ...devOnlyControllers],
   providers: [KitchenOrderService, KitchenOrderSyncService],
   exports: [KitchenOrderService, KitchenOrderSyncService],
 })

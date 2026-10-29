@@ -1,122 +1,99 @@
 // src/main.ts
 import './polyfill';
+// .env antes que AppModule: algunos módulos leen NODE_ENV al importarse (isDevelopmentEnv).
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { parseCorsOrigins } from './common/security/http-security';
+import { configureApp } from './app.setup';
+import { isSwaggerEnabled } from './config/environment';
+import { CorsIoAdapter } from './realtime/adapters/cors-io.adapter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe, BadRequestException, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import * as dotenv from 'dotenv';
-import { useContainer } from 'class-validator';
-import { ValidationExceptionFilter } from './common/filters/validation-exception.filter';
+import type { Request, Response } from 'express';
 import { RedisIoAdapter } from './realtime/adapters/redis-io.adapter';
+import { errorMessage, errorStack } from './common/utils/log-error.util';
 import * as fs from 'fs';
-
-dotenv.config();
 
 const logger = new Logger('Bootstrap');
 
 // Safe handling of fatal exceptions to avoid spamming the Railway logger
 process.on('uncaughtException', (err: Error) => {
-  console.error('=== UNCAUGHT EXCEPTION FATAL ===', err.message);
+  logger.error(`Uncaught exception (fatal): ${err.message}`, err.stack);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason: unknown) => {
-  const err = reason as Error;
-  console.error('=== UNHANDLED REJECTION FATAL ===', err?.message || reason);
+  logger.error(
+    `Unhandled rejection: ${errorMessage(reason)}`,
+    errorStack(reason),
+  );
 });
 
 async function bootstrap() {
   const isProduction = process.env.NODE_ENV === 'production';
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    // Conserva además el cuerpo crudo en `req.rawBody` (el JSON se sigue parseando igual):
-    // los webhooks de reparto verifican la firma HMAC sobre los bytes exactos recibidos.
+    // It also preserves the raw body in `req.rawBody` (the JSON is still parsed the same):
+    // The distribution webhooks verify the HMAC signature on the exact bytes received.
     rawBody: true,
     logger: isProduction
       ? ['error', 'warn']
       : ['log', 'error', 'warn', 'debug', 'verbose'],
   });
 
-  // Habilitar la resolución de dependencias para class-validator
-  useContainer(app.select(AppModule), { fallbackOnErrors: true });
+  configureApp(app, logger);
 
-  app.setGlobalPrefix('api');
+  // SIGTERM (redeploy en Railway): Nest cierra HTTP, WebSockets y el pool de la base
+  // antes de salir, en lugar de cortarlos.
+  app.enableShutdownHooks();
 
-  // Swagger Configuration
-  const config = new DocumentBuilder()
-    .setTitle('X7-POS APIs')
-    .setDescription('Authentication and user management documentation')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  // Swagger: siempre en desarrollo; en producción solo con SWAGGER_ENABLED=true.
+  if (isSwaggerEnabled()) {
+    const config = new DocumentBuilder()
+      .setTitle('X7-POS APIs')
+      .setDescription('Authentication and user management documentation')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  SwaggerModule.setup(
-    'api/docs',
-    app,
-    SwaggerModule.createDocument(app, config),
-    {
-      swaggerOptions: {
-        tagsSorter: 'alpha', // Sort the tags alphabetically
-        operationsSorter: 'alpha', // Sort the endpoints alphabetically
-        docExpansion: 'none', // 'none' It collapses everything by default (tags and routes)
+    SwaggerModule.setup(
+      'api/docs',
+      app,
+      SwaggerModule.createDocument(app, config),
+      {
+        swaggerOptions: {
+          tagsSorter: 'alpha', // Sort the tags alphabetically
+          operationsSorter: 'alpha', // Sort the endpoints alphabetically
+          docExpansion: 'none', // 'none' It collapses everything by default (tags and routes)
+        },
       },
-    },
+    );
+  }
+
+  // WebSockets: same allowed origins as HTTP unless WS_CORS_ORIGIN says otherwise
+  const wsOrigins = parseCorsOrigins(
+    process.env.WS_CORS_ORIGIN ?? process.env.CORS_ORIGINS,
   );
-
-  // ValidationPipe global
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-      exceptionFactory: (errors) => {
-        const extractErrors = (errs: any[]): string[] => {
-          const res: string[] = [];
-          for (const err of errs) {
-            if (err.constraints) {
-              res.push(...(Object.values(err.constraints) as string[]));
-            }
-            if (err.children && err.children.length > 0) {
-              res.push(...extractErrors(err.children));
-            }
-            if (!err.constraints && (!err.children || err.children.length === 0)) {
-              res.push(`${err.property} has invalid value`);
-            }
-          }
-          return res;
-        };
-        const messages = extractErrors(errors);
-        return new BadRequestException({
-          message: messages.length > 1 ? messages : (messages[0] || 'Validation error'),
-          errors: messages,
-        });
-      },
-    }),
-  );
-
-  // Global exception filter
-  app.useGlobalFilters(new ValidationExceptionFilter());
-
-  app.enableCors();
-
-  // WebSockets Adapter with Redis
+  let wsAdapterSet = false;
   const wsRedisEnabled =
     (process.env.WS_REDIS_ENABLED ?? '').toLowerCase() === 'true';
   const redisUrl = process.env.REDIS_URL;
   if (wsRedisEnabled && redisUrl) {
     try {
-      const redisAdapter = new RedisIoAdapter(app, redisUrl);
+      const redisAdapter = new RedisIoAdapter(app, redisUrl, wsOrigins);
       await redisAdapter.connectToRedis();
       app.useWebSocketAdapter(redisAdapter);
+      wsAdapterSet = true;
       logger.log('Redis WebSocket Adapter initialized successfully.');
     } catch (redisError) {
       logger.error('Error connecting Redis WebSocket Adapter:', redisError);
     }
+  }
+  if (!wsAdapterSet) {
+    app.useWebSocketAdapter(new CorsIoAdapter(app, wsOrigins));
   }
 
   // Ensure the uploads folder exists before serving static files
@@ -125,6 +102,11 @@ async function bootstrap() {
     fs.mkdirSync(uploadsPath, { recursive: true });
   }
 
+  // Signed contracts used to live here; they are personal data and are no longer public
+  // (served through signed links, see contract-document-url.ts).
+  app.use('/uploads/contracts', (_req: Request, res: Response) =>
+    res.status(404).end(),
+  );
   app.useStaticAssets(uploadsPath, {
     prefix: '/uploads/',
   });

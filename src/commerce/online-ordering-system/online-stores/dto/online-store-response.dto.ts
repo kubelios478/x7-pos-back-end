@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { SuccessResponse } from '../../../../common/dtos/success-response.dto';
 import { OnlineStoreStatus } from '../constants/online-store-status.enum';
 

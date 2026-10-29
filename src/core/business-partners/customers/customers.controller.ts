@@ -9,10 +9,15 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
+  Res,
   ParseIntPipe,
   ForbiddenException,
 } from '@nestjs/common';
-import { Request as ExpressRequest } from 'express';
+import {
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from 'express';
 import { FeatureAccessGuard } from 'src/auth/guards/feature-access.guard';
 import { RequireFeature } from 'src/auth/decorators/require-feature.decorator';
 import { SUBSCRIPTION_FEATURE_IDS } from 'src/common/subscription/subscription-feature-ids';
@@ -35,6 +40,8 @@ import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interf
 import { Roles } from 'src/auth/decorators/roles.decorator';
 import { Customer } from './entities/customer.entity';
 import { ErrorResponse } from 'src/common/dtos/error-response.dto';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import { TOTAL_COUNT_HEADER } from 'src/common/utils/pagination.util';
 
 @ApiTags('Core - Business partners - Customers')
 @ApiExtraModels(ErrorResponse)
@@ -133,8 +140,18 @@ export class CustomersController {
     'merchant_user',
     'customer_user',
   )
-  findAll(@Request() req: ExpressRequest & { user?: AuthenticatedUser }) {
-    return this.customersService.findAll(req.user);
+  async findAll(
+    @Request() req: ExpressRequest & { user?: AuthenticatedUser },
+    @Query() query: PaginationQueryDto,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    const { rows, total, paginated } = await this.customersService.findAll(
+      this.merchantIdOf(req),
+      query,
+    );
+    // El formato no cambia (un arreglo); al paginar, el total va en la cabecera.
+    if (paginated) res.setHeader(TOTAL_COUNT_HEADER, String(total));
+    return rows;
   }
 
   @Get(':id')

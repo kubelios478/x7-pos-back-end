@@ -43,6 +43,15 @@ import { Merchant } from '../../../platform-saas/merchants/entities/merchant.ent
 import { Table } from '../../../restaurant-operations/dining-system/tables/entities/table.entity';
 import { Collaborator } from '../../../finance-hr/hr/collaborators/entities/collaborator.entity';
 import { MerchantSubscription } from '../../../platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
+import { dayBoundsInTimeZone } from 'src/common/utils/time-zone.util';
+import { CashFlowService } from '../../cashdrawer/cash-shifts/cash-flow.service';
+import { CashShift } from '../../cashdrawer/cash-shifts/entities/cash-shift.entity';
+import { CashShiftStatus } from '../../cashdrawer/cash-shifts/constants/cash-shift-status.enum';
+import { CashShiftMovementType } from '../../cashdrawer/cash-shifts/constants/cash-shift-movement-type.enum';
+import {
+  lockMerchantScope,
+  MerchantLockScope,
+} from 'src/common/utils/merchant-lock.util';
 import { Customer } from '../../../core/business-partners/customers/entities/customer.entity';
 import {
   OneOrderResponseDto,
@@ -87,6 +96,40 @@ import { LoyaltyPointsSource } from 'src/growth/loyalty/loyalty-points-transacti
 import { MoreThan } from 'typeorm';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 
+/**
+ * Business status once the payments are re-summed (every payment path goes through it).
+ * - fully paid (with something actually paid) → PAID;
+ * - a refund that leaves a balance due on a PAID order → PARTIALLY_REFUNDED;
+ * - something paid but a balance due (a split bill under way, or items added to a paid
+ *   order) → PARTIALLY_PAID; nothing paid any more → back to PENDING;
+ * - cancelled and refunded orders keep their status.
+ */
+function nextBusinessStatusAfterPayments(
+  status: OrderBusinessStatus,
+  payment: { isPaid: boolean; paidTotal: number; hasRefund: boolean },
+): OrderBusinessStatus {
+  if (
+    status === OrderBusinessStatus.CANCELLED ||
+    status === OrderBusinessStatus.PARTIALLY_REFUNDED
+  ) {
+    return status;
+  }
+  // is_paid is also true for an order whose total is 0 (no items yet, or all removed):
+  // that is not a payment
+  if (payment.isPaid && payment.paidTotal > 0) {
+    return OrderBusinessStatus.PAID;
+  }
+  if (payment.hasRefund && status === OrderBusinessStatus.PAID) {
+    return OrderBusinessStatus.PARTIALLY_REFUNDED;
+  }
+  if (payment.paidTotal > 0) {
+    return OrderBusinessStatus.PARTIALLY_PAID;
+  }
+  return status === OrderBusinessStatus.PARTIALLY_PAID
+    ? OrderBusinessStatus.PENDING
+    : status;
+}
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -129,7 +172,66 @@ export class OrdersService {
     private readonly loyaltyCustomerRepo: Repository<LoyaltyCustomer>,
     @InjectRepository(LoyaltyPointTransaction)
     private readonly loyaltyPointTransactionRepo: Repository<LoyaltyPointTransaction>,
+    private readonly cashFlowService: CashFlowService,
   ) {}
+
+  /**
+   * Open cash shift that takes in (or pays out) the cash of a processPayment / refundOrder,
+   * locked like order-payments locks it: the one given, else the one the user opened, else
+   * the merchant's only open shift. With several open and none chosen it refuses rather
+   * than guess the drawer.
+   */
+  private async resolveCashShiftForCash(
+    manager: EntityManager,
+    merchantId: number,
+    userId: number,
+    cashShiftId?: number,
+  ): Promise<{ shift: CashShift; collaboratorId: number }> {
+    const lock = { mode: 'pessimistic_write' as const };
+    const collaborator = await manager.findOne(Collaborator, {
+      where: { user_id: userId, merchant_id: merchantId },
+    });
+
+    let shift: CashShift | null = null;
+    if (cashShiftId != null) {
+      shift = await manager.findOne(CashShift, {
+        where: { id: cashShiftId, merchantId, status: CashShiftStatus.OPEN },
+        lock,
+      });
+      if (!shift) {
+        throw new BadRequestException(
+          `Cash shift ${cashShiftId} is not an open cash shift of your merchant`,
+        );
+      }
+    } else {
+      if (collaborator) {
+        shift = await manager.findOne(CashShift, {
+          where: {
+            merchantId,
+            openedBy: collaborator.id,
+            status: CashShiftStatus.OPEN,
+          },
+          lock,
+        });
+      }
+      if (!shift) {
+        const open = await manager.find(CashShift, {
+          where: { merchantId, status: CashShiftStatus.OPEN },
+          lock,
+        });
+        if (open.length === 1) {
+          shift = open[0];
+        } else {
+          throw new BadRequestException(
+            open.length === 0
+              ? 'Cash moves through a cash drawer: open a cash shift first.'
+              : 'Several cash shifts are open: send cashShiftId to say which drawer takes the cash.',
+          );
+        }
+      }
+    }
+    return { shift, collaboratorId: collaborator?.id ?? shift.openedBy };
+  }
 
   async create(
     dto: CreateOrderDto,
@@ -159,13 +261,20 @@ export class OrdersService {
       );
     }
 
-    // Validate table exists and belongs to user merchant
-    const table = await this.tableRepo.findOne({ where: { id: dto.tableId } });
-    if (!table) {
-      throw new NotFoundException(`Table with ID ${dto.tableId} not found`);
+    // Take-out and delivery orders have no table; dine-in orders must have one
+    if (dto.type === OrderType.DINE_IN && dto.tableId == null) {
+      throw new BadRequestException('tableId is required for dine_in orders');
     }
-    if (table.merchant_id !== authenticatedUserMerchantId) {
-      throw new ForbiddenException('Table does not belong to your merchant');
+    if (dto.tableId != null) {
+      const table = await this.tableRepo.findOne({
+        where: { id: dto.tableId },
+      });
+      if (!table) {
+        throw new NotFoundException(`Table with ID ${dto.tableId} not found`);
+      }
+      if (table.merchant_id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException('Table does not belong to your merchant');
+      }
     }
 
     // Validate collaborator exists and belongs to user merchant
@@ -183,19 +292,22 @@ export class OrdersService {
       );
     }
 
-    // Validate subscription exists and belongs to user merchant
-    const subscription = await this.subscriptionRepo.findOne({
-      where: { id: dto.subscriptionId },
-    });
-    if (!subscription) {
-      throw new NotFoundException(
-        `Subscription with ID ${dto.subscriptionId} not found`,
-      );
-    }
-    if (subscription.merchant.id !== authenticatedUserMerchantId) {
-      throw new ForbiddenException(
-        'Subscription does not belong to your merchant',
-      );
+    // merchant_subscription is deprecated: access comes from the company subscription,
+    // which FeatureAccessGuard already checks. The link stays optional for older clients.
+    if (dto.subscriptionId != null) {
+      const subscription = await this.subscriptionRepo.findOne({
+        where: { id: dto.subscriptionId },
+      });
+      if (!subscription) {
+        throw new NotFoundException(
+          `Subscription with ID ${dto.subscriptionId} not found`,
+        );
+      }
+      if (subscription.merchant.id !== authenticatedUserMerchantId) {
+        throw new ForbiddenException(
+          'Subscription does not belong to your merchant',
+        );
+      }
     }
 
     // Validate customer exists and belongs to user merchant
@@ -250,8 +362,6 @@ export class OrdersService {
 
       orderItems.push(orderItem);
     }
-    // Generate displayId (daily ticket number)
-    const displayId = await this.generateDailyTicketId(merchant.id);
     // Find active shift for merchant
     const activeShift = await this.shiftService.findActiveShiftByMerchant(
       merchant.id,
@@ -263,20 +373,18 @@ export class OrdersService {
 
     const order = new Order();
     order.merchant_id = dto.merchantId;
-    order.table_id = dto.tableId;
+    order.table_id = dto.tableId ?? null;
     order.collaborator_id = dto.collaboratorId;
-    order.subscription_id = dto.subscriptionId;
+    order.subscription_id = dto.subscriptionId ?? null;
     order.type = dto.type;
     order.customer_id = dto.customerId;
     order.closed_at = closedAt;
     order.logical_status = OrderStatus.ACTIVE;
-    order.displayId = displayId;
     order.shift = activeShift;
     order.shift_id = activeShift.id;
     order.status = dto.businessStatus ?? OrderBusinessStatus.PENDING;
     order.subtotal = subtotal;
 
-    order.order_number = await this.nextOrderNumber(dto.merchantId);
     order.source = dto.source ?? OrderSource.POS;
     order.guest_count = dto.guestCount ?? 1;
     order.delivery_address = dto.deliveryAddress ?? null;
@@ -316,8 +424,10 @@ export class OrdersService {
     order.preparing_at = null;
     order.cash_shift_id = activeShiftId ?? null;
 
-    // Save order to get an ID for the order items
-    const saved = await this.orderRepo.save(order);
+    // Save order to get an ID for the order items (numbers are handed out while saving)
+    const saved = await this.orderRepo.manager.transaction((manager) =>
+      this.insertWithOrderNumbers(manager, order, { dailyTicket: true }),
+    );
 
     // Now that we have the order ID, we can save the order items with the correct order_id
     const orderWithRelations = await this.orderRepo.findOne({
@@ -392,17 +502,29 @@ export class OrdersService {
     }
   }
 
-  private async generateDailyTicketId(merchantId: number): Promise<string> {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+  /**
+   * Daily ticket number: today's orders of the merchant + 1, where "today" is the calendar
+   * day in the merchant's time zone (it used to reset at the server's midnight, UTC on
+   * Railway — 19:00 or 20:00 for a restaurant in New York).
+   */
+  private async generateDailyTicketId(
+    manager: EntityManager,
+    merchantId: number,
+  ): Promise<string> {
+    const merchant = await manager.findOne(Merchant, {
+      where: { id: merchantId },
+      select: ['id', 'timezone'],
+    });
+    const { start, end } = dayBoundsInTimeZone(
+      new Date(),
+      merchant?.timezone || 'UTC',
+    );
 
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const count = await this.orderRepo.count({
+    // counted under the merchant's order-numbering lock (see insertWithOrderNumbers)
+    const count = await manager.getRepository(Order).count({
       where: {
         merchant_id: merchantId,
-        created_at: Between(startOfDay, endOfDay),
+        created_at: Between(start, new Date(end.getTime() - 1)),
       },
     });
 
@@ -425,8 +547,14 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    if (order.status !== OrderBusinessStatus.PENDING) {
-      throw new BadRequestException('Order must be in pending state');
+    // a pending order can be completed even after a first partial payment
+    if (
+      order.status !== OrderBusinessStatus.PENDING &&
+      order.status !== OrderBusinessStatus.PARTIALLY_PAID
+    ) {
+      throw new BadRequestException(
+        'Order must be in pending or partially_paid state',
+      );
     }
 
     // Enforce discount limits based on user role
@@ -637,6 +765,31 @@ export class OrdersService {
           shift_id: shift.id,
           source: dto.source,
         });
+      }
+
+      // Cash goes into a drawer, as with order-payments: before, it was recorded on the
+      // order but never reached the drawer, so closing showed it as missing.
+      const cashPayments = dto.payments.filter(
+        (p) => p.method.toLowerCase() === 'cash',
+      );
+      if (cashPayments.length > 0) {
+        const cash = await this.resolveCashShiftForCash(
+          queryRunner.manager,
+          merchantId,
+          user.id,
+          dto.cashShiftId,
+        );
+        for (const payment of cashPayments) {
+          await this.cashFlowService.addMovement(
+            cash.shift.id,
+            roundMoney(payment.amount + (payment.tipAmount || 0)),
+            CashShiftMovementType.IN,
+            order.id,
+            cash.collaboratorId,
+            cash.shift.cashDrawerId,
+            queryRunner.manager,
+          );
+        }
       }
 
       const merchantTipRule = dto.merchantTipRuleId
@@ -940,6 +1093,13 @@ export class OrdersService {
       }
       await queryRunner.commitTransaction();
 
+      // Same after-commit event as a payment through order-payments: it deducts the
+      // inventory, awards loyalty points and releases the table group (each listener
+      // claims the order, so it runs once). Orders paid here used to skip all three.
+      if (order.is_paid) {
+        this.emitOrderFullyPaid(order.id);
+      }
+
       return {
         success: true,
         message: 'Payment processed successfully',
@@ -1212,7 +1372,16 @@ export class OrdersService {
 
     const updateData: QueryDeepPartialEntity<Order> = {};
 
-    if (dto.tableId !== undefined) {
+    const nextType = dto.type ?? existing.type;
+    const nextTableId =
+      dto.tableId !== undefined ? dto.tableId : existing.table_id;
+    if (nextType === OrderType.DINE_IN && nextTableId == null) {
+      throw new BadRequestException('tableId is required for dine_in orders');
+    }
+
+    if (dto.tableId === null) {
+      updateData.table_id = null;
+    } else if (dto.tableId !== undefined) {
       // Validate table exists and belongs to user merchant
       const table = await this.tableRepo.findOne({
         where: { id: dto.tableId },
@@ -1370,8 +1539,8 @@ export class OrdersService {
   }
 
   /** Emits after DB commit when the order first becomes fully paid. */
-  emitOrderFullyPaid(orderId: number, shiftId?: number | null): void {
-    this.eventEmitter.emit(ORDER_FULLY_PAID_EVENT, { orderId, shiftId });
+  emitOrderFullyPaid(orderId: number): void {
+    this.eventEmitter.emit(ORDER_FULLY_PAID_EVENT, { orderId });
   }
 
   /** Emits after DB commit when loyalty points must be reversed (cancel/refund). */
@@ -1471,12 +1640,17 @@ export class OrdersService {
     applyPaidDerivedFields(order);
     const becameFullyPaid = !wasPaid && order.is_paid;
     const becameUnpaid = wasPaid && !order.is_paid;
+    order.status = nextBusinessStatusAfterPayments(order.status, {
+      isPaid: order.is_paid,
+      paidTotal: Number(order.paid_total),
+      hasRefund: payments.some((p) => p.is_refund),
+    });
     await manager.getRepository(Order).save(order);
     return { becameFullyPaid, becameUnpaid };
   }
 
   /**
-   *POS order created upon accepting an online order (merchant minimum table/collaborator/subscription).
+   *POS order created upon accepting an online order (merchant minimum table/collaborator).
    */
   async createOrderForOnlineAcceptance(params: {
     merchantId: number;
@@ -1503,18 +1677,6 @@ export class OrdersService {
         'No collaborator found for merchant; create at least one collaborator to accept online orders',
       );
     }
-    const subscription = await this.subscriptionRepo
-      .createQueryBuilder('sub')
-      .leftJoin('sub.merchant', 'm')
-      .where('m.id = :mid', { mid: params.merchantId })
-      .orderBy('sub.id', 'ASC')
-      .getOne();
-    if (!subscription) {
-      throw new BadRequestException(
-        'No merchant subscription found; cannot create POS order for online acceptance',
-      );
-    }
-
     const order = new Order();
     order.merchant_id = params.merchantId;
     order.table_id = table.id;
@@ -1524,10 +1686,6 @@ export class OrdersService {
     order.customer_id = params.customerId;
     order.closed_at = null;
     order.logical_status = OrderStatus.ACTIVE;
-    order.order_number = await this.nextOrderNumberWithManager(
-      this.orderRepo.manager,
-      params.merchantId,
-    );
     order.source = OrderSource.ONLINE;
     order.guest_count = 1;
     order.delivery_address = params.deliveryAddress;
@@ -1546,7 +1704,9 @@ export class OrdersService {
     order.ready_at = null;
     order.preparing_at = null;
 
-    return this.orderRepo.save(order);
+    return this.orderRepo.manager.transaction((manager) =>
+      this.insertWithOrderNumbers(manager, order, { dailyTicket: false }),
+    );
   }
 
   /**
@@ -1580,19 +1740,6 @@ export class OrdersService {
         'No collaborator found for merchant; create at least one collaborator to accept online orders',
       );
     }
-    const subscription = await manager
-      .getRepository(MerchantSubscription)
-      .createQueryBuilder('sub')
-      .leftJoin('sub.merchant', 'm')
-      .where('m.id = :mid', { mid: params.merchantId })
-      .orderBy('sub.id', 'ASC')
-      .getOne();
-    if (!subscription) {
-      throw new BadRequestException(
-        'No merchant subscription found; cannot create POS order for online acceptance',
-      );
-    }
-
     const order = new Order();
     order.merchant_id = params.merchantId;
     order.table_id = table.id;
@@ -1602,10 +1749,6 @@ export class OrdersService {
     order.customer_id = params.customerId;
     order.closed_at = null;
     order.logical_status = OrderStatus.ACTIVE;
-    order.order_number = await this.nextOrderNumberWithManager(
-      manager,
-      params.merchantId,
-    );
     order.source = OrderSource.ONLINE;
     order.guest_count = 1;
     order.delivery_address = params.deliveryAddress;
@@ -1624,7 +1767,7 @@ export class OrdersService {
     order.ready_at = null;
     order.preparing_at = null;
 
-    return manager.getRepository(Order).save(order);
+    return this.insertWithOrderNumbers(manager, order, { dailyTicket: false });
   }
 
   /** Per active order item: sum(modifier.price × item.quantity). */
@@ -1655,8 +1798,33 @@ export class OrdersService {
     return map;
   }
 
-  private async nextOrderNumber(merchantId: number): Promise<string> {
-    return this.nextOrderNumberWithManager(this.orderRepo.manager, merchantId);
+  /**
+   * Inserts a new order with its order number (and daily ticket number), computed under the
+   * merchant's order-numbering lock: two orders created at once used to read the same
+   * MAX/COUNT, so one failed on the unique (merchant_id, order_number) index and tickets
+   * were repeated. Must run inside a transaction.
+   */
+  private async insertWithOrderNumbers(
+    manager: EntityManager,
+    order: Order,
+    options: { dailyTicket: boolean },
+  ): Promise<Order> {
+    await lockMerchantScope(
+      manager,
+      MerchantLockScope.ORDER_NUMBERS,
+      order.merchant_id,
+    );
+    if (options.dailyTicket) {
+      order.displayId = await this.generateDailyTicketId(
+        manager,
+        order.merchant_id,
+      );
+    }
+    order.order_number = await this.nextOrderNumberWithManager(
+      manager,
+      order.merchant_id,
+    );
+    return manager.getRepository(Order).save(order);
   }
 
   private async nextOrderNumberWithManager(
@@ -1892,18 +2060,52 @@ export class OrdersService {
     await queryRunner.startTransaction();
 
     try {
+      // Lock the order and check its status again: two refunds sent at once both passed
+      // the check above and refunded the order twice.
+      const lockedOrder = await queryRunner.manager.findOne(Order, {
+        where: { id: order.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (lockedOrder?.status !== OrderBusinessStatus.PAID) {
+        throw new BadRequestException('Only paid orders can be refunded');
+      }
+
       // 1. Payments refund
       const payments = await queryRunner.manager.find(OrderPayment, {
         where: { order_id: order.id, is_refund: false },
       });
 
+      let cash: { shift: CashShift; collaboratorId: number } | null = null;
       for (const payment of payments) {
         const proportion = Number(payment.amount) / Number(order.total);
         const refundPart = roundMoney(refundAmount * proportion);
 
+        // The cash part goes out of a drawer (before, only the work shift's balance moved
+        // and the drawer closed with that cash as a surplus).
+        if (payment.method.toLowerCase() === 'cash' && refundPart > 0) {
+          cash ??= await this.resolveCashShiftForCash(
+            queryRunner.manager,
+            merchantId,
+            user.id,
+            dto.cashShiftId,
+          );
+          await this.cashFlowService.addMovement(
+            cash.shift.id,
+            refundPart,
+            CashShiftMovementType.OUT,
+            order.id,
+            cash.collaboratorId,
+            cash.shift.cashDrawerId,
+            queryRunner.manager,
+            dto.reason ?? null,
+          );
+        }
+
+        // Positive amount: is_refund is what makes it subtract from paid_total (a
+        // negative amount here was subtracted twice, i.e. added to what was paid).
         await queryRunner.manager.save(OrderPayment, {
           order_id: order.id,
-          amount: -refundPart,
+          amount: refundPart,
           method: payment.method,
           tip_amount: 0,
           is_refund: true,
@@ -1995,16 +2197,21 @@ export class OrdersService {
         });
       }
 
-      // 5. Order update (last status)
-      order.refund_reason = dto.reason;
-      order.refunded_by_user_id = user.id;
+      // 5. Order update (last status), on the locked row: saving the copy read before the
+      // transaction would write back its stale totals.
+      lockedOrder.refund_reason = dto.reason;
+      lockedOrder.refunded_by_user_id = user.id;
 
-      order.status =
+      lockedOrder.status =
         dto.fullRefund || isFullRefundByItems
           ? OrderBusinessStatus.CANCELLED
           : OrderBusinessStatus.PARTIALLY_REFUNDED;
 
-      await queryRunner.manager.save(order);
+      await queryRunner.manager.save(lockedOrder);
+      order.status = lockedOrder.status;
+
+      // paid_total / balance_due now include the refund payments
+      await this.syncOrderAggregatesWithManager(queryRunner.manager, order.id);
 
       await queryRunner.commitTransaction();
 

@@ -31,7 +31,7 @@ export class DeliveryFee {
     example: 1,
     description: 'Identifier of the Delivery Zone related',
   })
-  @ManyToOne(() => DeliveryZone, { eager: true })
+  @ManyToOne(() => DeliveryZone)
   @JoinColumn({ name: 'delivery_zone_id' })
   deliveryZone: DeliveryZone;
 

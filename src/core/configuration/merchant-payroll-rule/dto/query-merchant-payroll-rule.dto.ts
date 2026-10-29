@@ -1,6 +1,13 @@
 //src/core/configuration/merchant-payroll-rule/dto/query-merchant-payroll-rule.dto.ts
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, IsNumber, Min } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryMerchantPayrollRuleDto {
@@ -25,6 +32,7 @@ export class QueryMerchantPayrollRuleDto {
   page: number = 1;
 
   @ApiPropertyOptional({
+    maximum: 100,
     description: 'Items per page',
     example: 10,
   })
@@ -32,6 +40,7 @@ export class QueryMerchantPayrollRuleDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
+  @Max(100)
   limit: number = 10;
 
   @ApiPropertyOptional({

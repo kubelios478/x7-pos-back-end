@@ -35,14 +35,14 @@ export class Configuration {
     example: '26-09-2023',
     description: 'Date of the configuration creation',
   })
-  @Column({ type: 'date' })
+  @Column({ type: 'date', utc: true })
   createdAt: Date;
 
   @ApiProperty({
     example: '26-09-2023',
     description: 'Date of the configuration update',
   })
-  @Column({ type: 'date' })
+  @Column({ type: 'date', utc: true })
   updatedAt: Date;
 
   @ManyToOne(() => User, { nullable: true })

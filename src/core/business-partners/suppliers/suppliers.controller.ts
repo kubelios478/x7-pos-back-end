@@ -137,7 +137,7 @@ export class SuppliersController {
           {
             id: 1,
             name: 'Coca-Cola',
-            tax_id: '12345678-9',
+            tax_id: '12-3456789',
             email: 'supplier@example.com',
             phone: '+123456789',
             address: '123 Main St',

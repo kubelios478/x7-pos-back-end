@@ -558,7 +558,8 @@ export class JournalEntriesController {
   @Scopes(Scope.MERCHANT_WEB)
   @ApiOperation({
     summary: 'Post journal entry',
-    description: 'Posts a draft journal entry, locking it against further changes.',
+    description:
+      'Posts a draft journal entry, locking it against further changes.',
   })
   @ApiParam({
     name: 'id',
@@ -574,8 +575,7 @@ export class JournalEntriesController {
           id: 4,
           entry_number: 'JE-2026-004',
           entry_date: '2026-08-17',
-          description:
-            'Physical Inventory Audit Adjustment - Main Storage Hub',
+          description: 'Physical Inventory Audit Adjustment - Main Storage Hub',
           status: 'POSTED',
           total_debit: 150.0,
           total_credit: 150.0,
@@ -820,4 +820,3 @@ export class JournalEntriesController {
     return { success: true };
   }
 }
-

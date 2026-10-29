@@ -1,4 +1,7 @@
 //src/qr-code/qr-menu-section/dto/update-qr-menu-section.dto.ts
+import { PartialType } from '@nestjs/swagger';
 import { CreateQRMenuSectionDto } from './create-qr-menu-section.dto';
 
-export class UpdateQRMenuSectionDto extends CreateQRMenuSectionDto {}
+export class UpdateQRMenuSectionDto extends PartialType(
+  CreateQRMenuSectionDto,
+) {}

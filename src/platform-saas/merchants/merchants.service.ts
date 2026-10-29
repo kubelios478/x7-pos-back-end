@@ -23,6 +23,12 @@ import { Table } from 'src/restaurant-operations/dining-system/tables/entities/t
 import { Collaborator } from 'src/finance-hr/hr/collaborators/entities/collaborator.entity';
 import { MerchantAdminSummaryResponseDto } from './dtos/merchant-admin-summary.dto';
 import { CollaboratorStatus } from 'src/finance-hr/hr/collaborators/constants/collaborator-status.enum';
+import { normalizeTaxId } from 'src/common/utils/tax-id.util';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import {
+  paginationMeta,
+  requestedPage,
+} from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class MerchantsService {
@@ -71,11 +77,12 @@ export class MerchantsService {
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
-        rut: dto.rut,
+        tax_id: dto.tax_id ?? dto.rut,
         address: dto.address,
         city: dto.city,
         state: dto.state,
         country: dto.country,
+        ...(dto.timezone ? { timezone: dto.timezone } : {}),
         companyId: dto.companyId,
         status: dto.status ?? MerchantStatus.ACTIVE,
       } as Partial<Merchant>);
@@ -106,7 +113,7 @@ export class MerchantsService {
     }
 
     const nameTaken = await this.merchantRepo.exists({
-      where: { name: dto.name.trim() },
+      where: { name: dto.name.trim(), companyId },
     });
     if (nameTaken) {
       ErrorHandler.exists(ErrorMessage.MERCHANT_NAME_EXISTS);
@@ -115,13 +122,14 @@ export class MerchantsService {
     try {
       const merchant = this.merchantRepo.create({
         name: dto.name.trim(),
-        rut: dto.rut.trim(),
+        tax_id: (dto.tax_id ?? dto.rut)!.trim(),
         email: dto.email?.trim() || undefined,
         phone: dto.phone?.trim() || undefined,
         address: dto.address.trim(),
         city: dto.city.trim(),
         state: dto.state.trim(),
         country: dto.country.trim(),
+        ...(dto.timezone ? { timezone: dto.timezone } : {}),
         companyId,
         status: dto.status ?? MerchantStatus.ACTIVE,
       } as Partial<Merchant>);
@@ -138,8 +146,14 @@ export class MerchantsService {
     }
   }
 
-  async findAll(): Promise<AllMerchantsResponseDto> {
-    const merchants = await this.merchantRepo.find({
+  /** Sin page ni limit, todos los comercios, como antes. */
+  async findAll(
+    query: PaginationQueryDto = {},
+  ): Promise<AllMerchantsResponseDto> {
+    const pagination = requestedPage(query);
+    const [merchants, total] = await this.merchantRepo.findAndCount({
+      order: { id: 'ASC' },
+      ...(pagination ? { skip: pagination.skip, take: pagination.limit } : {}),
       relations: ['company', 'users'],
       select: {
         users: {
@@ -156,6 +170,9 @@ export class MerchantsService {
       statusCode: 200,
       message: 'Merchants retrieved successfully',
       data: merchants,
+      ...(pagination
+        ? paginationMeta(pagination.page, pagination.limit, total)
+        : {}),
     };
   }
 
@@ -176,7 +193,7 @@ export class MerchantsService {
       select: {
         id: true,
         name: true,
-        rut: true,
+        tax_id: true,
         email: true,
         phone: true,
         address: true,
@@ -352,7 +369,7 @@ export class MerchantsService {
       }
 
       const { defaultSalesStockLocationId: _skip, ...rest } = dto;
-      Object.assign(merchant, rest);
+      Object.assign(merchant, normalizeTaxId(rest));
       const updatedMerchant = await this.merchantRepo.save(merchant);
 
       return {

@@ -1,11 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
   IsString,
   Length,
   Matches,
+  ValidateIf,
+  IsOptional,
 } from 'class-validator';
+import { IsTaxId } from 'src/common/decorators/validation.decorators';
 import { IsBusinessEmail } from '../../../common/decorators/validation.decorators';
 
 export class UpdateCompanyProfileDto {
@@ -15,10 +18,26 @@ export class UpdateCompanyProfileDto {
   @ApiProperty({ example: 'Acme Corp' })
   name: string;
 
+  @ApiProperty({
+    example: '12-3456789',
+    description: 'Tax ID of the company (e.g. US EIN 12-3456789)',
+    required: true,
+  })
+  @ValidateIf((o: UpdateCompanyProfileDto) => o.rut === undefined)
   @IsString()
   @IsNotEmpty()
-  @ApiProperty({ example: '12.345.678-123' })
-  rut: string;
+  @IsTaxId()
+  tax_id?: string;
+
+  @ApiPropertyOptional({
+    example: '12-3456789',
+    description: 'Deprecated: use tax_id. Accepted as an alias.',
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsString()
+  @IsTaxId()
+  rut?: string;
 
   @IsEmail()
   @IsBusinessEmail()

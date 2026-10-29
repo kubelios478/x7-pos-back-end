@@ -63,7 +63,8 @@ export class KitchenStationResponseDto {
 
   @ApiPropertyOptional({
     example: 1,
-    description: 'Sequential station number scoped to the merchant (snake_case alias)',
+    description:
+      'Sequential station number scoped to the merchant (snake_case alias)',
   })
   station_number?: number;
 
@@ -81,7 +82,8 @@ export class KitchenStationResponseDto {
 
   @ApiPropertyOptional({
     example: 10,
-    description: 'ID of the secondary backup station for offline or overload rerouting',
+    description:
+      'ID of the secondary backup station for offline or overload rerouting',
   })
   backupStationId?: number | null;
 
@@ -93,7 +95,8 @@ export class KitchenStationResponseDto {
 
   @ApiPropertyOptional({
     example: 15,
-    description: 'Maximum active ticket capacity threshold before triggering load balancing overflow',
+    description:
+      'Maximum active ticket capacity threshold before triggering load balancing overflow',
   })
   maxActiveTicketsCapacity?: number;
 
@@ -105,7 +108,8 @@ export class KitchenStationResponseDto {
 
   @ApiPropertyOptional({
     example: true,
-    description: 'Whether to auto-reroute when station devices are offline > 60s',
+    description:
+      'Whether to auto-reroute when station devices are offline > 60s',
   })
   autoRerouteOnOffline?: boolean;
 

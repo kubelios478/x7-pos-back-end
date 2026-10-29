@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository, EntityManager, IsNull, Between } from 'typeorm';
+import { Repository, EntityManager, IsNull, Between, Not } from 'typeorm';
 import { In } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -33,6 +33,7 @@ describe('TableAssignmentsService', () => {
   const mockTableAssignmentRepository = {
     create: jest.fn(),
     save: jest.fn(),
+    find: jest.fn(),
     findOne: jest.fn(),
     findAndCount: jest.fn(),
     update: jest.fn(),
@@ -157,6 +158,10 @@ describe('TableAssignmentsService', () => {
       status: 'active',
     };
 
+    beforeEach(() => {
+      mockTableAssignmentRepository.find.mockResolvedValue([]);
+    });
+
     it('should create a table assignment successfully', async () => {
       jest
         .spyOn(shiftRepository, 'findOne')
@@ -167,7 +172,6 @@ describe('TableAssignmentsService', () => {
       jest
         .spyOn(collaboratorRepository, 'findOne')
         .mockResolvedValue(mockCollaborator as any);
-      jest.spyOn(tableAssignmentRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(tableAssignmentRepository, 'create')
         .mockReturnValue(mockTableAssignment as any);
@@ -189,7 +193,14 @@ describe('TableAssignmentsService', () => {
         where: { id: 1 },
         relations: ['merchant'],
       });
-      expect(tableAssignmentRepository.findOne).toHaveBeenCalled();
+      expect(tableAssignmentRepository.find).toHaveBeenCalledWith({
+        where: {
+          tableId: 1,
+          releasedAt: IsNull(),
+          status: Not('deleted'),
+        },
+        relations: ['shift'],
+      });
       expect(tableAssignmentRepository.save).toHaveBeenCalled();
       expect(result.statusCode).toBe(201);
       expect(result.message).toBe('Table assignment created successfully');
@@ -349,9 +360,9 @@ describe('TableAssignmentsService', () => {
       jest
         .spyOn(collaboratorRepository, 'findOne')
         .mockResolvedValue(mockCollaborator as any);
-      jest
-        .spyOn(tableAssignmentRepository, 'findOne')
-        .mockResolvedValue(existingAssignment as any);
+      mockTableAssignmentRepository.find.mockResolvedValue([
+        existingAssignment,
+      ]);
 
       await expect(service.create(createTableAssignmentDto, 1)).rejects.toThrow(
         ConflictException,
@@ -359,6 +370,102 @@ describe('TableAssignmentsService', () => {
       await expect(service.create(createTableAssignmentDto, 1)).rejects.toThrow(
         'Table is already assigned to another collaborator',
       );
+    });
+
+    describe('open assignments in other shifts', () => {
+      const dinnerShift = {
+        ...mockShift,
+        id: 2,
+        startTime: new Date('2024-01-15T19:00:00Z'),
+        endTime: new Date('2024-01-15T23:00:00Z'),
+      };
+      const dinnerDto = {
+        ...createTableAssignmentDto,
+        shiftId: 2,
+        assignedAt: '2024-01-15T19:00:00Z',
+      };
+      const openLunchAssignment = (shift: Record<string, unknown>) => ({
+        ...mockTableAssignment,
+        id: 2,
+        shiftId: 1,
+        shift: { ...mockShift, ...shift },
+      });
+
+      beforeEach(() => {
+        jest
+          .spyOn(shiftRepository, 'findOne')
+          .mockResolvedValue(dinnerShift as any);
+        jest
+          .spyOn(tableRepository, 'findOne')
+          .mockResolvedValue(mockTable as any);
+        jest
+          .spyOn(collaboratorRepository, 'findOne')
+          .mockResolvedValue(mockCollaborator as any);
+        jest
+          .spyOn(tableAssignmentRepository, 'create')
+          .mockImplementation((data) => data as any);
+        jest
+          .spyOn(tableAssignmentRepository, 'save')
+          .mockImplementation(
+            (data) => Promise.resolve({ id: 3, ...data }) as any,
+          );
+      });
+
+      it('allows pre-assigning dinner while the lunch assignment is still open', async () => {
+        mockTableAssignmentRepository.find.mockResolvedValue([
+          openLunchAssignment({}),
+        ]);
+
+        const result = await service.create(dinnerDto, 1);
+
+        expect(result.statusCode).toBe(201);
+        expect(tableAssignmentRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            shiftId: 2,
+            assignedAt: new Date('2024-01-15T19:00:00Z'),
+          }),
+        );
+      });
+
+      it('ignores open assignments of shifts that already ended', async () => {
+        mockTableAssignmentRepository.find.mockResolvedValue([
+          openLunchAssignment({ endTime: null, status: 'completed' }),
+        ]);
+
+        await expect(service.create(dinnerDto, 1)).resolves.toBeDefined();
+      });
+
+      it('rejects when an active shift overlapping this one holds the table', async () => {
+        mockTableAssignmentRepository.find.mockResolvedValue([
+          openLunchAssignment({
+            startTime: new Date('2024-01-15T18:00:00Z'),
+            endTime: new Date('2024-01-15T20:00:00Z'),
+          }),
+        ]);
+
+        await expect(service.create(dinnerDto, 1)).rejects.toThrow(
+          ConflictException,
+        );
+      });
+
+      it('rejects when an active open-ended shift holds the table', async () => {
+        mockTableAssignmentRepository.find.mockResolvedValue([
+          openLunchAssignment({ endTime: null }),
+        ]);
+
+        await expect(service.create(dinnerDto, 1)).rejects.toThrow(
+          ConflictException,
+        );
+      });
+
+      it('rejects a release time before the requested assignment time', async () => {
+        await expect(
+          service.create(
+            { ...dinnerDto, releasedAt: '2024-01-15T18:30:00Z' },
+            1,
+          ),
+        ).rejects.toThrow('Release time must be after assignment time');
+      });
     });
 
     it('should create assignment with release time', async () => {
@@ -382,7 +489,6 @@ describe('TableAssignmentsService', () => {
       jest
         .spyOn(collaboratorRepository, 'findOne')
         .mockResolvedValue(mockCollaborator as any);
-      jest.spyOn(tableAssignmentRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(tableAssignmentRepository, 'create')
         .mockReturnValue(assignmentWithRelease as any);
@@ -422,6 +528,21 @@ describe('TableAssignmentsService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.paginationMeta.page).toBe(1);
       expect(result.paginationMeta.limit).toBe(10);
+    });
+
+    it("scopes the query to the user's merchant instead of rejecting other merchants' rows", async () => {
+      jest
+        .spyOn(tableAssignmentRepository, 'findAndCount')
+        .mockResolvedValue([[mockTableAssignment] as any, 1]);
+
+      const result = await service.findAll(query, 5);
+
+      expect(tableAssignmentRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ shift: { merchantId: 5 } }),
+        }),
+      );
+      expect(result.data).toHaveLength(1);
     });
 
     it('should throw ForbiddenException when user has no merchant_id', async () => {

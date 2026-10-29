@@ -16,6 +16,7 @@ import { MailModule } from '../mail/mail.module';
 import { MerchantSubscription } from '../platform-saas/subscriptions/merchant-subscriptions/entities/merchant-subscription.entity';
 import { PlanFeature } from '../platform-saas/subscriptions/plan-features/entity/plan-features.entity';
 import { CompanySubscription } from '../platform-saas/subscriptions/company-subscriptions/entities/company-subscription.entity';
+import { SubscriptionPlan } from '../platform-saas/subscriptions/subscription-plan/entity/subscription-plan.entity';
 import { SubscriptionAccessService } from './subscription-access.service';
 import { FeatureAccessGuard } from './guards/feature-access.guard';
 
@@ -29,6 +30,7 @@ import { FeatureAccessGuard } from './guards/feature-access.guard';
       MerchantSubscription,
       CompanySubscription,
       PlanFeature,
+      SubscriptionPlan,
     ]),
     PassportModule,
     JwtModule.registerAsync({

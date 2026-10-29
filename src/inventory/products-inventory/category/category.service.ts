@@ -3,7 +3,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import {
   CategoryResponseDto,
@@ -124,24 +124,22 @@ export class CategoryService {
     const hasPrev = page > 1;
 
     // 7. Map to CategoryResponseDto (with parent categories)
-    const data: CategoryResponseDto[] = await Promise.all(
-      categories.map(async (category) => {
-        const result: CategoryResponseDto = {
-          id: category.id,
-          name: category.name,
-          isActive: category.isActive,
-          merchant: category.merchant
-            ? {
-                id: category.merchant.id,
-                name: category.merchant.name,
-              }
-            : null,
-        };
-        result.parents =
-          await this.productsInventoryService.findParentCategories(category.id);
-        return result;
-      }),
-    );
+    const parents =
+      await this.productsInventoryService.findParentCategoriesMany(
+        categories.map((category) => category.id),
+      );
+    const data: CategoryResponseDto[] = categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      isActive: category.isActive,
+      merchant: category.merchant
+        ? {
+            id: category.merchant.id,
+            name: category.merchant.name,
+          }
+        : null,
+      parents: parents.get(category.id) ?? [],
+    }));
 
     return {
       statusCode: 200,
@@ -243,19 +241,7 @@ export class CategoryService {
     });
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
-    if (isActive === false && category.isActive === true) {
-      // Soft delete all products within this category
-      await this.productsService.softRemoveByCategoryId(id, merchant_id);
-
-      // Recursively soft delete subcategories
-      const subCategories = await this.categoryRepo.findBy({
-        parentId: id,
-        isActive: true,
-      });
-      for (const sub of subCategories) {
-        await this.remove(sub.id, merchant_id);
-      }
-    }
+    const deactivating = isActive === false && category.isActive === true;
 
     if (name !== undefined && name !== category.name) {
       const existingCategory = await this.categoryRepo.findOne({
@@ -280,11 +266,17 @@ export class CategoryService {
     Object.assign(category, { name, parentId, isActive });
 
     try {
-      await this.categoryRepo.save(category);
+      // The other changes and the deactivation of the whole tree, together or not at all
+      await this.categoryRepo.manager.transaction(async (manager) => {
+        if (deactivating) {
+          await this.deactivateTree(manager, category, merchant_id);
+        } else {
+          await manager.getRepository(Category).save(category);
+        }
+      });
       return this.findOne(id, merchant_id, 'Updated');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
-      console.log(error);
     }
   }
 
@@ -299,33 +291,37 @@ export class CategoryService {
     if (!category) ErrorHandler.notFound(ErrorMessage.CATEGORY_NOT_FOUND);
 
     try {
-      const hideRecursive = async (categoryId: number): Promise<void> => {
-        const subCategories = await this.categoryRepo.find({
-          where: { parentId: categoryId, isActive: true }, // Only hide active subcategories
-        });
-
-        for (const sub of subCategories) {
-          await hideRecursive(sub.id);
-          await this.productsService.softRemoveByCategoryId(
-            sub.id,
-            merchant_id,
-          );
-          sub.isActive = false;
-          await this.categoryRepo.save(sub);
-        }
-      };
-
-      await hideRecursive(category.id);
-      await this.productsService.softRemoveByCategoryId(
-        category.id,
-        merchant_id,
+      await this.categoryRepo.manager.transaction((manager) =>
+        this.deactivateTree(manager, category, merchant_id),
       );
-      category.isActive = false;
-      await this.categoryRepo.save(category);
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
-      console.log(error);
     }
+  }
+
+  /**
+   * Deactivates a category, its subcategories and all their products inside one
+   * transaction: a product with stock anywhere in the tree aborts the whole operation,
+   * instead of leaving it half deactivated.
+   */
+  private async deactivateTree(
+    manager: EntityManager,
+    category: Category,
+    merchantId: number,
+  ): Promise<void> {
+    const subCategories = await manager.getRepository(Category).find({
+      where: { parentId: category.id, merchantId, isActive: true },
+    });
+    for (const sub of subCategories) {
+      await this.deactivateTree(manager, sub, merchantId);
+    }
+    await this.productsService.softRemoveByCategoryId(
+      category.id,
+      merchantId,
+      manager,
+    );
+    category.isActive = false;
+    await manager.getRepository(Category).save(category);
   }
 }

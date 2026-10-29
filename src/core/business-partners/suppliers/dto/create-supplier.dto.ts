@@ -4,11 +4,11 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Matches,
   MaxLength,
   MinLength,
   IsBoolean,
 } from 'class-validator';
+import { IsTaxId } from 'src/common/decorators/validation.decorators';
 
 export class CreateSupplierDto {
   @ApiProperty({ example: 'Coca-Cola', description: 'Supplier name' })
@@ -19,16 +19,15 @@ export class CreateSupplierDto {
   name: string;
 
   @ApiProperty({
-    example: '12345678-9',
-    description: 'Tax ID (e.g. Chilean RUT format: 12345678-9)',
+    example: '12-3456789',
+    description:
+      'Tax ID of the supplier (e.g. US EIN 12-3456789). Any country format is accepted.',
     required: false,
   })
   @IsString()
   @IsOptional()
   @MaxLength(50)
-  @Matches(/^[0-9]{7,8}-[0-9kK]$/, {
-    message: 'tax_id must be a valid RUT format (e.g. 12345678-9)',
-  })
+  @IsTaxId()
   tax_id?: string;
 
   @ApiProperty({

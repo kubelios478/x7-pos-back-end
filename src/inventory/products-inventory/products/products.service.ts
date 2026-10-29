@@ -1,4 +1,9 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
@@ -9,7 +14,8 @@ import { GetProductsQueryDto } from './dto/get-products-query.dto';
 import { AllPaginatedProducts } from './dto/all-paginated-products.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
-import { Repository } from 'typeorm';
+import { EntityManager, In, MoreThan, Repository } from 'typeorm';
+import { Item } from '../stocks/items/entities/item.entity';
 import { Category } from '../category/entities/category.entity';
 import { Merchant } from 'src/platform-saas/merchants/entities/merchant.entity';
 import { Supplier } from '../../../core/business-partners/suppliers/entities/supplier.entity';
@@ -21,6 +27,15 @@ import { ErrorMessage } from 'src/common/constants/error-messages';
 import { ItemsService } from '../stocks/items/items.service';
 import { PurchaseOrderItemService } from '../purchase-order-item/purchase-order-item.service';
 import { StockAvailabilityService } from '../../stock-alerts/stock-availability.service';
+
+const PRODUCT_RESPONSE_RELATIONS = [
+  'merchant',
+  'category',
+  'category.parent',
+  'supplier',
+  'variants',
+  'modifiers',
+];
 
 @Injectable()
 export class ProductsService {
@@ -128,7 +143,6 @@ export class ProductsService {
       }
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
-      console.log(error);
     }
   }
 
@@ -287,14 +301,7 @@ export class ProductsService {
 
     const product = await this.productRepository.findOne({
       where: whereCondition,
-      relations: [
-        'merchant',
-        'category',
-        'category.parent',
-        'supplier',
-        'variants',
-        'modifiers',
-      ],
+      relations: PRODUCT_RESPONSE_RELATIONS,
     });
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
@@ -309,7 +316,73 @@ export class ProductsService {
           ).get(product.id) ?? { isOutOfStock: false, isLowStock: false })
         : { isOutOfStock: false, isLowStock: false };
 
-    const result: ProductResponseDto = {
+    const result = this.toProductResponse(product, stockFlags, merchantId);
+
+    let response: OneProductResponse;
+
+    switch (createdUpdateDelete) {
+      case 'Created':
+        response = {
+          statusCode: 201,
+          message: `Product ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      case 'Updated':
+        response = {
+          statusCode: 200,
+          message: `Product ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      case 'Deleted':
+        response = {
+          statusCode: 200,
+          message: `Product ${createdUpdateDelete} successfully`,
+          data: result,
+        };
+        break;
+      default:
+        response = {
+          statusCode: 200,
+          message: 'Product retrieved successfully',
+          data: result,
+        };
+        break;
+    }
+    return response;
+  }
+
+  /**
+   * Varios productos con las mismas relaciones y el mismo formato que findOne sin
+   * comercio, en una sola consulta (sin las banderas de stock, que findOne sin comercio
+   * tampoco calcula). Los ids que no existen no aparecen en el mapa.
+   */
+  async findResponsesByIds(
+    ids: number[],
+  ): Promise<Map<number, ProductResponseDto>> {
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) return new Map();
+
+    const products = await this.productRepository.find({
+      where: { id: In(uniqueIds) },
+      relations: PRODUCT_RESPONSE_RELATIONS,
+    });
+    const noStockFlags = { isOutOfStock: false, isLowStock: false };
+    return new Map(
+      products.map((product) => [
+        product.id,
+        this.toProductResponse(product, noStockFlags),
+      ]),
+    );
+  }
+
+  private toProductResponse(
+    product: Product,
+    stockFlags: { isOutOfStock: boolean; isLowStock: boolean },
+    merchantId?: number,
+  ): ProductResponseDto {
+    return {
       id: product.id,
       name: product.name,
       sku: product.sku,
@@ -368,40 +441,6 @@ export class ProductsService {
             }))
         : [],
     };
-
-    let response: OneProductResponse;
-
-    switch (createdUpdateDelete) {
-      case 'Created':
-        response = {
-          statusCode: 201,
-          message: `Product ${createdUpdateDelete} successfully`,
-          data: result,
-        };
-        break;
-      case 'Updated':
-        response = {
-          statusCode: 200,
-          message: `Product ${createdUpdateDelete} successfully`,
-          data: result,
-        };
-        break;
-      case 'Deleted':
-        response = {
-          statusCode: 200,
-          message: `Product ${createdUpdateDelete} successfully`,
-          data: result,
-        };
-        break;
-      default:
-        response = {
-          statusCode: 200,
-          message: 'Product retrieved successfully',
-          data: result,
-        };
-        break;
-    }
-    return response;
   }
 
   async update(
@@ -421,15 +460,8 @@ export class ProductsService {
 
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
 
-    if (updateData.isActive === false && product.isActive === true) {
-      await this.modifiersService.softRemoveByProductId(id, merchant_id);
-      await this.variantsService.softRemoveByProductId(id, merchant_id);
-      await this.itemsService.softRemoveByProductId(id, merchant_id);
-      await this.purchaseOrderItemService.softRemoveByProductId(
-        id,
-        merchant_id,
-      );
-    }
+    const deactivating =
+      updateData.isActive === false && product.isActive === true;
 
     if (categoryId && categoryId !== product.categoryId) {
       const category = await this.categoryRepository.findOneBy({
@@ -483,10 +515,16 @@ export class ProductsService {
       sku,
     });
     try {
-      await this.productRepository.save(product);
+      // The other changes and the deactivation cascade are saved together, or not at all
+      await this.productRepository.manager.transaction(async (manager) => {
+        if (deactivating) {
+          await this.deactivateWithManager(manager, product, merchant_id);
+        } else {
+          await manager.getRepository(Product).save(product);
+        }
+      });
       return this.findOne(id, merchant_id, 'Updated');
     } catch (error) {
-      console.log(error);
       ErrorHandler.handleDatabaseError(error);
     }
   }
@@ -503,31 +541,77 @@ export class ProductsService {
     if (!product) ErrorHandler.notFound(ErrorMessage.PRODUCT_NOT_FOUND);
 
     try {
-      await this.modifiersService.softRemoveByProductId(id, merchant_id);
-      await this.variantsService.softRemoveByProductId(id, merchant_id);
-      await this.itemsService.softRemoveByProductId(id, merchant_id);
-      await this.purchaseOrderItemService.softRemoveByProductId(
-        id,
-        merchant_id,
+      await this.productRepository.manager.transaction((manager) =>
+        this.deactivateWithManager(manager, product, merchant_id),
       );
-      product.isActive = false;
-      await this.productRepository.save(product);
       return this.findOne(id, merchant_id, 'Deleted');
     } catch (error) {
       ErrorHandler.handleDatabaseError(error);
     }
   }
 
+  /** Deactivates every active product of a category, inside the caller's transaction. */
   async softRemoveByCategoryId(
     categoryId: number,
     merchantId: number,
+    manager: EntityManager,
   ): Promise<void> {
-    const products = await this.productRepository.find({
+    const products = await manager.getRepository(Product).find({
       where: { categoryId, merchantId, isActive: true },
     });
 
     for (const product of products) {
-      await this.remove(product.id, merchantId);
+      await this.deactivateWithManager(manager, product, merchantId);
     }
+  }
+
+  /**
+   * Deactivates a product with its modifiers, variants, stock rows and the lines of purchase
+   * orders not received yet, inside the caller's transaction. A product that still has
+   * stock is refused: deactivating it used to zero that stock with no kardex line.
+   */
+  private async deactivateWithManager(
+    manager: EntityManager,
+    product: Product,
+    merchantId: number,
+  ): Promise<void> {
+    const stocked = await manager.getRepository(Item).find({
+      where: { productId: product.id, isActive: true, currentQty: MoreThan(0) },
+      relations: ['location'],
+    });
+    if (stocked.length > 0) {
+      const where = stocked
+        .map(
+          (row) =>
+            `${row.location?.name ?? `location ${row.locationId}`}: ${row.currentQty}`,
+        )
+        .join(', ');
+      throw new BadRequestException(
+        `Product "${product.name}" still has stock (${where}). Adjust it to 0 before deactivating the product.`,
+      );
+    }
+
+    await this.modifiersService.softRemoveByProductId(
+      product.id,
+      merchantId,
+      manager,
+    );
+    await this.variantsService.softRemoveByProductId(
+      product.id,
+      merchantId,
+      manager,
+    );
+    await this.itemsService.softRemoveByProductId(
+      product.id,
+      merchantId,
+      manager,
+    );
+    await this.purchaseOrderItemService.softRemoveByProductId(
+      product.id,
+      merchantId,
+      manager,
+    );
+    product.isActive = false;
+    await manager.getRepository(Product).save(product);
   }
 }

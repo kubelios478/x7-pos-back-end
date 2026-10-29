@@ -4,7 +4,9 @@ import {
   BadRequestException,
   ForbiddenException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
+import { errorStack } from 'src/common/utils/log-error.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, IsNull } from 'typeorm';
 import { KitchenOrderItem } from './entities/kitchen-order-item.entity';
@@ -45,6 +47,8 @@ import { KitchenEventLogStatus } from '../kitchen-event-log/constants/kitchen-ev
 
 @Injectable()
 export class KitchenOrderItemService {
+  private readonly logger = new Logger(KitchenOrderItemService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(KitchenOrderItem)
@@ -64,7 +68,7 @@ export class KitchenOrderItemService {
   async create(
     createKitchenOrderItemDto: CreateKitchenOrderItemDto,
     authenticatedUserMerchantId: number,
-    userId?: number,
+    _userId?: number,
   ): Promise<OneKitchenOrderItemResponseDto> {
     if (!authenticatedUserMerchantId) {
       throw new ForbiddenException(
@@ -91,6 +95,7 @@ export class KitchenOrderItemService {
         where: {
           id: createKitchenOrderItemDto.orderItemId,
           status: OrderItemStatus.ACTIVE,
+          order: { merchant_id: authenticatedUserMerchantId },
         },
       });
 
@@ -100,7 +105,10 @@ export class KitchenOrderItemService {
     }
 
     const product = await this.productRepository.findOne({
-      where: { id: createKitchenOrderItemDto.productId },
+      where: {
+        id: createKitchenOrderItemDto.productId,
+        merchantId: authenticatedUserMerchantId,
+      },
     });
 
     if (!product) {
@@ -109,7 +117,10 @@ export class KitchenOrderItemService {
 
     if (createKitchenOrderItemDto.variantId) {
       const variant = await this.variantRepository.findOne({
-        where: { id: createKitchenOrderItemDto.variantId },
+        where: {
+          id: createKitchenOrderItemDto.variantId,
+          product: { merchantId: authenticatedUserMerchantId },
+        },
       });
 
       if (!variant) {
@@ -409,8 +420,8 @@ export class KitchenOrderItemService {
         item.prepared_quantity = item.quantity;
         if (!item.completed_at) item.completed_at = now;
         if (!item.started_at) item.started_at = now;
-        await this.kitchenOrderItemRepository.save(item);
       }
+      await this.kitchenOrderItemRepository.save(itemsToHeal);
     }
 
     return {
@@ -518,6 +529,7 @@ export class KitchenOrderItemService {
           where: {
             id: updateKitchenOrderItemDto.orderItemId,
             status: OrderItemStatus.ACTIVE,
+            order: { merchant_id: authenticatedUserMerchantId },
           },
         });
 
@@ -531,7 +543,10 @@ export class KitchenOrderItemService {
 
     if (updateKitchenOrderItemDto.productId !== undefined) {
       const product = await this.productRepository.findOne({
-        where: { id: updateKitchenOrderItemDto.productId },
+        where: {
+          id: updateKitchenOrderItemDto.productId,
+          merchantId: authenticatedUserMerchantId,
+        },
       });
 
       if (!product) {
@@ -543,7 +558,10 @@ export class KitchenOrderItemService {
     if (updateKitchenOrderItemDto.variantId !== undefined) {
       if (updateKitchenOrderItemDto.variantId !== null) {
         const variant = await this.variantRepository.findOne({
-          where: { id: updateKitchenOrderItemDto.variantId },
+          where: {
+            id: updateKitchenOrderItemDto.variantId,
+            product: { merchantId: authenticatedUserMerchantId },
+          },
         });
 
         if (!variant) {
@@ -947,7 +965,13 @@ export class KitchenOrderItemService {
     const previousStatus = getPreviousPreparationStatus(
       existingKitchenOrderItem.preparation_status,
     );
-    if (previousStatus === null) {
+    // HELD comes before PENDING, but only holdItem() should enter it: it sets hold_until,
+    // and auto-pacing only releases held items that have one. Reverting into HELD would
+    // park the item with no timer, off the line until someone fires it by hand.
+    if (
+      previousStatus === null ||
+      previousStatus === KitchenOrderItemPreparationStatus.HELD
+    ) {
       throw new ConflictException(
         'Kitchen order item is already at the initial preparation status',
       );
@@ -971,10 +995,7 @@ export class KitchenOrderItemService {
     if (wasReady) {
       await this.removeItemReadyEvent(updatedKitchenOrderItem.id);
     }
-    if (
-      previousStatus === KitchenOrderItemPreparationStatus.PENDING ||
-      previousStatus === KitchenOrderItemPreparationStatus.HELD
-    ) {
+    if (previousStatus === KitchenOrderItemPreparationStatus.PENDING) {
       await this.removeItemAllEvents(updatedKitchenOrderItem.id);
     }
 
@@ -1242,7 +1263,7 @@ export class KitchenOrderItemService {
             );
           }
         } catch (err) {
-          console.error('Failed to log auto-bump event:', err);
+          this.logger.error('Failed to log auto-bump event', errorStack(err));
         }
 
         if (parentOrder.order_id) {
@@ -1274,7 +1295,10 @@ export class KitchenOrderItemService {
             event_type: KitchenEventLogEventType.SERVIDO,
           });
         } catch (err) {
-          console.error('Failed to remove SERVIDO event on reopen:', err);
+          this.logger.error(
+            'Failed to remove SERVIDO event on reopen',
+            errorStack(err),
+          );
         }
       }
 
@@ -1325,7 +1349,10 @@ export class KitchenOrderItemService {
             await eventLogRepo.save(existingOrderInicio);
           }
         } catch (err) {
-          console.error('Failed to log INICIO on order start/resume:', err);
+          this.logger.error(
+            'Failed to log INICIO on order start/resume',
+            errorStack(err),
+          );
         }
 
         if (parentOrder.order_id) {
@@ -1351,9 +1378,9 @@ export class KitchenOrderItemService {
               event_type: KitchenEventLogEventType.INICIO,
             });
           } catch (err) {
-            console.error(
-              'Failed to remove INICIO on order return to pending:',
-              err,
+            this.logger.error(
+              'Failed to remove INICIO on order return to pending',
+              errorStack(err),
             );
           }
 
@@ -1403,7 +1430,10 @@ export class KitchenOrderItemService {
         );
       }
     } catch (err) {
-      console.error(`Failed to log READY event for item #${item.id}:`, err);
+      this.logger.error(
+        `Failed to log READY event for item #${item.id}`,
+        errorStack(err),
+      );
     }
   }
 
@@ -1415,7 +1445,10 @@ export class KitchenOrderItemService {
         event_type: KitchenEventLogEventType.LISTO,
       });
     } catch (err) {
-      console.error(`Failed to remove READY event for item #${itemId}:`, err);
+      this.logger.error(
+        `Failed to remove READY event for item #${itemId}`,
+        errorStack(err),
+      );
     }
   }
 
@@ -1426,7 +1459,10 @@ export class KitchenOrderItemService {
         kitchen_order_item_id: itemId,
       });
     } catch (err) {
-      console.error(`Failed to remove events for item #${itemId}:`, err);
+      this.logger.error(
+        `Failed to remove events for item #${itemId}`,
+        errorStack(err),
+      );
     }
   }
 
@@ -1699,7 +1735,7 @@ export class KitchenOrderItemService {
           }),
         );
       } catch (err) {
-        console.error('Failed to log auto-pacing event:', err);
+        this.logger.error('Failed to log auto-pacing event', errorStack(err));
       }
 
       const reloaded = await this.reloadKitchenOrderItemAfterSaveAndSync(
@@ -1864,7 +1900,7 @@ export class KitchenOrderItemService {
           }),
         );
       } catch (err) {
-        console.error('Failed to log batch bump event:', err);
+        this.logger.error('Failed to log batch bump event', errorStack(err));
       }
 
       const reloaded = await this.reloadKitchenOrderItemAfterSaveAndSync(

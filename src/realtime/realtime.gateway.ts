@@ -32,17 +32,6 @@ function parseBearerToken(value: string | undefined): string | undefined {
   return match?.[1]?.trim() || undefined;
 }
 
-function parseCorsOrigin(raw: string | undefined): string | string[] {
-  const v = raw?.trim();
-  if (!v || v === '*') return '*';
-  if (v.includes(','))
-    return v
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean);
-  return v;
-}
-
 @WebSocketGateway({
   namespace: REALTIME_NAMESPACE_DEFAULT,
   cors: { origin: REALTIME_CORS_ORIGIN_DEFAULT },
@@ -72,13 +61,7 @@ export class RealtimeGateway
       );
     }
 
-    const origin = parseCorsOrigin(this.config.get<string>('WS_CORS_ORIGIN'));
-    if (origin !== REALTIME_CORS_ORIGIN_DEFAULT) {
-      server.engine.opts.cors = {
-        ...(server.engine.opts.cors ?? {}),
-        origin,
-      };
-    }
+    // Allowed origins are applied by CorsIoAdapter when the server is created (main.ts).
   }
 
   async handleConnection(client: RealtimeSocket) {

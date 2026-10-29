@@ -10,9 +10,11 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -39,6 +41,8 @@ import { RecipesService } from './recipes.service';
 import { CreateRecipeV1Dto } from './dto/create-recipe-v1.dto';
 import { UpdateRecipeV1Dto } from './dto/update-recipe-v1.dto';
 import { ProductRecipe } from './entities/product-recipe.entity';
+import { PaginationQueryDto } from 'src/common/dtos/pagination-query.dto';
+import { TOTAL_COUNT_HEADER } from 'src/common/utils/pagination.util';
 
 @ApiTags('Inventory - Products - Recipes V1')
 @ApiBearerAuth()
@@ -63,10 +67,16 @@ export class RecipesV1Controller {
   @ApiOkResponse({ type: ProductRecipe, isArray: true })
   async findAllForMerchant(
     @CurrentUser() user: AuthenticatedUser,
+    @Query() query: PaginationQueryDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<ProductRecipe[]> {
     const merchantId = user.merchant?.id;
     if (!merchantId) throw new BadRequestException('User must have a merchant');
-    return this.recipesService.findAllForMerchant(merchantId);
+    const { rows, total, paginated } =
+      await this.recipesService.findAllForMerchant(merchantId, query);
+    // El formato no cambia (un arreglo); al paginar, el total va en la cabecera.
+    if (paginated) res.setHeader(TOTAL_COUNT_HEADER, String(total));
+    return rows;
   }
 
   @Post()

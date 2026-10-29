@@ -61,10 +61,11 @@ export class Order {
     example: 1,
     description: 'Identifier of the Table associated with the Order',
   })
-  @Column({ name: 'table_id' })
-  table_id: number;
+  @Column({ name: 'table_id', type: 'int', nullable: true })
+  table_id: number | null;
 
   @ManyToOne(() => Table, (table) => table.orders, {
+    nullable: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'table_id' })
@@ -84,7 +85,7 @@ export class Order {
   collaborator: Collaborator;
 
   @Column({ nullable: true })
-  subscription_id: number;
+  subscription_id: number | null;
 
   @ManyToOne(
     () => MerchantSubscription,

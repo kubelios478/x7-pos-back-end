@@ -152,7 +152,9 @@ export class ReservationStatusHistoryController {
   })
   @ApiOkResponse({
     type: AllPaginatedReservationStatusHistory,
-    example: paginatedExample('All merchant status history retrieved successfully'),
+    example: paginatedExample(
+      'All merchant status history retrieved successfully',
+    ),
   })
   @ApiBadRequestResponse({
     description: 'Invalid query parameter',
@@ -160,7 +162,9 @@ export class ReservationStatusHistoryController {
       example: {
         statusCode: 400,
         message: 'Validation failed',
-        errors: ['status must be one of the following values: pending, confirmed, seated, completed, cancelled, white_list, no_show'],
+        errors: [
+          'status must be one of the following values: pending, confirmed, seated, completed, cancelled, white_list, no_show',
+        ],
         timestamp: '2026-04-16T20:55:00.000Z',
       },
     },
@@ -194,7 +198,9 @@ export class ReservationStatusHistoryController {
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiOkResponse({
     type: AllPaginatedReservationStatusHistory,
-    example: paginatedExample('All merchant status history retrieved successfully'),
+    example: paginatedExample(
+      'All merchant status history retrieved successfully',
+    ),
   })
   @ApiBadRequestResponse({
     description: 'reservationId (or page/limit) is not a number',
@@ -270,7 +276,9 @@ export class ReservationStatusHistoryController {
    * tres — cada decorador sobrescribe los metadatos de ruta del anterior y sólo queda uno.
    */
   @Post()
-  @ApiOperation({ summary: 'Rejected (405) — entries are created automatically' })
+  @ApiOperation({
+    summary: 'Rejected (405) — entries are created automatically',
+  })
   @ApiResponse({ status: 405, description: 'History entries are immutable' })
   rejectCreate(): never {
     return this.rejectWrite();
