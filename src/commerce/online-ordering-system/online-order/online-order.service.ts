@@ -470,15 +470,17 @@ export class OnlineOrderService {
       updateOnlineOrderDto.scheduledAt !== undefined ||
       updateOnlineOrderDto.paymentStatus !== undefined;
 
+    const currentFulfillmentStatus =
+      existingOnlineOrder.fulfillment_status ||
+      OnlineOrderFulfillmentStatus.RECEIVED;
+
     if (
       isEditingDetails &&
-      existingOnlineOrder.fulfillment_status !==
-        OnlineOrderFulfillmentStatus.RECEIVED &&
-      existingOnlineOrder.fulfillment_status !==
-        OnlineOrderFulfillmentStatus.ACCEPTED
+      currentFulfillmentStatus !== OnlineOrderFulfillmentStatus.RECEIVED &&
+      currentFulfillmentStatus !== OnlineOrderFulfillmentStatus.ACCEPTED
     ) {
       throw new BadRequestException(
-        `Order details can only be edited when order is in 'received' or 'accepted' stage (current: '${existingOnlineOrder.fulfillment_status}')`,
+        `Order details can only be edited when order is in 'received' or 'accepted' stage (current: '${currentFulfillmentStatus}')`,
       );
     }
 

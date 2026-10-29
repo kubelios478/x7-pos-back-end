@@ -31,6 +31,7 @@ describe('OnlineMenuCategoryService', () => {
   const mockOnlineMenuCategoryRepository = {
     create: jest.fn(),
     save: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
@@ -322,7 +323,7 @@ describe('OnlineMenuCategoryService', () => {
         BadRequestException,
       );
       await expect(service.create(dtoWithNegativeOrder, 1)).rejects.toThrow(
-        'Display order must be greater than or equal to 0',
+        'Display order must be an integer greater than or equal to 0',
       );
     });
   });
@@ -630,7 +631,7 @@ describe('OnlineMenuCategoryService', () => {
         BadRequestException,
       );
       await expect(service.update(1, dtoWithNegativeOrder, 1)).rejects.toThrow(
-        'Display order must be greater than or equal to 0',
+        'Display order must be an integer greater than or equal to 0',
       );
     });
   });
