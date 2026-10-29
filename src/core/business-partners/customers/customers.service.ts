@@ -59,7 +59,6 @@ export class CustomersService {
     return this.customerRepo.save(customer);
   }
 
-  /** Sin page ni limit, todos los clientes del comercio, como antes. */
   async findAll(merchantId: number, query: PaginationQueryDto = {}) {
     const pagination = requestedPage(query);
     const [customers, total] = await this.customerRepo.findAndCount({
