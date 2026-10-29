@@ -94,7 +94,8 @@ export class OnlineMenuCategoryService {
       if (existingCategoryInMenu.status === OnlineMenuCategoryStatus.DELETED) {
         existingCategoryInMenu.status =
           createOnlineMenuCategoryDto.status || OnlineMenuCategoryStatus.ACTIVE;
-        existingCategoryInMenu.display_order = createOnlineMenuCategoryDto.displayOrder;
+        existingCategoryInMenu.display_order =
+          createOnlineMenuCategoryDto.displayOrder;
         await this.onlineMenuCategoryRepository.save(existingCategoryInMenu);
 
         await this.resequenceMenu(
@@ -112,7 +113,9 @@ export class OnlineMenuCategoryService {
         return {
           statusCode: 201,
           message: 'Online menu category reactivated successfully',
-          data: this.formatOnlineMenuCategoryResponse(completeOnlineMenuCategory!),
+          data: this.formatOnlineMenuCategoryResponse(
+            completeOnlineMenuCategory!,
+          ),
         };
       }
       throw new ConflictException(
@@ -407,8 +410,7 @@ export class OnlineMenuCategoryService {
     }
 
     const menuIdToCheck =
-      updateOnlineMenuCategoryDto.menuId ||
-      existingOnlineMenuCategory.menu_id;
+      updateOnlineMenuCategoryDto.menuId || existingOnlineMenuCategory.menu_id;
     const categoryIdToCheck =
       updateOnlineMenuCategoryDto.categoryId ||
       existingOnlineMenuCategory.category_id;
@@ -460,8 +462,7 @@ export class OnlineMenuCategoryService {
     await this.onlineMenuCategoryRepository.update(id, updateData);
 
     const targetMenuId =
-      updateOnlineMenuCategoryDto.menuId ||
-      existingOnlineMenuCategory.menu_id;
+      updateOnlineMenuCategoryDto.menuId || existingOnlineMenuCategory.menu_id;
 
     if (updateOnlineMenuCategoryDto.displayOrder !== undefined) {
       await this.resequenceMenu(

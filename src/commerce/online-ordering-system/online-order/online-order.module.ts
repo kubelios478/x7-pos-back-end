@@ -15,9 +15,8 @@ import { OrdersModule } from '../../../restaurant-operations/pos/orders/orders.m
 import { KitchenOrderModule } from '../../../restaurant-operations/kitchen-display-system/kitchen-order/kitchen-order.module';
 import { OnlineOrderSyncModule } from './online-order-sync.module';
 
-let devControllers: any[] = [];
+const devControllers: any[] = [];
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const sim = (require as any)('./online-order-simulator.controller');
   if (sim && sim.OnlineOrderSimulatorController) {
     devControllers.push(sim.OnlineOrderSimulatorController);

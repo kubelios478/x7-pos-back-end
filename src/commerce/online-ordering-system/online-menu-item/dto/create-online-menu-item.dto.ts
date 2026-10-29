@@ -50,7 +50,9 @@ export class CreateOnlineMenuItemDto {
   @IsOptional()
   @IsNumber(
     { maxDecimalPlaces: 2 },
-    { message: 'Price override must be a number with at most 2 decimal places' },
+    {
+      message: 'Price override must be a number with at most 2 decimal places',
+    },
   )
   @Min(0, { message: 'Price override must be greater than or equal to 0' })
   priceOverride?: number | null;
@@ -75,4 +77,3 @@ export class CreateOnlineMenuItemDto {
   })
   status?: OnlineMenuItemStatus;
 }
-

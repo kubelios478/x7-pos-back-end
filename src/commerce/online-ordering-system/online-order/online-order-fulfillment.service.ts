@@ -249,8 +249,8 @@ export class OnlineOrderFulfillmentService {
     const effectiveStationId = stationId
       ? Number(stationId)
       : precheck.station_id
-      ? Number(precheck.station_id)
-      : undefined;
+        ? Number(precheck.station_id)
+        : undefined;
 
     try {
       await this.kitchenOrderService.create(

@@ -47,13 +47,12 @@ export class KitchenOrderSimulatorController {
       'Separate developer testing controller. Delete this file to remove KDS simulator from backend.',
   })
   async resetTestData(
-    @Request() req: AuthenticatedRequest,
+    @Request() _req: AuthenticatedRequest,
     @Body()
     body?: {
       mode?: 'seed' | 'clear' | 'simple' | 'multi' | 'multi2' | 'allergy';
     },
   ) {
-    const merchantId = req.user?.merchant?.id || 2;
     const mode = body?.mode || 'seed';
 
     if (mode === 'clear') {

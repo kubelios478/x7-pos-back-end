@@ -150,7 +150,6 @@ export class OnlineOrderController {
     return this.onlineOrderService.create(dto, authenticatedUserMerchantId);
   }
 
-
   @Post(':id/accept')
   @Roles(
     UserRole.PORTAL_ADMIN,
@@ -260,10 +259,7 @@ export class OnlineOrderController {
       fulfillmentStatus !== OnlineOrderFulfillmentStatus.RECEIVED &&
       fulfillmentStatus !== OnlineOrderFulfillmentStatus.CANCELLED
     ) {
-      const existing = await this.onlineOrderService.findOne(
-        id,
-        merchantId,
-      );
+      const existing = await this.onlineOrderService.findOne(id, merchantId);
       if (!existing.data.orderId) {
         await this.onlineOrderFulfillmentService.acceptOnlineOrder(
           id,

@@ -232,8 +232,7 @@ export class OnlineOrderService {
         .where('merchant.id = :merchantId', {
           merchantId: authenticatedUserMerchantId,
         }),
-    )
-      .andWhere('store.status = :status', { status: OnlineStoreStatus.ACTIVE });
+    ).andWhere('store.status = :status', { status: OnlineStoreStatus.ACTIVE });
 
     if (query.status && query.status.toUpperCase() === 'ALL') {
       // allow both active and deleted
@@ -453,8 +452,10 @@ export class OnlineOrderService {
     }
 
     if (
-      existingOnlineOrder.fulfillment_status === OnlineOrderFulfillmentStatus.COMPLETED ||
-      existingOnlineOrder.fulfillment_status === OnlineOrderFulfillmentStatus.CANCELLED
+      existingOnlineOrder.fulfillment_status ===
+        OnlineOrderFulfillmentStatus.COMPLETED ||
+      existingOnlineOrder.fulfillment_status ===
+        OnlineOrderFulfillmentStatus.CANCELLED
     ) {
       throw new BadRequestException(
         `Cannot edit an online order in '${existingOnlineOrder.fulfillment_status}' status`,
@@ -471,8 +472,10 @@ export class OnlineOrderService {
 
     if (
       isEditingDetails &&
-      existingOnlineOrder.fulfillment_status !== OnlineOrderFulfillmentStatus.RECEIVED &&
-      existingOnlineOrder.fulfillment_status !== OnlineOrderFulfillmentStatus.ACCEPTED
+      existingOnlineOrder.fulfillment_status !==
+        OnlineOrderFulfillmentStatus.RECEIVED &&
+      existingOnlineOrder.fulfillment_status !==
+        OnlineOrderFulfillmentStatus.ACCEPTED
     ) {
       throw new BadRequestException(
         `Order details can only be edited when order is in 'received' or 'accepted' stage (current: '${existingOnlineOrder.fulfillment_status}')`,
@@ -556,8 +559,7 @@ export class OnlineOrderService {
         try {
           const orderPaymentRepo = this.dataSource.getRepository(OrderPayment);
           if (
-            updateOnlineOrderDto.paymentStatus ===
-            OnlineOrderPaymentStatus.PAID
+            updateOnlineOrderDto.paymentStatus === OnlineOrderPaymentStatus.PAID
           ) {
             const posOrder = await this.dataSource
               .getRepository(Order)
@@ -1256,5 +1258,3 @@ export class OnlineOrderService {
     }
   }
 }
-
-

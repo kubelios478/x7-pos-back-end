@@ -1,18 +1,10 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Request,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, Request, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/roles.decorator';
-import { Scopes } from 'src/auth/decorators/scopes.decorator';
 import { UserRole } from 'src/platform-saas/users/constants/role.enum';
-import { Scope } from 'src/platform-saas/users/constants/scope.enum';
 import { Request as ExpressRequest } from 'express';
 import { AuthenticatedUser } from 'src/auth/interfaces/authenticated-user.interface';
 import { OnlineOrderService } from './online-order.service';
@@ -37,7 +29,8 @@ export class OnlineOrderSimulatorController {
     UserRole.MERCHANT_USER,
   )
   @ApiOperation({
-    summary: 'Isolated dev simulator: Reset and re-seed Online Orders test data',
+    summary:
+      'Isolated dev simulator: Reset and re-seed Online Orders test data',
     description:
       'Separate developer testing controller. Delete this file to remove simulator from backend.',
   })
@@ -93,10 +86,9 @@ export class OnlineOrderSimulatorController {
           `DELETE FROM order_item WHERE order_id = ANY($1);`,
           [posOrderIds],
         );
-        await this.dataSource.query(
-          `DELETE FROM orders WHERE id = ANY($1);`,
-          [posOrderIds],
-        );
+        await this.dataSource.query(`DELETE FROM orders WHERE id = ANY($1);`, [
+          posOrderIds,
+        ]);
       }
       await this.dataSource.query(
         `DELETE FROM order_item WHERE order_id IN (SELECT id FROM orders WHERE merchant_id = $1 AND source = 'online');`,
@@ -141,7 +133,8 @@ export class OnlineOrderSimulatorController {
 
       return {
         success: true,
-        message: 'All online orders, POS test orders, and KDS kitchen orders cleared successfully.',
+        message:
+          'All online orders, POS test orders, and KDS kitchen orders cleared successfully.',
       };
     }
 
@@ -275,7 +268,11 @@ export class OnlineOrderSimulatorController {
             ($1, $3, 1, 'started', 'active', NOW() - INTERVAL '40 minutes', NOW() - INTERVAL '35 minutes')
             RETURNING id, online_order_id;
           `;
-          const createdKds = await this.dataSource.query(kdsSql, [merchantId, o2, o3]);
+          const createdKds = await this.dataSource.query(kdsSql, [
+            merchantId,
+            o2,
+            o3,
+          ]);
           const ko2 = createdKds.find((k: any) => k.online_order_id === o2)?.id;
           const ko3 = createdKds.find((k: any) => k.online_order_id === o3)?.id;
 
@@ -305,18 +302,24 @@ export class OnlineOrderSimulatorController {
 
       return {
         success: true,
-        message: '5 test orders seeded successfully (1 in each column, synced to KDS)!',
+        message:
+          '5 test orders seeded successfully (1 in each column, synced to KDS)!',
       };
     }
 
     // 5. Quick Modes (delivery, pickup, dine_in)
-    const orderType = mode === 'pickup' ? 'pickup' : mode === 'dine_in' ? 'dine_in' : 'delivery';
+    const orderType =
+      mode === 'pickup'
+        ? 'pickup'
+        : mode === 'dine_in'
+          ? 'dine_in'
+          : 'delivery';
     const notesText =
       mode === 'pickup'
         ? '🥡 Counter pickup in 20 minutes.'
         : mode === 'dine_in'
-        ? '🍽️ QR Order - Table 8 Main Dining.'
-        : '🚚 Home delivery. Leave at front desk.';
+          ? '🍽️ QR Order - Table 8 Main Dining.'
+          : '🚚 Home delivery. Leave at front desk.';
 
     const insertOrderRes = await this.dataSource.query(
       `INSERT INTO online_order (merchant_id, store_id, customer_id, type, payment_status, fulfillment_status, notes, placed_at)

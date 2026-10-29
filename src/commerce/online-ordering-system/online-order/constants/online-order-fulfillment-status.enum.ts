@@ -10,4 +10,3 @@ export enum OnlineOrderFulfillmentStatus {
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
 }
-

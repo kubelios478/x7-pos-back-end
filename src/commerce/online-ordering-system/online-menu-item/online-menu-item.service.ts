@@ -141,21 +141,26 @@ export class OnlineMenuItemService {
         if (!restoredOrder || restoredOrder <= 0) {
           const maxOrderRecord = await this.onlineMenuItemRepository
             .createQueryBuilder('item')
-            .where('item.menu_id = :menuId', { menuId: createOnlineMenuItemDto.menuId })
-            .andWhere('item.status = :status', { status: OnlineMenuItemStatus.ACTIVE })
+            .where('item.menu_id = :menuId', {
+              menuId: createOnlineMenuItemDto.menuId,
+            })
+            .andWhere('item.status = :status', {
+              status: OnlineMenuItemStatus.ACTIVE,
+            })
             .select('MAX(item.display_order)', 'maxOrder')
             .getRawOne();
-          restoredOrder = (maxOrderRecord?.maxOrder ? Number(maxOrderRecord.maxOrder) : 0) + 1;
+          restoredOrder =
+            (maxOrderRecord?.maxOrder ? Number(maxOrderRecord.maxOrder) : 0) +
+            1;
         }
         existingItem.display_order = restoredOrder;
 
         const restoredItem =
           await this.onlineMenuItemRepository.save(existingItem);
-        const completeRestored =
-          await this.onlineMenuItemRepository.findOne({
-            where: { id: restoredItem.id },
-            relations: ['menu', 'product', 'variant'],
-          });
+        const completeRestored = await this.onlineMenuItemRepository.findOne({
+          where: { id: restoredItem.id },
+          relations: ['menu', 'product', 'variant'],
+        });
 
         return {
           statusCode: 201,
@@ -197,11 +202,16 @@ export class OnlineMenuItemService {
     if (!finalOrder || finalOrder <= 0) {
       const maxOrderRecord = await this.onlineMenuItemRepository
         .createQueryBuilder('item')
-        .where('item.menu_id = :menuId', { menuId: createOnlineMenuItemDto.menuId })
-        .andWhere('item.status = :status', { status: OnlineMenuItemStatus.ACTIVE })
+        .where('item.menu_id = :menuId', {
+          menuId: createOnlineMenuItemDto.menuId,
+        })
+        .andWhere('item.status = :status', {
+          status: OnlineMenuItemStatus.ACTIVE,
+        })
         .select('MAX(item.display_order)', 'maxOrder')
         .getRawOne();
-      finalOrder = (maxOrderRecord?.maxOrder ? Number(maxOrderRecord.maxOrder) : 0) + 1;
+      finalOrder =
+        (maxOrderRecord?.maxOrder ? Number(maxOrderRecord.maxOrder) : 0) + 1;
     } else {
       // Shift existing active items with display_order >= finalOrder up by 1
       // so the new item gets the exact position specified by the user
@@ -637,7 +647,9 @@ export class OnlineMenuItemService {
             .update(OnlineMenuItem)
             .set({ display_order: () => 'display_order + 1' })
             .where('menu_id = :menuId', { menuId: targetMenuId })
-            .andWhere('status = :status', { status: OnlineMenuItemStatus.ACTIVE })
+            .andWhere('status = :status', {
+              status: OnlineMenuItemStatus.ACTIVE,
+            })
             .andWhere('display_order >= :newOrder', { newOrder })
             .andWhere('display_order < :oldOrder', { oldOrder })
             .andWhere('id != :id', { id })
@@ -648,7 +660,9 @@ export class OnlineMenuItemService {
             .update(OnlineMenuItem)
             .set({ display_order: () => 'display_order - 1' })
             .where('menu_id = :menuId', { menuId: targetMenuId })
-            .andWhere('status = :status', { status: OnlineMenuItemStatus.ACTIVE })
+            .andWhere('status = :status', {
+              status: OnlineMenuItemStatus.ACTIVE,
+            })
             .andWhere('display_order <= :newOrder', { newOrder })
             .andWhere('display_order > :oldOrder', { oldOrder })
             .andWhere('id != :id', { id })

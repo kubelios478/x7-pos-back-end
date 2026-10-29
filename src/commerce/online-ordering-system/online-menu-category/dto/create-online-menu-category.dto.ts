@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsNotEmpty, Min, IsInt, IsOptional, IsEnum } from 'class-validator';
+import {
+  IsNumber,
+  IsNotEmpty,
+  Min,
+  IsInt,
+  IsOptional,
+  IsEnum,
+} from 'class-validator';
 import { OnlineMenuCategoryStatus } from '../constants/online-menu-category-status.enum';
 
 export class CreateOnlineMenuCategoryDto {
